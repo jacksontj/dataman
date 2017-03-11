@@ -1,0 +1,9 @@
+# string to connect to metadata store
+pg_string: user=postgres password=password dbname=dataman sslmode=disable
+
+http_api:
+  addr: ":8080"
+
+storage_type: postgres
+storage_config:
+  pg_string: user=postgres password=password dbname=test sslmode=disable
