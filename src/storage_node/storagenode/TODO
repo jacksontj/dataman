@@ -2,6 +2,7 @@
     -- limit access to databases we are configured for
     -- do schema enforcement/validation/etc.
     -- user access control
+    -- configure/use indexes as defined
 - determine the primary key of items based on schema (instead of hard-coded id?) (or require id always?)
 - admin API (for internal use)
     -- add/remove databases

@@ -10,12 +10,12 @@ import (
 )
 
 type HTTPApi struct {
-	S StorageNode
+	storageNode *StorageNode
 }
 
-func NewHTTPApi(s StorageNode) *HTTPApi {
+func NewHTTPApi(storageNode *StorageNode) *HTTPApi {
 	api := &HTTPApi{
-		S: s,
+		storageNode: storageNode,
 	}
 
 	return api
@@ -52,9 +52,9 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 					// storage interfaces
 					switch queryType {
 					case query.Get:
-						results[i] = h.S.Get(queryArgs)
+						results[i] = h.storageNode.Store.Get(queryArgs)
 					case query.Filter:
-						results[i] = h.S.Filter(queryArgs)
+						results[i] = h.storageNode.Store.Filter(queryArgs)
 					default:
 						results[i] = &query.Result{
 							Error: "Unsupported query type " + string(queryType),

@@ -117,6 +117,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s WHERE", args["table"])
 
+	// TODO: validate the query before running (right now if "fields" is missing this exits)
 	// TODO: again without so much string concat
 	for columnName, columnValue := range args["fields"].(map[string]interface{}) {
 		logrus.Infof("%v %v", columnName, columnValue)
@@ -125,9 +126,8 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		// and if we do, we might want to just be consistent with that markup
 		// if the value is a list it is something like ["=", 5] (which is just defining a comparator)
 		case []interface{}:
-			logrus.Infof("list of thing %v", typedValue)
+			logrus.Infof("not-yet-implemented list of thing %v", typedValue)
 		case interface{}:
-			logrus.Infof("single thing %v", typedValue)
 			sqlQuery = sqlQuery + fmt.Sprintf(" %s='%v'", columnName, columnValue)
 		default:
 			result.Error = fmt.Sprintf("Error parsing field %s", columnName)

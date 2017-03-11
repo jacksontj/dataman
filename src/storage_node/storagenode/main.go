@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"io/ioutil"
 	"net/http"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
 	"github.com/julienschmidt/httprouter"
-	_ "github.com/lib/pq"
 
 	"github.com/jacksontj/dataman/src/storage_node"
 )
@@ -37,29 +35,29 @@ func main() {
 	}
 	logrus.Infof("config: %v", config)
 
-	// Get the actual StorageNode
-	node := config.StorageNodeType.Get()
-	if node == nil {
-		logrus.Fatalf("Invalid storage_type defined: %s", config.StorageNodeType)
+	// Load the metadata store
+	metaStore, err := config.GetMetaStore()
+	if err != nil {
+		logrus.Fatalf("Unable to load metaStore: %v", err)
 	}
 
-	if err := node.Init(config.StorageConfig); err != nil {
-		logrus.Fatal("Error loading storage_config: %v", err)
+	// Load the store we are responsible for
+	store, err := config.GetStore()
+	if err != nil {
+		logrus.Fatalf("Unable to load store: %v", err)
+	}
+
+	storageNode, err := storagenode.NewStorageNode(metaStore, store)
+	if err != nil {
+		logrus.Fatalf("Unable to create StorageNode: %v", err)
 	}
 
 	// initialize the http api (since at this point we are ready to go!
 	router := httprouter.New()
-	api := storagenode.NewHTTPApi(node)
+	api := storagenode.NewHTTPApi(storageNode)
 	api.Start(router)
 
 	http.ListenAndServe(config.HTTP.Addr, router)
-
-	logrus.Infof("%v", node)
-
-	db, err := sql.Open("postgres", config.PGString)
-	checkErr(err)
-	defer db.Close()
-
 }
 
 func checkErr(err error) {

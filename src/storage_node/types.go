@@ -4,13 +4,13 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/pgstorage"
 )
 
-type StorageNodeType string
+type StorageType string
 
 const (
-	Postgres StorageNodeType = "postgres"
+	Postgres StorageType = "postgres"
 )
 
-func (s StorageNodeType) Get() StorageNode {
+func (s StorageType) Get() StorageInterface {
 	switch s {
 	case Postgres:
 		return &pgstorage.Storage{}
