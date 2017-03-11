@@ -2,8 +2,8 @@ package storagenode
 
 import (
 	"sync/atomic"
+	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/metadata"
 )
 
@@ -18,6 +18,10 @@ type StorageNode struct {
 	Store     StorageInterface
 
 	Meta atomic.Value
+
+	// background sync stuff
+	stop chan struct{}
+	Sync chan struct{}
 }
 
 func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
@@ -28,10 +32,27 @@ func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
 
 	// Before returning we should get the metadata from the metadata store
 	node.FetchMeta()
+	go node.background()
 
 	// TODO: background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
 
 	return node, nil
+}
+
+func (s *StorageNode) background() {
+	interval := time.Second // TODO: configurable interval
+	ticker := time.NewTicker(interval)
+
+	for {
+		select {
+		case <-ticker.C: // time based trigger, in case of error etc.
+			s.FetchMeta()
+		case <-s.Sync: // event based trigger, so we can get stuff to disk ASAP
+			s.FetchMeta()
+			// since we where just triggered, lets reset the interval
+			ticker = time.NewTicker(interval)
+		}
+	}
 }
 
 // This method will create a new `Databases` map and swap it in
@@ -50,7 +71,7 @@ func (s *StorageNode) FetchMeta() error {
 		},
 	})
 
-	logrus.Infof("results: %v", results.Return[0])
+	//logrus.Infof("results: %v", results.Return[0])
 
 	results = s.MetaStore.Get(map[string]interface{}{
 		"db":    "dataman",
@@ -58,7 +79,7 @@ func (s *StorageNode) FetchMeta() error {
 		"id":    results.Return[0]["id"],
 	})
 
-	logrus.Infof("results: %v", results.Return[0])
+	//logrus.Infof("results: %v", results.Return[0])
 
 	results = s.MetaStore.Get(map[string]interface{}{
 		"db":    "dataman",
@@ -66,7 +87,7 @@ func (s *StorageNode) FetchMeta() error {
 		"id":    results.Return[0]["id"],
 	})
 
-	logrus.Infof("results: %v", results.Return[0])
+	//logrus.Infof("results: %v", results.Return[0])
 
 	results = s.MetaStore.Filter(map[string]interface{}{
 		"db":    "dataman",
@@ -76,7 +97,7 @@ func (s *StorageNode) FetchMeta() error {
 		},
 	})
 
-	logrus.Infof("results: %v", results.Return)
+	//logrus.Infof("results: %v", results.Return)
 
 	// Now that we know what databases we are a part of, lets load all the schema
 	// etc. associated with them
@@ -89,7 +110,8 @@ func (s *StorageNode) FetchMeta() error {
 				"database_id": databaseEntry["id"],
 			},
 		})
-		logrus.Infof("tableResults: %v", tableResults)
+		//logrus.Infof("tableResults: %v", tableResults)
+
 		tables := make(map[string]*metadata.Table)
 		for _, tableEntry := range tableResults.Return {
 			// TODO: load indexes and primary stuff
@@ -104,8 +126,6 @@ func (s *StorageNode) FetchMeta() error {
 	}
 
 	s.Meta.Store(&metadata.Meta{databases})
-
-	logrus.Infof("databases: %v", s.Meta.Load())
 
 	return nil
 }

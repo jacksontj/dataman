@@ -120,7 +120,6 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// TODO: validate the query before running (right now if "fields" is missing this exits)
 	// TODO: again without so much string concat
 	for columnName, columnValue := range args["fields"].(map[string]interface{}) {
-		logrus.Infof("%v %v", columnName, columnValue)
 		switch typedValue := columnValue.(type) {
 		// TODO: define what we want to do here -- not sure if we want to have "=" here,
 		// and if we do, we might want to just be consistent with that markup
@@ -142,7 +141,5 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	}
 
 	result.Return = rows
-	return result
-
 	return result
 }
