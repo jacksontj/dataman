@@ -11,10 +11,10 @@ type Table struct {
 
 	// So we know what the primary is, which will be used for .Get()
 	PrimaryColumn string
-	PrimaryIndex *TableIndex
+	PrimaryIndex  *TableIndex
 }
 
 type TableIndex struct {
-	Name string
+	Name    string
 	Columns []string
 }

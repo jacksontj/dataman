@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/julienschmidt/httprouter"
 )
@@ -43,10 +44,22 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 		// config of *how* parallel)
 		results := make([]*query.Result, len(queries))
 
+		// We specifically want to load this once for the batch so we don't have mixed
+		// schema information across this batch of queries
+		meta := h.storageNode.Meta.Load().(*metadata.Meta)
+
 		for i, queryMap := range queries {
 			// We only allow a single method to be defined per item
 			if len(queryMap) == 1 {
 				for queryType, queryArgs := range queryMap {
+					// Verify that the table is within our domain
+					if _, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string)); err != nil {
+						results[i] = &query.Result{
+							Error: err.Error(),
+						}
+						continue
+					}
+
 					// TODO: have a map or some other switch from query -> interface?
 					// This will need to get more complex as we support multiple
 					// storage interfaces

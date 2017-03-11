@@ -4,17 +4,20 @@ import (
 	"sync/atomic"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/jacksontj/dataman/src/metadata"
 )
-import "github.com/jacksontj/dataman/src/metadata"
 
 // This node is responsible for handling all of the queries for a specific storage node
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 // and applying them to the actual storage subsystem
 type StorageNode struct {
+	// TODO: meta doesn't really make sense *for* the meta store, so we'll need to either
+	// have that from config, or make sure the storage implementations only use the metadata
+	// as an optimization (meaning they don't *require* it to function?)
 	MetaStore StorageInterface
 	Store     StorageInterface
 
-	Databases atomic.Value
+	Meta atomic.Value
 }
 
 func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
@@ -28,15 +31,14 @@ func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
 
 	// TODO: background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
 
-
 	return node, nil
 }
 
 // This method will create a new `Databases` map and swap it in
 func (s *StorageNode) FetchMeta() error {
-    // First we need to determine all the databases that we are responsible for
-    // TODO: this could eventually just come from a topology API in the routing layers
-    // TODO: lots of error handling required
+	// First we need to determine all the databases that we are responsible for
+	// TODO: this could eventually just come from a topology API in the routing layers
+	// TODO: lots of error handling required
 
 	// TODO: we need to get this on our own...
 	storageNodeId := 1
@@ -101,9 +103,9 @@ func (s *StorageNode) FetchMeta() error {
 		}
 	}
 
-	s.Databases.Store(databases)
+	s.Meta.Store(&metadata.Meta{databases})
 
-	logrus.Infof("databases: %v", s.Databases.Load())
+	logrus.Infof("databases: %v", s.Meta.Load())
 
 	return nil
 }
