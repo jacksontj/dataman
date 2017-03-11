@@ -1,0 +1,9 @@
+- interact with "metadata"
+    -- limit access to databases we are configured for
+    -- do schema enforcement/validation/etc.
+    -- user access control
+- determine the primary key of items based on schema (instead of hard-coded id?) (or require id always?)
+- admin API (for internal use)
+    -- add/remove databases
+- reserved namespace (don't touch dbs starting with "_" -- they are internal only)
+- separate deserialization as its own pluggable thing in the http API (probably in some shared lib-- since we'll use it in both the router and storage nodes)
