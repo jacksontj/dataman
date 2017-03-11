@@ -9,7 +9,6 @@ type Meta struct {
 }
 
 func (m *Meta) GetTable(dbName, tableName string) (*Table, error) {
-
 	if database, ok := m.Databases[dbName]; ok {
 		if table, ok := database.Tables[tableName]; ok {
 			return table, nil

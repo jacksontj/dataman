@@ -10,7 +10,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/router_node"
 )
 
 var opts struct {
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// load the config file
-	config := &storagenode.Config{}
+	config := &routernode.Config{}
 	configBytes, err := ioutil.ReadFile(opts.ConfigFile)
 	if err != nil {
 		logrus.Fatalf("Error loading config: %v", err)
@@ -41,20 +41,14 @@ func main() {
 		logrus.Fatalf("Unable to load metaStore: %v", err)
 	}
 
-	// Load the store we are responsible for
-	store, err := config.GetStore()
-	if err != nil {
-		logrus.Fatalf("Unable to load store: %v", err)
-	}
-
-	storageNode, err := storagenode.NewStorageNode(metaStore, store)
+	routerNode, err := routernode.NewRouterNode(metaStore)
 	if err != nil {
 		logrus.Fatalf("Unable to create StorageNode: %v", err)
 	}
 
 	// initialize the http api (since at this point we are ready to go!
 	router := httprouter.New()
-	api := storagenode.NewHTTPApi(storageNode)
+	api := routernode.NewHTTPApi(routerNode)
 	api.Start(router)
 
 	http.ListenAndServe(config.HTTP.Addr, router)

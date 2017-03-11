@@ -11,9 +11,6 @@ import (
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 // and applying them to the actual storage subsystem
 type StorageNode struct {
-	// TODO: meta doesn't really make sense *for* the meta store, so we'll need to either
-	// have that from config, or make sure the storage implementations only use the metadata
-	// as an optimization (meaning they don't *require* it to function?)
 	MetaStore StorageInterface
 	Store     StorageInterface
 
