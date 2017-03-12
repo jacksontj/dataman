@@ -27,8 +27,9 @@ func MultiQuery(shards []*metadata.DataStoreShard, queries []*query.Query) ([]*q
 			if mergedResults[i] == nil {
 				mergedResults[i] = result
 			} else {
-				//TODO: merge the results!
-				return nil, fmt.Errorf("unimplemented merge!")
+				// Merge return lists
+				mergedResults[i].Return = append(mergedResults[i].Return, result.Return...)
+				// TODO: handle error and meta merging as well
 			}
 		}
 	}
