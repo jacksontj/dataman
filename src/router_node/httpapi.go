@@ -59,6 +59,10 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 		// schema information across this batch of queries
 		meta := h.routerNode.Meta.Load().(*metadata.Meta)
 
+		// TODO: this should really determine where all of the requests need to go
+		// then re-swizzle the queries to make a smaller number of queries (or at least
+		// parallelize them out). This current implementation is not fast-- but it works
+		// enough for now-- definitely needs a re-do
 		for i, queryMap := range queries {
 			// We only allow a single method to be defined per item
 			if len(queryMap) == 1 {
@@ -71,10 +75,27 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 					}
 
 					// TODO: actually do the sharding and replica selection
-					storageNode := database.Store.Shards[0].Replicas[0]
-					result, err := httpclient.QuerySingle(
-						storageNode.IP,
-						storageNode.Port,
+					shards := make([]*metadata.DataStoreShard, 0)
+
+					// TODO: have a map or some other switch from query -> interface?
+					// This will need to get more complex as we support multiple
+					// storage interfaces
+					switch queryType {
+					// For a get we have a specific key we can check shards against
+					case query.Get:
+						// TODO: determine the shard key, else just get all of them
+						shards = database.Store.Shards
+					case query.Filter:
+						// TODO: determine the shard key, else just get all of them
+						shards = database.Store.Shards
+					default:
+						results[i] = &query.Result{
+							Error: "Unsupported query type " + string(queryType),
+						}
+					}
+
+					result, err := httpclient.MultiQuerySingle(
+						shards,
 						&query.Query{Type: queryType, Args: queryArgs},
 					)
 					if err == nil {

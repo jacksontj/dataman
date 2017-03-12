@@ -18,8 +18,9 @@ type DataStoreShard struct {
 }
 
 // TODO: implement
-func (d *DataStoreShard) GetReplicas(key interface{}) []*StorageNode {
-	return d.Replicas
+// TODO: have a version with the key-- so we can do consistent hashing (for cache hits)
+func (d *DataStoreShard) GetReplica() *StorageNode {
+	return d.Replicas[0]
 }
 
 // TODO implement
