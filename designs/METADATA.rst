@@ -51,6 +51,7 @@ DATASTORE
     - replica configuration
     - Linking tables:
         - Datastore_shard
+    #TODO: this should have schema to handle re-sharding
 
 DATASTORE_SHARD
     - id
@@ -60,6 +61,8 @@ DATASTORE_SHARD
         -- transitional state if any
     - Linking tables
         - the DATASTORE_REPLICA_SET in the shard (linking table)
+    #TODO: this should have schema to handle adding/removing datastore_shard_item (replica)
+
 
 #TODO: rename to DATASTORE_SHARD_ITEM ? Basically the question is should there be a
 # separate thing for shard and replica set-- since they are the "same"
