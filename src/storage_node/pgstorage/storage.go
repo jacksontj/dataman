@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
 	_ "github.com/lib/pq"
 )
@@ -32,6 +33,11 @@ func (s *Storage) Init(c map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// TODO: implement?
+func (s *Storage) UpdateMeta(*metadata.Meta) error {
 	return nil
 }
 

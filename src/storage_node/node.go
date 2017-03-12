@@ -33,6 +33,9 @@ func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
 	// TODO: compare meta from the metadata store with what we have locally
 	// then we need to figure out what we want to do -- if we add the databases
 	// and tables of if we just remove them since we don't have them
+	if err := store.UpdateMeta(node.Meta.Load().(*metadata.Meta)); err != nil {
+		return nil, err
+	}
 
 	// start a background goroutine to re-fetch every interval
 	go node.background()

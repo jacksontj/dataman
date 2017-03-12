@@ -85,6 +85,9 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 					case query.Get:
 						// TODO: determine the shard key, else just get all of them
 						shards = database.Store.Shards
+					case query.Set:
+						// TODO: determine the shard key
+						shards = database.Store.Shards
 					case query.Filter:
 						// TODO: determine the shard key, else just get all of them
 						shards = database.Store.Shards

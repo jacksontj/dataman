@@ -66,6 +66,8 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 					switch queryType {
 					case query.Get:
 						results[i] = h.storageNode.Store.Get(queryArgs)
+					case query.Set:
+						results[i] = h.storageNode.Store.Set(queryArgs)
 					case query.Filter:
 						results[i] = h.storageNode.Store.Filter(queryArgs)
 					default:
