@@ -1,0 +1,32 @@
+Determine how we want to map dataman schemas to sql schema
+
+Option 1:
+    shove everything into "value" and use additional columns only for indexes
+
+    Pros:
+        - Easy to implement
+        - Consistent base schema across tables
+    Cons:
+        - change to a single attribute requires reading, unmarshaling, editing, marshaling, and writing the data
+
+Option 2:
+    Create a column per top-level property in the schema
+
+    Pros:
+        - more "SQL"-esque
+        - makes additions of indexes easy (assuming the index is on a top-level property)
+
+    Cons:
+        - more complex schema, that will differ a lot (and indexes on sub-items will require more compex exclusions)
+
+# Doing this for now
+Option 3:
+    Shove everything into "value" as a json field (with index-- since postgres will do that)
+
+    Pros:
+        - simplest implementation
+        - dynamic indexes
+
+    Cons:
+        - least space efficient
+        - requires indexing the entire json entry, even though we might not ever use it
