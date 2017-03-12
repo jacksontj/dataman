@@ -29,9 +29,13 @@ func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
 
 	// Before returning we should get the metadata from the metadata store
 	node.FetchMeta()
-	go node.background()
 
-	// TODO: background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
+	// TODO: compare meta from the metadata store with what we have locally
+	// then we need to figure out what we want to do -- if we add the databases
+	// and tables of if we just remove them since we don't have them
+
+	// start a background goroutine to re-fetch every interval
+	go node.background()
 
 	return node, nil
 }
