@@ -44,3 +44,8 @@ The config will consist of:
     - Number of shards
     - Sharding algorithm
     - Shard Key (which we will allow a change of in the future)
+
+
+TODO:
+    - sharding key per database/table? For now we can just rely on the "id" field of each item, but we'll
+        want to add that flexibility in soon-ish
