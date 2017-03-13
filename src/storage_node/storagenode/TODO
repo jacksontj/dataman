@@ -4,6 +4,6 @@
     -- configure/use indexes as defined
 - determine the primary key of items based on schema (instead of hard-coded id?) (or require id always?)
 - admin API (for internal use)
-    -- add/remove databases
+    -- add/remove databases -- this should be more-or-less separate from the router API
 - separate deserialization as its own pluggable thing in the http API (probably in some shared lib-- since we'll use it in both the router and storage nodes)
 - tombstone stuff (background job to do queries to find it)

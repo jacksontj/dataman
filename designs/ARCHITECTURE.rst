@@ -16,6 +16,11 @@ layer needs to access some shared configuration/state which will be stored in
 write case) but it *is* responsible for routing your request to the correct storage
 nodes (doing the scatter gather).
 
+This layer is responsible for doing:
+    - Routing to correct storage node
+    - Sharding
+    - Replication
+
 
 ## Storage Node
 This layer is responsible for interactions with the actual data-storage implementation
@@ -24,6 +29,7 @@ could in-theory query the node directly for your data
 
 This layer is responsible for:
     - maintaining state of the box
+    - managing local schemas (and handling queries to add/remove/update schemas)
     - implementing dataman queries in the native DB driver
         -- Specifically this will implement the "raw" format for queries
 
