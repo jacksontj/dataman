@@ -20,3 +20,9 @@
         - resharding
         - long-running tasks
     -- routing layer should be able to get latest version from their peers (gossip or something)
+
+- Geo loadbalancing
+    Since we already support sharding this shouldn't be too much of an issue. We might want to take the latency
+    between storage node and router node into account when determining which replica to send the query to. And
+    when we get to supporting our own replicas etc we'll need a mechanism to define if a replica is sufficient
+    (basically define read-after-write consistency requirements)
