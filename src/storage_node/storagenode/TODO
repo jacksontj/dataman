@@ -1,4 +1,5 @@
 - interact with "metadata"
+    -- Change metadata interaction to only look at local metadata (instead of syncing from remote metadata)
     -- do schema enforcement/validation/etc.
     -- user access control
     -- configure/use indexes as defined
