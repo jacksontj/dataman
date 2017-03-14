@@ -1,8 +1,8 @@
 - interact with "metadata"
-    -- Change metadata interaction to only look at local metadata (instead of syncing from remote metadata)
     -- do schema enforcement/validation/etc.
     -- user access control
     -- configure/use indexes as defined
+    -- API to track in-progress changes (schema etc.)
 - determine the primary key of items based on schema (instead of hard-coded id?) (or require id always?)
 - admin API (for internal use)
     -- add/remove databases -- this should be more-or-less separate from the router API
