@@ -2,6 +2,10 @@ package metadata
 
 import "fmt"
 
+func NewMeta() *Meta {
+	return &Meta{make(map[string]*Database)}
+}
+
 // This is a struct to encapsulate all of the metadata and provide some
 // common query patterns
 type Meta struct {

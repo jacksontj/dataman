@@ -2,62 +2,37 @@ package storagenode
 
 import (
 	"sync/atomic"
-	"time"
-
-	"github.com/jacksontj/dataman/src/metadata"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 // and applying them to the actual storage subsystem
 type StorageNode struct {
-	MetaStore StorageInterface
-	Store     StorageInterface
+	Store StorageInterface
 
+	// TODO: move meta up to this layer and just rely on the lower layer to report
+	// changes etc.
 	Meta atomic.Value
-
-	// background sync stuff
-	stop chan struct{}
-	Sync chan struct{}
 }
 
-func NewStorageNode(meta, store StorageInterface) (*StorageNode, error) {
+func NewStorageNode(store StorageInterface) (*StorageNode, error) {
 	node := &StorageNode{
-		MetaStore: meta,
-		Store:     store,
+		Store: store,
 	}
 
-	// Before returning we should get the metadata from the metadata store
-	node.FetchMeta()
-
-	// TODO: compare meta from the metadata store with what we have locally
-	// then we need to figure out what we want to do -- if we add the databases
-	// and tables of if we just remove them since we don't have them
-	if err := store.UpdateMeta(node.Meta.Load().(*metadata.Meta)); err != nil {
+	// Load the current metadata from the store
+	if meta, err := store.GetMeta(); err == nil {
+		node.Meta.Store(meta)
+	} else {
 		return nil, err
 	}
-
-	// start a background goroutine to re-fetch every interval
-	go node.background()
 
 	return node, nil
 }
 
-func (s *StorageNode) background() {
-	interval := time.Second // TODO: configurable interval
-	ticker := time.NewTicker(interval)
+// TODO: pull this up into router_node
+/*
 
-	for {
-		select {
-		case <-ticker.C: // time based trigger, in case of error etc.
-			s.FetchMeta()
-		case <-s.Sync: // event based trigger, so we can get stuff to disk ASAP
-			s.FetchMeta()
-			// since we where just triggered, lets reset the interval
-			ticker = time.NewTicker(interval)
-		}
-	}
-}
 
 // This method will create a new `Databases` map and swap it in
 func (s *StorageNode) FetchMeta() error {
@@ -133,3 +108,4 @@ func (s *StorageNode) FetchMeta() error {
 
 	return nil
 }
+*/

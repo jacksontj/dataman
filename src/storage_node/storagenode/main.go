@@ -35,19 +35,13 @@ func main() {
 	}
 	logrus.Infof("config: %v", config)
 
-	// Load the metadata store
-	metaStore, err := config.GetMetaStore()
-	if err != nil {
-		logrus.Fatalf("Unable to load metaStore: %v", err)
-	}
-
 	// Load the store we are responsible for
 	store, err := config.GetStore()
 	if err != nil {
 		logrus.Fatalf("Unable to load store: %v", err)
 	}
 
-	storageNode, err := storagenode.NewStorageNode(metaStore, store)
+	storageNode, err := storagenode.NewStorageNode(store)
 	if err != nil {
 		logrus.Fatalf("Unable to create StorageNode: %v", err)
 	}

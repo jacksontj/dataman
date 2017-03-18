@@ -22,6 +22,7 @@ type StorageInterface interface {
 	// RemoveIndex
 	// TODO: replace this with simpler methods, this update mechanism is probably generic
 	// and we'll just need add/remove/list/update methods to accomplish the task
+	GetMeta() (*metadata.Meta, error)
 	UpdateMeta(*metadata.Meta) error
 
 	// Data-Functions

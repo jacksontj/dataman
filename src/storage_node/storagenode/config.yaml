@@ -1,11 +1,8 @@
-# Metadata store config
-metastore_type: postgres
-metastore_config:
-  pg_string: user=postgres password=password dbname=dataman sslmode=disable
-
+# TODO: separate metadata config from this
 # actual store configuration
-storage_type: memstorage
-storage_config: {}
+storage_type: postgres-json
+storage_config:
+  pg_string: user=postgres password=password sslmode=disable
 
 # config for the HTTP api
 http_api:
