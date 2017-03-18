@@ -22,6 +22,11 @@ func NewHTTPApi(storageNode *StorageNode) *HTTPApi {
 	return api
 }
 
+// REST API methods:
+// 	 GET - READ/list
+//	 PUT - UPDATE
+//   POST - CREATE
+//   DELETE - DELETE
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.POST("/v1/data/raw", h.rawQueryHandler)
