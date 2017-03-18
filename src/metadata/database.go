@@ -8,10 +8,10 @@ func NewDatabase(name string) *Database {
 }
 
 type Database struct {
-	Name  string
-	Store *DataStore
+	Name  string     `json:"name"`
+	Store *DataStore `json:"store,omitempty"`
 	//TombstoneMap map[int]*DataStore
-	Tables map[string]*Table
+	Tables map[string]*Table `json:"tables"`
 }
 
 func (d *Database) ListTables() []string {

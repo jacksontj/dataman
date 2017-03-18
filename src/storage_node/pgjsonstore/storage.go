@@ -127,6 +127,9 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	if err != nil {
 		return fmt.Errorf("Unable to load db meta entry: %v", err)
 	}
+	if len(rows) != 1 {
+		return fmt.Errorf("Attempting to remove a DB which is already removed")
+	}
 
 	// Close the connection we have (so people don't do queries)
 	if conn, ok := s.dbMap[dbname]; ok {

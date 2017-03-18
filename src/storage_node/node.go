@@ -23,13 +23,21 @@ func NewStorageNode(store StorageInterface) (*StorageNode, error) {
 	}
 
 	// Load the current metadata from the store
-	if meta, err := store.GetMeta(); err == nil {
-		node.Meta.Store(meta)
-	} else {
+	if err := node.RefreshMeta(); err != nil {
 		return nil, err
 	}
 
 	return node, nil
+}
+
+func (s *StorageNode) RefreshMeta() error {
+	// Load the current metadata from the store
+	if meta, err := s.Store.GetMeta(); err == nil {
+		s.Meta.Store(meta)
+		return nil
+	} else {
+		return err
+	}
 }
 
 func (s *StorageNode) GetMeta() *metadata.Meta {

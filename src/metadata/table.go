@@ -8,17 +8,17 @@ func NewTable(name string) *Table {
 }
 
 type Table struct {
-	Name string
+	Name string `json:"name"`
 	//Schema
 
 	// TODO: maintain another map of each column -> index? (so we can attempt to
 	// re-work queries to align with indexes)
 	// map of name -> index
-	Indexes map[string]*TableIndex
+	Indexes map[string]*TableIndex `json:"indexes,omitempty"`
 
 	// So we know what the primary is, which will be used for .Get()
-	PrimaryColumn string
-	PrimaryIndex  *TableIndex
+	PrimaryColumn string      `json:"primarykey,omitempty"`
+	PrimaryIndex  *TableIndex `json:"-"`
 }
 
 func (t *Table) ListIndexes() []string {
@@ -30,6 +30,7 @@ func (t *Table) ListIndexes() []string {
 }
 
 type TableIndex struct {
-	Name    string
+	Name string `json:"name"`
+	// TODO: better schema-- this will be the data_json in the DB
 	Columns []string
 }

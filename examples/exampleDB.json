@@ -1,0 +1,8 @@
+{
+    "name": "testdb",
+    "tables": {
+        "table1": {
+            "name": "table1"
+        }
+    }
+}
