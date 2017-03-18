@@ -24,9 +24,17 @@ type StorageConfig struct {
 	PGString string `yaml:"pg_string"`
 }
 
+func (c *StorageConfig) pgStringForDB(name string) string {
+	return c.PGString + fmt.Sprintf(" database=%s", name)
+}
+
 type Storage struct {
 	config *StorageConfig
-	db     *sql.DB
+	// Connection to main db?
+	db *sql.DB
+
+	// TODO: lazily load these, maybe even pool them
+	dbMap map[string]*sql.DB
 }
 
 func (s *Storage) Init(c map[string]interface{}) error {
@@ -38,27 +46,199 @@ func (s *Storage) Init(c map[string]interface{}) error {
 		return fmt.Errorf("Invalid config")
 	}
 
-	s.db, err = sql.Open("postgres", s.config.PGString)
+	s.db, err = sql.Open("postgres", s.config.pgStringForDB("dataman_storagenode"))
 	if err != nil {
 		return err
 	}
+
+	s.dbMap = make(map[string]*sql.DB)
 
 	// TODO: ensure that the metadata store exists (and the schema is correct)
 	return nil
 }
 
 func (s *Storage) GetMeta() (*metadata.Meta, error) {
-	return metadata.NewMeta(), nil
+
+	meta := metadata.NewMeta()
+
+	rows, err := s.doQuery(s.db, "SELECT * FROM public.database")
+	if err != nil {
+		return nil, err
+	}
+	for _, dbEntry := range rows {
+		database := metadata.NewDatabase(dbEntry["name"].(string))
+		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v", dbEntry["id"]))
+		if err != nil {
+			return nil, err
+		}
+		for _, tableEntry := range tableRows {
+			table := metadata.NewTable(tableEntry["name"].(string))
+			tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableEntry["id"]))
+			if err != nil {
+				return nil, err
+			}
+			for _, indexEntry := range tableIndexRows {
+				// TODO: actually parse out the data_json to get the index type etc.
+				index := &metadata.TableIndex{Name: indexEntry["name"].(string)}
+				table.Indexes[index.Name] = index
+			}
+			database.Tables[table.Name] = table
+		}
+		meta.Databases[database.Name] = database
+	}
+
+	return meta, nil
 }
 
-// TODO: implement?
-func (s *Storage) UpdateMeta(*metadata.Meta) error {
+// Database changes
+func (s *Storage) AddDatabase(db *metadata.Database) error {
+	// Create the database
+	if _, err := s.db.Query("CREATE DATABASE " + db.Name); err != nil {
+		return fmt.Errorf("Unable to create database: %v", err)
+	}
+
+	// Add to internal metadata store
+	if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.database (name) VALUES ('%s')", db.Name)); err != nil {
+		return fmt.Errorf("Unable to add db meta entry: %v", err)
+	}
+
+	// Create db connection
+	dbConn, err := sql.Open("postgres", s.config.pgStringForDB(db.Name))
+	if err != nil {
+		return fmt.Errorf("Unable to open db connection: %v", err)
+	}
+	s.dbMap[db.Name] = dbConn
+
+	// Add any tables in the db
+	for _, table := range db.Tables {
+		if err := s.AddTable(db.Name, table); err != nil {
+			return fmt.Errorf("Error adding table %s: %v", table.Name, err)
+		}
+	}
+
 	return nil
 }
 
+const dropDatabaseTemplate = `DROP DATABASE IF EXISTS %s;`
+
+func (s *Storage) RemoveDatabase(dbname string) error {
+	// make sure the db exists in the metadata store
+	rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to load db meta entry: %v", err)
+	}
+
+	// Close the connection we have (so people don't do queries)
+	if conn, ok := s.dbMap[dbname]; ok {
+		if err := conn.Close(); err != nil {
+			return fmt.Errorf("Unable to close DB connection during RemoveDatabase: %v", err)
+		}
+	}
+
+	// TODO: wait for some time first? This "kick everyone off" is fine for testing, but in prod
+	// if there are people using the connection-- that is itself concerning
+	// Revoke perms to connect?     REVOKE CONNECT ON DATABASE TARGET_DB FROM public;
+	// Close any outstanding connecitons (so we can drop the DB)
+	_, err = s.db.Query(fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = '%s';`, dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to close open connections: %v", err)
+	}
+
+	// Remove the database
+	if _, err := s.db.Query(fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
+		return fmt.Errorf("Unable to drop db: %v", err)
+	}
+
+	// Remove all the table entries
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table WHERE database_id=%v", rows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to remove db's table meta entries: %v", err)
+	}
+
+	// Remove from the metadata store
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.database WHERE name='%s'", dbname)); err != nil {
+		return fmt.Errorf("Unable to remove db meta entry: %v", err)
+	}
+
+	return nil
+
+}
+
+// TODO: some light ORM stuff would be nice here-- to handle the schema migrations
+// Template for creating tables
+const addTableTemplate = `CREATE TABLE public.%s
+(
+  id serial4 NOT NULL,
+  data jsonb,
+  created date,
+  updated date,
+  CONSTRAINT %s_id PRIMARY KEY (id)
+)
+`
+
+// Table Changes
+func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
+	// make sure the db exists in the metadata store
+	rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbName))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbName, err)
+	}
+
+	tableAddQuery := fmt.Sprintf(addTableTemplate, table.Name, table.Name)
+
+	if _, err := s.dbMap[dbName].Query(tableAddQuery); err != nil {
+		return fmt.Errorf("Unable to add table %s: %v", table.Name, err)
+	}
+
+	// Add to internal metadata store
+	if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to add table to metadata store: %v", err)
+	}
+
+	return nil
+}
+
+const removeTableTemplate = `DROP TABLE public.%s`
+
+func (s *Storage) RemoveTable(dbname string, tablename string) error {
+	// make sure the db exists in the metadata store
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	// make sure the table exists in the metadata store
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
+	if err != nil {
+		return fmt.Errorf("Unable to find table %s.%s: %v", dbname, tablename, err)
+	}
+
+	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, tablename)
+	if _, err := s.dbMap[dbname].Query(tableRemoveQuery); err != nil {
+		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", tablename, err)
+	}
+
+	// Now that it has been removed, lets remove it from the internal metadata store
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table WHERE id=%v", tableRows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to remove metadata entry for table %s: %v", tablename, err)
+	}
+
+	return nil
+}
+
+// Index changes
+func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex) error {
+	return fmt.Errorf("Not implemented")
+}
+
+func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
+	return fmt.Errorf("Not implemented")
+}
+
 // TODO: find a nicer way to do this, this is a mess
-func (s *Storage) doQuery(query string) ([]map[string]interface{}, error) {
-	rows, err := s.db.Query(query)
+func (s *Storage) doQuery(db *sql.DB, query string) ([]map[string]interface{}, error) {
+	rows, err := db.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +285,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	rows, err := s.doQuery(fmt.Sprintf("SELECT * FROM public.%s WHERE id=%v", args["table"], args["id"]))
+	rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.%s WHERE id=%v", args["table"], args["id"]))
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -159,7 +339,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	rows, err := s.doQuery(sqlQuery)
+	rows, err := s.doQuery(s.db, sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result

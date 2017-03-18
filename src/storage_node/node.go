@@ -2,6 +2,8 @@ package storagenode
 
 import (
 	"sync/atomic"
+
+	"github.com/jacksontj/dataman/src/metadata"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
@@ -29,6 +31,12 @@ func NewStorageNode(store StorageInterface) (*StorageNode, error) {
 
 	return node, nil
 }
+
+func (s *StorageNode) GetMeta() *metadata.Meta {
+	return s.Meta.Load().(*metadata.Meta)
+}
+
+// TODO: schema management changes here
 
 // TODO: pull this up into router_node
 /*

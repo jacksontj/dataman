@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/metadata"
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/julienschmidt/httprouter"
 )
 

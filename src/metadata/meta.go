@@ -12,6 +12,15 @@ type Meta struct {
 	Databases map[string]*Database
 }
 
+// TODO: more than just names?
+func (m *Meta) ListDatabases() []string {
+	dbnames := make([]string, 0, len(m.Databases))
+	for name, _ := range m.Databases {
+		dbnames = append(dbnames, name)
+	}
+	return dbnames
+}
+
 func (m *Meta) GetTable(dbName, tableName string) (*Table, error) {
 	if database, ok := m.Databases[dbName]; ok {
 		if table, ok := database.Tables[tableName]; ok {

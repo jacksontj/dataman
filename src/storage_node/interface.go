@@ -10,20 +10,18 @@ type StorageInterface interface {
 	// Initialization, this is the "config_json" for the `storage_node`
 	Init(map[string]interface{}) error
 
-	// Schema-Functions
-	// AddDatabase
-	// ListDatabase
-	// RemoveDatabase
-	// AddTable
-	// ListTable
-	// RemoveTable
-	// AddIndex
-	// ListIndex
-	// RemoveIndex
-	// TODO: replace this with simpler methods, this update mechanism is probably generic
-	// and we'll just need add/remove/list/update methods to accomplish the task
+	// Get the current meta from however it is stored
 	GetMeta() (*metadata.Meta, error)
-	UpdateMeta(*metadata.Meta) error
+
+	// Schema-Functions
+	AddDatabase(db *metadata.Database) error
+	RemoveDatabase(dbname string) error
+
+	AddTable(dbname string, table *metadata.Table) error
+	RemoveTable(dbname string, tablename string) error
+
+	AddIndex(dbname, tablename string, index *metadata.TableIndex) error
+	RemoveIndex(dbname, tablename, indexname string) error
 
 	// Data-Functions
 	// TODO: split out the various functions into grouped interfaces that make sense
