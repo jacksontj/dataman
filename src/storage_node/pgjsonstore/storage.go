@@ -459,8 +459,26 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 	return result
 }
 
-func (s *Storage) Delete(query.QueryArgs) *query.Result {
-	return nil
+func (s *Storage) Delete(args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE id=%v", args["table"], args["id"])
+
+	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	result.Return = rows
+	return result
+
 }
 
 func (s *Storage) Filter(args query.QueryArgs) *query.Result {

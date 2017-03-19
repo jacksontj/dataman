@@ -6,6 +6,7 @@ package storagenode
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/jacksontj/dataman/src/metadata"
@@ -173,5 +174,42 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
 	// Delete
+	queryBytes = []byte(fmt.Sprintf(`
+        {
+                "delete": {
+                        "db": "docdb",
+                        "table": "person",
+                        "id": %v
+                }
+        }
+        `, result.Return[0]["id"]))
+	q = make(map[query.QueryType]query.QueryArgs)
+	json.Unmarshal(queryBytes, &q)
+	result = node.HandleQuery(q)
+	if result.Error != "" {
+		t.Fatalf("Error when doing a valid delete(): %v", result.Error)
+	}
+
+	// TODO: some other way..  we just want to make sure its 1
+	queryBytes = []byte(`
+        {
+                "filter": {
+                        "db": "docdb",
+                        "table": "person",
+                        "data": {
+                                "firstName": "tester"
+                        }
+                }
+        }
+        `)
+	q = make(map[query.QueryType]query.QueryArgs)
+	json.Unmarshal(queryBytes, &q)
+	result = node.HandleQuery(q)
+	if result.Error != "" {
+		t.Fatalf("Error when doing a valid filter(): %v", result.Error)
+	}
+	if len(result.Return) != 1 {
+		t.Fatalf("Returns not what we expect, expected 1 got %d: %v", len(result.Return), result.Return)
+	}
 
 }

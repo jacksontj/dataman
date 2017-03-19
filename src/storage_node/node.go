@@ -94,6 +94,8 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 						}
 					}
 					results[i] = s.Store.Set(queryArgs)
+				case query.Delete:
+					results[i] = s.Store.Delete(queryArgs)
 				case query.Filter:
 					results[i] = s.Store.Filter(queryArgs)
 				default:
