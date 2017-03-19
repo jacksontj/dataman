@@ -27,6 +27,7 @@ type StorageInterface interface {
 
 	// TODO: change this to a cache of the router schema?
 	AddSchema(schema *metadata.Schema) error
+	GetSchema(name string, version int64) *metadata.Schema
 	ListSchemas() []*metadata.Schema
 	RemoveSchema(name string, version int64) error
 

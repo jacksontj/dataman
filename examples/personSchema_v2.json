@@ -1,0 +1,17 @@
+{
+    "name": "person",
+    "version": 2,
+    "schema": {
+	    "title": "Person",
+	    "type": "object",
+	    "properties": {
+		    "firstName": {
+			    "type": "string"
+		    },
+		    "lastName": {
+			    "type": "string"
+		    }
+	    },
+	    "required": ["firstName", "lastName"]
+    }
+}

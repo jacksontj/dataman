@@ -43,36 +43,34 @@ func TestSchema(t *testing.T) {
 	schema1 := metadata.Schema{
 		Name:    "person",
 		Version: 1,
-		DataJson: `
-{
-	"title": "Person",
-	"type": "object",
-	"properties": {
-		"firstName": {
-			"type": "string"
-		}
-	},
-	"required": ["firstName"]
-}`,
+		Schema: map[string]interface{}{
+			"title": "Person",
+			"type":  "object",
+			"properties": map[string]interface{}{
+				"firstName": map[string]interface{}{
+					"type": "string",
+				},
+			},
+			"required": []string{"firstName"},
+		},
 	}
 
 	schema2 := metadata.Schema{
 		Name:    "person",
 		Version: 2,
-		DataJson: `
-{
-	"title": "Person",
-	"type": "object",
-	"properties": {
-		"firstName": {
-			"type": "string"
+		Schema: map[string]interface{}{
+			"title": "Person",
+			"type":  "object",
+			"properties": map[string]interface{}{
+				"firstName": map[string]interface{}{
+					"type": "string",
+				},
+				"lastName": map[string]interface{}{
+					"type": "string",
+				},
+			},
+			"required": []string{"firstName", "lastName"},
 		},
-		"lastName": {
-			"type": "string"
-		}
-	},
-	"required": ["firstName", "lastName"]
-}`,
 	}
 
 	// Validate that the schemas we want to add aren't there (remove if they are)

@@ -1,20 +1,29 @@
+# List current schemas
+curl -s localhost:8081/v1/schema
+
+# Add a schema
+curl -sd @personSchema_v1.json localhost:8081/v1/schema/person/1
+
+# Remove a schema
+curl -X DELETE localhost:8081/v1/schema/person/1
+
 # List current DBs
-curl -vs localhost:8081/v1/database
+curl -s localhost:8081/v1/database
 
 # Add DB
-curl -vsd @exampleDB.json localhost:8081/v1/database
+curl -sd @exampleDB.json localhost:8081/v1/database
 
 # View the DB
-curl -vs localhost:8081/v1/database/testdb
+curl -s localhost:8081/v1/database/testdb
 
 # Remove the DB
-curl -vX DELETE -s localhost:8081/v1/database/testdb
+curl -X DELETE -s localhost:8081/v1/database/testdb
 
 # Add a table to that DB
-curl -vsd @exampleDBTable.json localhost:8081/v1/database/testdb
+curl -sd @exampleDBTable.json localhost:8081/v1/database/testdb
 
 # View the table
-curl -vs localhost:8081/v1/database/testdb/table2
+curl -s localhost:8081/v1/database/testdb/table2
 
 # Remove the table
-curl -vX DELETE -s localhost:8081/v1/database/testdb/table2
+curl -X DELETE -s localhost:8081/v1/database/testdb/table2

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
@@ -43,6 +44,12 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Tables
 	router.GET("/v1/database/:dbname/:tablename", h.viewTable)
 	router.DELETE("/v1/database/:dbname/:tablename", h.removeTable)
+
+	// Schema
+	router.GET("/v1/schema", h.listSchema)
+	router.GET("/v1/schema/:name/:version", h.viewSchema)
+	router.POST("/v1/schema/:name/:version", h.addSchema)
+	router.DELETE("/v1/schema/:name/:version", h.removeSchema)
 
 	router.POST("/v1/data/raw", h.rawQueryHandler)
 }
@@ -196,6 +203,74 @@ func (h *HTTPApi) removeTable(w http.ResponseWriter, r *http.Request, ps httprou
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+}
+
+// List all schemas
+func (h *HTTPApi) listSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	schemas := h.storageNode.Store.ListSchemas()
+	if bytes, err := json.Marshal(schemas); err == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	} else {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// Show a single schema
+func (h *HTTPApi) viewSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	version, err := strconv.ParseInt(ps.ByName("version"), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+	}
+	if schema := h.storageNode.Store.GetSchema(ps.ByName("name"), version); schema != nil {
+		if bytes, err := json.Marshal(schema); err == nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+		} else {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
+
+// TODO: compare name/version from url to body
+// Add database that we have in the metadata store
+func (h *HTTPApi) addSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var schema metadata.Schema
+	if err := json.Unmarshal(bytes, &schema); err == nil {
+		if err := h.storageNode.Store.AddSchema(&schema); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	} else {
+		// TODO: correct status code, 4xx for invalid request
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+// Add database that we have in the metadata store
+func (h *HTTPApi) removeSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	version, err := strconv.ParseInt(ps.ByName("version"), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+	}
+	if err := h.storageNode.Store.RemoveSchema(ps.ByName("name"), version); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 }
 

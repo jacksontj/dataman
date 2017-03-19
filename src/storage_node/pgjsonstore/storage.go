@@ -9,6 +9,7 @@ Metadata about the storage node will be stored in a database called _dataman.sto
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
@@ -246,7 +247,8 @@ INSERT INTO public.schema (name, version, data_json) VALUES ('%s', %v, '%s')
 
 // TODO: check for previous version, and set the "backwards_compatible" flag
 func (s *Storage) AddSchema(schema *metadata.Schema) error {
-	if _, err := s.db.Query(fmt.Sprintf(addSchemaTemplate, schema.Name, schema.Version, schema.DataJson)); err != nil {
+	bytes, _ := json.Marshal(schema.Schema)
+	if _, err := s.db.Query(fmt.Sprintf(addSchemaTemplate, schema.Name, schema.Version, string(bytes))); err != nil {
 		return fmt.Errorf("Unable to add schema meta entry: %v", err)
 	}
 	return nil
@@ -261,14 +263,42 @@ func (s *Storage) ListSchemas() []*metadata.Schema {
 
 	schemas := make([]*metadata.Schema, len(rows))
 	for i, row := range rows {
+		schema := make(map[string]interface{})
+		// TODO: check for errors
+		json.Unmarshal([]byte(row["data_json"].(string)), &schema)
 		schemas[i] = &metadata.Schema{
-			Name:     row["name"].(string),
-			Version:  row["version"].(int64),
-			DataJson: row["data_json"].(string),
+			Name:    row["name"].(string),
+			Version: row["version"].(int64),
+			Schema:  schema,
 		}
 	}
 
 	return schemas
+}
+
+const selectSchemaTemplate = `
+SELECT * FROM public.schema WHERE name='%s' and version=%v
+`
+
+func (s *Storage) GetSchema(name string, version int64) *metadata.Schema {
+	rows, err := s.doQuery(s.db, fmt.Sprintf(selectSchemaTemplate, name, version))
+	// TODO: return an err? This shouldn't ever error...
+	if err != nil {
+		return nil
+	}
+	// This means we have a uniqueness constraint problem-- which should *never* happen
+	if len(rows) > 1 {
+		return nil
+	}
+	schema := make(map[string]interface{})
+	// TODO: check for errors
+	json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
+
+	return &metadata.Schema{
+		Name:    rows[0]["name"].(string),
+		Version: rows[0]["version"].(int64),
+		Schema:  schema,
+	}
 }
 
 const removeSchemaTemplate = `

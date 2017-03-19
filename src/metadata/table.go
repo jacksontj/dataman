@@ -32,10 +32,11 @@ func (t *Table) ListIndexes() []string {
 }
 
 type Schema struct {
-	Name     string
-	Version  int64
-	DataJson string `json:"data_json"`
-	schema   *gojsonschema.Schema
+	Name    string                 `json:"name"`
+	Version int64                  `json:"version"`
+	Schema  map[string]interface{} `json:"schema"`
+	// TODO: use
+	gschema *gojsonschema.Schema
 }
 
 type TableIndex struct {
