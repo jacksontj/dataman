@@ -33,12 +33,36 @@ func getStore() (StorageInterface, error) {
 	return store, nil
 }
 
+func resetStore(store StorageInterface) error {
+	meta, err := store.GetMeta()
+	if err != nil {
+		return err
+	}
+
+	// Clear the DB -- since we are going to use it
+	for _, db := range meta.Databases {
+		if err := store.RemoveDatabase(db.Name); err != nil {
+			return err
+		}
+	}
+
+	// Validate that the schemas we want to add aren't there (remove if they are)
+	schemas := store.ListSchemas()
+	for _, schema := range schemas {
+		if err := store.RemoveSchema(schema.Name, schema.Version); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Test db creation, modification, and removal
 func TestSchema(t *testing.T) {
 	store, err := getStore()
 	if err != nil {
 		t.Fatalf("Unable to create test storagenode")
 	}
+	resetStore(store)
 
 	schema1 := metadata.Schema{
 		Name:    "person",
@@ -71,12 +95,6 @@ func TestSchema(t *testing.T) {
 			},
 			"required": []string{"firstName", "lastName"},
 		},
-	}
-
-	// Validate that the schemas we want to add aren't there (remove if they are)
-	schemas := store.ListSchemas()
-	for _, schema := range schemas {
-		store.RemoveSchema(schema.Name, schema.Version)
 	}
 
 	// Add a schema
@@ -137,18 +155,13 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("Unable to create test storagenode")
 	}
 
+	resetStore(store)
+
 	// TODO reset meta store
 
 	meta, err := store.GetMeta()
 	if err != nil {
 		t.Fatalf("Unable to get empty meta from new store: %v", err)
-	}
-
-	// Clear the DB -- since we are going to use it
-	for _, db := range meta.Databases {
-		if err := store.RemoveDatabase(db.Name); err != nil {
-			t.Fatalf("Unable to remove DB: %v", err)
-		}
 	}
 
 	if len(meta.ListDatabases()) > 0 {
