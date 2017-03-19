@@ -1,5 +1,8 @@
 package pgjsonstorage
 
+// TODO: real escaping of the various queries (sql injection is bad ;) )
+// TODO: look into codegen or something for queries (terribly inefficient right now)
+
 /*
 This is a storagenode using postgres as a json document store
 
