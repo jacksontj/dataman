@@ -239,6 +239,59 @@ func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
 	return fmt.Errorf("Not implemented")
 }
 
+// Schema management
+const addSchemaTemplate = `
+INSERT INTO public.schema (name, version, data_json) VALUES ('%s', %v, '%s')
+`
+
+// TODO: check for previous version, and set the "backwards_compatible" flag
+func (s *Storage) AddSchema(schema *metadata.Schema) error {
+	if _, err := s.db.Query(fmt.Sprintf(addSchemaTemplate, schema.Name, schema.Version, schema.DataJson)); err != nil {
+		return fmt.Errorf("Unable to add schema meta entry: %v", err)
+	}
+	return nil
+}
+
+func (s *Storage) ListSchemas() []*metadata.Schema {
+	rows, err := s.doQuery(s.db, "SELECT * FROM public.schema")
+	// TODO: return an err? This shouldn't ever error...
+	if err != nil {
+		return nil
+	}
+
+	schemas := make([]*metadata.Schema, len(rows))
+	for i, row := range rows {
+		schemas[i] = &metadata.Schema{
+			Name:     row["name"].(string),
+			Version:  row["version"].(int64),
+			DataJson: row["data_json"].(string),
+		}
+	}
+
+	return schemas
+}
+
+const removeSchemaTemplate = `
+DELETE FROM public.schema WHERE name='%s' AND version=%v
+`
+
+func (s *Storage) RemoveSchema(name string, version int64) error {
+	if result, err := s.db.Exec(fmt.Sprintf(removeSchemaTemplate, name, version)); err == nil {
+		if numRows, err := result.RowsAffected(); err == nil {
+			if numRows == 1 {
+				return nil
+			} else {
+				return fmt.Errorf("RemoveSchema removed %v rows, instead of 1", numRows)
+			}
+		} else {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Unable to remove schema entry : %v", err)
+	}
+	return nil
+}
+
 // TODO: find a nicer way to do this, this is a mess
 func (s *Storage) doQuery(db *sql.DB, query string) ([]map[string]interface{}, error) {
 	rows, err := db.Query(query)

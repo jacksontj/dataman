@@ -20,8 +20,15 @@ type StorageInterface interface {
 	AddTable(dbname string, table *metadata.Table) error
 	RemoveTable(dbname string, tablename string) error
 
+	// TODO: move index and schema into a separate interface, since they are only
+	// required for document stores (the rest are for all-- including k/v stores)
 	AddIndex(dbname, tablename string, index *metadata.TableIndex) error
 	RemoveIndex(dbname, tablename, indexname string) error
+
+	// TODO: change this to a cache of the router schema?
+	AddSchema(schema *metadata.Schema) error
+	ListSchemas() []*metadata.Schema
+	RemoveSchema(name string, version int64) error
 
 	// Data-Functions
 	// TODO: split out the various functions into grouped interfaces that make sense

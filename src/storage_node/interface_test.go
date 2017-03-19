@@ -34,6 +34,86 @@ func getStore() (StorageInterface, error) {
 }
 
 // Test db creation, modification, and removal
+func TestSchema(t *testing.T) {
+	store, err := getStore()
+	if err != nil {
+		t.Fatalf("Unable to create test storagenode")
+	}
+
+	schema1 := metadata.Schema{
+		Name:    "person",
+		Version: 1,
+		DataJson: `
+{
+	"title": "Person",
+	"type": "object",
+	"properties": {
+		"firstName": {
+			"type": "string"
+		}
+	},
+	"required": ["firstName"]
+}`,
+	}
+
+	schema2 := metadata.Schema{
+		Name:    "person",
+		Version: 2,
+		DataJson: `
+{
+	"title": "Person",
+	"type": "object",
+	"properties": {
+		"firstName": {
+			"type": "string"
+		},
+		"lastName": {
+			"type": "string"
+		}
+	},
+	"required": ["firstName", "lastName"]
+}`,
+	}
+
+	// Validate that the schemas we want to add aren't there (remove if they are)
+	schemas := store.ListSchemas()
+	for _, schema := range schemas {
+		store.RemoveSchema(schema.Name, schema.Version)
+	}
+
+	// Add a schema
+	if err := store.AddSchema(&schema1); err != nil {
+		t.Fatalf("Unable to add schema: %v", err)
+	}
+
+	// Add it again (ensure we can't overwrite)
+	if err := store.AddSchema(&schema1); err == nil {
+		t.Fatalf("Able to re-add the same schema?: %v", err)
+	}
+
+	// Add another one (same id, different version)
+	if err := store.AddSchema(&schema2); err != nil {
+		t.Fatalf("Unable to add schema: %v", err)
+	}
+
+	// Remove one that doesn't exist
+	if err := store.RemoveSchema("foo", 5); err == nil {
+		t.Fatalf("No error removing a schema which doesn't exist")
+	}
+
+	// Remove one
+	if err := store.RemoveSchema(schema1.Name, schema1.Version); err != nil {
+		t.Fatalf("Error removing schema1: %v", err)
+	}
+
+	// Remove another
+	if err := store.RemoveSchema(schema2.Name, schema2.Version); err != nil {
+		t.Fatalf("Error removing schema2: %v", err)
+	}
+
+}
+
+// Test db creation, modification, and removal
 func TestDatabase(t *testing.T) {
 	store, err := getStore()
 	if err != nil {

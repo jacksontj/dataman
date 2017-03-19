@@ -1,14 +1,20 @@
 # List current DBs
-curl -s localhost:8081/v1/database
+curl -vs localhost:8081/v1/database
 
 # Add DB
-curl -sd @exampleDB.json localhost:8081/v1/database
+curl -vsd @exampleDB.json localhost:8081/v1/database
 
 # View the DB
-curl -s localhost:8081/v1/database/testdb
+curl -vs localhost:8081/v1/database/testdb
 
 # Remove the DB
-curl -X DELETE -s localhost:8081/v1/database/testdb
+curl -vX DELETE -s localhost:8081/v1/database/testdb
 
 # Add a table to that DB
-curl -sd @exampleDBTable.json localhost:8081/v1/database/testdb
+curl -vsd @exampleDBTable.json localhost:8081/v1/database/testdb
+
+# View the table
+curl -vs localhost:8081/v1/database/testdb/table2
+
+# Remove the table
+curl -vX DELETE -s localhost:8081/v1/database/testdb/table2

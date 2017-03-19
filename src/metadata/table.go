@@ -1,5 +1,7 @@
 package metadata
 
+import "github.com/xeipuuv/gojsonschema"
+
 func NewTable(name string) *Table {
 	return &Table{
 		Name:    name,
@@ -8,8 +10,8 @@ func NewTable(name string) *Table {
 }
 
 type Table struct {
-	Name string `json:"name"`
-	//Schema
+	Name   string `json:"name"`
+	Schema *Schema
 
 	// TODO: maintain another map of each column -> index? (so we can attempt to
 	// re-work queries to align with indexes)
@@ -27,6 +29,13 @@ func (t *Table) ListIndexes() []string {
 		indexes = append(indexes, name)
 	}
 	return indexes
+}
+
+type Schema struct {
+	Name     string
+	Version  int64
+	DataJson string `json:"data_json"`
+	schema   *gojsonschema.Schema
 }
 
 type TableIndex struct {
