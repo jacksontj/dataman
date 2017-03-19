@@ -473,7 +473,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s", args["table"])
 
-	if fields, ok := args["fields"]; ok {
+	if fields, ok := args["data"]; ok {
 		sqlQuery += " WHERE"
 
 		// TODO: validate the query before running (right now if "fields" is missing this exits)
@@ -486,7 +486,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			case []interface{}:
 				logrus.Infof("not-yet-implemented list of thing %v", typedValue)
 			case interface{}:
-				sqlQuery = sqlQuery + fmt.Sprintf(" %s='%v'", columnName, columnValue)
+				sqlQuery = sqlQuery + fmt.Sprintf(" data->>'%s'='%v'", columnName, columnValue)
 			default:
 				result.Error = fmt.Sprintf("Error parsing field %s", columnName)
 				return result

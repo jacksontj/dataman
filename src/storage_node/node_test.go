@@ -114,6 +114,24 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	}
 
 	queryBytes = []byte(`
+	{
+                "set": {
+                        "db": "docdb",
+                        "table": "person",
+                        "data": {
+                                "firstName": "otherguy"
+                        }
+                }
+        }
+	`)
+	q = make(map[query.QueryType]query.QueryArgs)
+	json.Unmarshal(queryBytes, &q)
+	result = node.HandleQuery(q)
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document: %v", err)
+	}
+
+	queryBytes = []byte(`
         {
                 "set": {
                         "db": "docdb",
