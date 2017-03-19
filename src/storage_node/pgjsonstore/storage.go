@@ -92,10 +92,13 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 					// TODO: check for errors
 					json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
 
+					schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
 					table.Schema = &metadata.Schema{
 						Name:    rows[0]["name"].(string),
 						Version: rows[0]["version"].(int64),
 						Schema:  schema,
+						// TODO: move up a level (or as a function inside the metadata package
+						Gschema: schemaValidator,
 					}
 				} else {
 					return nil, err

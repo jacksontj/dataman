@@ -35,8 +35,7 @@ type Schema struct {
 	Name    string                 `json:"name"`
 	Version int64                  `json:"version"`
 	Schema  map[string]interface{} `json:"schema"`
-	// TODO: use
-	gschema *gojsonschema.Schema
+	Gschema *gojsonschema.Schema   `json:"-"`
 }
 
 type TableIndex struct {
