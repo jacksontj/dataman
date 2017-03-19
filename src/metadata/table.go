@@ -10,8 +10,8 @@ func NewTable(name string) *Table {
 }
 
 type Table struct {
-	Name   string `json:"name"`
-	Schema *Schema
+	Name   string  `json:"name"`
+	Schema *Schema `json:"schema"`
 
 	// TODO: maintain another map of each column -> index? (so we can attempt to
 	// re-work queries to align with indexes)

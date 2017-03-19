@@ -83,6 +83,24 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 				index := &metadata.TableIndex{Name: indexEntry["name"].(string)}
 				table.Indexes[index.Name] = index
 			}
+
+			// Load schema if we reference one
+			if schemaId, ok := tableEntry["document_schema_id"]; ok && schemaId != nil {
+				if rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
+					schema := make(map[string]interface{})
+					// TODO: check for errors
+					json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
+
+					table.Schema = &metadata.Schema{
+						Name:    rows[0]["name"].(string),
+						Version: rows[0]["version"].(int64),
+						Schema:  schema,
+					}
+				} else {
+					return nil, err
+				}
+			}
+
 			database.Tables[table.Name] = table
 		}
 		meta.Databases[database.Name] = database
@@ -190,14 +208,33 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 	}
 
 	tableAddQuery := fmt.Sprintf(addTableTemplate, table.Name, table.Name)
-
 	if _, err := s.dbMap[dbName].Query(tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add table %s: %v", table.Name, err)
 	}
 
-	// Add to internal metadata store
-	if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to add table to metadata store: %v", err)
+	// If we have a schema, lets add that
+	if table.Schema != nil {
+		if schema := s.GetSchema(table.Schema.Name, table.Schema.Version); schema == nil {
+			if err := s.AddSchema(table.Schema); err != nil {
+				return err
+			}
+		}
+
+		schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", table.Schema.Name, table.Schema.Version))
+		if err != nil {
+			return err
+		}
+
+		// Add to internal metadata store
+		if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id, document_schema_id) VALUES ('%s', %v, %v)", table.Name, rows[0]["id"], schemaRows[0]["id"])); err != nil {
+			return fmt.Errorf("Unable to add table to metadata store: %v", err)
+		}
+
+	} else {
+		// Add to internal metadata store
+		if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
+			return fmt.Errorf("Unable to add table to metadata store: %v", err)
+		}
 	}
 
 	return nil
@@ -287,7 +324,7 @@ func (s *Storage) GetSchema(name string, version int64) *metadata.Schema {
 		return nil
 	}
 	// This means we have a uniqueness constraint problem-- which should *never* happen
-	if len(rows) > 1 {
+	if len(rows) != 1 {
 		return nil
 	}
 	schema := make(map[string]interface{})

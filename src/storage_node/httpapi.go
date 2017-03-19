@@ -47,6 +47,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// Schema
 	router.GET("/v1/schema", h.listSchema)
+	// TODO: add generic jsonSchema endpoint  (to show just the jsonSchema content)
 	router.GET("/v1/schema/:name/:version", h.viewSchema)
 	router.POST("/v1/schema/:name/:version", h.addSchema)
 	router.DELETE("/v1/schema/:name/:version", h.removeSchema)
@@ -152,6 +153,7 @@ func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter
 		} else {
 			// TODO: correct status code, 4xx for invalid request
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
 			return
 		}
 	} else {

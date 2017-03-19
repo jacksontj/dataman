@@ -18,6 +18,8 @@ type StorageInterface interface {
 	RemoveDatabase(dbname string) error
 
 	AddTable(dbname string, table *metadata.Table) error
+	// TODO: support -- for now only support changing schema
+	//UpdateTable(dbname, table *metadata.Table) error
 	RemoveTable(dbname string, tablename string) error
 
 	// TODO: move index and schema into a separate interface, since they are only
