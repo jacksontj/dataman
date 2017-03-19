@@ -1,10 +1,12 @@
 package storagenode
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
@@ -63,8 +65,9 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
+				table, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string))
 				// Verify that the table is within our domain
-				if _, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string)); err != nil {
+				if err != nil {
 					results[i] = &query.Result{
 						Error: err.Error(),
 					}
@@ -78,6 +81,20 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 				case query.Get:
 					results[i] = s.Store.Get(queryArgs)
 				case query.Set:
+					// TODO: have a pre-switch check on "write" methods (since all write methods will need this)
+					// or have a validate query method?
+					// On set, if there is a schema on the table-- enforce the schema
+					if table.Schema != nil {
+						_, result, err := table.Schema.Gschema.Validate(gojsonschema.NewGoLoader(queryArgs["data"]))
+						if err != nil {
+							results[i] = &query.Result{Error: err.Error()}
+							continue
+						}
+						if !result.Valid() {
+							results[i] = &query.Result{Error: "data doesn't match table schema"}
+							continue
+						}
+					}
 					results[i] = s.Store.Set(queryArgs)
 				case query.Filter:
 					results[i] = s.Store.Filter(queryArgs)
@@ -90,7 +107,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 
 		} else {
 			results[i] = &query.Result{
-				Error: "Only one QueryType supported per query",
+				Error: fmt.Sprintf("Only one QueryType supported per query: %v", queryMap),
 			}
 		}
 	}
