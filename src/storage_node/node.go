@@ -45,6 +45,11 @@ func (s *StorageNode) GetMeta() *metadata.Meta {
 	return s.Meta.Load().(*metadata.Meta)
 }
 
+// TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
+func (s *StorageNode) HandleQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
+	return s.HandleQueries([]map[query.QueryType]query.QueryArgs{q})[0]
+}
+
 func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
 	// TODO: we should actually do these in parallel (potentially with some
 	// config of *how* parallel)
