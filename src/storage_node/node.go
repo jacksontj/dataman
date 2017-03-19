@@ -15,9 +15,7 @@ import (
 type StorageNode struct {
 	Store StorageInterface
 
-	// TODO: move meta up to this layer and just rely on the lower layer to report
-	// changes etc.
-	Meta atomic.Value
+	meta atomic.Value
 }
 
 func NewStorageNode(store StorageInterface) (*StorageNode, error) {
@@ -36,7 +34,7 @@ func NewStorageNode(store StorageInterface) (*StorageNode, error) {
 func (s *StorageNode) RefreshMeta() error {
 	// Load the current metadata from the store
 	if meta, err := s.Store.GetMeta(); err == nil {
-		s.Meta.Store(meta)
+		s.meta.Store(meta)
 		return nil
 	} else {
 		return err
@@ -44,7 +42,7 @@ func (s *StorageNode) RefreshMeta() error {
 }
 
 func (s *StorageNode) GetMeta() *metadata.Meta {
-	return s.Meta.Load().(*metadata.Meta)
+	return s.meta.Load().(*metadata.Meta)
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
@@ -59,7 +57,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.Meta.Load().(*metadata.Meta)
+	meta := s.GetMeta()
 
 	for i, queryMap := range queries {
 		// We only allow a single method to be defined per item

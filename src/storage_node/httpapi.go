@@ -94,7 +94,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 
 // Show a single DB
 func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Meta.Load().(*metadata.Meta)
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		// Now we need to return the results
 		if bytes, err := json.Marshal(db); err != nil {
@@ -114,7 +114,7 @@ func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
-	meta := h.storageNode.Meta.Load().(*metadata.Meta)
+	meta := h.storageNode.GetMeta()
 
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
@@ -135,7 +135,7 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Meta.Load().(*metadata.Meta)
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
@@ -164,7 +164,7 @@ func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter
 
 // Show a single DB
 func (h *HTTPApi) viewTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Meta.Load().(*metadata.Meta)
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		if table, ok := db.Tables[ps.ByName("tablename")]; ok {
 			// Now we need to return the results
@@ -189,7 +189,7 @@ func (h *HTTPApi) viewTable(w http.ResponseWriter, r *http.Request, ps httproute
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
-	meta := h.storageNode.Meta.Load().(*metadata.Meta)
+	meta := h.storageNode.GetMeta()
 
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type

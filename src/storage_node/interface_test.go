@@ -322,5 +322,6 @@ func TestDocumentDatabase(t *testing.T) {
 
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
 	// Delete
-
 }
+
+// TODO: test indexes
