@@ -420,7 +420,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.%s WHERE id=%v", args["table"], args["id"]))
+	rows, err := s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("SELECT * FROM public.%s WHERE id=%v", args["table"], args["id"]))
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -432,8 +432,28 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	return result
 }
 
-func (s *Storage) Set(query.QueryArgs) *query.Result {
-	return nil
+func (s *Storage) Set(args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+	data, err := json.Marshal(args["data"])
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	_, err = s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("INSERT INTO public.%s (data) VALUES ('%s')", args["table"], data))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	// TODO: add metadata back to the result
+	return result
 }
 
 func (s *Storage) Delete(query.QueryArgs) *query.Result {
@@ -474,7 +494,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	rows, err := s.doQuery(s.db, sqlQuery)
+	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result

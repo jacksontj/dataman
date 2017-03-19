@@ -39,6 +39,6 @@ type StorageInterface interface {
 	// TODO: more specific types for each method
 	Get(query.QueryArgs) *query.Result
 	Set(query.QueryArgs) *query.Result
-	//Delete(query.QueryArgs) *query.Result
+	Delete(query.QueryArgs) *query.Result
 	Filter(query.QueryArgs) *query.Result
 }

@@ -214,5 +214,100 @@ func TestDatabase(t *testing.T) {
 	if len(meta.ListDatabases()) != 0 {
 		t.Fatalf("DB wasn't removed")
 	}
+}
+
+// Test Functions for covering a document DB
+func TestDocumentDatabase(t *testing.T) {
+	store, err := getStore()
+	if err != nil {
+		t.Fatalf("Unable to create test storagenode")
+	}
+
+	meta, err := store.GetMeta()
+	if err != nil {
+		t.Fatalf("Unable to get empty meta from new store: %v", err)
+	}
+
+	// TODO: move into getStore()
+	// Clear the DB -- since we are going to use it
+	for _, db := range meta.Databases {
+		if err := store.RemoveDatabase(db.Name); err != nil {
+			t.Fatalf("Unable to remove DB: %v", err)
+		}
+	}
+
+	// TODO: add document schema tests
+	// TODO: add index tests
+
+	databaseAdd := &metadata.Database{
+		Name: "docdb",
+		Tables: map[string]*metadata.Table{
+			"person": &metadata.Table{
+				Name: "person",
+				Schema: &metadata.Schema{
+					Name:    "person",
+					Version: 1,
+					Schema: map[string]interface{}{
+						"title": "Person",
+						"type":  "object",
+						"properties": map[string]interface{}{
+							"firstName": map[string]interface{}{
+								"type": "string",
+							},
+						},
+						"required": []string{"firstName"},
+					},
+				},
+			},
+		},
+	}
+
+	// Add the database
+	if err := store.AddDatabase(databaseAdd); err != nil {
+		t.Fatalf("Error adding database: %v", err)
+	}
+
+	// Add a valid document
+	result := store.Set(map[string]interface{}{
+		"db":    "docdb",
+		"table": "person",
+		"data": map[string]interface{}{
+			"fistName": "tester",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document")
+	}
+
+	// Add a valid document
+	result = store.Set(map[string]interface{}{
+		"db":    "docdb",
+		"table": "person",
+		"data": map[string]interface{}{
+			"fistName": "tester",
+			"lastName": "foobar",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document")
+	}
+
+	// Filter
+	result = store.Filter(map[string]interface{}{
+		"db":    "docdb",
+		"table": "person",
+		"data": map[string]interface{}{
+			"fistName": "tester",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document")
+	}
+	if len(result.Return) != 2 {
+		t.Fatalf("Filter returned %d results, instead of the expected 2: %v", len(result.Return), result.Return)
+	}
+
+	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
+	// Delete
 
 }

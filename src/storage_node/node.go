@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jacksontj/dataman/src/metadata"
+	"github.com/jacksontj/dataman/src/query"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
@@ -42,6 +43,53 @@ func (s *StorageNode) RefreshMeta() error {
 
 func (s *StorageNode) GetMeta() *metadata.Meta {
 	return s.Meta.Load().(*metadata.Meta)
+}
+
+func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+	// TODO: we should actually do these in parallel (potentially with some
+	// config of *how* parallel)
+	results := make([]*query.Result, len(queries))
+
+	// We specifically want to load this once for the batch so we don't have mixed
+	// schema information across this batch of queries
+	meta := s.Meta.Load().(*metadata.Meta)
+
+	for i, queryMap := range queries {
+		// We only allow a single method to be defined per item
+		if len(queryMap) == 1 {
+			for queryType, queryArgs := range queryMap {
+				// Verify that the table is within our domain
+				if _, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string)); err != nil {
+					results[i] = &query.Result{
+						Error: err.Error(),
+					}
+					continue
+				}
+
+				// TODO: have a map or some other switch from query -> interface?
+				// This will need to get more complex as we support multiple
+				// storage interfaces
+				switch queryType {
+				case query.Get:
+					results[i] = s.Store.Get(queryArgs)
+				case query.Set:
+					results[i] = s.Store.Set(queryArgs)
+				case query.Filter:
+					results[i] = s.Store.Filter(queryArgs)
+				default:
+					results[i] = &query.Result{
+						Error: "Unsupported query type " + string(queryType),
+					}
+				}
+			}
+
+		} else {
+			results[i] = &query.Result{
+				Error: "Only one QueryType supported per query",
+			}
+		}
+	}
+	return results
 }
 
 // TODO: schema management changes here
