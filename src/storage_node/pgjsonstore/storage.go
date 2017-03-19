@@ -16,6 +16,7 @@ import (
 	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
 	_ "github.com/lib/pq"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 // TODO: pass in a database name for the metadata store locally
@@ -284,6 +285,14 @@ INSERT INTO public.schema (name, version, data_json) VALUES ('%s', %v, '%s')
 
 // TODO: check for previous version, and set the "backwards_compatible" flag
 func (s *Storage) AddSchema(schema *metadata.Schema) error {
+	if schema.Schema == nil {
+		return fmt.Errorf("Cannot add empty schema")
+	}
+	// TODO: pull this up a level?
+	// Validate the schema
+	if _, err := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema.Schema)); err != nil {
+		return fmt.Errorf("Invalid schema defined: %v", err)
+	}
 	bytes, _ := json.Marshal(schema.Schema)
 	if _, err := s.db.Query(fmt.Sprintf(addSchemaTemplate, schema.Name, schema.Version, string(bytes))); err != nil {
 		return fmt.Errorf("Unable to add schema meta entry: %v", err)

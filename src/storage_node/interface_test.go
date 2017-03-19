@@ -109,6 +109,25 @@ func TestSchema(t *testing.T) {
 		t.Fatalf("Error removing schema2: %v", err)
 	}
 
+	// Attempt to add an invalid schema
+	invalidSchema := metadata.Schema{
+		Name:    "person",
+		Version: 1,
+		Schema: map[string]interface{}{
+			"title": "Person",
+			"type":  "objsect",
+			"properties": map[string]interface{}{
+				"firstName": map[string]interface{}{
+					"type": "string",
+				},
+			},
+			"required": []string{"firstName"},
+		},
+	}
+	if err := store.AddSchema(&invalidSchema); err == nil {
+		t.Fatalf("No error when adding invalid schema!")
+	}
+
 }
 
 // Test db creation, modification, and removal
