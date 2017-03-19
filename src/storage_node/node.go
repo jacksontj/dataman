@@ -85,7 +85,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 					// or have a validate query method?
 					// On set, if there is a schema on the table-- enforce the schema
 					if table.Schema != nil {
-						_, result, err := table.Schema.Gschema.Validate(gojsonschema.NewGoLoader(queryArgs["data"]))
+						result, err := table.Schema.Gschema.Validate(gojsonschema.NewGoLoader(queryArgs["data"]))
 						if err != nil {
 							results[i] = &query.Result{Error: err.Error()}
 							continue
