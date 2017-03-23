@@ -89,7 +89,11 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 							continue
 						}
 						if !result.Valid() {
-							results[i] = &query.Result{Error: "data doesn't match table schema"}
+							var validationErrors string
+							for _, e := range result.Errors() {
+								validationErrors += "\n" + e.String()
+							}
+							results[i] = &query.Result{Error: "data doesn't match table schema" + validationErrors}
 							continue
 						}
 					}

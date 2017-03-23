@@ -437,7 +437,14 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 	}
 
 	// Create the actual index
-	indexAddQuery := fmt.Sprintf("CREATE INDEX index_%s_%s ON %s (", tablename, index.Name, tablename)
+	var indexAddQuery string
+	if index.Unique {
+		// TODO: store in meta tables, and compare/update indexes on creation
+		indexAddQuery = "CREATE UNIQUE"
+	} else {
+		indexAddQuery = "CREATE"
+	}
+	indexAddQuery += fmt.Sprintf(" INDEX index_%s_%s ON public.%s (", tablename, index.Name, tablename)
 	for i, column := range index.Columns {
 		if i > 0 {
 			indexAddQuery += ","
@@ -709,7 +716,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s", args["table"])
 
-	if fields, ok := args["data"]; ok {
+	if fields, ok := args["data"]; ok && len(fields.(map[string]interface{})) > 0 {
 		sqlQuery += " WHERE"
 
 		// TODO: validate the query before running (right now if "fields" is missing this exits)
@@ -734,6 +741,13 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	if err != nil {
 		result.Error = err.Error()
 		return result
+	}
+
+	// TODO: better
+	for i, row := range rows {
+		var tmp map[string]interface{}
+		json.Unmarshal(row["data"].([]byte), &tmp)
+		rows[i]["data"] = tmp
 	}
 
 	result.Return = rows

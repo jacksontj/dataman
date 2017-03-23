@@ -114,22 +114,16 @@ func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
-	meta := h.storageNode.GetMeta()
 
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Store.RemoveDatabase(dbname); err == nil {
-			// TODO: error if we can't reload?
-			h.storageNode.RefreshMeta()
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-		}
+	if err := h.storageNode.Store.RemoveDatabase(dbname); err == nil {
+		// TODO: error if we can't reload?
+		h.storageNode.RefreshMeta()
 	} else {
-		w.WriteHeader(http.StatusNotFound)
-		return
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 }
 
