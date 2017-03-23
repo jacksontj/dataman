@@ -17,9 +17,9 @@ Some things we might want:
 
 Although we might expose additional lookup mechanisms, intenally we'll be using the following query format:
     [
-        {'filter': {'table': 'user', 'fields': {'id': ('=', 5)}},
-        {'filter': {'table': 'user_group', 'fields': {'id': ('=', 5)}},
-        {'filter': {'table': 'user_email', 'fields': {'id': ('=', 5)}},
+        {'filter': {'table': 'user', 'columns': {'id': ('=', 5)}},
+        {'filter': {'table': 'user_group', 'columns': {'id': ('=', 5)}},
+        {'filter': {'table': 'user_email', 'columns': {'id': ('=', 5)}},
     ]
 
 In this markup you can define as many queries as you'd like to run in parallel (note: actual parallelism may
@@ -37,7 +37,7 @@ The inner query format looks like:
     {FUNCTION: DATA}
 
 An example of a filter could look like:
-    {'filter': {'table': 'user', 'fields': {'id': ('=', 5)}},
+    {'filter': {'table': 'user', 'columns': {'id': ('=', 5)}},
 
 In this markup we do *not* allow for multiple functions to be defined per dict, if more than one top-level
 key is defined, the entire query is an error, meaning that the following would be invalid:
@@ -48,7 +48,7 @@ key is defined, the entire query is an error, meaning that the following would b
 ## Response Format
 Since the request is a list of lists, we'll have the response be the same thing, for for a request like:
     [
-        {'filter': {'table': 'user', 'fields': {'id': ('=', 5)}}
+        {'filter': {'table': 'user', 'columns': {'id': ('=', 5)}}
     ]
 The response would look like:
     [
