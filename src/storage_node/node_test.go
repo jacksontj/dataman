@@ -34,7 +34,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		t.Fatalf("Unable to create test storagenode")
 	}
 
-	meta := node.GetMeta()
+	meta := node.Store.GetMeta()
 
 	// TODO: move into getStore()
 	// Clear the DB -- since we are going to use it
@@ -88,9 +88,11 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		"set": {
 			"db": "docdb",
 			"table": "person",
-			"data": {
-				"lastName": "mctester"
-			}
+            "columns": {
+			    "data": {
+				    "lastName": "mctester"
+			    }
+		    }
 		}
 	}
 	`)
@@ -102,14 +104,16 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	queryBytes = []byte(`
 	{
-                "set": {
-                        "db": "docdb",
-                        "table": "person",
-                        "data": {
-                                "firstName": "tester"
-                        }
+        "set": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "data": {
+                        "firstName": "tester"
                 }
+            }
         }
+    }
 	`)
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
@@ -120,14 +124,16 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	queryBytes = []byte(`
 	{
-                "set": {
-                        "db": "docdb",
-                        "table": "person",
-                        "data": {
-                                "firstName": "otherguy"
-                        }
+        "set": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "data": {
+                        "firstName": "otherguy"
                 }
+            }
         }
+    }
 	`)
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
@@ -137,17 +143,19 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	}
 
 	queryBytes = []byte(`
-        {
-                "set": {
-                        "db": "docdb",
-                        "table": "person",
-                        "data": {
-                                "firstName": "tester",
-				"lastName": "foobar"
-                        }
+    {
+        "set": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "data": {
+                    "firstName": "tester",
+	                "lastName": "foobar"
                 }
+            }
         }
-        `)
+    }
+    `)
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
 	result = node.HandleQuery(q)
@@ -156,16 +164,18 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	}
 
 	queryBytes = []byte(`
-        {
-                "filter": {
-                        "db": "docdb",
-                        "table": "person",
-                        "data": {
-                                "firstName": "tester"
-                        }
+    {
+        "filter": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "data": {
+                    "firstName": "tester"
                 }
+            }
         }
-        `)
+    }
+    `)
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
 	result = node.HandleQuery(q)
@@ -179,14 +189,16 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
 	// Delete
 	queryBytes = []byte(fmt.Sprintf(`
-        {
-                "delete": {
-                        "db": "docdb",
-                        "table": "person",
-                        "id": %v
-                }
+    {
+        "delete": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "_id": %v
+            }
         }
-        `, result.Return[0]["id"]))
+    }
+    `, result.Return[0]["_id"]))
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
 	result = node.HandleQuery(q)
@@ -196,16 +208,18 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	// TODO: some other way..  we just want to make sure its 1
 	queryBytes = []byte(`
-        {
-                "filter": {
-                        "db": "docdb",
-                        "table": "person",
-                        "data": {
-                                "firstName": "tester"
-                        }
+    {
+        "filter": {
+            "db": "docdb",
+            "table": "person",
+            "columns": {
+                "data": {
+                    "firstName": "tester"
                 }
+            }
         }
-        `)
+    }
+    `)
 	q = make(map[query.QueryType]query.QueryArgs)
 	json.Unmarshal(queryBytes, &q)
 	result = node.HandleQuery(q)

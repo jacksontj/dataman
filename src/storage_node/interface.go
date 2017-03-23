@@ -11,7 +11,8 @@ type StorageInterface interface {
 	Init(map[string]interface{}) error
 
 	// Get the current meta from however it is stored
-	GetMeta() (*metadata.Meta, error)
+	GetMeta() *metadata.Meta
+	RefreshMeta() error
 
 	// Schema-Functions
 	AddDatabase(db *metadata.Database) error

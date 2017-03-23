@@ -35,10 +35,7 @@ func getStore() (StorageInterface, error) {
 }
 
 func resetStore(store StorageInterface) error {
-	meta, err := store.GetMeta()
-	if err != nil {
-		return err
-	}
+	meta := store.GetMeta()
 
 	// Clear the DB -- since we are going to use it
 	for _, db := range meta.Databases {
@@ -160,7 +157,7 @@ func TestDatabase(t *testing.T) {
 
 	// TODO reset meta store
 
-	meta, err := store.GetMeta()
+	meta := store.GetMeta()
 	if err != nil {
 		t.Fatalf("Unable to get empty meta from new store: %v", err)
 	}
@@ -197,10 +194,16 @@ func TestDatabase(t *testing.T) {
 	}
 	tableUpdate := &metadata.Table{
 		Name: "table2",
+		Columns: []*metadata.TableColumn{
+			&metadata.TableColumn{
+				Name: "data",
+				Type: metadata.Document,
+			},
+		},
 		Indexes: map[string]*metadata.TableIndex{
-			"foo": &metadata.TableIndex{
-				Name:    "foo",
-				Columns: []string{"foo"},
+			"data.foo": &metadata.TableIndex{
+				Name:    "data.foo",
+				Columns: []string{"data.foo"},
 			},
 		},
 	}
@@ -210,7 +213,9 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("Error adding database: %v", err)
 	}
 
-	meta, _ = store.GetMeta()
+	// TODO: refreshes should happen in the actual store-- not here in the tests
+	store.RefreshMeta()
+	meta = store.GetMeta()
 	if len(meta.ListDatabases()) != 1 {
 		t.Fatalf("DB wasn't added")
 	}
@@ -229,7 +234,8 @@ func TestDatabase(t *testing.T) {
 	if err := store.AddTable(databaseAdd.Name, tableAdd); err != nil {
 		t.Fatalf("Error adding table to existing DB: %v", err)
 	}
-	meta, _ = store.GetMeta()
+	store.RefreshMeta()
+	meta = store.GetMeta()
 	if len(meta.Databases[databaseAdd.Name].ListTables()) != 2 {
 		t.Fatalf("Error adding table: %v", err)
 	}
@@ -248,7 +254,8 @@ func TestDatabase(t *testing.T) {
 	if err := store.RemoveTable(databaseAdd.Name, tableAdd.Name); err != nil {
 		t.Fatalf("Unable to remove table: %v", err)
 	}
-	meta, _ = store.GetMeta()
+	store.RefreshMeta()
+	meta = store.GetMeta()
 	if len(meta.Databases[databaseAdd.Name].ListTables()) != 1 {
 		t.Fatalf("Error removing table: %v", err)
 	}
@@ -257,7 +264,8 @@ func TestDatabase(t *testing.T) {
 	if err := store.RemoveDatabase(databaseAdd.Name); err != nil {
 		t.Fatalf("Unable to remove database: %v", err)
 	}
-	meta, _ = store.GetMeta()
+	store.RefreshMeta()
+	meta = store.GetMeta()
 	if len(meta.ListDatabases()) != 0 {
 		t.Fatalf("DB wasn't removed")
 	}
@@ -270,7 +278,7 @@ func TestDocumentDatabase(t *testing.T) {
 		t.Fatalf("Unable to create test storagenode")
 	}
 
-	meta, err := store.GetMeta()
+	meta := store.GetMeta()
 	if err != nil {
 		t.Fatalf("Unable to get empty meta from new store: %v", err)
 	}
@@ -326,27 +334,27 @@ func TestDocumentDatabase(t *testing.T) {
 	{
 		"name": "simple",
 		"columns": [
-			"firstName"
+			"data.firstName"
 		]
 	}
 	`)
 	json.Unmarshal(indexBytes, &tableIndex)
 	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
-		t.Fatalf("Unable to add simple index")
+		t.Fatalf("Unable to add simple index: %v", err)
 	}
 
 	indexBytes = []byte(`
 	{
 		"name": "complex",
 		"columns": [
-			"firstName",
-			"lastName"
+			"data.firstName",
+			"data.lastName"
 		]
 	}
 	`)
 	json.Unmarshal(indexBytes, &tableIndex)
 	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
-		t.Fatalf("Unable to add simple index")
+		t.Fatalf("Unable to add simple index: %v", err)
 	}
 
 	// Remove indexes
@@ -361,8 +369,10 @@ func TestDocumentDatabase(t *testing.T) {
 	result := store.Set(map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
-		"data": map[string]interface{}{
-			"fistName": "tester",
+		"columns": map[string]interface{}{
+			"data": map[string]interface{}{
+				"fistName": "tester",
+			},
 		},
 	})
 	if result.Error != "" {
@@ -373,9 +383,11 @@ func TestDocumentDatabase(t *testing.T) {
 	result = store.Set(map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
-		"data": map[string]interface{}{
-			"fistName": "tester",
-			"lastName": "foobar",
+		"columns": map[string]interface{}{
+			"data": map[string]interface{}{
+				"fistName": "tester",
+				"lastName": "foobar",
+			},
 		},
 	})
 	if result.Error != "" {
@@ -386,8 +398,10 @@ func TestDocumentDatabase(t *testing.T) {
 	result = store.Filter(map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
-		"data": map[string]interface{}{
-			"fistName": "tester",
+		"columns": map[string]interface{}{
+			"data": map[string]interface{}{
+				"fistName": "tester",
+			},
 		},
 	})
 	if result.Error != "" {

@@ -16,6 +16,7 @@ type Table struct {
 	// All the columns in this table
 	Columns []*TableColumn
 	// TODO: have a map as well-- for easier lookups
+	ColumnMap map[string]*TableColumn
 
 	// map of name -> index
 	Indexes map[string]*TableIndex `json:"indexes,omitempty"`

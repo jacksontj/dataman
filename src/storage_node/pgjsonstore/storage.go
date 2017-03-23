@@ -1,3 +1,5 @@
+// TODO: rename-- this is no longer json specific
+
 package pgjsonstorage
 
 // TODO: real escaping of the various queries (sql injection is bad ;) )
@@ -15,8 +17,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
 	_ "github.com/lib/pq"
@@ -41,6 +43,8 @@ type Storage struct {
 
 	// TODO: lazily load these, maybe even pool them
 	dbMap map[string]*sql.DB
+
+	meta atomic.Value
 }
 
 func (s *Storage) Init(c map[string]interface{}) error {
@@ -59,11 +63,30 @@ func (s *Storage) Init(c map[string]interface{}) error {
 
 	s.dbMap = make(map[string]*sql.DB)
 
+	// Load the current metadata from the store
+	if err := s.RefreshMeta(); err != nil {
+		return err
+	}
+
 	// TODO: ensure that the metadata store exists (and the schema is correct)
 	return nil
 }
 
-func (s *Storage) GetMeta() (*metadata.Meta, error) {
+func (s *Storage) RefreshMeta() error {
+	// Load the current metadata from the store
+	if meta, err := s.loadMeta(); err == nil {
+		s.meta.Store(meta)
+		return nil
+	} else {
+		return err
+	}
+}
+
+func (s *Storage) GetMeta() *metadata.Meta {
+	return s.meta.Load().(*metadata.Meta)
+}
+
+func (s *Storage) loadMeta() (*metadata.Meta, error) {
 
 	meta := metadata.NewMeta()
 
@@ -86,10 +109,12 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 				return nil, err
 			}
 			table.Columns = make([]*metadata.TableColumn, len(tableColumnRows))
+			table.ColumnMap = make(map[string]*metadata.TableColumn)
 			for i, tableColumnEntry := range tableColumnRows {
-				table.Columns[i] = &metadata.TableColumn{
-					Name: tableColumnEntry["name"].(string),
-					Type: metadata.ColumnType(tableColumnEntry["column_type"].(string)),
+				column := &metadata.TableColumn{
+					Name:  tableColumnEntry["name"].(string),
+					Type:  metadata.ColumnType(tableColumnEntry["column_type"].(string)),
+					Order: i,
 				}
 				if schemaId, ok := tableColumnEntry["schema_id"]; ok && schemaId != nil {
 					if rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
@@ -98,7 +123,7 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 						json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
 
 						schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
-						table.Columns[i].Schema = &metadata.Schema{
+						column.Schema = &metadata.Schema{
 							Name:    rows[0]["name"].(string),
 							Version: rows[0]["version"].(int64),
 							Schema:  schema,
@@ -109,6 +134,8 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 						return nil, err
 					}
 				}
+				table.Columns[i] = column
+				table.ColumnMap[column.Name] = column
 			}
 
 			tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableEntry["id"]))
@@ -163,6 +190,8 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 			return fmt.Errorf("Error adding table %s: %v", table.Name, err)
 		}
 	}
+
+	s.RefreshMeta()
 
 	return nil
 }
@@ -240,6 +269,11 @@ const addTableTemplate = `CREATE TABLE public.%s
 
 // Table Changes
 func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
+	// Make sure at least one column is defined
+	if table.Columns == nil || len(table.Columns) == 0 {
+		return fmt.Errorf("Cannot add %s.%s, tables must have at least one column defined", dbName, table.Name)
+	}
+
 	// make sure the db exists in the metadata store
 	rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbName))
 	if err != nil {
@@ -354,7 +388,6 @@ func (s *Storage) UpdateTable(dbname string, table *metadata.Table) error {
 
 	// TODO: this seems generic enough-- we should move this up a level (with some changes)
 	// Compare columns
-	fmt.Println(tableRows)
 	columnRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_column WHERE table_id=%v ORDER BY \"order\"", tableRows[0]["id"]))
 	if err != nil {
 		return fmt.Errorf("Unable to get table_column meta entry: %v", err)
@@ -370,7 +403,7 @@ func (s *Storage) UpdateTable(dbname string, table *metadata.Table) error {
 		oldColumns[columnEntry["name"].(string)] = columnEntry
 	}
 	newColumns := make(map[string]*metadata.TableColumn, len(table.Columns))
-	for _, column := range newColumns {
+	for _, column := range table.Columns {
 		newColumns[column.Name] = column
 	}
 
@@ -558,6 +591,21 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
 	}
 
+	tableColumnRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_column WHERE table_id=%v", tableRows[0]["id"]))
+	if err != nil {
+		return fmt.Errorf("Unable to find table_column  %s.%s: %v", dbname, tablename, err)
+	}
+	// TODO: elsewhere, this is bad to copy around
+	tableColumns := make(map[string]*metadata.TableColumn)
+	for i, tableColumnEntry := range tableColumnRows {
+		column := &metadata.TableColumn{
+			Name:  tableColumnEntry["name"].(string),
+			Type:  metadata.ColumnType(tableColumnEntry["column_type"].(string)),
+			Order: i,
+		}
+		tableColumns[column.Name] = column
+	}
+
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
@@ -566,12 +614,31 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX index_%s_%s ON public.%s (", tablename, index.Name, tablename)
-	for i, column := range index.Columns {
+	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s_%s\" ON public.%s (", tablename, index.Name, tablename)
+	for i, columnName := range index.Columns {
 		if i > 0 {
 			indexAddQuery += ","
 		}
-		indexAddQuery += fmt.Sprintf("(data->>'%s')", column)
+		// split out the columns that it is (if more than one, then it *must* be a document
+		columnParts := strings.Split(columnName, ".")
+		// If more than one, then it is a json doc field
+		if len(columnParts) > 1 {
+			column, ok := tableColumns[columnParts[0]]
+			if !ok {
+				return fmt.Errorf("Index %s on unknown column %s", index.Name, columnName)
+			}
+			if column.Type != metadata.Document {
+				return fmt.Errorf("Nested index %s on a non-document field %s", index.Name, columnName)
+			}
+			indexAddQuery += "(" + columnParts[0]
+			for _, columnPart := range columnParts[1:] {
+				indexAddQuery += fmt.Sprintf("->>'%s'", columnPart)
+			}
+			indexAddQuery += ") "
+
+		} else {
+			indexAddQuery += fmt.Sprintf("(%s)", columnName)
+		}
 	}
 	indexAddQuery += ")"
 	if _, err := s.dbMap[dbname].Query(indexAddQuery); err != nil {
@@ -586,7 +653,7 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 	return nil
 }
 
-const removeTableIndexTemplate = `DROP INDEX index_%s_%s`
+const removeTableIndexTemplate = `DROP INDEX "index_%s_%s"`
 
 func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
 	// make sure the db exists in the metadata store
@@ -755,6 +822,7 @@ func (s *Storage) doQuery(db *sql.DB, query string) ([]map[string]interface{}, e
 	return results, nil
 }
 
+// TODO: remove? not sure how we want to differentiate this from Filter (maybe require that it be on a unique index?)
 // Do a single item get
 func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	result := &query.Result{
@@ -787,13 +855,41 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 			"datasource": "postgres",
 		},
 	}
-	data, err := json.Marshal(args["data"])
+
+	meta := s.GetMeta()
+	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
 
-	_, err = s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("INSERT INTO public.%s (data) VALUES ('%s')", args["table"], data))
+	columnData := args["columns"].(map[string]interface{})
+	columnHeaders := make([]string, 0, len(columnData))
+	columnValues := make([]string, 0, len(columnData))
+
+	for columnName, columnValue := range columnData {
+		column, ok := table.ColumnMap[columnName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", columnName, args["db"], args["table"])
+			return result
+		}
+
+		columnHeaders = append(columnHeaders, columnName)
+		switch column.Type {
+		case metadata.Document:
+			columnJson, err := json.Marshal(columnValue)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			columnValues = append(columnValues, "'"+string(columnJson)+"'")
+		default:
+			columnValues = append(columnValues, fmt.Sprintf("%v", columnValue))
+		}
+	}
+
+	setQuery := fmt.Sprintf("INSERT INTO public.%s (%s) VALUES (%s)", args["table"], strings.Join(columnHeaders, ","), strings.Join(columnValues, ","))
+	_, err = s.doQuery(s.dbMap[args["db"].(string)], setQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -803,6 +899,7 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 	return result
 }
 
+// TODO: change to take "columns" instead of id
 func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
@@ -812,7 +909,36 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE id=%v", args["table"], args["id"])
+	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE ", args["table"])
+	columnData := args["columns"].(map[string]interface{})
+	meta := s.GetMeta()
+	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	for columnName, columnValue := range columnData {
+		if strings.HasPrefix(columnName, "_") {
+			sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
+			continue
+		}
+		column, ok := table.ColumnMap[columnName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", columnName, args["db"], args["table"])
+			return result
+		}
+
+		switch column.Type {
+		case metadata.Document:
+			// TODO: recurse and add many
+			for innerName, innerValue := range columnValue.(map[string]interface{}) {
+				sqlQuery += fmt.Sprintf(" %s->>'%s'='%v'", columnName, innerName, innerValue)
+			}
+		default:
+			sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
+		}
+	}
 
 	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
 	if err != nil {
@@ -838,23 +964,35 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s", args["table"])
 
-	if fields, ok := args["data"]; ok && len(fields.(map[string]interface{})) > 0 {
-		sqlQuery += " WHERE"
+	if _, ok := args["columns"]; ok {
+		columnData := args["columns"].(map[string]interface{})
+		meta := s.GetMeta()
+		table, err := meta.GetTable(args["db"].(string), args["table"].(string))
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
 
-		// TODO: validate the query before running (right now if "fields" is missing this exits)
-		// TODO: again without so much string concat
-		for columnName, columnValue := range fields.(map[string]interface{}) {
-			switch typedValue := columnValue.(type) {
-			// TODO: define what we want to do here -- not sure if we want to have "=" here,
-			// and if we do, we might want to just be consistent with that markup
-			// if the value is a list it is something like ["=", 5] (which is just defining a comparator)
-			case []interface{}:
-				logrus.Infof("not-yet-implemented list of thing %v", typedValue)
-			case interface{}:
-				sqlQuery = sqlQuery + fmt.Sprintf(" data->>'%s'='%v'", columnName, columnValue)
-			default:
-				result.Error = fmt.Sprintf("Error parsing field %s", columnName)
+		sqlQuery += " WHERE"
+		for columnName, columnValue := range columnData {
+			if strings.HasPrefix(columnName, "_") {
+				sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
+				continue
+			}
+			column, ok := table.ColumnMap[columnName]
+			if !ok {
+				result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", columnName, args["db"], args["table"])
 				return result
+			}
+
+			switch column.Type {
+			case metadata.Document:
+				// TODO: recurse and add many
+				for innerName, innerValue := range columnValue.(map[string]interface{}) {
+					sqlQuery += fmt.Sprintf(" %s->>'%s'='%v'", columnName, innerName, innerValue)
+				}
+			default:
+				sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
 			}
 		}
 	}
