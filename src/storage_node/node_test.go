@@ -44,9 +44,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		}
 	}
 
-	// TODO: add document schema tests
-	// TODO: add index tests
-
+	// document schema tests
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
 		Tables: map[string]*metadata.Table{

@@ -38,8 +38,9 @@ type Schema struct {
 	Gschema *gojsonschema.Schema   `json:"-"`
 }
 
+// TODO: add flags for other things (like uniqueness, etc.)
 type TableIndex struct {
 	Name string `json:"name"`
 	// TODO: better schema-- this will be the data_json in the DB
-	Columns []string
+	Columns []string `json:"columns"`
 }

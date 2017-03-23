@@ -275,13 +275,85 @@ func (s *Storage) RemoveTable(dbname string, tablename string) error {
 	return nil
 }
 
+const addIndexTemplate = `
+INSERT INTO public.table_index (name, table_id, data_json) VALUES ('%s', %v, '%s')
+`
+
 // Index changes
 func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex) error {
-	return fmt.Errorf("Not implemented")
+	// make sure the db exists in the metadata store
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
+	if err != nil {
+		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
+	}
+
+	// TODO namespace the indexes based on tables (assuming the indexes are globally namespaced)
+	// Create the actual index
+	indexAddQuery := fmt.Sprintf("CREATE INDEX index_%s ON %s (", index.Name, tablename)
+	for i, column := range index.Columns {
+		if i > 0 {
+			indexAddQuery += ","
+		}
+		indexAddQuery += fmt.Sprintf("(data->>'%s')", column)
+	}
+	indexAddQuery += ")"
+	if _, err := s.dbMap[dbname].Query(indexAddQuery); err != nil {
+		return fmt.Errorf("Unable to add table_index %s: %v", tablename, err)
+	}
+
+	bytes, _ := json.Marshal(index.Columns)
+	indexMetaAddQuery := fmt.Sprintf(addIndexTemplate, index.Name, tableRows[0]["id"], bytes)
+	if _, err := s.db.Query(indexMetaAddQuery); err != nil {
+		return fmt.Errorf("Unable to add table_index meta entry: %v", err)
+	}
+	return nil
 }
 
+const removeTableIndexTemplate = `DROP INDEX index_%s`
+
 func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
-	return fmt.Errorf("Not implemented")
+	// make sure the db exists in the metadata store
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	// make sure the table exists in the metadata store
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
+	if err != nil {
+		return fmt.Errorf("Unable to find table %s.%s: %v", dbname, tablename, err)
+	}
+
+	// make sure the index exists
+	tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v AND name='%s'", tableRows[0]["id"], indexname))
+	if err != nil {
+		return fmt.Errorf("Unable to find table_index %s.%s %s: %v", dbname, tablename, indexname, err)
+	}
+
+	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, indexname)
+	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
+		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
+	}
+
+	if result, err := s.db.Exec(fmt.Sprintf("DELETE FROM public.table_index WHERE id=%v", tableIndexRows[0]["id"])); err == nil {
+		if numRows, err := result.RowsAffected(); err == nil {
+			if numRows == 1 {
+				return nil
+			} else {
+				return fmt.Errorf("RemoveIndex removed %v rows, instead of 1", numRows)
+			}
+		} else {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Unable to remove index entry : %v", err)
+	}
+	return nil
 }
 
 // Schema management

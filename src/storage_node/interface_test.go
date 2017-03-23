@@ -3,6 +3,7 @@ package storagenode
 // A collection of tests to test the storagenode interface
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"testing"
 
@@ -278,6 +279,43 @@ func TestDocumentDatabase(t *testing.T) {
 	// Add the database
 	if err := store.AddDatabase(databaseAdd); err != nil {
 		t.Fatalf("Error adding database: %v", err)
+	}
+
+	// Add index
+	var tableIndex metadata.TableIndex
+	indexBytes := []byte(`
+	{
+		"name": "simple",
+		"columns": [
+			"firstName"
+		]
+	}
+	`)
+	json.Unmarshal(indexBytes, &tableIndex)
+	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
+		t.Fatalf("Unable to add simple index")
+	}
+
+	indexBytes = []byte(`
+	{
+		"name": "complex",
+		"columns": [
+			"firstName",
+			"lastName"
+		]
+	}
+	`)
+	json.Unmarshal(indexBytes, &tableIndex)
+	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
+		t.Fatalf("Unable to add simple index")
+	}
+
+	// Remove indexes
+	if err := store.RemoveIndex("docdb", "person", "simple"); err != nil {
+		t.Fatalf("Unable to remove index: %v", err)
+	}
+	if err := store.RemoveIndex("docdb", "person", "complex"); err != nil {
+		t.Fatalf("Unable to remove index: %v", err)
 	}
 
 	// Add a valid document
