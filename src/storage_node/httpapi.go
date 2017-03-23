@@ -43,7 +43,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// Tables
 	router.GET("/v1/database/:dbname/:tablename", h.viewTable)
-	// TODO: add UPDATE support for table (to change schema, or indexes)
+	router.PUT("/v1/database/:dbname/:tablename", h.updateTable)
 	router.DELETE("/v1/database/:dbname/:tablename", h.removeTable)
 
 	// Schema
@@ -177,6 +177,34 @@ func (h *HTTPApi) viewTable(w http.ResponseWriter, r *http.Request, ps httproute
 			}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
+
+// Add database that we have in the metadata store
+func (h *HTTPApi) updateTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.storageNode.GetMeta()
+	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+		defer r.Body.Close()
+		bytes, _ := ioutil.ReadAll(r.Body)
+
+		var table metadata.Table
+		if err := json.Unmarshal(bytes, &table); err == nil {
+			if err := h.storageNode.Store.UpdateTable(db.Name, &table); err == nil {
+				// TODO: error if we can't reload?
+				h.storageNode.RefreshMeta()
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(err.Error()))
 			return
 		}
 	} else {

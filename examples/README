@@ -20,10 +20,13 @@ curl -s localhost:8081/v1/database/testdb
 curl -X DELETE -s localhost:8081/v1/database/testdb
 
 # Add a table to that DB
-curl -sd @exampleDBTable.json localhost:8081/v1/database/testdb
+curl -sd @exampleDBTable_v1.json localhost:8081/v1/database/testdb
 
 # View the table
 curl -s localhost:8081/v1/database/testdb/table2
+
+# Update the table
+curl -X PUT -sd @exampleDBTable_v2.json localhost:8081/v1/database/testdb/table2
 
 # Remove the table
 curl -X DELETE -s localhost:8081/v1/database/testdb/table2

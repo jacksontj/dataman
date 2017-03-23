@@ -181,6 +181,15 @@ func TestDatabase(t *testing.T) {
 		},
 	}
 	tableAdd := &metadata.Table{Name: "table2"}
+	tableUpdate := &metadata.Table{
+		Name: "table2",
+		Indexes: map[string]*metadata.TableIndex{
+			"foo": &metadata.TableIndex{
+				Name:    "foo",
+				Columns: []string{"foo"},
+			},
+		},
+	}
 
 	// Add a database
 	if err := store.AddDatabase(databaseAdd); err != nil {
@@ -197,6 +206,11 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("Store allowed me to add a database which already exists: %v", err)
 	}
 
+	// Update a table which doesnt exist
+	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err == nil {
+		t.Fatalf("Store allowed me to update a table which doesn't exist!")
+	}
+
 	// Add a table
 	if err := store.AddTable(databaseAdd.Name, tableAdd); err != nil {
 		t.Fatalf("Error adding table to existing DB: %v", err)
@@ -204,6 +218,11 @@ func TestDatabase(t *testing.T) {
 	meta, _ = store.GetMeta()
 	if len(meta.Databases[databaseAdd.Name].ListTables()) != 2 {
 		t.Fatalf("Error adding table: %v", err)
+	}
+
+	// Update a table which does exist
+	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err != nil {
+		t.Fatalf("Error updating table: %v", err)
 	}
 
 	// Attempt to add a table that already exists

@@ -111,6 +111,15 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 			database.Tables[table.Name] = table
 		}
 		meta.Databases[database.Name] = database
+
+		// Create db connection if it doesn't exist
+		if _, ok := s.dbMap[database.Name]; !ok {
+			dbConn, err := sql.Open("postgres", s.config.pgStringForDB(database.Name))
+			if err != nil {
+				return nil, fmt.Errorf("Unable to open db connection: %v", err)
+			}
+			s.dbMap[database.Name] = dbConn
+		}
 	}
 
 	return meta, nil
@@ -244,6 +253,8 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 		}
 	}
 
+	// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
+	// add be a thin wrapper around it
 	// If a table has indexes defined, lets take care of that
 	if table.Indexes != nil {
 		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", rows[0]["id"], table.Name))
@@ -275,6 +286,85 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 		for name, index := range table.Indexes {
 			if _, ok := currentIndexNames[name]; !ok {
 				if err := s.AddIndex(dbName, table.Name, index); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Storage) UpdateTable(dbname string, table *metadata.Table) error {
+	// make sure the db exists in the metadata store
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], table.Name))
+	if err != nil {
+		return fmt.Errorf("Unable to get table meta entry: %v", err)
+	}
+
+	// compare the old and new tables, applying necessary changes
+
+	// Schema
+	if table.Schema == nil {
+		if _, err := s.db.Query(fmt.Sprintf("UPDATE public.table SET document_schema_id=NULL WHERE database_id=%v and name='%s'", dbRows[0]["id"], table.Name)); err != nil {
+			return fmt.Errorf("Unable to update table document_schema_id: %v", err)
+		}
+
+	} else {
+		if schema := s.GetSchema(table.Schema.Name, table.Schema.Version); schema == nil {
+			if err := s.AddSchema(table.Schema); err != nil {
+				return err
+			}
+		}
+
+		schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", table.Schema.Name, table.Schema.Version))
+		if err != nil {
+			return fmt.Errorf("Unable to find schema: %v", err)
+		}
+
+		if _, err := s.db.Query(fmt.Sprintf("UPDATE public.table SET document_schema_id=%v WHERE database_id=%v and name='%s'", schemaRows[0]["id"], dbRows[0]["id"], table.Name)); err != nil {
+			return fmt.Errorf("Unable to update table document_schema_id: %v", err)
+		}
+	}
+
+	// Indexes
+	tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableRows[0]["id"]))
+	if err != nil {
+		return fmt.Errorf("Unable to query for existing table_indexes: %v", err)
+	}
+
+	// If the new def has no indexes, remove them all
+	if table.Indexes == nil {
+		for _, tableIndexEntry := range tableIndexRows {
+			if err := s.RemoveIndex(dbname, table.Name, tableIndexEntry["name"].(string)); err != nil {
+				return fmt.Errorf("Unable to remove tableIndex: %v", err)
+			}
+		}
+	} else {
+		// TODO: generic version?
+		currentIndexNames := make(map[string]map[string]interface{})
+		for _, currentIndex := range tableIndexRows {
+			currentIndexNames[currentIndex["name"].(string)] = currentIndex
+		}
+
+		// compare old and new-- make them what they need to be
+		// What should be removed?
+		for name, _ := range currentIndexNames {
+			if _, ok := table.Indexes[name]; !ok {
+				if err := s.RemoveIndex(dbname, table.Name, name); err != nil {
+					return err
+				}
+			}
+		}
+		// What should be added
+		for name, index := range table.Indexes {
+			if _, ok := currentIndexNames[name]; !ok {
+				if err := s.AddIndex(dbname, table.Name, index); err != nil {
 					return err
 				}
 			}

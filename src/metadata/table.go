@@ -34,6 +34,11 @@ type Schema struct {
 	Gschema *gojsonschema.Schema   `json:"-"`
 }
 
+func (s *Schema) Equal(o *Schema) bool {
+	// TODO: actually check the contents of the map?
+	return s.Name == o.Name && s.Version == o.Version
+}
+
 // TODO: add flags for other things (like uniqueness, etc.)
 type TableIndex struct {
 	Name string `json:"name"`
