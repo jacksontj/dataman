@@ -17,10 +17,6 @@ type Table struct {
 	// re-work queries to align with indexes)
 	// map of name -> index
 	Indexes map[string]*TableIndex `json:"indexes,omitempty"`
-
-	// So we know what the primary is, which will be used for .Get()
-	PrimaryColumn string      `json:"primarykey,omitempty"`
-	PrimaryIndex  *TableIndex `json:"-"`
 }
 
 func (t *Table) ListIndexes() []string {
