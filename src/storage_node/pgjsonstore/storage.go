@@ -189,6 +189,11 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 		return fmt.Errorf("Unable to drop db: %v", err)
 	}
 
+	// Remove all the table_index entries
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table_index WHERE table_id IN (SELECT id FROM public.table WHERE database_id=%v)", rows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to remove db's table_index meta entries: %v", err)
+	}
+
 	// Remove all the table entries
 	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table WHERE database_id=%v", rows[0]["id"])); err != nil {
 		return fmt.Errorf("Unable to remove db's table meta entries: %v", err)
