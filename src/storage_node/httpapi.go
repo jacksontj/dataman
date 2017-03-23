@@ -78,8 +78,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 
 	var database metadata.Database
 	if err := json.Unmarshal(bytes, &database); err != nil {
-		// TODO: correct status code, 4xx for invalid request
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
 		if err := h.storageNode.Store.AddDatabase(&database); err == nil {
@@ -152,8 +151,7 @@ func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter
 				return
 			}
 		} else {
-			// TODO: correct status code, 4xx for invalid request
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte(err.Error()))
 			return
 		}
@@ -258,8 +256,7 @@ func (h *HTTPApi) addSchema(w http.ResponseWriter, r *http.Request, ps httproute
 			return
 		}
 	} else {
-		// TODO: correct status code, 4xx for invalid request
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 }
@@ -285,8 +282,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 	var queries []map[query.QueryType]query.QueryArgs
 
 	if err := json.Unmarshal(bytes, &queries); err != nil {
-		// TODO: correct status code, 4xx for invalid request
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
 		results := h.storageNode.HandleQueries(queries)
