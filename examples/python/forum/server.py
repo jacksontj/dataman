@@ -98,7 +98,7 @@ class MainHandler(BaseHandler):
     def get(self):
         # TODO: sort (ORDER BY)
         threads = yield dataman.filter(schema.DBNAME, 'thread')
-        self.render("index.html", threads=threads if threads else [], username=self.current_user)
+        self.render("index.html", threads=threads, username=self.current_user)
 
 
 # TODO: create user in DB
@@ -135,10 +135,6 @@ class NewThreadHandler(BaseHandler):
             'created_by': self.current_user,
             'created': int(time.time()),
         }
-        '''
-        Example of a return:
-            [{u'updated': None, u'data': {u'id': u'342c9f67-75c6-4331-9dd0-afa995311f9a', u'title': u'channel1'}, u'id': 1, u'created': None}]
-        '''
         threads = yield dataman.set(schema.DBNAME, 'thread', thread)
         if 'error' in threads:
             #TODO: set error code
