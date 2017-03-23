@@ -1,0 +1,2 @@
+- move column_type to its own table
+- sync proxy schema with store schema (add column stuff)
