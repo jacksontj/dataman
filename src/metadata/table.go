@@ -10,11 +10,13 @@ func NewTable(name string) *Table {
 }
 
 type Table struct {
-	Name   string  `json:"name"`
-	Schema *Schema `json:"schema,omitempty"`
+	Name string `json:"name"`
 
-	// TODO: maintain another map of each column -> index? (so we can attempt to
-	// re-work queries to align with indexes)
+	// NOTE: we reserve the "_" namespace for columns for our own data (created, etc.)
+	// All the columns in this table
+	Columns []*TableColumn
+	// TODO: have a map as well-- for easier lookups
+
 	// map of name -> index
 	Indexes map[string]*TableIndex `json:"indexes,omitempty"`
 }
@@ -25,6 +27,20 @@ func (t *Table) ListIndexes() []string {
 		indexes = append(indexes, name)
 	}
 	return indexes
+}
+
+type ColumnType string
+
+const (
+	Document ColumnType = "document"
+)
+
+type TableColumn struct {
+	Name string
+	Type ColumnType
+	// only to be filled out if ColumnType is Document
+	Schema *Schema `json:"schema,omitempty"`
+	Order  int     `json:"-"`
 }
 
 type Schema struct {

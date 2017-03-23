@@ -177,10 +177,24 @@ func TestDatabase(t *testing.T) {
 		Tables: map[string]*metadata.Table{
 			"table1": &metadata.Table{
 				Name: "table1",
+				Columns: []*metadata.TableColumn{
+					&metadata.TableColumn{
+						Name: "data",
+						Type: metadata.Document,
+					},
+				},
 			},
 		},
 	}
-	tableAdd := &metadata.Table{Name: "table2"}
+	tableAdd := &metadata.Table{
+		Name: "table2",
+		Columns: []*metadata.TableColumn{
+			&metadata.TableColumn{
+				Name: "data",
+				Type: metadata.Document,
+			},
+		},
+	}
 	tableUpdate := &metadata.Table{
 		Name: "table2",
 		Indexes: map[string]*metadata.TableIndex{
@@ -277,18 +291,24 @@ func TestDocumentDatabase(t *testing.T) {
 		Tables: map[string]*metadata.Table{
 			"person": &metadata.Table{
 				Name: "person",
-				Schema: &metadata.Schema{
-					Name:    "person",
-					Version: 1,
-					Schema: map[string]interface{}{
-						"title": "Person",
-						"type":  "object",
-						"properties": map[string]interface{}{
-							"firstName": map[string]interface{}{
-								"type": "string",
+				Columns: []*metadata.TableColumn{
+					&metadata.TableColumn{
+						Name: "data",
+						Type: metadata.Document,
+						Schema: &metadata.Schema{
+							Name:    "person",
+							Version: 1,
+							Schema: map[string]interface{}{
+								"title": "Person",
+								"type":  "object",
+								"properties": map[string]interface{}{
+									"firstName": map[string]interface{}{
+										"type": "string",
+									},
+								},
+								"required": []string{"firstName"},
 							},
 						},
-						"required": []string{"firstName"},
 					},
 				},
 			},

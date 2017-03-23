@@ -50,18 +50,24 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		Tables: map[string]*metadata.Table{
 			"person": &metadata.Table{
 				Name: "person",
-				Schema: &metadata.Schema{
-					Name:    "person",
-					Version: 1,
-					Schema: map[string]interface{}{
-						"title": "Person",
-						"type":  "object",
-						"properties": map[string]interface{}{
-							"firstName": map[string]interface{}{
-								"type": "string",
+				Columns: []*metadata.TableColumn{
+					&metadata.TableColumn{
+						Name: "data",
+						Type: metadata.Document,
+						Schema: &metadata.Schema{
+							Name:    "person",
+							Version: 1,
+							Schema: map[string]interface{}{
+								"title": "Person",
+								"type":  "object",
+								"properties": map[string]interface{}{
+									"firstName": map[string]interface{}{
+										"type": "string",
+									},
+								},
+								"required": []string{"firstName"},
 							},
 						},
-						"required": []string{"firstName"},
 					},
 				},
 			},

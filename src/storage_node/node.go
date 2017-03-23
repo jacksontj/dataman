@@ -6,7 +6,7 @@ import (
 
 	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
-	"github.com/xeipuuv/gojsonschema"
+	//"github.com/xeipuuv/gojsonschema"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
@@ -63,7 +63,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
-				table, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string))
+				_, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string))
 				// Verify that the table is within our domain
 				if err != nil {
 					results[i] = &query.Result{
@@ -82,21 +82,24 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 					// TODO: have a pre-switch check on "write" methods (since all write methods will need this)
 					// or have a validate query method?
 					// On set, if there is a schema on the table-- enforce the schema
-					if table.Schema != nil {
-						result, err := table.Schema.Gschema.Validate(gojsonschema.NewGoLoader(queryArgs["data"]))
-						if err != nil {
-							results[i] = &query.Result{Error: err.Error()}
-							continue
-						}
-						if !result.Valid() {
-							var validationErrors string
-							for _, e := range result.Errors() {
-								validationErrors += "\n" + e.String()
+					// TODO: re-implement
+					/*
+						if table.Schema != nil {
+							result, err := table.Schema.Gschema.Validate(gojsonschema.NewGoLoader(queryArgs["data"]))
+							if err != nil {
+								results[i] = &query.Result{Error: err.Error()}
+								continue
 							}
-							results[i] = &query.Result{Error: "data doesn't match table schema" + validationErrors}
-							continue
+							if !result.Valid() {
+								var validationErrors string
+								for _, e := range result.Errors() {
+									validationErrors += "\n" + e.String()
+								}
+								results[i] = &query.Result{Error: "data doesn't match table schema" + validationErrors}
+								continue
+							}
 						}
-					}
+					*/
 					results[i] = s.Store.Set(queryArgs)
 				case query.Delete:
 					results[i] = s.Store.Delete(queryArgs)

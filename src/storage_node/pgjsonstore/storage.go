@@ -14,6 +14,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/metadata"
@@ -78,6 +79,38 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 		}
 		for _, tableEntry := range tableRows {
 			table := metadata.NewTable(tableEntry["name"].(string))
+
+			// Load columns
+			tableColumnRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_column WHERE table_id=%v", tableEntry["id"]))
+			if err != nil {
+				return nil, err
+			}
+			table.Columns = make([]*metadata.TableColumn, len(tableColumnRows))
+			for i, tableColumnEntry := range tableColumnRows {
+				table.Columns[i] = &metadata.TableColumn{
+					Name: tableColumnEntry["name"].(string),
+					Type: metadata.ColumnType(tableColumnEntry["column_type"].(string)),
+				}
+				if schemaId, ok := tableColumnEntry["schema_id"]; ok && schemaId != nil {
+					if rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
+						schema := make(map[string]interface{})
+						// TODO: check for errors
+						json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
+
+						schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
+						table.Columns[i].Schema = &metadata.Schema{
+							Name:    rows[0]["name"].(string),
+							Version: rows[0]["version"].(int64),
+							Schema:  schema,
+							// TODO: move up a level (or as a function inside the metadata package
+							Gschema: schemaValidator,
+						}
+					} else {
+						return nil, err
+					}
+				}
+			}
+
 			tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableEntry["id"]))
 			if err != nil {
 				return nil, err
@@ -86,26 +119,6 @@ func (s *Storage) GetMeta() (*metadata.Meta, error) {
 				// TODO: actually parse out the data_json to get the index type etc.
 				index := &metadata.TableIndex{Name: indexEntry["name"].(string)}
 				table.Indexes[index.Name] = index
-			}
-
-			// Load schema if we reference one
-			if schemaId, ok := tableEntry["document_schema_id"]; ok && schemaId != nil {
-				if rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
-					schema := make(map[string]interface{})
-					// TODO: check for errors
-					json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
-
-					schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
-					table.Schema = &metadata.Schema{
-						Name:    rows[0]["name"].(string),
-						Version: rows[0]["version"].(int64),
-						Schema:  schema,
-						// TODO: move up a level (or as a function inside the metadata package
-						Gschema: schemaValidator,
-					}
-				} else {
-					return nil, err
-				}
 			}
 
 			database.Tables[table.Name] = table
@@ -194,6 +207,11 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 		return fmt.Errorf("Unable to remove db's table_index meta entries: %v", err)
 	}
 
+	// Remove all the table_column entries
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table_column WHERE table_id IN (SELECT id FROM public.table WHERE database_id=%v)", rows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to remove db's table_column meta entries: %v", err)
+	}
+
 	// Remove all the table entries
 	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table WHERE database_id=%v", rows[0]["id"])); err != nil {
 		return fmt.Errorf("Unable to remove db's table meta entries: %v", err)
@@ -212,11 +230,11 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 // Template for creating tables
 const addTableTemplate = `CREATE TABLE public.%s
 (
-  id serial4 NOT NULL,
-  data jsonb,
-  created date,
-  updated date,
-  CONSTRAINT %s_id PRIMARY KEY (id)
+  _id serial4 NOT NULL,
+  _created date,
+  _updated date,
+  %s
+  CONSTRAINT %s_id PRIMARY KEY (_id)
 )
 `
 
@@ -228,44 +246,63 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 		return fmt.Errorf("Unable to find db %s: %v", dbName, err)
 	}
 
-	tableAddQuery := fmt.Sprintf(addTableTemplate, table.Name, table.Name)
-	if _, err := s.dbMap[dbName].Query(tableAddQuery); err != nil {
-		return fmt.Errorf("Unable to add table %s: %v", table.Name, err)
+	// Add the table
+	if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to add table to metadata store: %v", err)
+	}
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", rows[0]["id"], table.Name))
+	if err != nil {
+		return fmt.Errorf("Unable to get table meta entry: %v", err)
 	}
 
-	// If we have a schema, lets add that
-	if table.Schema != nil {
-		if schema := s.GetSchema(table.Schema.Name, table.Schema.Version); schema == nil {
-			if err := s.AddSchema(table.Schema); err != nil {
+	columnQuery := ""
+	for i, column := range table.Columns {
+		if strings.HasPrefix(column.Name, "_") {
+			return fmt.Errorf("The `_` namespace for table columns is reserved: %v", column)
+		}
+		switch column.Type {
+		case metadata.Document:
+			columnQuery += column.Name + " jsonb, "
+		default:
+			return fmt.Errorf("Unknown column type: %v", column.Type)
+		}
+
+		// If we have a schema, lets add that
+		if column.Schema != nil {
+			if schema := s.GetSchema(column.Schema.Name, column.Schema.Version); schema == nil {
+				if err := s.AddSchema(column.Schema); err != nil {
+					return err
+				}
+			}
+
+			schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", column.Schema.Name, column.Schema.Version))
+			if err != nil {
 				return err
+			}
+
+			// Add to internal metadata store
+			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table_column (name, table_id, column_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", column.Name, tableRows[0]["id"], column.Type, i, schemaRows[0]["id"])); err != nil {
+				return fmt.Errorf("Unable to add table_column to metadata store: %v", err)
+			}
+
+		} else {
+			// Add to internal metadata store
+			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table_column (name, table_id, column_type, \"order\") VALUES ('%s', %v, '%s', %v)", column.Name, tableRows[0]["id"], column.Type, i)); err != nil {
+				return fmt.Errorf("Unable to add table to metadata store: %v", err)
 			}
 		}
 
-		schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", table.Schema.Name, table.Schema.Version))
-		if err != nil {
-			return err
-		}
+	}
 
-		// Add to internal metadata store
-		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table (name, database_id, document_schema_id) VALUES ('%s', %v, %v)", table.Name, rows[0]["id"], schemaRows[0]["id"])); err != nil {
-			return fmt.Errorf("Unable to add table to metadata store: %v", err)
-		}
-
-	} else {
-		// Add to internal metadata store
-		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
-			return fmt.Errorf("Unable to add table to metadata store: %v", err)
-		}
+	tableAddQuery := fmt.Sprintf(addTableTemplate, table.Name, columnQuery, table.Name)
+	if _, err := s.dbMap[dbName].Query(tableAddQuery); err != nil {
+		return fmt.Errorf("Unable to add table %s: %v", table.Name, err)
 	}
 
 	// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
 	// add be a thin wrapper around it
 	// If a table has indexes defined, lets take care of that
 	if table.Indexes != nil {
-		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", rows[0]["id"], table.Name))
-		if err != nil {
-			return fmt.Errorf("Unable to get table meta entry: %v", err)
-		}
 
 		tableIndexrows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableRows[0]["id"]))
 		if err != nil {
@@ -311,31 +348,51 @@ func (s *Storage) UpdateTable(dbname string, table *metadata.Table) error {
 	if err != nil {
 		return fmt.Errorf("Unable to get table meta entry: %v", err)
 	}
+	if len(tableRows) == 0 {
+		return fmt.Errorf("Unable to find table %s.%s", dbname, table.Name)
+	}
 
-	// compare the old and new tables, applying necessary changes
+	// TODO: this seems generic enough-- we should move this up a level (with some changes)
+	// Compare columns
+	fmt.Println(tableRows)
+	columnRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_column WHERE table_id=%v ORDER BY \"order\"", tableRows[0]["id"]))
+	if err != nil {
+		return fmt.Errorf("Unable to get table_column meta entry: %v", err)
+	}
 
-	// Schema
-	if table.Schema == nil {
-		if _, err := s.db.Query(fmt.Sprintf("UPDATE public.table SET document_schema_id=NULL WHERE database_id=%v and name='%s'", dbRows[0]["id"], table.Name)); err != nil {
-			return fmt.Errorf("Unable to update table document_schema_id: %v", err)
-		}
+	// TODO: handle up a layer?
+	for i, column := range table.Columns {
+		column.Order = i
+	}
 
-	} else {
-		if schema := s.GetSchema(table.Schema.Name, table.Schema.Version); schema == nil {
-			if err := s.AddSchema(table.Schema); err != nil {
-				return err
+	oldColumns := make(map[string]map[string]interface{}, len(columnRows))
+	for _, columnEntry := range columnRows {
+		oldColumns[columnEntry["name"].(string)] = columnEntry
+	}
+	newColumns := make(map[string]*metadata.TableColumn, len(table.Columns))
+	for _, column := range newColumns {
+		newColumns[column.Name] = column
+	}
+
+	// Columns we need to remove
+	for name, _ := range oldColumns {
+		if _, ok := newColumns[name]; !ok {
+			if err := s.RemoveColumn(dbname, table.Name, name); err != nil {
+				return fmt.Errorf("Unable to remove column: %v", err)
 			}
 		}
-
-		schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", table.Schema.Name, table.Schema.Version))
-		if err != nil {
-			return fmt.Errorf("Unable to find schema: %v", err)
-		}
-
-		if _, err := s.db.Query(fmt.Sprintf("UPDATE public.table SET document_schema_id=%v WHERE database_id=%v and name='%s'", schemaRows[0]["id"], dbRows[0]["id"], table.Name)); err != nil {
-			return fmt.Errorf("Unable to update table document_schema_id: %v", err)
+	}
+	// Columns we need to add
+	for name, column := range newColumns {
+		if _, ok := oldColumns[name]; !ok {
+			if err := s.AddColumn(dbname, table.Name, column, column.Order); err != nil {
+				return fmt.Errorf("Unable to add column: %v", err)
+			}
 		}
 	}
+
+	// TODO: compare order and schema
+	// Columns we need to change
 
 	// Indexes
 	tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableRows[0]["id"]))
@@ -411,11 +468,76 @@ func (s *Storage) RemoveTable(dbname string, tablename string) error {
 		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", tablename, err)
 	}
 
+	// Remove columns
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table_column WHERE table_id=%v", tableRows[0]["id"])); err != nil {
+		return fmt.Errorf("Unable to remove table_column: %v", tablename, err)
+	}
+
 	// Now that it has been removed, lets remove it from the internal metadata store
 	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table WHERE id=%v", tableRows[0]["id"])); err != nil {
 		return fmt.Errorf("Unable to remove metadata entry for table %s: %v", tablename, err)
 	}
 
+	return nil
+}
+
+// TODO: add to interface
+func (s *Storage) AddColumn(dbname, tablename string, column *metadata.TableColumn, i int) error {
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
+	if err != nil {
+		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
+	}
+	// If we have a schema, lets add that
+	if column.Schema != nil {
+		if schema := s.GetSchema(column.Schema.Name, column.Schema.Version); schema == nil {
+			if err := s.AddSchema(column.Schema); err != nil {
+				return err
+			}
+		}
+
+		schemaRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", column.Schema.Name, column.Schema.Version))
+		if err != nil {
+			return err
+		}
+
+		// Add to internal metadata store
+		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table_column (name, table_id, column_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", column.Name, tableRows[0]["id"], column.Type, i, schemaRows[0]["id"])); err != nil {
+			return fmt.Errorf("Unable to add table_column to metadata store: %v", err)
+		}
+
+	} else {
+		// Add to internal metadata store
+		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table_column (name, table_id, column_type, \"order\") VALUES ('%s', %v, '%s', %v)", column.Name, tableRows[0]["id"], column.Type, i)); err != nil {
+			return fmt.Errorf("Unable to add table to metadata store: %v", err)
+		}
+	}
+	return nil
+}
+
+// TODO: add to interface
+func (s *Storage) RemoveColumn(dbname, tablename, columnname string) error {
+	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+	if err != nil {
+		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	}
+
+	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
+	if err != nil {
+		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
+	}
+
+	if _, err := s.doQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s DROP %s", tablename, columnname)); err != nil {
+		return fmt.Errorf("Unable to remove old column: %v", err)
+	}
+
+	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.table_column WHERE table_id=%v AND name='%s'", tableRows[0]["id"], columnname)); err != nil {
+		return fmt.Errorf("Unable to remove table_column: %v", tablename, err)
+	}
 	return nil
 }
 
