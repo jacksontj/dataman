@@ -840,7 +840,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	rows, err := s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("SELECT * FROM public.%s WHERE id=%v", args["table"], args["id"]))
+	rows, err := s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("SELECT * FROM public.%s WHERE _id=%v", args["table"], args["_id"]))
 	if err != nil {
 		result.Error = err.Error()
 		return result
