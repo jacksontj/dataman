@@ -2,7 +2,13 @@
     "name": "testdb",
     "tables": {
         "table1": {
-            "name": "table1"
+            "name": "table1",
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document"
+                }
+            ]
         }
     }
 }

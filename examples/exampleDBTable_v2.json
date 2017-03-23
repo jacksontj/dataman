@@ -1,23 +1,29 @@
 {
     "name": "table2",
-    "schema": {
-        "name": "person",
-        "version": 1,
-        "schema": {
-	        "title": "Person",
-	        "type": "object",
-	        "properties": {
-		        "firstName": {
-			        "type": "string"
-		        }
-	        },
-	        "required": ["firstName"]
+    "columns": [
+        {
+            "name": "data",
+            "type": "document",
+            "schema": {
+                "name": "person",
+                "version": 1,
+                "schema": {
+	                "title": "Person",
+	                "type": "object",
+	                "properties": {
+		                "firstName": {
+			                "type": "string"
+		                }
+	                },
+	                "required": ["firstName"]
+                }
+            }
         }
-    },
+    ],
     "indexes": {
         "fname": {
             "name": "fname",
-            "columns": ["firstName"]
+            "columns": ["data.firstName"]
         }
     }
 }

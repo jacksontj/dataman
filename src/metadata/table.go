@@ -14,9 +14,9 @@ type Table struct {
 
 	// NOTE: we reserve the "_" namespace for columns for our own data (created, etc.)
 	// All the columns in this table
-	Columns []*TableColumn
+	Columns []*TableColumn `json:"columns"`
 	// TODO: have a map as well-- for easier lookups
-	ColumnMap map[string]*TableColumn
+	ColumnMap map[string]*TableColumn `json:"-"`
 
 	// map of name -> index
 	Indexes map[string]*TableIndex `json:"indexes,omitempty"`
