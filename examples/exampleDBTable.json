@@ -13,5 +13,11 @@
 	        },
 	        "required": ["firstName"]
         }
+    },
+    "indexes": {
+        "fname": {
+            "name": "fname",
+            "columns": ["firstName"]
+        }
     }
 }

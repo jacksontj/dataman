@@ -233,14 +233,51 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 		}
 
 		// Add to internal metadata store
-		if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id, document_schema_id) VALUES ('%s', %v, %v)", table.Name, rows[0]["id"], schemaRows[0]["id"])); err != nil {
+		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table (name, database_id, document_schema_id) VALUES ('%s', %v, %v)", table.Name, rows[0]["id"], schemaRows[0]["id"])); err != nil {
 			return fmt.Errorf("Unable to add table to metadata store: %v", err)
 		}
 
 	} else {
 		// Add to internal metadata store
-		if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
+		if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.table (name, database_id) VALUES ('%s', %v)", table.Name, rows[0]["id"])); err != nil {
 			return fmt.Errorf("Unable to add table to metadata store: %v", err)
+		}
+	}
+
+	// If a table has indexes defined, lets take care of that
+	if table.Indexes != nil {
+		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbName, table.Name))
+		if err != nil {
+			return fmt.Errorf("Unable to get table meta entry: %v", err)
+		}
+
+		tableIndexrows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableRows[0]["id"]))
+		if err != nil {
+			return fmt.Errorf("Unable to query for existing table_indexes: %v", err)
+		}
+
+		// TODO: generic version?
+		currentIndexNames := make(map[string]map[string]interface{})
+		for _, currentIndex := range tableIndexrows {
+			currentIndexNames[currentIndex["name"].(string)] = currentIndex
+		}
+
+		// compare old and new-- make them what they need to be
+		// What should be removed?
+		for name, _ := range currentIndexNames {
+			if _, ok := table.Indexes[name]; !ok {
+				if err := s.RemoveIndex(dbName, table.Name, name); err != nil {
+					return err
+				}
+			}
+		}
+		// What should be added
+		for name, index := range table.Indexes {
+			if _, ok := currentIndexNames[name]; !ok {
+				if err := s.AddIndex(dbName, table.Name, index); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
@@ -249,6 +286,7 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 
 const removeTableTemplate = `DROP TABLE public.%s`
 
+// TODO: remove indexes on removal
 func (s *Storage) RemoveTable(dbname string, tablename string) error {
 	// make sure the db exists in the metadata store
 	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
@@ -260,6 +298,17 @@ func (s *Storage) RemoveTable(dbname string, tablename string) error {
 	tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbRows[0]["id"], tablename))
 	if err != nil {
 		return fmt.Errorf("Unable to find table %s.%s: %v", dbname, tablename, err)
+	}
+
+	// remove indexes
+	tableIndexRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table_index WHERE table_id=%v", tableRows[0]["id"]))
+	if err != nil {
+		return fmt.Errorf("Unable to query indexes on table: %v", err)
+	}
+	for _, tableIndexRow := range tableIndexRows {
+		if err := s.RemoveIndex(dbname, tablename, tableIndexRow["name"].(string)); err != nil {
+			return fmt.Errorf("Unable to remove table_index: %v", err)
+		}
 	}
 
 	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, tablename)
