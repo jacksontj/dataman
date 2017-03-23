@@ -1,0 +1,10 @@
+The goal here is to showcase the usage of dataman, ideally we'd have each example
+implemented using a couple different databases as well as dataman-- to show the difference.
+
+In addition we should have "versions" of the app to showcase schema migration
+
+
+Some use cases:
+    - k/v store
+    - document store
+    - time-series
