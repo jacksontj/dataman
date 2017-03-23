@@ -43,6 +43,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// Tables
 	router.GET("/v1/database/:dbname/:tablename", h.viewTable)
+	// TODO: add UPDATE support for table (to change schema, or indexes)
 	router.DELETE("/v1/database/:dbname/:tablename", h.removeTable)
 
 	// Schema

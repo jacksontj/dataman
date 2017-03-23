@@ -246,7 +246,7 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 
 	// If a table has indexes defined, lets take care of that
 	if table.Indexes != nil {
-		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", dbName, table.Name))
+		tableRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.table WHERE database_id=%v AND name='%s'", rows[0]["id"], table.Name))
 		if err != nil {
 			return fmt.Errorf("Unable to get table meta entry: %v", err)
 		}
@@ -341,9 +341,8 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
 	}
 
-	// TODO namespace the indexes based on tables (assuming the indexes are globally namespaced)
 	// Create the actual index
-	indexAddQuery := fmt.Sprintf("CREATE INDEX index_%s ON %s (", index.Name, tablename)
+	indexAddQuery := fmt.Sprintf("CREATE INDEX index_%s_%s ON %s (", tablename, index.Name, tablename)
 	for i, column := range index.Columns {
 		if i > 0 {
 			indexAddQuery += ","
@@ -363,7 +362,7 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 	return nil
 }
 
-const removeTableIndexTemplate = `DROP INDEX index_%s`
+const removeTableIndexTemplate = `DROP INDEX index_%s_%s`
 
 func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
 	// make sure the db exists in the metadata store
@@ -384,7 +383,7 @@ func (s *Storage) RemoveIndex(dbname, tablename, indexname string) error {
 		return fmt.Errorf("Unable to find table_index %s.%s %s: %v", dbname, tablename, indexname, err)
 	}
 
-	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, indexname)
+	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, tablename, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
 	}
