@@ -50,10 +50,9 @@ class DatamanClient(object):
             {'filter': {
                 'db': db,
                 'table': table,
-                'data': data,
+                'columns': {'data': data},
             }}])
         )
-
         # TODO: handle errors?
         items = []
         raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
@@ -67,7 +66,7 @@ class DatamanClient(object):
             {'set': {
                 'db': db,
                 'table': table,
-                'data': data,
+                'columns': {'data': data},
             }}])
         )
 
@@ -99,7 +98,7 @@ class MainHandler(BaseHandler):
     def get(self):
         # TODO: sort (ORDER BY)
         threads = yield dataman.filter(schema.DBNAME, 'thread')
-        self.render("index.html", threads=threads, username=self.current_user)
+        self.render("index.html", threads=threads if threads else [], username=self.current_user)
 
 
 # TODO: create user in DB

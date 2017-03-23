@@ -969,7 +969,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s", args["table"])
 
-	if _, ok := args["columns"]; ok {
+	if _, ok := args["columns"]; ok && args["columns"] != nil {
 		columnData := args["columns"].(map[string]interface{})
 		meta := s.GetMeta()
 		table, err := meta.GetTable(args["db"].(string), args["table"].(string))
@@ -978,10 +978,10 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			return result
 		}
 
-		sqlQuery += " WHERE"
+		whereClause := ""
 		for columnName, columnValue := range columnData {
 			if strings.HasPrefix(columnName, "_") {
-				sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
+				whereClause += fmt.Sprintf(" %s=%v", columnName, columnValue)
 				continue
 			}
 			column, ok := table.ColumnMap[columnName]
@@ -994,11 +994,14 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			case metadata.Document:
 				// TODO: recurse and add many
 				for innerName, innerValue := range columnValue.(map[string]interface{}) {
-					sqlQuery += fmt.Sprintf(" %s->>'%s'='%v'", columnName, innerName, innerValue)
+					whereClause += fmt.Sprintf(" %s->>'%s'='%v'", columnName, innerName, innerValue)
 				}
 			default:
-				sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
+				whereClause += fmt.Sprintf(" %s=%v", columnName, columnValue)
 			}
+		}
+		if whereClause != "" {
+			sqlQuery += " WHERE " + whereClause
 		}
 	}
 

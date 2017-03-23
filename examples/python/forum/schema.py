@@ -10,13 +10,31 @@ base_db = {
     "name": DBNAME,
     "tables": {
         "user": {
-            "name": "user"
+            "name": "user",
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                },
+            ],
         },
         "thread": {
-            "name": "thread"
+            "name": "thread",
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                },
+            ],
         },
         "message": {
-            "name": "message"
+            "name": "message",
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                },
+            ],
         }
     }
 }
@@ -26,94 +44,116 @@ schemad_db = {
     "tables": {
         "user": {
             "name": "user",
-            "schema": {
-                "name": "user",
-                "version": 1,
-                "schema": {
-	                "title": "User",
-	                "type": "object",
-	                "properties": {
-		                "username": {
-			                "type": "string"
-		                }
-	                },
-	                "required": ["username"]
-                }
-            },
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                    "schema": {
+                        "name": "user",
+                        "version": 1,
+                        "schema": {
+	                        "title": "User",
+	                        "type": "object",
+	                        "properties": {
+		                        "username": {
+			                        "type": "string"
+		                        }
+	                        },
+	                        "required": ["username"]
+                        }
+                    },
+                },
+            ],
             "indexes": {
-                # TODO: uniqueness!
                 "username": {
                     "name": "username",
-                    "columns": ["username"],
+                    "columns": ["data.username"],
                     "unique": True,
                 },
             },
         },
         "thread": {
             "name": "thread",
-            "schema": {
-                "name": "thread",
-                "version": 1,
-                "schema": {
-	                "title": "Thread",
-	                "type": "object",
-	                "properties": {
-	                    "id": {
-	                        "type": "string",
-                        },
-		                "title": {
-			                "type": "string"
-		                },
-		                "created": {
-                            "type": "integer"
-		                },
-		                "created_by": {
-                            "type": "string"
-		                }
-	                },
-	                "required": ["id", "title", "created_by", "created"]
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                    "schema": {
+                        "name": "thread",
+                        "version": 1,
+                        "schema": {
+	                        "title": "Thread",
+	                        "type": "object",
+	                        "properties": {
+	                            "id": {
+	                                "type": "string",
+                                },
+		                        "title": {
+			                        "type": "string"
+		                        },
+		                        "created": {
+                                    "type": "integer"
+		                        },
+		                        "created_by": {
+                                    "type": "string"
+		                        }
+	                        },
+	                        "required": ["id", "title", "created_by", "created"]
+                        }
+                    },
                 }
-            },
+            ],
             "indexes": {
                 "created": {
                     "name": "created",
-                    "columns": ["created"],
+                    "columns": ["data.created"],
                 },
                 "id": {
                     "name": "id",
-                    "columns": ["id"],
+                    "columns": ["data.id"],
                 },
+                "title": {
+                    "name": "title",
+                    "columns": ["data.title"],
+                    "unique": True,
+                }
             },
         },
         "message": {
             "name": "message",
-            "schema": {
-                "name": "message",
-                "version": 1,
-                "schema": {
-	                "title": "message",
-	                "type": "object",
-	                "properties": {
-		                "content": {
-			                "type": "string"
-		                },
-		                "thread_id": {
-			                "type": "string"
-		                },
-		                "created": {
-                            "type": "integer"
-		                },
-		                "created_by": {
-                            "type": "string"
-		                }
-	                },
-	                "required": ["content", "thread_id", "created", "created_by"]
+            "columns": [
+                {
+                    "name": "data",
+                    "type": "document",
+                    "schema": {
+                        "name": "message",
+                        "version": 1,
+                        "schema": {
+	                        "title": "message",
+	                        "type": "object",
+	                        "properties": {
+		                        "content": {
+			                        "type": "string"
+		                        },
+		                        "thread_id": {
+			                        "type": "string"
+		                        },
+		                        "created": {
+                                    "type": "integer"
+		                        },
+		                        "created_by": {
+                                    "type": "string"
+		                        }
+	                        },
+	                        "required": ["content", "thread_id", "created", "created_by"]
+                        }
+                    },
                 }
-            },
+            ],
             "indexes": {
                 "created": {
                     "name": "c",
-                    "columns": ["created"],
+                    "columns": ["data.created"],
                 },
             },
         }
