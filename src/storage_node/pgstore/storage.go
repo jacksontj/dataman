@@ -23,7 +23,6 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// TODO: pass in a database name for the metadata store locally
 // TODO: ORM or something to manage schema of the metadata store?
 type StorageConfig struct {
 	// How to connect to postgres
@@ -54,6 +53,7 @@ func (s *Storage) Init(c map[string]interface{}) error {
 		return fmt.Errorf("Invalid config")
 	}
 
+	// TODO: pass in a database name for the metadata store locally
 	s.db, err = sql.Open("postgres", s.config.pgStringForDB("dataman_storagenode"))
 	if err != nil {
 		return err
