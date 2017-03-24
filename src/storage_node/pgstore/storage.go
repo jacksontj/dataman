@@ -283,6 +283,7 @@ func columnToSchema(column *metadata.TableColumn) (string, error) {
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
+// TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
 const addTableTemplate = `CREATE TABLE public.%s
 (
   _id serial4 NOT NULL,
