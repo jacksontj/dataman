@@ -178,7 +178,7 @@ class ThreadHandler(BaseHandler):
 
 
 class LegacyUserHandler(tornado.web.RequestHandler):
-    '''Legacy handler which accesses mysql directly
+    '''Legacy handler which accesses postgres directly
     '''
 
     pool = concurrent.futures.ThreadPoolExecutor(10)
