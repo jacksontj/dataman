@@ -286,8 +286,8 @@ func columnToSchema(column *metadata.TableColumn) (string, error) {
 const addTableTemplate = `CREATE TABLE public.%s
 (
   _id serial4 NOT NULL,
-  _created date,
-  _updated date,
+  _created timestamp,
+  _updated timestamp,
   %s
   CONSTRAINT %s_id PRIMARY KEY (_id)
 )
