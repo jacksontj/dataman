@@ -371,7 +371,7 @@ func TestDocumentDatabase(t *testing.T) {
 		"table": "person",
 		"columns": map[string]interface{}{
 			"data": map[string]interface{}{
-				"fistName": "tester",
+				"firstName": "tester",
 			},
 		},
 	})
@@ -385,8 +385,8 @@ func TestDocumentDatabase(t *testing.T) {
 		"table": "person",
 		"columns": map[string]interface{}{
 			"data": map[string]interface{}{
-				"fistName": "tester",
-				"lastName": "foobar",
+				"firstName": "tester",
+				"lastName":  "foobar",
 			},
 		},
 	})
@@ -400,12 +400,156 @@ func TestDocumentDatabase(t *testing.T) {
 		"table": "person",
 		"columns": map[string]interface{}{
 			"data": map[string]interface{}{
-				"fistName": "tester",
+				"firstName": "tester",
 			},
 		},
 	})
 	if result.Error != "" {
 		t.Fatalf("Error when adding a valid document")
+	}
+	if len(result.Return) != 2 {
+		t.Fatalf("Filter returned %d results, instead of the expected 2: %v", len(result.Return), result.Return)
+	}
+
+	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
+	// Delete
+}
+
+// Test Functions for covering a column DB (sql)
+func TestColumnDatabase(t *testing.T) {
+	store, err := getStore()
+	if err != nil {
+		t.Fatalf("Unable to create test storagenode")
+	}
+
+	meta := store.GetMeta()
+	if err != nil {
+		t.Fatalf("Unable to get empty meta from new store: %v", err)
+	}
+
+	// TODO: move into getStore()
+	// Clear the DB -- since we are going to use it
+	for _, db := range meta.Databases {
+		if err := store.RemoveDatabase(db.Name); err != nil {
+			t.Fatalf("Unable to remove DB: %v", err)
+		}
+	}
+
+	// TODO: add document schema tests
+	// TODO: add index tests
+
+	databaseAdd := &metadata.Database{
+		Name: "columndb",
+		Tables: map[string]*metadata.Table{
+			"person": &metadata.Table{
+				Name: "person",
+				Columns: []*metadata.TableColumn{
+					&metadata.TableColumn{
+						Name: "firstName",
+						// TODO: non-null per column
+						Type: metadata.String,
+					},
+				},
+			},
+		},
+	}
+	tableUpdate := &metadata.Table{
+		Name: "person",
+		Columns: []*metadata.TableColumn{
+			&metadata.TableColumn{
+				Name: "firstName",
+				// TODO: non-null per column
+				Type: metadata.String,
+			},
+			&metadata.TableColumn{
+				Name: "lastName",
+				// TODO: non-null per column
+				Type: metadata.String,
+			},
+		},
+		Indexes: map[string]*metadata.TableIndex{
+			"simple": &metadata.TableIndex{
+				Name:    "simple",
+				Columns: []string{"firstName"},
+			},
+		},
+	}
+
+	// Add the database
+	if err := store.AddDatabase(databaseAdd); err != nil {
+		t.Fatalf("Error adding database: %v", err)
+	}
+
+	// Add index
+	var tableIndex metadata.TableIndex
+	indexBytes := []byte(`
+	{
+		"name": "complex",
+		"columns": [
+			"firstName",
+			"lastName"
+		]
+	}
+	`)
+	json.Unmarshal(indexBytes, &tableIndex)
+	if err := store.AddIndex(databaseAdd.Name, "person", &tableIndex); err == nil {
+		t.Fatalf("No error when adding an index to a column which doesn't exist!")
+	}
+
+	// Add the missing column
+	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err != nil {
+		t.Fatalf("Error updating table: %v", err)
+	}
+	// TODO: move inside the store itself
+	store.RefreshMeta()
+
+	if err := store.AddIndex(databaseAdd.Name, "person", &tableIndex); err != nil {
+		t.Fatalf("Error when adding index: %v", err)
+	}
+
+	// Remove indexes
+	if err := store.RemoveIndex(databaseAdd.Name, "person", "simple"); err != nil {
+		t.Fatalf("Unable to remove index: %v", err)
+	}
+	if err := store.RemoveIndex(databaseAdd.Name, "person", "complex"); err != nil {
+		t.Fatalf("Unable to remove index: %v", err)
+	}
+
+	// Add a valid document
+	result := store.Set(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "person",
+		"columns": map[string]interface{}{
+			"firstName": "tester",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document: %v", result.Error)
+	}
+
+	// Add a valid document
+	result = store.Set(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "person",
+		"columns": map[string]interface{}{
+			"firstName": "tester",
+			"lastName":  "foobar",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document: %v", result.Error)
+	}
+
+	// Filter
+	result = store.Filter(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "person",
+		"columns": map[string]interface{}{
+			"firstName": "tester",
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when running a Filter: %v", result.Error)
 	}
 	if len(result.Return) != 2 {
 		t.Fatalf("Filter returned %d results, instead of the expected 2: %v", len(result.Return), result.Return)

@@ -260,6 +260,18 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 
 }
 
+func columnToSchema(column *metadata.TableColumn) (string, error) {
+	switch column.Type {
+	case metadata.Document:
+		return "\"" + column.Name + "\" jsonb", nil
+	case metadata.String:
+		// TODO: have options to set limits? Or always use text fields?
+		return "\"" + column.Name + "\" character varying(255)", nil
+	default:
+		return "", fmt.Errorf("Unknown column type: %v", column.Type)
+	}
+}
+
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
 const addTableTemplate = `CREATE TABLE public.%s
@@ -299,11 +311,10 @@ func (s *Storage) AddTable(dbName string, table *metadata.Table) error {
 		if strings.HasPrefix(column.Name, "_") {
 			return fmt.Errorf("The `_` namespace for table columns is reserved: %v", column)
 		}
-		switch column.Type {
-		case metadata.Document:
-			columnQuery += column.Name + " jsonb, "
-		default:
-			return fmt.Errorf("Unknown column type: %v", column.Type)
+		if columnStr, err := columnToSchema(column); err == nil {
+			columnQuery += columnStr + ", "
+		} else {
+			return err
 		}
 
 		// If we have a schema, lets add that
@@ -530,6 +541,16 @@ func (s *Storage) AddColumn(dbname, tablename string, column *metadata.TableColu
 	if err != nil {
 		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
 	}
+
+	if columnStr, err := columnToSchema(column); err == nil {
+		// Add the actual column
+		if _, err := s.doQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s ADD %s", tablename, columnStr)); err != nil {
+			return err
+		}
+	} else {
+		return err
+	}
+
 	// If we have a schema, lets add that
 	if column.Schema != nil {
 		if schema := s.GetSchema(column.Schema.Name, column.Schema.Version); schema == nil {
@@ -569,7 +590,7 @@ func (s *Storage) RemoveColumn(dbname, tablename, columnname string) error {
 		return fmt.Errorf("Unable to find table  %s.%s: %v", dbname, tablename, err)
 	}
 
-	if _, err := s.doQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s DROP %s", tablename, columnname)); err != nil {
+	if _, err := s.doQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s DROP \"%s\"", tablename, columnname)); err != nil {
 		return fmt.Errorf("Unable to remove old column: %v", err)
 	}
 
@@ -587,7 +608,7 @@ INSERT INTO public.table_index (name, table_id, data_json) VALUES ('%s', %v, '%s
 func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex) error {
 	// make sure the db exists in the metadata store
 	dbRows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
+	if err != nil || len(dbRows) == 0 {
 		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
 	}
 
@@ -642,7 +663,7 @@ func (s *Storage) AddIndex(dbname, tablename string, index *metadata.TableIndex)
 			indexAddQuery += ") "
 
 		} else {
-			indexAddQuery += fmt.Sprintf("(%s)", columnName)
+			indexAddQuery += fmt.Sprintf("\"%s\"", columnName)
 		}
 	}
 	indexAddQuery += ")"
@@ -879,7 +900,7 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 			return result
 		}
 
-		columnHeaders = append(columnHeaders, columnName)
+		columnHeaders = append(columnHeaders, "\""+columnName+"\"")
 		switch column.Type {
 		case metadata.Document:
 			columnJson, err := json.Marshal(columnValue)
@@ -888,6 +909,8 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 				return result
 			}
 			columnValues = append(columnValues, "'"+string(columnJson)+"'")
+		case metadata.String:
+			columnValues = append(columnValues, fmt.Sprintf("'%v'", columnValue))
 		default:
 			columnValues = append(columnValues, fmt.Sprintf("%v", columnValue))
 		}
@@ -994,10 +1017,12 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			case metadata.Document:
 				// TODO: recurse and add many
 				for innerName, innerValue := range columnValue.(map[string]interface{}) {
-					whereClause += fmt.Sprintf(" %s->>'%s'='%v'", columnName, innerName, innerValue)
+					whereClause += fmt.Sprintf(" \"%s\"->>'%s'='%v'", columnName, innerName, innerValue)
 				}
+			case metadata.String:
+				whereClause += fmt.Sprintf(" \"%s\"='%v'", columnName, columnValue)
 			default:
-				whereClause += fmt.Sprintf(" %s=%v", columnName, columnValue)
+				whereClause += fmt.Sprintf(" \"%s\"=%v", columnName, columnValue)
 			}
 		}
 		if whereClause != "" {
@@ -1011,11 +1036,28 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		return result
 	}
 
-	// TODO: better
-	for i, row := range rows {
-		var tmp map[string]interface{}
-		json.Unmarshal(row["data"].([]byte), &tmp)
-		rows[i]["data"] = tmp
+	// TODO: better -- we want to convert the json stuff into actual structures
+	meta := s.GetMeta()
+	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
+	for _, row := range rows {
+		for k, v := range row {
+			if column, ok := table.ColumnMap[k]; ok {
+				switch column.Type {
+				case metadata.Document:
+					var tmp map[string]interface{}
+					json.Unmarshal(v.([]byte), &tmp)
+					row[k] = tmp
+				default:
+					continue
+				}
+			}
+		}
 	}
 
 	result.Return = rows

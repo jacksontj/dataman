@@ -34,6 +34,7 @@ type ColumnType string
 
 const (
 	Document ColumnType = "document"
+	String              = "string"
 )
 
 type TableColumn struct {
