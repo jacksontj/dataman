@@ -32,10 +32,10 @@ from tornado.concurrent import Future
 from tornado import gen
 from tornado.options import define, options, parse_command_line
 
-
 # TODO: move??
 import json
 import schema
+
 
 class DatamanClient(object):
     def __init__(self, base_url):
@@ -106,16 +106,16 @@ class MainHandler(BaseHandler):
         self.render("index.html", threads=threads, username=self.current_user)
 
 
-# TODO: create user in DB
 class LoginHandler(BaseHandler):
     def get(self):
         self.render("login.html")
 
     @tornado.gen.coroutine
     def post(self):
-        # If already logged in, just redirect
+        # If already logged in, just redirect and do nothing else
         if self.current_user:
             self.redirect("/")
+            raise tornado.gen.Return(None)
 
         user = {
             'username': self.get_argument("name"),
@@ -192,7 +192,6 @@ class LegacyUserHandler(tornado.web.RequestHandler):
             return cur.fetchall()
         users = yield self.pool.submit(listusers)
         self.render("userlist.html", users=users)
-
 
 
 def main():
