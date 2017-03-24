@@ -1034,15 +1034,13 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		return result
 	}
 
-	// TODO: better -- we want to convert the json stuff into actual structures
+	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
 	meta := s.GetMeta()
 	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
-
-	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
 	for _, row := range rows {
 		for k, v := range row {
 			if column, ok := table.ColumnMap[k]; ok {
