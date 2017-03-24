@@ -1,6 +1,4 @@
-// TODO: rename-- this is no longer json specific
-
-package pgjsonstorage
+package pgstorage
 
 // TODO: real escaping of the various queries (sql injection is bad ;) )
 // TODO: look into codegen or something for queries (terribly inefficient right now)

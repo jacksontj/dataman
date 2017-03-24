@@ -1,6 +1,6 @@
 # TODO: separate metadata config from this
 # actual store configuration
-storage_type: postgres-json
+storage_type: postgres
 storage_config:
   pg_string: user=postgres password=password sslmode=disable
 
