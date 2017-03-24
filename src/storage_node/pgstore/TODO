@@ -1,0 +1,2 @@
+- consider splitting this module, there are effectively 3 parts (1) metadata/schemadata management (2) interfacing with schema of store and (3) data management
+- 

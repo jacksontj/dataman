@@ -5,7 +5,6 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/xeipuuv/gojsonschema"
-	//"github.com/xeipuuv/gojsonschema"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
