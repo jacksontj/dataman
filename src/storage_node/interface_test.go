@@ -268,28 +268,14 @@ func TestDatabase(t *testing.T) {
 	}
 }
 
+// TODO: test indexes
 // Test Functions for covering a document DB
 func TestDocumentDatabase(t *testing.T) {
 	store, err := getStore()
 	if err != nil {
 		t.Fatalf("Unable to create test storagenode")
 	}
-
-	meta := store.GetMeta()
-	if err != nil {
-		t.Fatalf("Unable to get empty meta from new store: %v", err)
-	}
-
-	// TODO: move into getStore()
-	// Clear the DB -- since we are going to use it
-	for _, db := range meta.Databases {
-		if err := store.RemoveDatabase(db.Name); err != nil {
-			t.Fatalf("Unable to remove DB: %v", err)
-		}
-	}
-
-	// TODO: add document schema tests
-	// TODO: add index tests
+	resetStore(store)
 
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
@@ -412,6 +398,7 @@ func TestDocumentDatabase(t *testing.T) {
 	// Delete
 }
 
+// TODO: test indexes
 // Test Functions for covering a column DB (sql)
 func TestColumnDatabase(t *testing.T) {
 	store, err := getStore()
@@ -568,5 +555,3 @@ func TestColumnDatabase(t *testing.T) {
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
 	// Delete
 }
-
-// TODO: test indexes
