@@ -5,7 +5,7 @@ import "github.com/jacksontj/dataman/src/storage_node/pgstore"
 type StorageType string
 
 const (
-	Postgres     StorageType = "postgres"
+	Postgres StorageType = "postgres"
 )
 
 func (s StorageType) Get() StorageInterface {

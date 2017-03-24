@@ -43,6 +43,10 @@ type TableColumn struct {
 	// only to be filled out if ColumnType is Document
 	Schema *Schema `json:"schema,omitempty"`
 	Order  int     `json:"-"`
+
+	// Various configuration options
+	// Should we allow NULL fields
+	NotNull bool `json:"not_null"`
 }
 
 type Schema struct {

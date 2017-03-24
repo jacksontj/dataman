@@ -166,9 +166,6 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("New node has tables in it?")
 	}
 
-	// TODO: add document schema tests
-	// TODO: add index tests
-
 	databaseAdd := &metadata.Database{
 		Name: "testdb",
 		Tables: map[string]*metadata.Table{
@@ -447,7 +444,8 @@ func TestColumnDatabase(t *testing.T) {
 					&metadata.TableColumn{
 						Name: "firstName",
 						// TODO: non-null per column
-						Type: metadata.String,
+						Type:    metadata.String,
+						NotNull: true,
 					},
 				},
 			},
@@ -525,6 +523,18 @@ func TestColumnDatabase(t *testing.T) {
 	})
 	if result.Error != "" {
 		t.Fatalf("Error when adding a valid document: %v", result.Error)
+	}
+
+	// Add an invalid document
+	result = store.Set(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "person",
+		"columns": map[string]interface{}{
+			"lastName": "mctester",
+		},
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when adding an invalid document!")
 	}
 
 	// Add a valid document

@@ -132,6 +132,9 @@ func (s *Storage) loadMeta() (*metadata.Meta, error) {
 						return nil, err
 					}
 				}
+				if notNull, ok := tableColumnEntry["not_null"]; ok && notNull != nil {
+					column.NotNull = true
+				}
 				table.Columns[i] = column
 				table.ColumnMap[column.Name] = column
 			}
@@ -259,15 +262,23 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 }
 
 func columnToSchema(column *metadata.TableColumn) (string, error) {
+	columnStr := ""
+
 	switch column.Type {
 	case metadata.Document:
-		return "\"" + column.Name + "\" jsonb", nil
+		columnStr += "\"" + column.Name + "\" jsonb"
 	case metadata.String:
 		// TODO: have options to set limits? Or always use text fields?
-		return "\"" + column.Name + "\" character varying(255)", nil
+		columnStr += "\"" + column.Name + "\" character varying(255)"
 	default:
 		return "", fmt.Errorf("Unknown column type: %v", column.Type)
 	}
+
+	if column.NotNull {
+		columnStr += " NOT NULL"
+	}
+
+	return columnStr, nil
 }
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
