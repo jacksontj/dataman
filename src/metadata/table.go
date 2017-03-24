@@ -34,7 +34,7 @@ type ColumnType string
 
 const (
 	Document ColumnType = "document"
-	String              = "string"
+	String              = "string" // TODO: varchar? Not sure how we want to differentiate between text and varchar
 )
 
 type TableColumn struct {
@@ -45,8 +45,7 @@ type TableColumn struct {
 	Order  int     `json:"-"`
 
 	// Various configuration options
-	// Should we allow NULL fields
-	NotNull bool `json:"not_null"`
+	NotNull bool `json:"not_null"` // Should we allow NULL fields
 }
 
 type Schema struct {
@@ -61,7 +60,6 @@ func (s *Schema) Equal(o *Schema) bool {
 	return s.Name == o.Name && s.Version == o.Version
 }
 
-// TODO: add flags for other things (like uniqueness, etc.)
 type TableIndex struct {
 	Name string `json:"name"`
 	// TODO: better schema-- this will be the data_json in the DB
