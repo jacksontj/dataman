@@ -13,8 +13,9 @@ base_db = {
             "name": "user",
             "columns": [
                 {
-                    "name": "data",
-                    "type": "document",
+                    "name": "username",
+                    "type": "string",
+                    "not_null": True,
                 },
             ],
         },
@@ -46,28 +47,15 @@ schemad_db = {
             "name": "user",
             "columns": [
                 {
-                    "name": "data",
-                    "type": "document",
-                    "schema": {
-                        "name": "user",
-                        "version": 1,
-                        "schema": {
-	                        "title": "User",
-	                        "type": "object",
-	                        "properties": {
-		                        "username": {
-			                        "type": "string"
-		                        }
-	                        },
-	                        "required": ["username"]
-                        }
-                    },
+                    "name": "username",
+                    "type": "string",
+                    "not_null": True,
                 },
             ],
             "indexes": {
                 "username": {
                     "name": "username",
-                    "columns": ["data.username"],
+                    "columns": ["username"],
                     "unique": True,
                 },
             },

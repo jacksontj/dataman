@@ -14,6 +14,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import concurrent.futures
+import psycopg2
+import psycopg2.extras
+
 import logging
 import time
 import tornado.escape
@@ -39,9 +43,9 @@ class DatamanClient(object):
         self.base_url = base_url
 
     @tornado.gen.coroutine
-    def filter(self, db, table, data=None):
-        if data is None:
-            data = {}
+    def filter(self, db, table, columns=None):
+        if columns is None:
+            columns = {}
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
@@ -50,7 +54,7 @@ class DatamanClient(object):
             {'filter': {
                 'db': db,
                 'table': table,
-                'columns': {'data': data},
+                'columns': columns,
             }}])
         )
         # TODO: handle errors?
@@ -58,7 +62,7 @@ class DatamanClient(object):
         raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
 
     @tornado.gen.coroutine
-    def set(self, db, table, data):
+    def set(self, db, table, columns):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
@@ -66,7 +70,7 @@ class DatamanClient(object):
             {'set': {
                 'db': db,
                 'table': table,
-                'columns': {'data': data},
+                'columns': columns,
             }}])
         )
 
@@ -79,6 +83,7 @@ dataman = DatamanClient('http://localhost:8081')
 define("port", default=8888, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 
+
 class BaseHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def prepare(self):
@@ -86,7 +91,7 @@ class BaseHandler(tornado.web.RequestHandler):
         if not users:
             self.current_user = None
         else:
-            self.current_user = users[0]['data']['username']
+            self.current_user = users[0]['username']
 
     def get_current_user(self):
         return self.get_secure_cookie("user")
@@ -135,7 +140,7 @@ class NewThreadHandler(BaseHandler):
             'created_by': self.current_user,
             'created': int(time.time()),
         }
-        threads = yield dataman.set(schema.DBNAME, 'thread', thread)
+        threads = yield dataman.set(schema.DBNAME, 'thread', {'data': thread})
         if 'error' in threads:
             #TODO: set error code
             self.write(threads['error'].replace('\n', '<br>'))
@@ -147,11 +152,11 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.filter(schema.DBNAME, 'thread', {'id': thread_id})
+        threads = yield dataman.filter(schema.DBNAME, 'thread', {'data': {'id': thread_id}})
         if not threads:
             self.redirect("/")
         else:
-            messages = yield dataman.filter(schema.DBNAME, 'message', {'thread_id': thread_id})
+            messages = yield dataman.filter(schema.DBNAME, 'message', {'data': {'thread_id': thread_id}})
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
@@ -164,12 +169,31 @@ class ThreadHandler(BaseHandler):
             'created_by': self.current_user,
         }
 
-        message_ret = yield dataman.set(schema.DBNAME, 'message', message)
+        message_ret = yield dataman.set(schema.DBNAME, 'message', {'data': message})
         if 'error' in message_ret:
             #TODO: set error code
             self.write(message_ret['error'].replace('\n', '<br>'))
         else:
             self.redirect(self.request.uri)
+
+
+class LegacyUserHandler(tornado.web.RequestHandler):
+    '''Legacy handler which accesses mysql directly
+    '''
+
+    pool = concurrent.futures.ThreadPoolExecutor(10)
+    conn = psycopg2.connect("dbname=%s user='postgres' host='localhost' password='password'" % schema.DBNAME)
+
+    @tornado.gen.coroutine
+    def get(self):
+        def listusers():
+            cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cur.execute("""SELECT * FROM public.user""")
+            return cur.fetchall()
+        users = yield self.pool.submit(listusers)
+        self.render("userlist.html", users=users)
+
+
 
 def main():
     parse_command_line()
@@ -178,6 +202,7 @@ def main():
             (r"/threads/(.*)", ThreadHandler),
             (r"/newthread", NewThreadHandler),
             (r"/login", LoginHandler),
+            (r"/legacy/users", LegacyUserHandler),
             (r"/", MainHandler),
             ],
         cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
