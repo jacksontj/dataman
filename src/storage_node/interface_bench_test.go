@@ -79,11 +79,10 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 		b.Fatalf("Error when adding a valid document")
 	}
 
-
-	b.Run("Get", func(b *testing.B){benchDocument_Get(b, store)})
-	b.Run("Set", func(b *testing.B){benchDocument_Set(b, store)})
-	b.Run("Delete", func(b *testing.B){benchDocument_Delete(b, store)})
-	b.Run("Filter", func(b *testing.B){benchDocument_Filter(b, store)})
+	b.Run("Get", func(b *testing.B) { benchDocument_Get(b, store) })
+	b.Run("Set", func(b *testing.B) { benchDocument_Set(b, store) })
+	b.Run("Delete", func(b *testing.B) { benchDocument_Delete(b, store) })
+	b.Run("Filter", func(b *testing.B) { benchDocument_Filter(b, store) })
 
 }
 
@@ -110,16 +109,15 @@ func benchDocument_Get(b *testing.B, store StorageInterface) {
 	query := map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
-		"_id": id,
+		"_id":   id,
 	}
 
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-        store.Get(query)
-    }
+		store.Get(query)
+	}
 }
-
 
 func benchDocument_Set(b *testing.B, store StorageInterface) {
 	// Insert single item
@@ -136,8 +134,8 @@ func benchDocument_Set(b *testing.B, store StorageInterface) {
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
-        store.Set(query)
-    }
+		store.Set(query)
+	}
 }
 
 func benchDocument_Delete(b *testing.B, store StorageInterface) {
@@ -154,17 +152,16 @@ func benchDocument_Delete(b *testing.B, store StorageInterface) {
 	// Insert N items
 	for n := 0; n < b.N; n++ {
 		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
-        store.Set(query)
-    }
+		store.Set(query)
+	}
 
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
-        store.Delete(query)
-    }
+		store.Delete(query)
+	}
 }
-
 
 func benchDocument_Filter(b *testing.B, store StorageInterface) {
 	// Insert single item
@@ -181,8 +178,8 @@ func benchDocument_Filter(b *testing.B, store StorageInterface) {
 	// TODO: vary the number of items we are getting in the filter?
 	for n := 0; n < 10; n++ {
 		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
-        store.Set(query)
-    }
+		store.Set(query)
+	}
 
 	query = map[string]interface{}{
 		"db":    "docdb",
@@ -192,8 +189,8 @@ func benchDocument_Filter(b *testing.B, store StorageInterface) {
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-        store.Filter(query)
-    }
+		store.Filter(query)
+	}
 }
 
 /*
