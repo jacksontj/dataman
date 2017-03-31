@@ -26,3 +26,9 @@
     between storage node and router node into account when determining which replica to send the query to. And
     when we get to supporting our own replicas etc we'll need a mechanism to define if a replica is sufficient
     (basically define read-after-write consistency requirements)
+
+- "scheduling" and "resource isolation"
+    Once we have a concept of "who" is requesting things, we can then do QoS on queries as they come in. This
+    means that if there are multiple clients accessing a datastore, and one is flooding us with requests we can
+    decide to fairly schedule (instead of push out the other users due to the poor perf from the user who
+    is flooding us).

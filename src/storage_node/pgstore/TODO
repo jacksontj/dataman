@@ -1,8 +1,14 @@
-- consider splitting this module, there are effectively 3 parts (1) metadata/schemadata management (2) interfacing with schema of store and (3) data management
+- consider splitting this interface, there are effectively 3 parts (1) metadata/schemadata management (2) interfacing with schema of store and (3) data management
+    -- from thinking through this more it probably makes sense to split it into 2 interfaces (1) metadata and (2) storage,
+        specifically that metadata will just manage access of the dataman metadata, but not necessarily store that
+        in the datastore, nor know how to provision in the actual datastore. For the storage interface we can embed
+        both how to interact with provisioning (add/remove/update/delete db/table/etc.) as well as all the query
+        functions (interacting with the data).
 - jsonSchema enforcement can be done in postgres, example:
 CREATE TABLE emp (
     data JSON,
     CONSTRAINT validate_id CHECK ((data->>'id')::integer >= 1 AND (data->>'id') IS NOT NULL ),
     CONSTRAINT validate_name CHECK (length(data->>'name') > 0 AND (data->>'name') IS NOT NULL )
 );
+- add functions to "drain" traffic from the storage node (this will potentially require some coordination with the routing layer)
 - 

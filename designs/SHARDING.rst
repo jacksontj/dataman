@@ -46,6 +46,13 @@ The config will consist of:
     - Shard Key (which we will allow a change of in the future)
 
 
+## How this works
+The idea would be to pass the metadata regarding shard configs to the storage nodes and let them coordinate
+with eachother to determine how they want to deal with leader etc. This data would then need to be propogated
+to the routing layer (eventually, as a performance optimization). Ideally this would be an optionally-overrideable
+method on the storage node interface, with some prebuilt ones to fill in for those who don't know (or need to be
+told -- like mysql).
+
 TODO:
     - sharding key per database/table? For now we can just rely on the "id" field of each item, but we'll
         want to add that flexibility in soon-ish
