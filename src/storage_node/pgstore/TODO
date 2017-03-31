@@ -1,2 +1,8 @@
 - consider splitting this module, there are effectively 3 parts (1) metadata/schemadata management (2) interfacing with schema of store and (3) data management
+- jsonSchema enforcement can be done in postgres, example:
+CREATE TABLE emp (
+    data JSON,
+    CONSTRAINT validate_id CHECK ((data->>'id')::integer >= 1 AND (data->>'id') IS NOT NULL ),
+    CONSTRAINT validate_name CHECK (length(data->>'name') > 0 AND (data->>'name') IS NOT NULL )
+);
 - 
