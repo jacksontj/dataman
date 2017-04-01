@@ -62,12 +62,12 @@ class DatamanClient(object):
         raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
 
     @tornado.gen.coroutine
-    def set(self, db, table, columns):
+    def insert(self, db, table, columns):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
             body=json.dumps([
-            {'set': {
+            {'insert': {
                 'db': db,
                 'table': table,
                 'columns': columns,
@@ -121,7 +121,7 @@ class LoginHandler(BaseHandler):
             'username': self.get_argument("name"),
         }
 
-        ret = yield dataman.set(schema.DBNAME, 'user', user)
+        ret = yield dataman.insert(schema.DBNAME, 'user', user)
         if 'error' in ret:
             #TODO: set error code
             self.write(ret['error'].replace('\n', '<br>'))
@@ -140,7 +140,7 @@ class NewThreadHandler(BaseHandler):
             'created_by': self.current_user,
             'created': int(time.time()),
         }
-        threads = yield dataman.set(schema.DBNAME, 'thread', {'data': thread})
+        threads = yield dataman.insert(schema.DBNAME, 'thread', {'data': thread})
         if 'error' in threads:
             #TODO: set error code
             self.write(threads['error'].replace('\n', '<br>'))
@@ -169,7 +169,7 @@ class ThreadHandler(BaseHandler):
             'created_by': self.current_user,
         }
 
-        message_ret = yield dataman.set(schema.DBNAME, 'message', {'data': message})
+        message_ret = yield dataman.insert(schema.DBNAME, 'message', {'data': message})
         if 'error' in message_ret:
             #TODO: set error code
             self.write(message_ret['error'].replace('\n', '<br>'))

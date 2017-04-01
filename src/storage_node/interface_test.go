@@ -349,7 +349,7 @@ func TestDocumentDatabase(t *testing.T) {
 	}
 
 	// Add a valid document
-	result := store.Set(map[string]interface{}{
+	result := store.Insert(map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
 		"columns": map[string]interface{}{
@@ -363,7 +363,7 @@ func TestDocumentDatabase(t *testing.T) {
 	}
 
 	// Add a valid document
-	result = store.Set(map[string]interface{}{
+	result = store.Insert(map[string]interface{}{
 		"db":    "docdb",
 		"table": "person",
 		"columns": map[string]interface{}{
@@ -501,7 +501,7 @@ func TestColumnDatabase(t *testing.T) {
 	}
 
 	// Add a valid document
-	result := store.Set(map[string]interface{}{
+	result := store.Insert(map[string]interface{}{
 		"db":    databaseAdd.Name,
 		"table": "person",
 		"columns": map[string]interface{}{
@@ -513,7 +513,7 @@ func TestColumnDatabase(t *testing.T) {
 	}
 
 	// Add an invalid document
-	result = store.Set(map[string]interface{}{
+	result = store.Insert(map[string]interface{}{
 		"db":    databaseAdd.Name,
 		"table": "person",
 		"columns": map[string]interface{}{
@@ -525,7 +525,7 @@ func TestColumnDatabase(t *testing.T) {
 	}
 
 	// Add a valid document
-	result = store.Set(map[string]interface{}{
+	result = store.Insert(map[string]interface{}{
 		"db":    databaseAdd.Name,
 		"table": "person",
 		"columns": map[string]interface{}{

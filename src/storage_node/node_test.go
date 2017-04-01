@@ -85,7 +85,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	// instead of doing all the golang object creation (since its tedious)
 	queryBytes := []byte(`
 	{
-		"set": {
+		"insert": {
 			"db": "docdb",
 			"table": "person",
             "columns": {
@@ -104,7 +104,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	queryBytes = []byte(`
 	{
-        "set": {
+        "insert": {
             "db": "docdb",
             "table": "person",
             "columns": {
@@ -124,7 +124,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	queryBytes = []byte(`
 	{
-        "set": {
+        "insert": {
             "db": "docdb",
             "table": "person",
             "columns": {
@@ -144,7 +144,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 
 	queryBytes = []byte(`
     {
-        "set": {
+        "insert": {
             "db": "docdb",
             "table": "person",
             "columns": {

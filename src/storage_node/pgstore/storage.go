@@ -899,6 +899,105 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 		return result
 	}
 
+	// TODO: for all columns not defined in "columns" we need to clear them out (set ot NULL or their other default)
+	columnData := args["columns"].(map[string]interface{})
+	columnHeaders := make([]string, 0, len(columnData))
+	columnValues := make([]string, 0, len(columnData))
+
+	for columnName, columnValue := range columnData {
+		column, ok := table.ColumnMap[columnName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", columnName, args["db"], args["table"])
+			return result
+		}
+
+		columnHeaders = append(columnHeaders, "\""+columnName+"\"")
+		switch column.Type {
+		case metadata.Document:
+			columnJson, err := json.Marshal(columnValue)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			columnValues = append(columnValues, "'"+string(columnJson)+"'")
+		case metadata.String:
+			columnValues = append(columnValues, fmt.Sprintf("'%v'", columnValue))
+		default:
+			columnValues = append(columnValues, fmt.Sprintf("%v", columnValue))
+		}
+	}
+
+	setClause := ""
+	for i, header := range columnHeaders {
+		setClause += header + "=" + columnValues[i]
+		if i+1 < len(columnHeaders) {
+			setClause += ", "
+		}
+	}
+
+	// TODO: move to some method
+	filterData := args["filter"].(map[string]interface{})
+	filterHeaders := make([]string, 0, len(filterData))
+	filterValues := make([]string, 0, len(filterData))
+
+	for filterName, filterValue := range filterData {
+		column, ok := table.ColumnMap[filterName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", filterName, args["db"], args["table"])
+			return result
+		}
+
+		filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+		switch column.Type {
+		case metadata.Document:
+			columnJson, err := json.Marshal(filterValue)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			filterValues = append(filterValues, "'"+string(columnJson)+"'")
+		case metadata.String:
+			filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
+		default:
+			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+		}
+	}
+
+	whereClause := ""
+	for i, header := range filterHeaders {
+		setClause += header + "=" + filterValues[i]
+		if i+1 < len(filterHeaders) {
+			setClause += ", "
+		}
+	}
+	updateQuery := fmt.Sprintf("UPDATE public.%d SET %s WHERE %s", args["table"], setClause, whereClause)
+
+	_, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	// TODO: add metadata back to the result
+	return result
+}
+
+func (s *Storage) Insert(args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	meta := s.GetMeta()
+	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
 	columnData := args["columns"].(map[string]interface{})
 	columnHeaders := make([]string, 0, len(columnData))
 	columnValues := make([]string, 0, len(columnData))
@@ -928,6 +1027,104 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 
 	setQuery := fmt.Sprintf("INSERT INTO public.%s (%s) VALUES (%s)", args["table"], strings.Join(columnHeaders, ","), strings.Join(columnValues, ","))
 	_, err = s.doQuery(s.dbMap[args["db"].(string)], setQuery)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	// TODO: add metadata back to the result
+	return result
+}
+
+func (s *Storage) Update(args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	meta := s.GetMeta()
+	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	columnData := args["columns"].(map[string]interface{})
+	columnHeaders := make([]string, 0, len(columnData))
+	columnValues := make([]string, 0, len(columnData))
+
+	for columnName, columnValue := range columnData {
+		column, ok := table.ColumnMap[columnName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", columnName, args["db"], args["table"])
+			return result
+		}
+
+		columnHeaders = append(columnHeaders, "\""+columnName+"\"")
+		switch column.Type {
+		case metadata.Document:
+			columnJson, err := json.Marshal(columnValue)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			columnValues = append(columnValues, "'"+string(columnJson)+"'")
+		case metadata.String:
+			columnValues = append(columnValues, fmt.Sprintf("'%v'", columnValue))
+		default:
+			columnValues = append(columnValues, fmt.Sprintf("%v", columnValue))
+		}
+	}
+
+	setClause := ""
+	for i, header := range columnHeaders {
+		setClause += header + "=" + columnValues[i]
+		if i+1 < len(columnHeaders) {
+			setClause += ", "
+		}
+	}
+
+	// TODO: move to some method
+	filterData := args["filter"].(map[string]interface{})
+	filterHeaders := make([]string, 0, len(filterData))
+	filterValues := make([]string, 0, len(filterData))
+
+	for filterName, filterValue := range filterData {
+		column, ok := table.ColumnMap[filterName]
+		if !ok {
+			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", filterName, args["db"], args["table"])
+			return result
+		}
+
+		filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+		switch column.Type {
+		case metadata.Document:
+			columnJson, err := json.Marshal(filterValue)
+			if err != nil {
+				result.Error = err.Error()
+				return result
+			}
+			filterValues = append(filterValues, "'"+string(columnJson)+"'")
+		case metadata.String:
+			filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
+		default:
+			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+		}
+	}
+
+	whereClause := ""
+	for i, header := range filterHeaders {
+		setClause += header + "=" + filterValues[i]
+		if i+1 < len(filterHeaders) {
+			setClause += ", "
+		}
+	}
+	updateQuery := fmt.Sprintf("UPDATE public.%d SET %s WHERE %s", args["table"], setClause, whereClause)
+
+	_, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result

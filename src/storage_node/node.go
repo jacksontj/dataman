@@ -50,13 +50,13 @@ QUERYLOOP:
 					continue
 				}
 
-				// TODO: have a map or some other switch from query -> interface?
-				// This will need to get more complex as we support multiple
-				// storage interfaces
+				// If this is a write operation, do whatever schema validation is necessary
 				switch queryType {
-				case query.Get:
-					results[i] = s.Store.Get(queryArgs)
 				case query.Set:
+					fallthrough
+				case query.Insert:
+					fallthrough
+				case query.Update:
 					// TODO: have a pre-switch check on "write" methods (since all write methods will need this)
 					// or have a validate query method?
 					// On set, if there is a schema on the table-- enforce the schema
@@ -77,7 +77,19 @@ QUERYLOOP:
 							}
 						}
 					}
+				}
+
+				// This will need to get more complex as we support multiple
+				// storage interfaces
+				switch queryType {
+				case query.Get:
+					results[i] = s.Store.Get(queryArgs)
+				case query.Set:
 					results[i] = s.Store.Set(queryArgs)
+				case query.Insert:
+					results[i] = s.Store.Insert(queryArgs)
+				case query.Update:
+					results[i] = s.Store.Update(queryArgs)
 				case query.Delete:
 					results[i] = s.Store.Delete(queryArgs)
 				case query.Filter:
