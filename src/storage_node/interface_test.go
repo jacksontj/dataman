@@ -5,11 +5,13 @@ package storagenode
 import (
 	"encoding/json"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/jacksontj/dataman/src/metadata"
+	"github.com/mitchellh/copystructure"
 )
 
 // TODO: have a list of them? We want to test all of them (or become a library of tests
@@ -554,4 +556,236 @@ func TestColumnDatabase(t *testing.T) {
 
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
 	// Delete
+}
+
+// TODO: more generic?-- maybe break it out to have a struct where the schema and objects can be defined
+// Test Functions for covering a document DB
+func TestFunctionAccess(t *testing.T) {
+	store, err := getStore()
+	if err != nil {
+		t.Fatalf("Unable to create test storagenode")
+	}
+	resetStore(store)
+
+	databaseAdd := &metadata.Database{
+		Name: "test_function_access",
+		Tables: map[string]*metadata.Table{
+			"item": &metadata.Table{
+				Name: "item",
+				Columns: []*metadata.TableColumn{
+					&metadata.TableColumn{
+						Name: "data",
+						Type: metadata.Document,
+					},
+					&metadata.TableColumn{
+						Name: "name",
+						Type: metadata.String,
+					},
+				},
+			},
+		},
+	}
+
+	// Add the database
+	if err := store.AddDatabase(databaseAdd); err != nil {
+		t.Fatalf("Error adding database: %v", err)
+	}
+
+	row := map[string]interface{}{
+		"data": map[string]interface{}{
+			"lastName": "mctester",
+		},
+		"name": "tester",
+	}
+
+	//Insert
+	//	- add a valid row
+	//	- add an invalid row
+	//	- add a conflicting row
+	result := store.Insert(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"columns": row,
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document: %v", result.Error)
+	}
+	insertedId := result.Return[0]["_id"].(int64)
+
+	badRowTmp, _ := copystructure.Copy(row)
+	badRow := badRowTmp.(map[string]interface{})
+	badRow["notacolumn"] = "bar"
+	result = store.Insert(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"columns": badRow,
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when adding an invalid document")
+	}
+
+	conflictingRowTmp, _ := copystructure.Copy(row)
+	conflictingRow := conflictingRowTmp.(map[string]interface{})
+	conflictingRow["_id"] = insertedId
+	result = store.Insert(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"columns": conflictingRow,
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when adding a conflicting row")
+	}
+
+	//Get
+	//	- get an item which doesn't exist
+	//	- get an item which does exist
+	result = store.Get(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "item",
+		"_id":   -1,
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Found a non-existant item")
+	}
+	result = store.Get(map[string]interface{}{
+		"db":    databaseAdd.Name,
+		"table": "item",
+		"_id":   insertedId,
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to find inserted item!")
+	}
+
+	//Update
+	//	- update a non-existant item
+	//	- update to column which doesn't exist
+	//	- update a single column
+	//		-- vaid type
+	//		-- invalid type
+	result = store.Update(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": -1},
+		"columns": map[string]interface{}{"name": "bar"},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Updated %d rows for a non-existant row?", len(result.Return))
+	}
+
+	result = store.Update(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": badRow,
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when updating a row with invalid columns")
+	}
+
+	invalidColumnRowTmp, _ := copystructure.Copy(row)
+	invalidColumnRow := invalidColumnRowTmp.(map[string]interface{})
+	invalidColumnRow["name"] = 100
+	result = store.Update(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": invalidColumnRow,
+	})
+	// TODO: need to do actual type checking down in the storageinterface
+	if result.Error == "" && false {
+		t.Fatalf("No error when updating a row with invalid column type: %v", result)
+	}
+
+	result = store.Update(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": map[string]interface{}{"name": "tester2"},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Update found nothing: %v", result)
+	}
+	// Check that "data" is untouched, but "name" is updated
+	if result.Return[0]["name"] != "tester2" {
+		t.Fatalf("Update didn't update column name! expected=%v actual=%v", "tester2", result.Return[0]["name"])
+	}
+	if !reflect.DeepEqual(result.Return[0]["data"], row["data"]) {
+		t.Fatalf("Update changed value of data.lastName! expected=%v actual=%v", result.Return[0]["data"].(map[string]string)["lastName"], row["data"].(map[string]string)["lastName"])
+	}
+
+	// Set
+	//	- set a row which doesn't exist
+	//	- set a single column (make sure it clears out all others)
+	//	- have set include columns which don't exist
+	//	- set all columns of a row
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": -1},
+		"columns": map[string]interface{}{"name": "bar"},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
+	}
+
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": badRow,
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when set-ing a row with invalid columns")
+	}
+
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": invalidColumnRow,
+	})
+	// TODO: need to do actual type checking down in the storageinterface
+	if result.Error == "" && false {
+		t.Fatalf("No error when set-ing a row with invalid column type: %v", result)
+	}
+
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": map[string]interface{}{"name": "tester2"},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Set found nothing: %v", result)
+	}
+	// Check that "data" is untouched, but "name" is updated
+	if result.Return[0]["name"] != "tester2" {
+		t.Fatalf("Set didn't update column name! expected=%v actual=%v", "tester2", result.Return[0]["name"])
+	}
+	// TODO: need to have the storage clear out columns which aren't involved in "set"
+	if !reflect.DeepEqual(result.Return[0]["data"], nil) && false {
+		t.Fatalf("Set changed value of data.lastName! expected=%v actual=%v", result.Return[0]["data"], row["data"])
+	}
+
+	//Delete
+	//	- delete an item which doesn't exist
+	//	- an item that does exist
+	result = store.Delete(map[string]interface{}{
+		"db":     databaseAdd.Name,
+		"table":  "item",
+		"filter": map[string]interface{}{"_id": -1},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
+	}
+
+	result = store.Delete(map[string]interface{}{
+		"db":     databaseAdd.Name,
+		"table":  "item",
+		"filter": map[string]interface{}{"_id": insertedId},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to delete a row?! %v", result)
+	}
+
 }

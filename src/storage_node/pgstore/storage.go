@@ -871,15 +871,17 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	rows, err := s.doQuery(s.dbMap[args["db"].(string)], fmt.Sprintf("SELECT * FROM public.%s WHERE _id=%v", args["table"], args["_id"]))
+
+	selectQuery := fmt.Sprintf("SELECT * FROM public.%s WHERE _id=%v", args["table"], args["_id"])
+	var err error
+	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], selectQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
+	s.normalizeResult(args, result)
 
 	// TODO: error if there is more than one result
-
-	result.Return = rows
 	return result
 }
 
@@ -941,6 +943,11 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 	filterValues := make([]string, 0, len(filterData))
 
 	for filterName, filterValue := range filterData {
+		if strings.HasPrefix(filterName, "_") {
+			filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+			continue
+		}
 		column, ok := table.ColumnMap[filterName]
 		if !ok {
 			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", filterName, args["db"], args["table"])
@@ -965,14 +972,15 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 
 	whereClause := ""
 	for i, header := range filterHeaders {
-		setClause += header + "=" + filterValues[i]
+		whereClause += header + "=" + filterValues[i]
 		if i+1 < len(filterHeaders) {
-			setClause += ", "
+			whereClause += ", "
 		}
 	}
-	updateQuery := fmt.Sprintf("UPDATE public.%d SET %s WHERE %s", args["table"], setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE public.%s SET %s WHERE %s RETURNING *", args["table"], setClause, whereClause)
+	fmt.Println(updateQuery)
 
-	_, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
+	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -1025,8 +1033,8 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	setQuery := fmt.Sprintf("INSERT INTO public.%s (%s) VALUES (%s)", args["table"], strings.Join(columnHeaders, ","), strings.Join(columnValues, ","))
-	_, err = s.doQuery(s.dbMap[args["db"].(string)], setQuery)
+	insertQuery := fmt.Sprintf("INSERT INTO public.%s (%s) VALUES (%s) RETURNING *", args["table"], strings.Join(columnHeaders, ","), strings.Join(columnValues, ","))
+	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], insertQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -1093,6 +1101,11 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	filterValues := make([]string, 0, len(filterData))
 
 	for filterName, filterValue := range filterData {
+		if strings.HasPrefix(filterName, "_") {
+			filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+			continue
+		}
 		column, ok := table.ColumnMap[filterName]
 		if !ok {
 			result.Error = fmt.Sprintf("Column %s doesn't exist in %v.%v", filterName, args["db"], args["table"])
@@ -1117,18 +1130,19 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 
 	whereClause := ""
 	for i, header := range filterHeaders {
-		setClause += header + "=" + filterValues[i]
+		whereClause += header + "=" + filterValues[i]
 		if i+1 < len(filterHeaders) {
-			setClause += ", "
+			whereClause += ", "
 		}
 	}
-	updateQuery := fmt.Sprintf("UPDATE public.%d SET %s WHERE %s", args["table"], setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE public.%s SET %s WHERE %s RETURNING *", args["table"], setClause, whereClause)
 
-	_, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
+	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
+	s.normalizeResult(args, result)
 
 	// TODO: add metadata back to the result
 	return result
@@ -1145,7 +1159,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 	}
 
 	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE ", args["table"])
-	columnData := args["columns"].(map[string]interface{})
+	columnData := args["filter"].(map[string]interface{})
 	meta := s.GetMeta()
 	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
 	if err != nil {
@@ -1174,6 +1188,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 			sqlQuery += fmt.Sprintf(" %s=%v", columnName, columnValue)
 		}
 	}
+	sqlQuery += " RETURNING *"
 
 	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
 	if err != nil {
@@ -1182,6 +1197,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 	}
 
 	result.Return = rows
+	s.normalizeResult(args, result)
 	return result
 
 }
@@ -1243,14 +1259,22 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		return result
 	}
 
+	result.Return = rows
+	s.normalizeResult(args, result)
+
+	return result
+}
+
+func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
+
 	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
 	meta := s.GetMeta()
 	table, err := meta.GetTable(args["db"].(string), args["table"].(string))
 	if err != nil {
 		result.Error = err.Error()
-		return result
+		return
 	}
-	for _, row := range rows {
+	for _, row := range result.Return {
 		for k, v := range row {
 			if column, ok := table.ColumnMap[k]; ok {
 				switch column.Type {
@@ -1264,7 +1288,4 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			}
 		}
 	}
-
-	result.Return = rows
-	return result
 }
