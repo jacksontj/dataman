@@ -714,57 +714,46 @@ func TestFunctionAccess(t *testing.T) {
 	}
 
 	// Set
-	//	- set a row which doesn't exist
-	//	- set a single column (make sure it clears out all others)
-	//	- have set include columns which don't exist
-	//	- set all columns of a row
+	//  - update a row (does/doesn't exist)
+	//  - create a row (valid, invalid)
+	// Update something which doesn't exist
 	result = store.Set(map[string]interface{}{
 		"db":      databaseAdd.Name,
 		"table":   "item",
-		"filter":  map[string]interface{}{"_id": -1},
-		"columns": map[string]interface{}{"name": "bar"},
+		"columns": map[string]interface{}{"notthere": -1, "name": "bar"},
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
 	}
 
+	// Update something which *does* exist
 	result = store.Set(map[string]interface{}{
 		"db":      databaseAdd.Name,
 		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
+		"columns": map[string]interface{}{"_id": insertedId, "name": "bar"},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to set row for an existing row: %v", result)
+	}
+
+	// create a valid row
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
+		"columns": map[string]interface{}{"name": "setname"},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
+	}
+
+	// create a invalid row
+	result = store.Set(map[string]interface{}{
+		"db":      databaseAdd.Name,
+		"table":   "item",
 		"columns": badRow,
 	})
 	if result.Error == "" {
 		t.Fatalf("No error when set-ing a row with invalid columns")
-	}
-
-	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
-		"columns": invalidColumnRow,
-	})
-	// TODO: need to do actual type checking down in the storageinterface
-	if result.Error == "" && false {
-		t.Fatalf("No error when set-ing a row with invalid column type: %v", result)
-	}
-
-	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
-		"columns": map[string]interface{}{"name": "tester2"},
-	})
-	if len(result.Return) != 1 {
-		t.Fatalf("Set found nothing: %v", result)
-	}
-	// Check that "data" is untouched, but "name" is updated
-	if result.Return[0]["name"] != "tester2" {
-		t.Fatalf("Set didn't update column name! expected=%v actual=%v", "tester2", result.Return[0]["name"])
-	}
-	// TODO: need to have the storage clear out columns which aren't involved in "set"
-	if !reflect.DeepEqual(result.Return[0]["data"], nil) && false {
-		t.Fatalf("Set changed value of data.lastName! expected=%v actual=%v", result.Return[0]["data"], row["data"])
 	}
 
 	//Delete
