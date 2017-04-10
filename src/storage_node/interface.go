@@ -38,8 +38,8 @@ type StorageInterface interface {
 	// for now we'll just have one, but eventually we could support "TransactionalStorageNode" etc.
 	// TODO: more specific types for each method
 	Get(query.QueryArgs) *query.Result
-    // TODO: pull up into the actual storage node itself, the implementation here
-    // is simply switching between Update/Insert
+	// TODO: pull up into the actual storage node itself, the implementation here
+	// is simply switching between Update/Insert
 	Set(query.QueryArgs) *query.Result
 	Insert(query.QueryArgs) *query.Result
 	Update(query.QueryArgs) *query.Result

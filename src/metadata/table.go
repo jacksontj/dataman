@@ -38,14 +38,14 @@ const (
 )
 
 type TableColumn struct {
-	Name string
-	Type ColumnType
+	Name string     `json:"name"`
+	Type ColumnType `json:"type"`
 	// only to be filled out if ColumnType is Document
 	Schema *Schema `json:"schema,omitempty"`
 	Order  int     `json:"-"`
 
 	// Various configuration options
-	NotNull bool `json:"not_null"` // Should we allow NULL fields
+	NotNull bool `json:"not_null,omitempty"` // Should we allow NULL fields
 }
 
 type Schema struct {
