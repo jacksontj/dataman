@@ -1,0 +1,63 @@
+{
+    "schema": {
+	    "name": "docdb",
+	    "tables": {
+		    "person": {
+			    "name": "person",
+			    "columns": [{
+				    "name": "data",
+				    "type": "document",
+				    "schema": {
+					    "name": "person",
+					    "version": 1,
+					    "schema": {
+						    "properties": {
+							    "firstName": {
+								    "type": "string"
+							    }
+						    },
+						    "required": ["firstName"],
+						    "title": "Person",
+						    "type": "object"
+					    }
+				    }
+			    }]
+		    }
+	    }
+    },
+    "queries": [
+        {
+            "query": {
+                "delete": {
+                    "db": "docdb",
+                    "table": "notable",
+                    "filter": {
+                        "_id": 100
+                    }
+                }
+            },
+            "result": {
+                "error": true
+            }
+        },
+        {
+            "query": {
+		        "insert": {
+			        "db": "docdb",
+			        "table": "person",
+                    "columns": {
+			            "data": {
+				            "firstName": "tester"
+			            }
+		            }
+		        }
+	        },
+	        "result": {
+	            "num_results": 1,
+	            "returns": [
+	                {"data": {"firstName": "tester"}}
+	            ]
+	        }
+        }
+    ]
+}
