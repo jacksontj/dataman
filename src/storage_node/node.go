@@ -41,7 +41,7 @@ QUERYLOOP:
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
-				table, err := meta.GetTable(queryArgs["db"].(string), queryArgs["table"].(string))
+				collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["collection"].(string))
 				// Verify that the table is within our domain
 				if err != nil {
 					results[i] = &query.Result{
@@ -60,9 +60,9 @@ QUERYLOOP:
 					// TODO: have a pre-switch check on "write" methods (since all write methods will need this)
 					// or have a validate query method?
 					// On set, if there is a schema on the table-- enforce the schema
-					for name, data := range queryArgs["columns"].(map[string]interface{}) {
-						if column, ok := table.ColumnMap[name]; ok && column.Schema != nil {
-							result, err := column.Schema.Gschema.Validate(gojsonschema.NewGoLoader(data))
+					for name, data := range queryArgs["record"].(map[string]interface{}) {
+						if field, ok := collection.FieldMap[name]; ok && field.Schema != nil {
+							result, err := field.Schema.Gschema.Validate(gojsonschema.NewGoLoader(data))
 							if err != nil {
 								results[i] = &query.Result{Error: err.Error()}
 								continue QUERYLOOP

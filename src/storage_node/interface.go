@@ -18,14 +18,14 @@ type StorageInterface interface {
 	AddDatabase(db *metadata.Database) error
 	RemoveDatabase(dbname string) error
 
-	AddTable(dbname string, table *metadata.Table) error
-	UpdateTable(dbname string, table *metadata.Table) error
-	RemoveTable(dbname string, tablename string) error
+	AddCollection(dbname string, collection *metadata.Collection) error
+	UpdateCollection(dbname string, collection *metadata.Collection) error
+	RemoveCollection(dbname string, collectionname string) error
 
 	// TODO: move index and schema into a separate interface, since they are only
 	// required for document stores (the rest are for all-- including k/v stores)
-	AddIndex(dbname, tablename string, index *metadata.TableIndex) error
-	RemoveIndex(dbname, tablename, indexname string) error
+	AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error
+	RemoveIndex(dbname, collectionname, indexname string) error
 
 	// TODO: change this to a cache of the router schema?
 	AddSchema(schema *metadata.Schema) error

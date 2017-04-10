@@ -1,10 +1,10 @@
 {
     "schema": {
 	    "name": "docdb",
-	    "tables": {
+	    "collections": {
 		    "person": {
 			    "name": "person",
-			    "columns": [{
+			    "fields": [{
 				    "name": "data",
 				    "type": "document",
 				    "schema": {
@@ -30,7 +30,7 @@
             "query": {
                 "delete": {
                     "db": "docdb",
-                    "table": "notable",
+                    "collection": "not_a_collection",
                     "filter": {
                         "_id": 100
                     }
@@ -44,8 +44,8 @@
             "query": {
 		        "insert": {
 			        "db": "docdb",
-			        "table": "person",
-                    "columns": {
+			        "collection": "person",
+                    "record": {
 			            "data": {
 				            "firstName": "tester"
 			            }

@@ -73,7 +73,7 @@ type StoreTestQuery struct {
 func TestDBSimple(t *testing.T) {
 	node, err := getNode()
 	if err != nil {
-		t.Fatalf("Unable to create test store")
+		t.Fatalf("Unable to create test store: %v", err)
 	}
 	resetStore(node.Store)
 

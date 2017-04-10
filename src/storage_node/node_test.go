@@ -47,11 +47,11 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	// document schema tests
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "data",
 						Type: metadata.Document,
 						Schema: &metadata.Schema{
@@ -87,8 +87,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	{
 		"insert": {
 			"db": "docdb",
-			"table": "person",
-            "columns": {
+			"collection": "person",
+            "record": {
 			    "data": {
 				    "lastName": "mctester"
 			    }
@@ -106,8 +106,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	{
         "insert": {
             "db": "docdb",
-            "table": "person",
-            "columns": {
+            "collection": "person",
+            "record": {
                 "data": {
                         "firstName": "tester"
                 }
@@ -126,8 +126,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	{
         "insert": {
             "db": "docdb",
-            "table": "person",
-            "columns": {
+            "collection": "person",
+            "record": {
                 "data": {
                         "firstName": "otherguy"
                 }
@@ -146,8 +146,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
     {
         "insert": {
             "db": "docdb",
-            "table": "person",
-            "columns": {
+            "collection": "person",
+            "record": {
                 "data": {
                     "firstName": "tester",
 	                "lastName": "foobar"
@@ -167,8 +167,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
     {
         "filter": {
             "db": "docdb",
-            "table": "person",
-            "columns": {
+            "collection": "person",
+            "record": {
                 "data": {
                     "firstName": "tester"
                 }
@@ -182,8 +182,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	if result.Error != "" {
 		t.Fatalf("Error when doing a valid filter(): %v", result.Error)
 	}
-	if len(result.Return) != 2 {
-		t.Fatalf("Returns not what we expect, expected 2 got %d: %v", len(result.Return), result.Return)
+	if len(result.Return) != 3 {
+		t.Fatalf("Returns not what we expect, expected 3 got %d: %v", len(result.Return), result.Return)
 	}
 
 	// TODO: we need to get back the IDs of the documents to call delete-- otherwise it is a filter delete
@@ -192,7 +192,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
     {
         "delete": {
             "db": "docdb",
-            "table": "person",
+            "collection": "person",
             "filter": {
                 "_id": %v
             }
@@ -211,8 +211,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
     {
         "filter": {
             "db": "docdb",
-            "table": "person",
-            "columns": {
+            "collection": "person",
+            "record": {
                 "data": {
                     "firstName": "tester"
                 }
@@ -226,8 +226,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	if result.Error != "" {
 		t.Fatalf("Error when doing a valid filter(): %v", result.Error)
 	}
-	if len(result.Return) != 1 {
-		t.Fatalf("Returns not what we expect, expected 1 got %d: %v", len(result.Return), result.Return)
+	if len(result.Return) != 2 {
+		t.Fatalf("Returns not what we expect, expected 2 got %d: %v", len(result.Return), result.Return)
 	}
 
 }

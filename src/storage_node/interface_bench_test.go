@@ -18,11 +18,11 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "data",
 						Type: metadata.Document,
 						Schema: &metadata.Schema{
@@ -51,11 +51,11 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 	}
 
 	// Add index
-	var tableIndex metadata.TableIndex
+	var tableIndex metadata.CollectionIndex
 	indexBytes := []byte(`
 	{
 		"name": "simple",
-		"columns": [
+		"fields": [
 			"data.firstName"
 		]
 	}
@@ -67,9 +67,9 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 
 	// Insert single item
 	result := store.Set(map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -81,7 +81,7 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 
 	b.Run("Get", func(b *testing.B) { benchDocument_Get(b, store) })
 	b.Run("Set", func(b *testing.B) { benchDocument_Set(b, store) })
-	b.Run("Delete", func(b *testing.B) { benchDocument_Delete(b, store) })
+	//b.Run("Delete", func(b *testing.B) { benchDocument_Delete(b, store) })
 	b.Run("Filter", func(b *testing.B) { benchDocument_Filter(b, store) })
 
 }
@@ -89,9 +89,9 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 func benchDocument_Get(b *testing.B, store StorageInterface) {
 	// Filter
 	result := store.Filter(map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -107,9 +107,9 @@ func benchDocument_Get(b *testing.B, store StorageInterface) {
 	}
 
 	query := map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"_id":   id,
+		"db":         "docdb",
+		"collection": "person",
+		"_id":        id,
 	}
 
 	// Initialization done, lets do some benchmarking
@@ -122,9 +122,9 @@ func benchDocument_Get(b *testing.B, store StorageInterface) {
 func benchDocument_Set(b *testing.B, store StorageInterface) {
 	// Insert single item
 	query := map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -133,17 +133,18 @@ func benchDocument_Set(b *testing.B, store StorageInterface) {
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
+		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
 		store.Set(query)
 	}
 }
 
+// TODO: change to delete by "_id"
 func benchDocument_Delete(b *testing.B, store StorageInterface) {
 	// Insert single item
 	query := map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -151,14 +152,14 @@ func benchDocument_Delete(b *testing.B, store StorageInterface) {
 	}
 	// Insert N items
 	for n := 0; n < b.N; n++ {
-		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
+		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
 		store.Set(query)
 	}
 
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
+		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
 		store.Delete(query)
 	}
 }
@@ -166,9 +167,9 @@ func benchDocument_Delete(b *testing.B, store StorageInterface) {
 func benchDocument_Filter(b *testing.B, store StorageInterface) {
 	// Insert single item
 	query := map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -177,13 +178,13 @@ func benchDocument_Filter(b *testing.B, store StorageInterface) {
 	// Insert N items
 	// TODO: vary the number of items we are getting in the filter?
 	for n := 0; n < 10; n++ {
-		query["columns"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
+		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
 		store.Set(query)
 	}
 
 	query = map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
+		"db":         "docdb",
+		"collection": "person",
 	}
 
 	// Initialization done, lets do some benchmarking
@@ -205,11 +206,11 @@ func TestDocumentDatabase(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Columns: []*metadata.CollectionColumn{
+					&metadata.CollectionColumn{
 						Name: "data",
 						Type: metadata.Document,
 						Schema: &metadata.Schema{
@@ -238,11 +239,11 @@ func TestDocumentDatabase(t *testing.T) {
 	}
 
 	// Add index
-	var tableIndex metadata.TableIndex
+	var tableIndex metadata.CollectionIndex
 	indexBytes := []byte(`
 	{
 		"name": "simple",
-		"columns": [
+		"record": [
 			"data.firstName"
 		]
 	}
@@ -255,7 +256,7 @@ func TestDocumentDatabase(t *testing.T) {
 	indexBytes = []byte(`
 	{
 		"name": "complex",
-		"columns": [
+		"record": [
 			"data.firstName",
 			"data.lastName"
 		]
@@ -277,8 +278,8 @@ func TestDocumentDatabase(t *testing.T) {
 	// Add a valid document
 	result := store.Set(map[string]interface{}{
 		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -291,8 +292,8 @@ func TestDocumentDatabase(t *testing.T) {
 	// Add a valid document
 	result = store.Set(map[string]interface{}{
 		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 				"lastName":  "foobar",
@@ -306,8 +307,8 @@ func TestDocumentDatabase(t *testing.T) {
 	// Filter
 	result = store.Filter(map[string]interface{}{
 		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -350,11 +351,11 @@ func TestColumnDatabase(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "columndb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Columns: []*metadata.CollectionColumn{
+					&metadata.CollectionColumn{
 						Name: "firstName",
 						// TODO: non-null per column
 						Type:    metadata.String,
@@ -364,22 +365,22 @@ func TestColumnDatabase(t *testing.T) {
 			},
 		},
 	}
-	tableUpdate := &metadata.Table{
+	tableUpdate := &metadata.Collection{
 		Name: "person",
-		Columns: []*metadata.TableColumn{
-			&metadata.TableColumn{
+		Columns: []*metadata.CollectionColumn{
+			&metadata.CollectionColumn{
 				Name: "firstName",
 				// TODO: non-null per column
 				Type: metadata.String,
 			},
-			&metadata.TableColumn{
+			&metadata.CollectionColumn{
 				Name: "lastName",
 				// TODO: non-null per column
 				Type: metadata.String,
 			},
 		},
-		Indexes: map[string]*metadata.TableIndex{
-			"simple": &metadata.TableIndex{
+		Indexes: map[string]*metadata.CollectionIndex{
+			"simple": &metadata.CollectionIndex{
 				Name:    "simple",
 				Columns: []string{"firstName"},
 			},
@@ -392,11 +393,11 @@ func TestColumnDatabase(t *testing.T) {
 	}
 
 	// Add index
-	var tableIndex metadata.TableIndex
+	var tableIndex metadata.CollectionIndex
 	indexBytes := []byte(`
 	{
 		"name": "complex",
-		"columns": [
+		"record": [
 			"firstName",
 			"lastName"
 		]
@@ -429,8 +430,8 @@ func TestColumnDatabase(t *testing.T) {
 	// Add a valid document
 	result := store.Set(map[string]interface{}{
 		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 		},
 	})
@@ -441,8 +442,8 @@ func TestColumnDatabase(t *testing.T) {
 	// Add an invalid document
 	result = store.Set(map[string]interface{}{
 		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"lastName": "mctester",
 		},
 	})
@@ -453,8 +454,8 @@ func TestColumnDatabase(t *testing.T) {
 	// Add a valid document
 	result = store.Set(map[string]interface{}{
 		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 			"lastName":  "foobar",
 		},
@@ -466,8 +467,8 @@ func TestColumnDatabase(t *testing.T) {
 	// Filter
 	result = store.Filter(map[string]interface{}{
 		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 		},
 	})

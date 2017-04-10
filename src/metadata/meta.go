@@ -21,12 +21,12 @@ func (m *Meta) ListDatabases() []string {
 	return dbnames
 }
 
-func (m *Meta) GetTable(dbName, tableName string) (*Table, error) {
+func (m *Meta) GetCollection(dbName, collectionName string) (*Collection, error) {
 	if database, ok := m.Databases[dbName]; ok {
-		if table, ok := database.Tables[tableName]; ok {
-			return table, nil
+		if collection, ok := database.Collections[collectionName]; ok {
+			return collection, nil
 		} else {
-			return nil, fmt.Errorf("Unknown table in %s: %s", dbName, tableName)
+			return nil, fmt.Errorf("Unknown table in %s: %s", dbName, collectionName)
 		}
 	} else {
 		return nil, fmt.Errorf("Unknown database %s", dbName)

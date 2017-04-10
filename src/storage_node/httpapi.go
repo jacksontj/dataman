@@ -38,13 +38,13 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// DB instance
 	router.GET("/v1/database/:dbname", h.viewDatabase)
-	router.POST("/v1/database/:dbname", h.addTable)
+	router.POST("/v1/database/:dbname", h.addCollection)
 	router.DELETE("/v1/database/:dbname", h.removeDatabase)
 
-	// Tables
-	router.GET("/v1/database/:dbname/:tablename", h.viewTable)
-	router.PUT("/v1/database/:dbname/:tablename", h.updateTable)
-	router.DELETE("/v1/database/:dbname/:tablename", h.removeTable)
+	// Collections
+	router.GET("/v1/database/:dbname/:collectionname", h.viewCollection)
+	router.PUT("/v1/database/:dbname/:collectionname", h.updateCollection)
+	router.DELETE("/v1/database/:dbname/:collectionname", h.removeCollection)
 
 	// Schema
 	router.GET("/v1/schema", h.listSchema)
@@ -128,15 +128,15 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 }
 
 // Add database that we have in the metadata store
-func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Store.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
-		var table metadata.Table
-		if err := json.Unmarshal(bytes, &table); err == nil {
-			if err := h.storageNode.Store.AddTable(db.Name, &table); err == nil {
+		var collection metadata.Collection
+		if err := json.Unmarshal(bytes, &collection); err == nil {
+			if err := h.storageNode.Store.AddCollection(db.Name, &collection); err == nil {
 				// TODO: error if we can't reload?
 				h.storageNode.Store.RefreshMeta()
 			} else {
@@ -156,12 +156,12 @@ func (h *HTTPApi) addTable(w http.ResponseWriter, r *http.Request, ps httprouter
 }
 
 // Show a single DB
-func (h *HTTPApi) viewTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Store.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
-		if table, ok := db.Tables[ps.ByName("tablename")]; ok {
+		if collection, ok := db.Collections[ps.ByName("collectionname")]; ok {
 			// Now we need to return the results
-			if bytes, err := json.Marshal(table); err == nil {
+			if bytes, err := json.Marshal(collection); err == nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.Write(bytes)
 			} else {
@@ -180,15 +180,15 @@ func (h *HTTPApi) viewTable(w http.ResponseWriter, r *http.Request, ps httproute
 }
 
 // Add database that we have in the metadata store
-func (h *HTTPApi) updateTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Store.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
-		var table metadata.Table
-		if err := json.Unmarshal(bytes, &table); err == nil {
-			if err := h.storageNode.Store.UpdateTable(db.Name, &table); err == nil {
+		var collection metadata.Collection
+		if err := json.Unmarshal(bytes, &collection); err == nil {
+			if err := h.storageNode.Store.UpdateCollection(db.Name, &collection); err == nil {
 				// TODO: error if we can't reload?
 				h.storageNode.Store.RefreshMeta()
 			} else {
@@ -208,7 +208,7 @@ func (h *HTTPApi) updateTable(w http.ResponseWriter, r *http.Request, ps httprou
 }
 
 // Add database that we have in the metadata store
-func (h *HTTPApi) removeTable(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
 	meta := h.storageNode.Store.GetMeta()
 
@@ -216,7 +216,7 @@ func (h *HTTPApi) removeTable(w http.ResponseWriter, r *http.Request, ps httprou
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
 	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Store.RemoveTable(dbname, ps.ByName("tablename")); err == nil {
+		if err := h.storageNode.Store.RemoveCollection(dbname, ps.ByName("collectionname")); err == nil {
 			// TODO: error if we can't reload?
 			h.storageNode.Store.RefreshMeta()
 		} else {

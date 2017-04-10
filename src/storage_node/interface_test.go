@@ -170,11 +170,11 @@ func TestDatabase(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "testdb",
-		Tables: map[string]*metadata.Table{
-			"table1": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"table1": &metadata.Collection{
 				Name: "table1",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "data",
 						Type: metadata.Document,
 					},
@@ -182,27 +182,27 @@ func TestDatabase(t *testing.T) {
 			},
 		},
 	}
-	tableAdd := &metadata.Table{
+	collectionAdd := &metadata.Collection{
 		Name: "table2",
-		Columns: []*metadata.TableColumn{
-			&metadata.TableColumn{
+		Fields: []*metadata.Field{
+			&metadata.Field{
 				Name: "data",
 				Type: metadata.Document,
 			},
 		},
 	}
-	tableUpdate := &metadata.Table{
+	collectionUpdate := &metadata.Collection{
 		Name: "table2",
-		Columns: []*metadata.TableColumn{
-			&metadata.TableColumn{
+		Fields: []*metadata.Field{
+			&metadata.Field{
 				Name: "data",
 				Type: metadata.Document,
 			},
 		},
-		Indexes: map[string]*metadata.TableIndex{
-			"data.foo": &metadata.TableIndex{
-				Name:    "data.foo",
-				Columns: []string{"data.foo"},
+		Indexes: map[string]*metadata.CollectionIndex{
+			"data.foo": &metadata.CollectionIndex{
+				Name:   "data.foo",
+				Fields: []string{"data.foo"},
 			},
 		},
 	}
@@ -224,39 +224,39 @@ func TestDatabase(t *testing.T) {
 		t.Fatalf("Store allowed me to add a database which already exists: %v", err)
 	}
 
-	// Update a table which doesnt exist
-	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err == nil {
-		t.Fatalf("Store allowed me to update a table which doesn't exist!")
+	// Update a collection which doesnt exist
+	if err := store.UpdateCollection(databaseAdd.Name, collectionUpdate); err == nil {
+		t.Fatalf("Store allowed me to update a collection which doesn't exist!")
 	}
 
-	// Add a table
-	if err := store.AddTable(databaseAdd.Name, tableAdd); err != nil {
-		t.Fatalf("Error adding table to existing DB: %v", err)
+	// Add a collection
+	if err := store.AddCollection(databaseAdd.Name, collectionAdd); err != nil {
+		t.Fatalf("Error adding collection to existing DB: %v", err)
 	}
 	store.RefreshMeta()
 	meta = store.GetMeta()
-	if len(meta.Databases[databaseAdd.Name].ListTables()) != 2 {
-		t.Fatalf("Error adding table: %v", err)
+	if len(meta.Databases[databaseAdd.Name].ListCollections()) != 2 {
+		t.Fatalf("Error adding collection: %v", err)
 	}
 
-	// Update a table which does exist
-	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err != nil {
-		t.Fatalf("Error updating table: %v", err)
+	// Update a collection which does exist
+	if err := store.UpdateCollection(databaseAdd.Name, collectionUpdate); err != nil {
+		t.Fatalf("Error updating collection: %v", err)
 	}
 
-	// Attempt to add a table that already exists
-	if err := store.AddTable(databaseAdd.Name, tableAdd); err == nil {
-		t.Fatalf("Error added table to existing DB which already exists")
+	// Attempt to add a collection that already exists
+	if err := store.AddCollection(databaseAdd.Name, collectionAdd); err == nil {
+		t.Fatalf("Error added collection to existing DB which already exists")
 	}
 
-	// Remove a table
-	if err := store.RemoveTable(databaseAdd.Name, tableAdd.Name); err != nil {
-		t.Fatalf("Unable to remove table: %v", err)
+	// Remove a collection
+	if err := store.RemoveCollection(databaseAdd.Name, collectionAdd.Name); err != nil {
+		t.Fatalf("Unable to remove collection: %v", err)
 	}
 	store.RefreshMeta()
 	meta = store.GetMeta()
-	if len(meta.Databases[databaseAdd.Name].ListTables()) != 1 {
-		t.Fatalf("Error removing table: %v", err)
+	if len(meta.Databases[databaseAdd.Name].ListCollections()) != 1 {
+		t.Fatalf("Error removing collection: %v", err)
 	}
 
 	// Remove a database
@@ -281,11 +281,11 @@ func TestDocumentDatabase(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "docdb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "data",
 						Type: metadata.Document,
 						Schema: &metadata.Schema{
@@ -314,31 +314,31 @@ func TestDocumentDatabase(t *testing.T) {
 	}
 
 	// Add index
-	var tableIndex metadata.TableIndex
+	var collectionIndex metadata.CollectionIndex
 	indexBytes := []byte(`
 	{
 		"name": "simple",
-		"columns": [
+		"fields": [
 			"data.firstName"
 		]
 	}
 	`)
-	json.Unmarshal(indexBytes, &tableIndex)
-	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
+	json.Unmarshal(indexBytes, &collectionIndex)
+	if err := store.AddIndex("docdb", "person", &collectionIndex); err != nil {
 		t.Fatalf("Unable to add simple index: %v", err)
 	}
 
 	indexBytes = []byte(`
 	{
 		"name": "complex",
-		"columns": [
+		"fields": [
 			"data.firstName",
 			"data.lastName"
 		]
 	}
 	`)
-	json.Unmarshal(indexBytes, &tableIndex)
-	if err := store.AddIndex("docdb", "person", &tableIndex); err != nil {
+	json.Unmarshal(indexBytes, &collectionIndex)
+	if err := store.AddIndex("docdb", "person", &collectionIndex); err != nil {
 		t.Fatalf("Unable to add simple index: %v", err)
 	}
 
@@ -352,9 +352,9 @@ func TestDocumentDatabase(t *testing.T) {
 
 	// Add a valid document
 	result := store.Insert(map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -366,9 +366,9 @@ func TestDocumentDatabase(t *testing.T) {
 
 	// Add a valid document
 	result = store.Insert(map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 				"lastName":  "foobar",
@@ -381,9 +381,9 @@ func TestDocumentDatabase(t *testing.T) {
 
 	// Filter
 	result = store.Filter(map[string]interface{}{
-		"db":    "docdb",
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         "docdb",
+		"collection": "person",
+		"record": map[string]interface{}{
 			"data": map[string]interface{}{
 				"firstName": "tester",
 			},
@@ -426,11 +426,11 @@ func TestColumnDatabase(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "columndb",
-		Tables: map[string]*metadata.Table{
-			"person": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"person": &metadata.Collection{
 				Name: "person",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "firstName",
 						// TODO: non-null per column
 						Type:    metadata.String,
@@ -440,24 +440,24 @@ func TestColumnDatabase(t *testing.T) {
 			},
 		},
 	}
-	tableUpdate := &metadata.Table{
+	collectionUpdate := &metadata.Collection{
 		Name: "person",
-		Columns: []*metadata.TableColumn{
-			&metadata.TableColumn{
+		Fields: []*metadata.Field{
+			&metadata.Field{
 				Name: "firstName",
 				// TODO: non-null per column
 				Type: metadata.String,
 			},
-			&metadata.TableColumn{
+			&metadata.Field{
 				Name: "lastName",
 				// TODO: non-null per column
 				Type: metadata.String,
 			},
 		},
-		Indexes: map[string]*metadata.TableIndex{
-			"simple": &metadata.TableIndex{
-				Name:    "simple",
-				Columns: []string{"firstName"},
+		Indexes: map[string]*metadata.CollectionIndex{
+			"simple": &metadata.CollectionIndex{
+				Name:   "simple",
+				Fields: []string{"firstName"},
 			},
 		},
 	}
@@ -468,29 +468,29 @@ func TestColumnDatabase(t *testing.T) {
 	}
 
 	// Add index
-	var tableIndex metadata.TableIndex
+	var collectionIndex metadata.CollectionIndex
 	indexBytes := []byte(`
 	{
 		"name": "complex",
-		"columns": [
+		"fields": [
 			"firstName",
 			"lastName"
 		]
 	}
 	`)
-	json.Unmarshal(indexBytes, &tableIndex)
-	if err := store.AddIndex(databaseAdd.Name, "person", &tableIndex); err == nil {
+	json.Unmarshal(indexBytes, &collectionIndex)
+	if err := store.AddIndex(databaseAdd.Name, "person", &collectionIndex); err == nil {
 		t.Fatalf("No error when adding an index to a column which doesn't exist!")
 	}
 
 	// Add the missing column
-	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err != nil {
-		t.Fatalf("Error updating table: %v", err)
+	if err := store.UpdateCollection(databaseAdd.Name, collectionUpdate); err != nil {
+		t.Fatalf("Error updating collection: %v", err)
 	}
 	// TODO: move inside the store itself
 	store.RefreshMeta()
 
-	if err := store.AddIndex(databaseAdd.Name, "person", &tableIndex); err != nil {
+	if err := store.AddIndex(databaseAdd.Name, "person", &collectionIndex); err != nil {
 		t.Fatalf("Error when adding index: %v", err)
 	}
 
@@ -504,9 +504,9 @@ func TestColumnDatabase(t *testing.T) {
 
 	// Add a valid document
 	result := store.Insert(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         databaseAdd.Name,
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 		},
 	})
@@ -516,9 +516,9 @@ func TestColumnDatabase(t *testing.T) {
 
 	// Add an invalid document
 	result = store.Insert(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         databaseAdd.Name,
+		"collection": "person",
+		"record": map[string]interface{}{
 			"lastName": "mctester",
 		},
 	})
@@ -528,9 +528,9 @@ func TestColumnDatabase(t *testing.T) {
 
 	// Add a valid document
 	result = store.Insert(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         databaseAdd.Name,
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 			"lastName":  "foobar",
 		},
@@ -541,9 +541,9 @@ func TestColumnDatabase(t *testing.T) {
 
 	// Filter
 	result = store.Filter(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "person",
-		"columns": map[string]interface{}{
+		"db":         databaseAdd.Name,
+		"collection": "person",
+		"record": map[string]interface{}{
 			"firstName": "tester",
 		},
 	})
@@ -569,15 +569,15 @@ func TestFunctionAccess(t *testing.T) {
 
 	databaseAdd := &metadata.Database{
 		Name: "test_function_access",
-		Tables: map[string]*metadata.Table{
-			"item": &metadata.Table{
+		Collections: map[string]*metadata.Collection{
+			"item": &metadata.Collection{
 				Name: "item",
-				Columns: []*metadata.TableColumn{
-					&metadata.TableColumn{
+				Fields: []*metadata.Field{
+					&metadata.Field{
 						Name: "data",
 						Type: metadata.Document,
 					},
-					&metadata.TableColumn{
+					&metadata.Field{
 						Name: "name",
 						Type: metadata.String,
 					},
@@ -603,9 +603,9 @@ func TestFunctionAccess(t *testing.T) {
 	//	- add an invalid row
 	//	- add a conflicting row
 	result := store.Insert(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": row,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     row,
 	})
 	if result.Error != "" {
 		t.Fatalf("Error when adding a valid document: %v", result.Error)
@@ -616,9 +616,9 @@ func TestFunctionAccess(t *testing.T) {
 	badRow := badRowTmp.(map[string]interface{})
 	badRow["notacolumn"] = "bar"
 	result = store.Insert(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": badRow,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     badRow,
 	})
 	if result.Error == "" {
 		t.Fatalf("No error when adding an invalid document")
@@ -628,9 +628,9 @@ func TestFunctionAccess(t *testing.T) {
 	conflictingRow := conflictingRowTmp.(map[string]interface{})
 	conflictingRow["_id"] = insertedId
 	result = store.Insert(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": conflictingRow,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     conflictingRow,
 	})
 	if result.Error == "" {
 		t.Fatalf("No error when adding a conflicting row")
@@ -640,17 +640,17 @@ func TestFunctionAccess(t *testing.T) {
 	//	- get an item which doesn't exist
 	//	- get an item which does exist
 	result = store.Get(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "item",
-		"_id":   -1,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"_id":        -1,
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Found a non-existant item")
 	}
 	result = store.Get(map[string]interface{}{
-		"db":    databaseAdd.Name,
-		"table": "item",
-		"_id":   insertedId,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"_id":        insertedId,
 	})
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to find inserted item!")
@@ -663,33 +663,33 @@ func TestFunctionAccess(t *testing.T) {
 	//		-- vaid type
 	//		-- invalid type
 	result = store.Update(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": -1},
-		"columns": map[string]interface{}{"name": "bar"},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": -1},
+		"record":     map[string]interface{}{"name": "bar"},
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Updated %d rows for a non-existant row?", len(result.Return))
 	}
 
 	result = store.Update(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
-		"columns": badRow,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": insertedId},
+		"record":     badRow,
 	})
 	if result.Error == "" {
-		t.Fatalf("No error when updating a row with invalid columns")
+		t.Fatalf("No error when updating a row with invalid record")
 	}
 
 	invalidColumnRowTmp, _ := copystructure.Copy(row)
 	invalidColumnRow := invalidColumnRowTmp.(map[string]interface{})
 	invalidColumnRow["name"] = 100
 	result = store.Update(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
-		"columns": invalidColumnRow,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": insertedId},
+		"record":     invalidColumnRow,
 	})
 	// TODO: need to do actual type checking down in the storageinterface
 	if result.Error == "" && false {
@@ -697,10 +697,10 @@ func TestFunctionAccess(t *testing.T) {
 	}
 
 	result = store.Update(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"filter":  map[string]interface{}{"_id": insertedId},
-		"columns": map[string]interface{}{"name": "tester2"},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": insertedId},
+		"record":     map[string]interface{}{"name": "tester2"},
 	})
 	if len(result.Return) != 1 {
 		t.Fatalf("Update found nothing: %v", result)
@@ -718,9 +718,9 @@ func TestFunctionAccess(t *testing.T) {
 	//  - create a row (valid, invalid)
 	// Update something which doesn't exist
 	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": map[string]interface{}{"notthere": -1, "name": "bar"},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     map[string]interface{}{"notthere": -1, "name": "bar"},
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
@@ -728,9 +728,9 @@ func TestFunctionAccess(t *testing.T) {
 
 	// Update something which *does* exist
 	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": map[string]interface{}{"_id": insertedId, "name": "bar"},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     map[string]interface{}{"_id": insertedId, "name": "bar"},
 	})
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to set row for an existing row: %v", result)
@@ -738,9 +738,9 @@ func TestFunctionAccess(t *testing.T) {
 
 	// create a valid row
 	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": map[string]interface{}{"name": "setname"},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     map[string]interface{}{"name": "setname"},
 	})
 	if result.Error != "" {
 		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
@@ -748,30 +748,30 @@ func TestFunctionAccess(t *testing.T) {
 
 	// create a invalid row
 	result = store.Set(map[string]interface{}{
-		"db":      databaseAdd.Name,
-		"table":   "item",
-		"columns": badRow,
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"record":     badRow,
 	})
 	if result.Error == "" {
-		t.Fatalf("No error when set-ing a row with invalid columns")
+		t.Fatalf("No error when set-ing a row with invalid record")
 	}
 
 	//Delete
 	//	- delete an item which doesn't exist
 	//	- an item that does exist
 	result = store.Delete(map[string]interface{}{
-		"db":     databaseAdd.Name,
-		"table":  "item",
-		"filter": map[string]interface{}{"_id": -1},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": -1},
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
 	}
 
 	result = store.Delete(map[string]interface{}{
-		"db":     databaseAdd.Name,
-		"table":  "item",
-		"filter": map[string]interface{}{"_id": insertedId},
+		"db":         databaseAdd.Name,
+		"collection": "item",
+		"filter":     map[string]interface{}{"_id": insertedId},
 	})
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to delete a row?! %v", result)
