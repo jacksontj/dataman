@@ -193,7 +193,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
         "delete": {
             "db": "docdb",
             "table": "person",
-            "columns": {
+            "filter": {
                 "_id": %v
             }
         }
