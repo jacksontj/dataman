@@ -1,0 +1,42 @@
+- Some sort of unified test framework for functions/schema etc.
+    # Define the schema
+    {
+	    "name": "docdb",
+	    "tables": {
+		    "person": {
+			    "name": "person",
+			    "columns": [{
+				    "name": "data",
+				    "type": "document",
+				    "schema": {
+					    "name": "person",
+					    "version": 1,
+					    "schema": {
+						    "properties": {
+							    "firstName": {
+								    "type": "string"
+							    }
+						    },
+						    "required": ["firstName"],
+						    "title": "Person",
+						    "type": "object"
+					    }
+				    }
+			    }]
+		    }
+	    }
+    }
+
+    # Do a query
+    {
+        "delete": {
+            "db": "docdb",
+            "table": "person",
+            "filter": {
+                "_id": %v
+            }
+        }
+    }
+
+    # Compare output/results
+    #   Ideally a subset match, so we don't have to define exact matches?
