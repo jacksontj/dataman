@@ -5,6 +5,9 @@ import "github.com/xeipuuv/gojsonschema"
 type FieldType string
 
 // TODO: re-work to have multiple mappings
+// The intention here is to have a mapping of client -> dataman -> datastore
+// this should be our listing of dataman FieldTypes, which have limits and validation methods
+// which we then leave up to the datastore to store.
 const (
 	Document FieldType = "document"
 	String             = "string" // TODO: varchar? Not sure how we want to differentiate between text and varchar
