@@ -11,6 +11,7 @@ type FieldType string
 const (
 	Document FieldType = "document"
 	String             = "string" // TODO: varchar? Not sure how we want to differentiate between text and varchar
+	Int                = "int"
 )
 
 type Field struct {
