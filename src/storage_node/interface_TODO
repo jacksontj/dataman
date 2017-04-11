@@ -10,7 +10,7 @@ Node
 
 // Handle all of the meta objects for schemaman which would be backed by some storageinterface 
 // initialized with an internal-only metastorageinterface (one that doesn't allow changes, and only does GetMeta())
-MetaStorageInterface
+StorageMetaInterface
     Init()
     GetMeta()
     RefreshMeta()
