@@ -857,8 +857,8 @@ func (s *Storage) RemoveSchema(name string, version int64) error {
 }
 
 // TODO: find a nicer way to do this, this is a mess
-func (s *Storage) doQuery(db *sql.DB, query string) ([]map[string]interface{}, error) {
-	rows, err := db.Query(query)
+func (s *Storage) doQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -976,7 +976,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	insertQuery := fmt.Sprintf("INSERT INTO public.%s (%s) VALUES (%s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
+	insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
 	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], insertQuery)
 	if err != nil {
 		result.Error = err.Error()
@@ -1082,7 +1082,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			whereClause += ", "
 		}
 	}
-	updateQuery := fmt.Sprintf("UPDATE public.%s SET %s WHERE %s RETURNING *", args["collection"], setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE public.%s SET _updated='now',%s WHERE %s RETURNING *", args["collection"], setClause, whereClause)
 
 	result.Return, err = s.doQuery(s.dbMap[args["db"].(string)], updateQuery)
 	if err != nil {
