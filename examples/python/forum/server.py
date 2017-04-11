@@ -43,9 +43,9 @@ class DatamanClient(object):
         self.base_url = base_url
 
     @tornado.gen.coroutine
-    def filter(self, db, table, columns=None):
-        if columns is None:
-            columns = {}
+    def filter(self, db, collection, record=None):
+        if record is None:
+            record = {}
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
@@ -53,8 +53,8 @@ class DatamanClient(object):
             body=json.dumps([
             {'filter': {
                 'db': db,
-                'table': table,
-                'columns': columns,
+                'collection': collection,
+                'record': record,
             }}])
         )
         # TODO: handle errors?
@@ -62,15 +62,15 @@ class DatamanClient(object):
         raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
 
     @tornado.gen.coroutine
-    def insert(self, db, table, columns):
+    def insert(self, db, collection, record):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
             body=json.dumps([
             {'insert': {
                 'db': db,
-                'table': table,
-                'columns': columns,
+                'collection': collection,
+                'record': record,
             }}])
         )
 

@@ -8,10 +8,10 @@ DBNAME = 'example_forum'
 
 base_db = {
     "name": DBNAME,
-    "tables": {
+    "collections": {
         "user": {
             "name": "user",
-            "columns": [
+            "fields": [
                 {
                     "name": "username",
                     "type": "string",
@@ -21,7 +21,7 @@ base_db = {
         },
         "thread": {
             "name": "thread",
-            "columns": [
+            "fields": [
                 {
                     "name": "data",
                     "type": "document",
@@ -30,7 +30,7 @@ base_db = {
         },
         "message": {
             "name": "message",
-            "columns": [
+            "fields": [
                 {
                     "name": "data",
                     "type": "document",
@@ -42,10 +42,10 @@ base_db = {
 
 schemad_db = {
     "name": DBNAME,
-    "tables": {
+    "collections": {
         "user": {
             "name": "user",
-            "columns": [
+            "fields": [
                 {
                     "name": "username",
                     "type": "string",
@@ -55,14 +55,14 @@ schemad_db = {
             "indexes": {
                 "username": {
                     "name": "username",
-                    "columns": ["username"],
+                    "fields": ["username"],
                     "unique": True,
                 },
             },
         },
         "thread": {
             "name": "thread",
-            "columns": [
+            "fields": [
                 {
                     "name": "data",
                     "type": "document",
@@ -94,22 +94,22 @@ schemad_db = {
             "indexes": {
                 "created": {
                     "name": "created",
-                    "columns": ["data.created"],
+                    "fields": ["data.created"],
                 },
                 "id": {
                     "name": "id",
-                    "columns": ["data.id"],
+                    "fields": ["data.id"],
                 },
                 "title": {
                     "name": "title",
-                    "columns": ["data.title"],
+                    "fields": ["data.title"],
                     "unique": True,
                 }
             },
         },
         "message": {
             "name": "message",
-            "columns": [
+            "fields": [
                 {
                     "name": "data",
                     "type": "document",
@@ -141,7 +141,7 @@ schemad_db = {
             "indexes": {
                 "created": {
                     "name": "c",
-                    "columns": ["data.created"],
+                    "fields": ["data.created"],
                 },
             },
         }
@@ -178,6 +178,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Create the database and tables
+    # Create the database and collections
     drop_db(args.storage_node)
     create_db(args.storage_node, kind=args.kind)
