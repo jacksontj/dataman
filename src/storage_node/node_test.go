@@ -102,6 +102,27 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		t.Fatalf("No error when adding an invalid document!")
 	}
 
+	// Valid document, but including a metadata field (which we shouldn't allow)
+	queryBytes = []byte(`
+	{
+		"insert": {
+			"db": "docdb",
+			"collection": "person",
+            "record": {
+                "_id": 12345,
+			    "data": {
+				    "firstName": "tester"
+			    }
+		    }
+		}
+	}
+	`)
+	json.Unmarshal(queryBytes, &q)
+	result = node.HandleQuery(q)
+	if result.Error == "" {
+		t.Fatalf("No error when adding a record which includes a '_' field!")
+	}
+
 	queryBytes = []byte(`
 	{
         "insert": {
