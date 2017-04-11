@@ -57,8 +57,6 @@ QUERYLOOP:
 				case query.Insert:
 					fallthrough
 				case query.Update:
-					// TODO: have a pre-switch check on "write" methods (since all write methods will need this)
-					// or have a validate query method?
 					// On set, if there is a schema on the table-- enforce the schema
 					for name, data := range queryArgs["record"].(map[string]interface{}) {
 						if field, ok := collection.FieldMap[name]; ok && field.Schema != nil {

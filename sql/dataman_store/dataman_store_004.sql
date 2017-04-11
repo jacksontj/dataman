@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-10 14:22:53
+Date: 2017-04-11 09:41:53
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."database_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 506
+ START 573
  CACHE 1;
-SELECT setval('"public"."database_id_seq"', 506, true);
+SELECT setval('"public"."database_id_seq"', 573, true);
 
 -- ----------------------------
 -- Sequence structure for schema_id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."schema_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 417
+ START 474
  CACHE 1;
-SELECT setval('"public"."schema_id_seq"', 417, true);
+SELECT setval('"public"."schema_id_seq"', 474, true);
 
 -- ----------------------------
 -- Sequence structure for table_column_id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."table_column_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 488
+ START 584
  CACHE 1;
-SELECT setval('"public"."table_column_id_seq"', 488, true);
+SELECT setval('"public"."table_column_id_seq"', 584, true);
 
 -- ----------------------------
 -- Sequence structure for table_id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."table_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 707
+ START 798
  CACHE 1;
-SELECT setval('"public"."table_id_seq"', 707, true);
+SELECT setval('"public"."table_id_seq"', 798, true);
 
 -- ----------------------------
 -- Sequence structure for table_index_id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."table_index_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 357
+ START 436
  CACHE 1;
-SELECT setval('"public"."table_index_id_seq"', 357, true);
+SELECT setval('"public"."table_index_id_seq"', 436, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -100,7 +100,8 @@ CREATE TABLE "public"."collection_field" (
 "order" int4 NOT NULL,
 "schema_id" int4,
 "not_null" int2,
-"size" int4
+"size" int4,
+"field_type_args" varchar(255) COLLATE "default"
 )
 WITH (OIDS=FALSE)
 

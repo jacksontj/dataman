@@ -114,6 +114,9 @@ func (s *Storage) loadMeta() (*metadata.Meta, error) {
 					Type:  metadata.FieldType(collectionFieldEntry["field_type"].(string)),
 					Order: i,
 				}
+				if fieldTypeArgs, ok := collectionFieldEntry["field_type_args"]; ok && fieldTypeArgs != nil {
+					json.Unmarshal([]byte(fieldTypeArgs.(string)), &field.TypeArgs)
+				}
 				if schemaId, ok := collectionFieldEntry["schema_id"]; ok && schemaId != nil {
 					if rows, err := s.doQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
 						schema := make(map[string]interface{})
@@ -343,6 +346,8 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 			return err
 		}
 
+		// Add to internal metadata store
+		fieldTypeArgs, _ := json.Marshal(field.TypeArgs)
 		// If we have a schema, lets add that
 		if field.Schema != nil {
 			if schema := s.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
@@ -356,14 +361,13 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 				return err
 			}
 
-			// Add to internal metadata store
-			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, i, schemaRows[0]["id"])); err != nil {
+			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, field_type_args, \"order\", schema_id) VALUES ('%s', %v, '%s', '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, fieldTypeArgs, i, schemaRows[0]["id"])); err != nil {
 				return fmt.Errorf("Unable to add collection_field to metadata store: %v", err)
 			}
 
 		} else {
 			// Add to internal metadata store
-			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\") VALUES ('%s', %v, '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, i)); err != nil {
+			if _, err := s.doQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, field_type_args, \"order\") VALUES ('%s', %v, '%s', '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, fieldTypeArgs, i)); err != nil {
 				return fmt.Errorf("Unable to add collection to metadata store: %v", err)
 			}
 		}
