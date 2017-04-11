@@ -762,7 +762,7 @@ func TestFunctionAccess(t *testing.T) {
 	result = store.Delete(map[string]interface{}{
 		"db":         databaseAdd.Name,
 		"collection": "item",
-		"filter":     map[string]interface{}{"_id": -1},
+		"_id":        -1,
 	})
 	if len(result.Return) != 0 {
 		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
@@ -771,7 +771,7 @@ func TestFunctionAccess(t *testing.T) {
 	result = store.Delete(map[string]interface{}{
 		"db":         databaseAdd.Name,
 		"collection": "item",
-		"filter":     map[string]interface{}{"_id": insertedId},
+		"_id":        insertedId,
 	})
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to delete a row?! %v", result)
