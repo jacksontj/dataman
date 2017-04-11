@@ -154,6 +154,9 @@ func (s *Storage) loadMeta() (*metadata.Meta, error) {
 					Name:   indexEntry["name"].(string),
 					Fields: fields,
 				}
+				if unique, ok := indexEntry["unique"]; ok && unique != nil {
+					index.Unique = unique.(bool)
+				}
 				collection.Indexes[index.Name] = index
 			}
 
@@ -640,7 +643,7 @@ func (s *Storage) RemoveField(dbname, collectionname, fieldName string) error {
 }
 
 const addIndexTemplate = `
-INSERT INTO public.collection_index (name, collection_id, data_json) VALUES ('%s', %v, '%s')
+INSERT INTO public.collection_index ("name", "collection_id", "data_json", "unique") VALUES ('%s', %v, '%s', %v)
 `
 
 // Index changes
@@ -711,7 +714,7 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 	}
 
 	bytes, _ := json.Marshal(index.Fields)
-	indexMetaAddQuery := fmt.Sprintf(addIndexTemplate, index.Name, collectionRows[0]["id"], bytes)
+	indexMetaAddQuery := fmt.Sprintf(addIndexTemplate, index.Name, collectionRows[0]["id"], bytes, index.Unique)
 	if _, err := s.db.Query(indexMetaAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection_index meta entry: %v", err)
 	}

@@ -144,7 +144,7 @@ schemad_db = {
             ],
             "indexes": {
                 "created": {
-                    "name": "c",
+                    "name": "created",
                     "fields": ["data.created"],
                 },
             },
