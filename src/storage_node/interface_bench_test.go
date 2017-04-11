@@ -81,7 +81,7 @@ func BenchmarkDocumentDatabase(b *testing.B) {
 
 	b.Run("Get", func(b *testing.B) { benchDocument_Get(b, store) })
 	b.Run("Set", func(b *testing.B) { benchDocument_Set(b, store) })
-	//b.Run("Delete", func(b *testing.B) { benchDocument_Delete(b, store) })
+	b.Run("Delete", func(b *testing.B) { benchDocument_Delete(b, store) })
 	b.Run("Filter", func(b *testing.B) { benchDocument_Filter(b, store) })
 
 }
@@ -150,16 +150,18 @@ func benchDocument_Delete(b *testing.B, store StorageInterface) {
 			},
 		},
 	}
+	ids := make([]interface{}, b.N)
 	// Insert N items
 	for n := 0; n < b.N; n++ {
 		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
-		store.Set(query)
+		result := store.Set(query)
+		ids[n] = result.Return[0]["_id"]
 	}
 
 	// Initialization done, lets do some benchmarking
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		query["record"].(map[string]interface{})["data"].(map[string]interface{})["firstName"] = n
+		query["_id"] = ids[n]
 		store.Delete(query)
 	}
 }

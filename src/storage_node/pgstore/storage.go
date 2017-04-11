@@ -1063,37 +1063,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE ", args["collection"])
-	recordData := args["filter"].(map[string]interface{})
-	meta := s.GetMeta()
-	collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
-	if err != nil {
-		result.Error = err.Error()
-		return result
-	}
-
-	for fieldName, fieldValue := range recordData {
-		if strings.HasPrefix(fieldName, "_") {
-			sqlQuery += fmt.Sprintf(" %s=%v", fieldName, fieldValue)
-			continue
-		}
-		field, ok := collection.FieldMap[fieldName]
-		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
-			return result
-		}
-
-		switch field.Type {
-		case metadata.Document:
-			// TODO: recurse and add many
-			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-				sqlQuery += fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue)
-			}
-		default:
-			sqlQuery += fmt.Sprintf(" %s=%v", fieldName, fieldValue)
-		}
-	}
-	sqlQuery += " RETURNING *"
+	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v  RETURNING *", args["collection"], args["_id"])
 
 	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
 	if err != nil {
