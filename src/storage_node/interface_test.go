@@ -213,7 +213,6 @@ func TestDatabase(t *testing.T) {
 	}
 
 	// TODO: refreshes should happen in the actual store-- not here in the tests
-	store.RefreshMeta()
 	meta = store.GetMeta()
 	if len(meta.ListDatabases()) != 1 {
 		t.Fatalf("DB wasn't added")
@@ -233,7 +232,6 @@ func TestDatabase(t *testing.T) {
 	if err := store.AddCollection(databaseAdd.Name, collectionAdd); err != nil {
 		t.Fatalf("Error adding collection to existing DB: %v", err)
 	}
-	store.RefreshMeta()
 	meta = store.GetMeta()
 	if len(meta.Databases[databaseAdd.Name].ListCollections()) != 2 {
 		t.Fatalf("Error adding collection: %v", err)
@@ -253,7 +251,6 @@ func TestDatabase(t *testing.T) {
 	if err := store.RemoveCollection(databaseAdd.Name, collectionAdd.Name); err != nil {
 		t.Fatalf("Unable to remove collection: %v", err)
 	}
-	store.RefreshMeta()
 	meta = store.GetMeta()
 	if len(meta.Databases[databaseAdd.Name].ListCollections()) != 1 {
 		t.Fatalf("Error removing collection: %v", err)
@@ -263,7 +260,6 @@ func TestDatabase(t *testing.T) {
 	if err := store.RemoveDatabase(databaseAdd.Name); err != nil {
 		t.Fatalf("Unable to remove database: %v", err)
 	}
-	store.RefreshMeta()
 	meta = store.GetMeta()
 	if len(meta.ListDatabases()) != 0 {
 		t.Fatalf("DB wasn't removed")
@@ -487,8 +483,6 @@ func TestColumnDatabase(t *testing.T) {
 	if err := store.UpdateCollection(databaseAdd.Name, collectionUpdate); err != nil {
 		t.Fatalf("Error updating collection: %v", err)
 	}
-	// TODO: move inside the store itself
-	store.RefreshMeta()
 
 	if err := store.AddIndex(databaseAdd.Name, "person", &collectionIndex); err != nil {
 		t.Fatalf("Error when adding index: %v", err)

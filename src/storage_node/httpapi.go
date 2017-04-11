@@ -81,10 +81,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		if err := h.storageNode.Store.AddDatabase(&database); err == nil {
-			// TODO: error if we can't reload?
-			h.storageNode.Store.RefreshMeta()
-		} else {
+		if err := h.storageNode.Store.AddDatabase(&database); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -118,10 +115,7 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.Store.RemoveDatabase(dbname); err == nil {
-		// TODO: error if we can't reload?
-		h.storageNode.Store.RefreshMeta()
-	} else {
+	if err := h.storageNode.Store.RemoveDatabase(dbname); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -136,10 +130,7 @@ func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httpr
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Store.AddCollection(db.Name, &collection); err == nil {
-				// TODO: error if we can't reload?
-				h.storageNode.Store.RefreshMeta()
-			} else {
+			if err := h.storageNode.Store.AddCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -188,10 +179,7 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Store.UpdateCollection(db.Name, &collection); err == nil {
-				// TODO: error if we can't reload?
-				h.storageNode.Store.RefreshMeta()
-			} else {
+			if err := h.storageNode.Store.UpdateCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -216,10 +204,7 @@ func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps ht
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
 	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Store.RemoveCollection(dbname, ps.ByName("collectionname")); err == nil {
-			// TODO: error if we can't reload?
-			h.storageNode.Store.RefreshMeta()
-		} else {
+		if err := h.storageNode.Store.RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}

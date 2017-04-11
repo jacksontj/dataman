@@ -414,8 +414,6 @@ func TestColumnDatabase(t *testing.T) {
 	if err := store.UpdateTable(databaseAdd.Name, tableUpdate); err != nil {
 		t.Fatalf("Error updating table: %v", err)
 	}
-	// TODO: move inside the store itself
-	store.RefreshMeta()
 
 	if err := store.AddIndex(databaseAdd.Name, "person", &tableIndex); err != nil {
 		t.Fatalf("Error when adding index: %v", err)

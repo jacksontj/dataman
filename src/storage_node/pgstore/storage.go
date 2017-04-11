@@ -197,6 +197,7 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 		}
 	}
 
+	// TODO: track this in some "context" object-- to not re-load stuff so much
 	s.RefreshMeta()
 
 	return nil
@@ -256,6 +257,9 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.database WHERE name='%s'", dbname)); err != nil {
 		return fmt.Errorf("Unable to remove db meta entry: %v", err)
 	}
+
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
 
 	return nil
 
@@ -394,6 +398,9 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 		}
 	}
 
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
+
 	return nil
 }
 
@@ -492,6 +499,9 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 		}
 	}
 
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
+
 	return nil
 }
 
@@ -536,6 +546,9 @@ func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection WHERE id=%v", collectionRows[0]["id"])); err != nil {
 		return fmt.Errorf("Unable to remove metadata entry for collection %s: %v", collectionname, err)
 	}
+
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
 
 	return nil
 }
@@ -686,6 +699,9 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 	if _, err := s.db.Query(indexMetaAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection_index meta entry: %v", err)
 	}
+
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
 	return nil
 }
 
@@ -728,6 +744,9 @@ func (s *Storage) RemoveIndex(dbname, collectionname, indexname string) error {
 	} else {
 		return fmt.Errorf("Unable to remove index entry : %v", err)
 	}
+
+	// TODO: track this in some "context" object-- to not re-load stuff so much
+	s.RefreshMeta()
 	return nil
 }
 
@@ -1063,8 +1082,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v  RETURNING *", args["collection"], args["_id"])
-
+	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v RETURNING *", args["collection"], args["_id"])
 	rows, err := s.doQuery(s.dbMap[args["db"].(string)], sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
