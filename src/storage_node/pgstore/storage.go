@@ -272,8 +272,16 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	case metadata.Document:
 		fieldStr += "\"" + field.Name + "\" jsonb"
 	case metadata.String:
+		// TODO: move to config
+		// Default value
+		maxSize := 255
+
 		// TODO: have options to set limits? Or always use text fields?
-		fieldStr += "\"" + field.Name + "\" character varying(255)"
+		if size, ok := field.TypeArgs["size"]; ok {
+			maxSize = int(size.(float64))
+		}
+
+		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
 	case metadata.Text:
 		fieldStr += "\"" + field.Name + "\" text"
 	case metadata.Int:

@@ -49,6 +49,10 @@ schemad_db = {
                 {
                     "name": "username",
                     "type": "string",
+                    # Set a max-size for the username
+                    "type_args": {
+                        "size": 128,
+                    },
                     "not_null": True,
                 },
             ],

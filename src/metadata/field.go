@@ -18,6 +18,8 @@ const (
 type Field struct {
 	Name string    `json:"name"`
 	Type FieldType `json:"type"`
+	// Arguments (limits etc.) for a given FieldType (varies per field)
+	TypeArgs map[string]interface{} `json:"type_args,omitempty"`
 	// only to be filled out if FieldType is Document
 	Schema *Schema `json:"schema,omitempty"`
 	Order  int     `json:"-"`
