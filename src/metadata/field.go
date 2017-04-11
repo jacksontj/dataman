@@ -10,7 +10,8 @@ type FieldType string
 // which we then leave up to the datastore to store.
 const (
 	Document FieldType = "document"
-	String             = "string" // TODO: varchar? Not sure how we want to differentiate between text and varchar
+	String             = "string"
+	Text               = "text"
 	Int                = "int"
 )
 
