@@ -13,6 +13,7 @@ const (
 	String             = "string"
 	Text               = "text"
 	Int                = "int"
+	Bool               = "bool"
 )
 
 type Field struct {

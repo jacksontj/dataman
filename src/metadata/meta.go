@@ -9,7 +9,7 @@ func NewMeta() *Meta {
 // This is a struct to encapsulate all of the metadata and provide some
 // common query patterns
 type Meta struct {
-	Databases map[string]*Database
+	Databases map[string]*Database `json:"databases"`
 }
 
 // TODO: more than just names?
