@@ -679,7 +679,6 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
-		// TODO: store in meta tables, and compare/update indexes on creation
 		indexAddQuery = "CREATE UNIQUE"
 	} else {
 		indexAddQuery = "CREATE"
