@@ -2,13 +2,11 @@ package main
 
 import (
 	"io/ioutil"
-	"net/http"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
-	"github.com/julienschmidt/httprouter"
 
 	"github.com/jacksontj/dataman/src/storage_node"
 )
@@ -35,21 +33,11 @@ func main() {
 	}
 	logrus.Infof("config: %v", config)
 
-	// Load the store we are responsible for
-	store, err := config.GetStore()
-	if err != nil {
-		logrus.Fatalf("Unable to load store: %v", err)
-	}
-
-	storageNode, err := storagenode.NewStorageNode(store)
+	storageNode, err := storagenode.NewStorageNode(config)
 	if err != nil {
 		logrus.Fatalf("Unable to create StorageNode: %v", err)
 	}
 
 	// initialize the http api (since at this point we are ready to go!
-	router := httprouter.New()
-	api := storagenode.NewHTTPApi(storageNode)
-	api.Start(router)
-
-	http.ListenAndServe(config.HTTP.Addr, router)
+	storageNode.Start()
 }

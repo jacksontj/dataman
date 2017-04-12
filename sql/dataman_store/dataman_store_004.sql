@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-12 10:20:42
+Date: 2017-04-12 11:36:35
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."database_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 619
+ START 623
  CACHE 1;
-SELECT setval('"public"."database_id_seq"', 619, true);
+SELECT setval('"public"."database_id_seq"', 623, true);
 
 -- ----------------------------
 -- Sequence structure for schema_id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."schema_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 514
+ START 516
  CACHE 1;
-SELECT setval('"public"."schema_id_seq"', 514, true);
+SELECT setval('"public"."schema_id_seq"', 516, true);
 
 -- ----------------------------
 -- Sequence structure for table_column_id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."table_column_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 660
+ START 665
  CACHE 1;
-SELECT setval('"public"."table_column_id_seq"', 660, true);
+SELECT setval('"public"."table_column_id_seq"', 665, true);
 
 -- ----------------------------
 -- Sequence structure for table_id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."table_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 868
+ START 874
  CACHE 1;
-SELECT setval('"public"."table_id_seq"', 868, true);
+SELECT setval('"public"."table_id_seq"', 874, true);
 
 -- ----------------------------
 -- Sequence structure for table_index_id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."table_index_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 497
+ START 504
  CACHE 1;
-SELECT setval('"public"."table_index_id_seq"', 497, true);
+SELECT setval('"public"."table_index_id_seq"', 504, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -100,7 +100,7 @@ CREATE TABLE "public"."collection_field" (
 "order" int4 NOT NULL,
 "schema_id" int4,
 "not_null" int2,
-"field_type_args" varchar(255) COLLATE "default"
+"field_type_args" jsonb
 )
 WITH (OIDS=FALSE)
 

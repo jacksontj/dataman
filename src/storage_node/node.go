@@ -2,8 +2,10 @@ package storagenode
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/julienschmidt/httprouter"
 	"github.com/xeipuuv/gojsonschema"
 )
 
@@ -11,15 +13,31 @@ import (
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 // and applying them to the actual storage subsystem
 type StorageNode struct {
-	Store StorageInterface
+	Config *Config
+	Store  StorageInterface
 }
 
-func NewStorageNode(store StorageInterface) (*StorageNode, error) {
+func NewStorageNode(config *Config) (*StorageNode, error) {
+	store, err := config.GetStore()
+	if err != nil {
+		return nil, err
+	}
 	node := &StorageNode{
-		Store: store,
+		Config: config,
+		Store:  store,
 	}
 
 	return node, nil
+}
+
+// TODO: have a stop?
+func (s *StorageNode) Start() error {
+	// initialize the http api (since at this point we are ready to go!
+	router := httprouter.New()
+	api := NewHTTPApi(s)
+	api.Start(router)
+
+	return http.ListenAndServe(s.Config.HTTP.Addr, router)
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct

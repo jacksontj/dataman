@@ -115,13 +115,13 @@ func (s *Storage) loadMeta() (*metadata.Meta, error) {
 					Order: i,
 				}
 				if fieldTypeArgs, ok := collectionFieldEntry["field_type_args"]; ok && fieldTypeArgs != nil {
-					json.Unmarshal([]byte(fieldTypeArgs.(string)), &field.TypeArgs)
+					json.Unmarshal(fieldTypeArgs.([]byte), &field.TypeArgs)
 				}
 				if schemaId, ok := collectionFieldEntry["schema_id"]; ok && schemaId != nil {
 					if rows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
 						schema := make(map[string]interface{})
 						// TODO: check for errors
-						json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
+						json.Unmarshal(rows[0]["data_json"].([]byte), &schema)
 
 						schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
 						field.Schema = &metadata.Schema{
@@ -803,7 +803,7 @@ func (s *Storage) ListSchemas() []*metadata.Schema {
 	for i, row := range rows {
 		schema := make(map[string]interface{})
 		// TODO: check for errors
-		json.Unmarshal([]byte(row["data_json"].(string)), &schema)
+		json.Unmarshal(row["data_json"].([]byte), &schema)
 		schemas[i] = &metadata.Schema{
 			Name:    row["name"].(string),
 			Version: row["version"].(int64),
@@ -830,7 +830,7 @@ func (s *Storage) GetSchema(name string, version int64) *metadata.Schema {
 	}
 	schema := make(map[string]interface{})
 	// TODO: check for errors
-	json.Unmarshal([]byte(rows[0]["data_json"].(string)), &schema)
+	json.Unmarshal(rows[0]["data_json"].([]byte), &schema)
 
 	return &metadata.Schema{
 		Name:    rows[0]["name"].(string),
