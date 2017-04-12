@@ -77,6 +77,9 @@ QUERYLOOP:
 				case query.Update:
 					// On set, if there is a schema on the table-- enforce the schema
 					for name, data := range queryArgs["record"].(map[string]interface{}) {
+						// TODO: some datastores can actually do the enforcement on their own. We
+						// probably want to leave this up to lower layers, and provide some wrapper
+						// that they can call if they can't do it in the datastore itself
 						if field, ok := collection.FieldMap[name]; ok && field.Schema != nil {
 							result, err := field.Schema.Gschema.Validate(gojsonschema.NewGoLoader(data))
 							if err != nil {

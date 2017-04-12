@@ -149,7 +149,7 @@ func (s *Storage) loadMeta() (*metadata.Meta, error) {
 			for _, indexEntry := range collectionIndexRows {
 				var fields []string
 				err = json.Unmarshal(indexEntry["data_json"].([]byte), &fields)
-				// TODO: actually parse out the data_json to get the index type etc.
+
 				index := &metadata.CollectionIndex{
 					Name:   indexEntry["name"].(string),
 					Fields: fields,
