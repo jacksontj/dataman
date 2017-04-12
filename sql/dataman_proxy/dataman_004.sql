@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-11 10:52:38
+Date: 2017-04-12 10:20:20
 */
 
 
@@ -203,8 +203,8 @@ DROP TABLE IF EXISTS "public"."datastore";
 CREATE TABLE "public"."datastore" (
 "id" int4 DEFAULT nextval('datastore_id_seq'::regclass) NOT NULL,
 "name" varchar(255) COLLATE "default" NOT NULL,
-"replica_config_json" text COLLATE "default",
-"shard_config_json" text COLLATE "default"
+"replica_config_json" jsonb,
+"shard_config_json" jsonb
 )
 WITH (OIDS=FALSE)
 
@@ -262,7 +262,7 @@ CREATE TABLE "public"."storage_node" (
 "port" int4,
 "storage_node_type_id" int4,
 "storage_node_state_id" int4,
-"config_json" text COLLATE "default"
+"config_json" jsonb
 )
 WITH (OIDS=FALSE)
 
