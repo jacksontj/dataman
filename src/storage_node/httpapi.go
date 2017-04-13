@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/julienschmidt/httprouter"
 )
 

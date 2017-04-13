@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jacksontj/dataman/src/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 func BenchmarkDocumentDatabase(b *testing.B) {

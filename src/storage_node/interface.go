@@ -1,8 +1,8 @@
 package storagenode
 
 import (
-	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // Interface that a storage node must implement

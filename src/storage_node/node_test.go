@@ -7,20 +7,28 @@ package storagenode
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"testing"
 
-	"github.com/jacksontj/dataman/src/metadata"
+	"gopkg.in/yaml.v2"
+
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // TODO: have a list of them? We want to test all of them (or become a library of tests
 // that the modules can just run
 func getNode() (*StorageNode, error) {
-	store, err := getStore()
+	config := &Config{}
+	configBytes, err := ioutil.ReadFile("storagenode/config.yaml")
 	if err != nil {
 		return nil, err
 	}
-	node, err := NewStorageNode(store)
+	err = yaml.Unmarshal([]byte(configBytes), &config)
+	if err != nil {
+		return nil, err
+	}
+	node, err := NewStorageNode(config)
 	if err != nil {
 		return nil, err
 	}

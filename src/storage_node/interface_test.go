@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/jacksontj/dataman/src/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/mitchellh/copystructure"
 )
 

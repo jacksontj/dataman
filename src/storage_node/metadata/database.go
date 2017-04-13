@@ -8,8 +8,7 @@ func NewDatabase(name string) *Database {
 }
 
 type Database struct {
-	Name  string     `json:"name"`
-	Store *DataStore `json:"store,omitempty"`
+	Name string `json:"name"`
 	//TombstoneMap map[int]*DataStore
 	Collections map[string]*Collection `json:"collections"`
 }

@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 type StoreTestFixture struct {

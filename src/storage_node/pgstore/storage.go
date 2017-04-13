@@ -17,8 +17,8 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	_ "github.com/lib/pq"
 	"github.com/xeipuuv/gojsonschema"
 )
