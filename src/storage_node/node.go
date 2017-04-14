@@ -83,7 +83,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.MetaStore.GetMeta()
+	meta := s.GetMeta()
 
 QUERYLOOP:
 	for i, queryMap := range queries {
