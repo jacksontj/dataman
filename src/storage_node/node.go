@@ -33,21 +33,20 @@ func NewStorageNode(config *Config) (*StorageNode, error) {
 		return nil, err
 	}
 
-	store, err := config.GetStore(metaStore.GetMeta)
-	if err != nil {
-		return nil, err
-	}
 	node := &StorageNode{
 		Config:    config,
 		MetaStore: metaStore,
-		Store:     store,
+	}
+	node.RefreshMeta()
+
+	node.Store, err = config.GetStore(node.GetMeta)
+	if err != nil {
+		return nil, err
 	}
 
-	if storeSchema, ok := store.(StorageSchemaInterface); ok {
+	if storeSchema, ok := node.Store.(StorageSchemaInterface); ok {
 		node.storeSchema = storeSchema
 	}
-
-	node.RefreshMeta()
 
 	return node, nil
 }
