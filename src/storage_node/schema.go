@@ -1,3 +1,7 @@
+package storagenode
+
+// TODO: might as well make this a static struct var instantiation
+const schemaJson string = `
 {
     "databases": {
         "dataman_storagenode": {
@@ -552,3 +556,4 @@
         }
     }
 }
+`

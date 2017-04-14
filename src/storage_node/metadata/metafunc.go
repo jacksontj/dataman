@@ -2,18 +2,13 @@ package metadata
 
 import (
 	"encoding/json"
-	"io/ioutil"
 )
 
 type MetaFunc func() *Meta
 
-func StaticMetaFunc(filepath string) (MetaFunc, error) {
+func StaticMetaFunc(jsonString string) (MetaFunc, error) {
 	var meta Meta
-	configBytes, err := ioutil.ReadFile(filepath)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal([]byte(configBytes), &meta)
+	err := json.Unmarshal([]byte(jsonString), &meta)
 	if err != nil {
 		return nil, err
 	}
