@@ -240,6 +240,34 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	return fieldStr, nil
 }
 
+// TODO: nicer, this works but is way more work than necessary
+func (s *Storage) GetCollection(dbname, collectionname string) *metadata.Collection {
+	db := s.GetDatabase(dbname)
+	if db == nil {
+		return nil
+	}
+	if collection, ok := db.Collections[collectionname]; ok {
+		return collection
+	} else {
+		return nil
+	}
+}
+
+// TODO: nicer, this works but is way more work than necessary
+func (s *Storage) ListCollection(dbname string) []*metadata.Collection {
+	db := s.GetDatabase(dbname)
+	if db == nil {
+		return nil
+	}
+
+	collections := make([]*metadata.Collection, 0, len(db.Collections))
+
+	for _, collection := range db.Collections {
+		collections = append(collections, collection)
+	}
+	return collections
+}
+
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
 // TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
@@ -278,94 +306,45 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
-	// TODO: indexes need to be implemented here, we need to actually list the indexes out  of the db etc.
-	/*
-		// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
-		// add be a thin wrapper around it
-		// If a table has indexes defined, lets take care of that
-		if collection.Indexes != nil {
-
-			collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
-			if err != nil {
-				return fmt.Errorf("Unable to query for existing collection_indexes: %v", err)
-			}
-
-			// TODO: generic version?
-			currentIndexNames := make(map[string]map[string]interface{})
-			for _, currentIndex := range collectionIndexRows {
-				currentIndexNames[currentIndex["name"].(string)] = currentIndex
-			}
-
-			// compare old and new-- make them what they need to be
-			// What should be removed?
-			for name, _ := range currentIndexNames {
-				if _, ok := collection.Indexes[name]; !ok {
-					if err := s.RemoveIndex(dbName, collection.Name, name); err != nil {
-						return err
-					}
-				}
-			}
-			// What should be added
-			for name, index := range collection.Indexes {
-				if _, ok := currentIndexNames[name]; !ok {
-					if err := s.AddIndex(dbName, collection.Name, index); err != nil {
-						return err
-					}
-				}
+	// If a table has indexes defined, lets take care of that
+	if collection.Indexes != nil {
+		for _, index := range collection.Indexes {
+			if err := s.AddIndex(dbName, collection.Name, index); err != nil {
+				return err
 			}
 		}
-	*/
+	}
+
 	return nil
 }
 
 // TODO: re-implement, this is now ONLY datastore focused
 func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collection) error {
-	// make sure the db exists in the metadata store
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
+	currentCollection := s.GetCollection(dbname, collection.Name)
 
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collection.Name))
-	if err != nil {
-		return fmt.Errorf("Unable to get collection meta entry: %v", err)
-	}
-	if len(collectionRows) == 0 {
+	if currentCollection == nil {
 		return fmt.Errorf("Unable to find collection %s.%s", dbname, collection.Name)
 	}
 
-	// TODO: this seems generic enough-- we should move this up a level (with some changes)
-	// Compare fields
-	collectionFieldRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_field WHERE collection_id=%v ORDER BY \"order\"", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to get collection_field meta entry: %v", err)
-	}
-
-	// TODO: handle up a layer?
-	for i, field := range collection.Fields {
-		field.Order = i
-	}
-
-	oldFields := make(map[string]map[string]interface{}, len(collectionFieldRows))
-	for _, fieldEntry := range collectionFieldRows {
-		oldFields[fieldEntry["name"].(string)] = fieldEntry
-	}
-	newFields := make(map[string]*metadata.Field, len(collection.Fields))
-	for _, field := range collection.Fields {
-		newFields[field.Name] = field
+	// TODO: this should be done elsewhere
+	if collection.FieldMap == nil {
+		collection.FieldMap = make(map[string]*metadata.Field)
+		for _, field := range collection.Fields {
+			collection.FieldMap[field.Name] = field
+		}
 	}
 
 	// fields we need to remove
-	for name, _ := range oldFields {
-		if _, ok := newFields[name]; !ok {
+	for name, _ := range currentCollection.FieldMap {
+		if _, ok := collection.FieldMap[name]; !ok {
 			if err := s.RemoveField(dbname, collection.Name, name); err != nil {
 				return fmt.Errorf("Unable to remove field: %v", err)
 			}
 		}
 	}
 	// Fields we need to add
-	for name, field := range newFields {
-		if _, ok := oldFields[name]; !ok {
+	for name, field := range collection.FieldMap {
+		if _, ok := currentCollection.FieldMap[name]; !ok {
 			if err := s.AddField(dbname, collection.Name, field, field.Order); err != nil {
 				return fmt.Errorf("Unable to add field: %v", err)
 			}
@@ -373,31 +352,19 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 	}
 
 	// TODO: compare order and schema
-	// Fields we need to change
-
-	// Indexes
-	collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to query for existing collection_indexes: %v", err)
-	}
+	// TODO: Fields we need to change
 
 	// If the new def has no indexes, remove them all
 	if collection.Indexes == nil {
-		for _, collectionIndexEntry := range collectionIndexRows {
-			if err := s.RemoveIndex(dbname, collection.Name, collectionIndexEntry["name"].(string)); err != nil {
+		for _, collectionIndex := range currentCollection.Indexes {
+			if err := s.RemoveIndex(dbname, collection.Name, collectionIndex.Name); err != nil {
 				return fmt.Errorf("Unable to remove collection_index: %v", err)
 			}
 		}
 	} else {
-		// TODO: generic version?
-		currentIndexNames := make(map[string]map[string]interface{})
-		for _, currentIndex := range collectionIndexRows {
-			currentIndexNames[currentIndex["name"].(string)] = currentIndex
-		}
-
 		// compare old and new-- make them what they need to be
 		// What should be removed?
-		for name, _ := range currentIndexNames {
+		for name, _ := range currentCollection.Indexes {
 			if _, ok := collection.Indexes[name]; !ok {
 				if err := s.RemoveIndex(dbname, collection.Name, name); err != nil {
 					return err
@@ -406,7 +373,7 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 		}
 		// What should be added
 		for name, index := range collection.Indexes {
-			if _, ok := currentIndexNames[name]; !ok {
+			if _, ok := currentCollection.Indexes[name]; !ok {
 				if err := s.AddIndex(dbname, collection.Name, index); err != nil {
 					return err
 				}
