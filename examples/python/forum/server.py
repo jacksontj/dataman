@@ -57,6 +57,7 @@ class DatamanClient(object):
                 'record': record,
             }}])
         )
+        logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
         # TODO: handle errors?
         items = []
         raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
@@ -73,6 +74,7 @@ class DatamanClient(object):
                 'record': record,
             }}])
         )
+        logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
 
         # TODO: handle errors?
         raise tornado.gen.Return(json.loads(ret.body)[0])
