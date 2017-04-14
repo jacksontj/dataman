@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-13 12:48:01
+Date: 2017-04-14 08:33:21
 */
 
 
@@ -78,7 +78,6 @@ CREATE TABLE "public"."collection" (
 "_id" int4 DEFAULT nextval('collection__id_seq'::regclass) NOT NULL,
 "_created" timestamp(6),
 "_updated" timestamp(6),
-"id" int4,
 "name" varchar(255) COLLATE "default",
 "database_id" int4
 )
@@ -94,7 +93,6 @@ CREATE TABLE "public"."collection_field" (
 "_id" int4 DEFAULT nextval('collection_field__id_seq'::regclass) NOT NULL,
 "_created" timestamp(6),
 "_updated" timestamp(6),
-"id" int4,
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
 "field_type" varchar(255) COLLATE "default",
@@ -115,7 +113,6 @@ CREATE TABLE "public"."collection_index" (
 "_id" int4 DEFAULT nextval('collection_index__id_seq'::regclass) NOT NULL,
 "_created" timestamp(6),
 "_updated" timestamp(6),
-"id" int4,
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
 "data_json" jsonb,
@@ -133,7 +130,6 @@ CREATE TABLE "public"."database" (
 "_id" int4 DEFAULT nextval('database__id_seq'::regclass) NOT NULL,
 "_created" timestamp(6),
 "_updated" timestamp(6),
-"id" int4,
 "name" varchar(255) COLLATE "default"
 )
 WITH (OIDS=FALSE)
@@ -148,7 +144,6 @@ CREATE TABLE "public"."schema" (
 "_id" int4 DEFAULT nextval('schema__id_seq'::regclass) NOT NULL,
 "_created" timestamp(6),
 "_updated" timestamp(6),
-"id" int4,
 "name" varchar(255) COLLATE "default",
 "version" int4,
 "data_json" jsonb,
@@ -171,7 +166,6 @@ ALTER SEQUENCE "public"."schema__id_seq" OWNED BY "schema"."_id";
 -- Indexes structure for table collection
 -- ----------------------------
 CREATE UNIQUE INDEX "index_collection_collection_name" ON "public"."collection" USING btree ("name", "database_id");
-CREATE UNIQUE INDEX "index_collection_table_pkey" ON "public"."collection" USING btree ("id");
 
 -- ----------------------------
 -- Primary Key structure for table collection
@@ -182,7 +176,6 @@ ALTER TABLE "public"."collection" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table collection_field
 -- ----------------------------
 CREATE INDEX "index_collection_field_collection_field_table" ON "public"."collection_field" USING btree ("collection_id");
-CREATE UNIQUE INDEX "index_collection_field_table_column_pkey" ON "public"."collection_field" USING btree ("id");
 CREATE UNIQUE INDEX "index_collection_field_collection_field_name" ON "public"."collection_field" USING btree ("collection_id", "name");
 
 -- ----------------------------
@@ -194,7 +187,6 @@ ALTER TABLE "public"."collection_field" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table collection_index
 -- ----------------------------
 CREATE UNIQUE INDEX "index_collection_index_collection_index_table" ON "public"."collection_index" USING btree ("name", "collection_id");
-CREATE UNIQUE INDEX "index_collection_index_table_index_pkey" ON "public"."collection_index" USING btree ("id");
 
 -- ----------------------------
 -- Primary Key structure for table collection_index
@@ -205,7 +197,6 @@ ALTER TABLE "public"."collection_index" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table database
 -- ----------------------------
 CREATE UNIQUE INDEX "index_database_name" ON "public"."database" USING btree ("name");
-CREATE UNIQUE INDEX "index_database_database_pkey" ON "public"."database" USING btree ("id");
 
 -- ----------------------------
 -- Primary Key structure for table database
@@ -215,10 +206,25 @@ ALTER TABLE "public"."database" ADD PRIMARY KEY ("_id");
 -- ----------------------------
 -- Indexes structure for table schema
 -- ----------------------------
-CREATE UNIQUE INDEX "index_schema_schema_pkey" ON "public"."schema" USING btree ("id");
 CREATE UNIQUE INDEX "index_schema_name_version" ON "public"."schema" USING btree ("name", "version");
 
 -- ----------------------------
 -- Primary Key structure for table schema
 -- ----------------------------
 ALTER TABLE "public"."schema" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."collection"
+-- ----------------------------
+ALTER TABLE "public"."collection" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."collection_field"
+-- ----------------------------
+ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."collection_index"
+-- ----------------------------
+ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
