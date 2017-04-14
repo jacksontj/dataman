@@ -35,6 +35,18 @@ func getNode() (*StorageNode, error) {
 	return node, nil
 }
 
+func resetNode(node *StorageNode) error {
+	meta := node.GetMeta()
+
+	for _, db := range meta.Databases {
+		if err := node.RemoveDatabase(db.Name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Test Functions for covering a document DB
 func TestNodeDocumentDatabase(t *testing.T) {
 	node, err := getNode()
@@ -42,15 +54,8 @@ func TestNodeDocumentDatabase(t *testing.T) {
 		t.Fatalf("Unable to create test storagenode")
 	}
 
-	meta := node.Store.GetMeta()
-
-	// TODO: move into getStore()
-	// Clear the DB -- since we are going to use it
-	for _, db := range meta.Databases {
-		if err := node.Store.RemoveDatabase(db.Name); err != nil {
-			t.Fatalf("Unable to remove DB: %v", err)
-		}
-	}
+	resetNode(node)
+	defer func() { resetNode(node) }()
 
 	// document schema tests
 	databaseAdd := &metadata.Database{
@@ -83,7 +88,7 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	}
 
 	// Add the database
-	if err := node.Store.AddDatabase(databaseAdd); err != nil {
+	if err := node.AddDatabase(databaseAdd); err != nil {
 		t.Fatalf("Error adding database: %v", err)
 	}
 

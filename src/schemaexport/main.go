@@ -63,14 +63,16 @@ func exportTableIndexes(db *sql.DB, dbname, tablename string) map[string]*metada
 	indexes := make(map[string]*metadata.CollectionIndex)
 
 	for _, indexEntry := range indexEntries {
-		var indexFields []string
-		json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
-		index := &metadata.CollectionIndex{
-			Name:   string(indexEntry["index_name"].([]byte)),
-			Fields: indexFields,
-			Unique: indexEntry["is_unique"].(bool),
+		if string(indexEntry["table_name"].([]byte)) == tablename {
+			var indexFields []string
+			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			index := &metadata.CollectionIndex{
+				Name:   string(indexEntry["index_name"].([]byte)),
+				Fields: indexFields,
+				Unique: indexEntry["is_unique"].(bool),
+			}
+			indexes[index.Name] = index
 		}
-		indexes[index.Name] = index
 	}
 	return indexes
 }

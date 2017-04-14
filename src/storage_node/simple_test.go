@@ -3,11 +3,8 @@
 package storagenode
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"reflect"
-	"testing"
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -68,6 +65,7 @@ type StoreTestQuery struct {
 	Result StoreTestResult `json:"result"`
 }
 
+/*
 // TODO: test indexes
 // Test Functions for covering a document DB
 func TestDBSimple(t *testing.T) {
@@ -101,3 +99,4 @@ func TestDBSimple(t *testing.T) {
 	}
 
 }
+*/

@@ -17,13 +17,12 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	_ "github.com/lib/pq"
-	"github.com/xeipuuv/gojsonschema"
 )
 
-// TODO: ORM or something to manage schema of the metadata store?
 type StorageConfig struct {
 	// How to connect to postgres
 	PGString string `yaml:"pg_string"`
@@ -41,10 +40,11 @@ type Storage struct {
 	// TODO: lazily load these, maybe even pool them
 	dbMap map[string]*sql.DB
 
-	meta atomic.Value
+	metaFunc metadata.MetaFunc
+	meta     atomic.Value
 }
 
-func (s *Storage) Init(c map[string]interface{}) error {
+func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) error {
 	var err error
 
 	if val, ok := c["pg_string"]; ok {
@@ -61,120 +61,95 @@ func (s *Storage) Init(c map[string]interface{}) error {
 
 	s.dbMap = make(map[string]*sql.DB)
 
-	// Load the current metadata from the store
-	if err := s.RefreshMeta(); err != nil {
-		return err
-	}
+	s.metaFunc = metaFunc
 
 	// TODO: ensure that the metadata store exists (and the schema is correct)
 	return nil
 }
 
-func (s *Storage) RefreshMeta() error {
-	// Load the current metadata from the store
-	if meta, err := s.loadMeta(); err == nil {
-		s.meta.Store(meta)
-		return nil
+// TODO: some TTL thing instead of this
+func (s *Storage) getDB(name string) *sql.DB {
+	if db, ok := s.dbMap[name]; ok {
+		return db
 	} else {
-		return err
-	}
-}
-
-func (s *Storage) GetMeta() *metadata.Meta {
-	return s.meta.Load().(*metadata.Meta)
-}
-
-func (s *Storage) loadMeta() (*metadata.Meta, error) {
-
-	meta := metadata.NewMeta()
-
-	rows, err := DoQuery(s.db, "SELECT * FROM public.database")
-	if err != nil {
-		return nil, err
-	}
-	for _, dbEntry := range rows {
-		database := metadata.NewDatabase(dbEntry["name"].(string))
-		collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v", dbEntry["id"]))
+		dbConn, err := sql.Open("postgres", s.config.pgStringForDB(name))
 		if err != nil {
-			return nil, err
+			// TODO: not this, this is not okay :/
+			fmt.Printf("Err opening postgres conn: %v", err)
+			return nil
 		}
-		for _, collectionEntry := range collectionRows {
-			collection := metadata.NewCollection(collectionEntry["name"].(string))
+		s.dbMap[name] = dbConn
+		return dbConn
+	}
+}
 
-			// Load fields
-			collectionFieldRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_field WHERE collection_id=%v", collectionEntry["id"]))
-			if err != nil {
-				return nil, err
+// TODO: remove
+func (s *Storage) GetMeta() *metadata.Meta {
+	return s.metaFunc()
+}
+
+func (s *Storage) GetDatabase(name string) *metadata.Database {
+	database := metadata.NewDatabase(name)
+
+	tables, err := DoQuery(s.db, "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_schema,table_name;")
+	if err != nil {
+		logrus.Fatalf("Unable to get table list for db %s: %v", name, err)
+	}
+
+	for _, tableEntry := range tables {
+		tableName := tableEntry["table_name"].(string)
+		collection := metadata.NewCollection(tableName)
+
+		// Get the fields for the collection
+		fields, err := DoQuery(s.db, "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
+		if err != nil {
+			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", name, tableName, err)
+		}
+
+		collection.Fields = make([]*metadata.Field, 0, len(fields))
+		for i, fieldEntry := range fields {
+			var fieldType metadata.FieldType
+			fieldTypeArgs := make(map[string]interface{})
+			switch fieldEntry["data_type"] {
+			case "integer":
+				fieldType = metadata.Int
+			case "character varying":
+				fieldType = metadata.String
+			// TODO: do we want to do this based on size?
+			case "smallint":
+				fieldType = metadata.Int
+			case "jsonb":
+				fieldType = metadata.Document
+			case "boolean":
+				fieldType = metadata.Bool
+			case "text":
+				fieldType = metadata.Text
+			default:
+				logrus.Fatalf("Unknown data_type in %s.%s %v", name, tableName, fieldEntry)
 			}
-			collection.Fields = make([]*metadata.Field, len(collectionFieldRows))
-			collection.FieldMap = make(map[string]*metadata.Field)
-			for i, collectionFieldEntry := range collectionFieldRows {
-				field := &metadata.Field{
-					Name:  collectionFieldEntry["name"].(string),
-					Type:  metadata.FieldType(collectionFieldEntry["field_type"].(string)),
-					Order: i,
-				}
-				if fieldTypeArgs, ok := collectionFieldEntry["field_type_args"]; ok && fieldTypeArgs != nil {
-					json.Unmarshal(fieldTypeArgs.([]byte), &field.TypeArgs)
-				}
-				if schemaId, ok := collectionFieldEntry["schema_id"]; ok && schemaId != nil {
-					if rows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.schema WHERE id=%v", schemaId)); err == nil {
-						schema := make(map[string]interface{})
-						// TODO: check for errors
-						json.Unmarshal(rows[0]["data_json"].([]byte), &schema)
 
-						schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
-						field.Schema = &metadata.Schema{
-							Name:    rows[0]["name"].(string),
-							Version: rows[0]["version"].(int64),
-							Schema:  schema,
-							// TODO: move up a level (or as a function inside the metadata package
-							Gschema: schemaValidator,
-						}
-					} else {
-						return nil, err
-					}
-				}
-				if notNull, ok := collectionFieldEntry["not_null"]; ok && notNull != nil {
-					field.NotNull = true
-				}
-				collection.Fields[i] = field
-				collection.FieldMap[field.Name] = field
+			if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
+				fieldTypeArgs["size"] = maxSize
 			}
 
-			collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionEntry["id"]))
-			if err != nil {
-				return nil, err
+			field := &metadata.Field{
+				Name:     fieldEntry["column_name"].(string),
+				Type:     fieldType,
+				TypeArgs: fieldTypeArgs,
+				Order:    i,
 			}
-			for _, indexEntry := range collectionIndexRows {
-				var fields []string
-				err = json.Unmarshal(indexEntry["data_json"].([]byte), &fields)
-
-				index := &metadata.CollectionIndex{
-					Name:   indexEntry["name"].(string),
-					Fields: fields,
-				}
-				if unique, ok := indexEntry["unique"]; ok && unique != nil {
-					index.Unique = unique.(bool)
-				}
+			indexes := s.ListIndex(name, tableName)
+			collection.Indexes = make(map[string]*metadata.CollectionIndex)
+			for _, index := range indexes {
 				collection.Indexes[index.Name] = index
 			}
-
-			database.Collections[collection.Name] = collection
+			collection.Fields = append(collection.Fields, field)
 		}
-		meta.Databases[database.Name] = database
 
-		// Create db connection if it doesn't exist
-		if _, ok := s.dbMap[database.Name]; !ok {
-			dbConn, err := sql.Open("postgres", s.config.pgStringForDB(database.Name))
-			if err != nil {
-				return nil, fmt.Errorf("Unable to open db connection: %v", err)
-			}
-			s.dbMap[database.Name] = dbConn
-		}
+		database.Collections[collection.Name] = collection
 	}
 
-	return meta, nil
+	return database
 }
 
 // Database changes
@@ -182,11 +157,6 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 	// Create the database
 	if _, err := s.db.Query("CREATE DATABASE " + db.Name); err != nil {
 		return fmt.Errorf("Unable to create database: %v", err)
-	}
-
-	// Add to internal metadata store
-	if _, err := s.db.Query(fmt.Sprintf("INSERT INTO public.database (name) VALUES ('%s')", db.Name)); err != nil {
-		return fmt.Errorf("Unable to add db meta entry: %v", err)
 	}
 
 	// Create db connection
@@ -203,24 +173,12 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 		}
 	}
 
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
-
 	return nil
 }
 
 const dropDatabaseTemplate = `DROP DATABASE IF EXISTS %s;`
 
 func (s *Storage) RemoveDatabase(dbname string) error {
-	// make sure the db exists in the metadata store
-	rows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to load db meta entry: %v", err)
-	}
-	if len(rows) != 1 {
-		return fmt.Errorf("Attempting to remove a DB which is already removed")
-	}
-
 	// Close the connection we have (so people don't do queries)
 	if conn, ok := s.dbMap[dbname]; ok {
 		if err := conn.Close(); err != nil {
@@ -232,7 +190,7 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	// if there are people using the connection-- that is itself concerning
 	// Revoke perms to connect?     REVOKE CONNECT ON DATABASE TARGET_DB FROM public;
 	// Close any outstanding connecitons (so we can drop the DB)
-	_, err = s.db.Query(fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
+	_, err := s.db.Query(fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE pg_stat_activity.datname = '%s';`, dbname))
 	if err != nil {
@@ -243,29 +201,6 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	if _, err := s.db.Query(fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
 		return fmt.Errorf("Unable to drop db: %v", err)
 	}
-
-	// Remove all the collection_index entries
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection_index WHERE collection_id IN (SELECT id FROM public.collection WHERE database_id=%v)", rows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to remove db's collection_index meta entries: %v", err)
-	}
-
-	// Remove all the collection_field entries
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection_field WHERE collection_id IN (SELECT id FROM public.collection WHERE database_id=%v)", rows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to remove db's collection_field meta entries: %v", err)
-	}
-
-	// Remove all the collection entries
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection WHERE database_id=%v", rows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to remove db's collection meta entries: %v", err)
-	}
-
-	// Remove from the metadata store
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.database WHERE name='%s'", dbname)); err != nil {
-		return fmt.Errorf("Unable to remove db meta entry: %v", err)
-	}
-
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
 
 	return nil
 
@@ -325,23 +260,8 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", dbName, collection.Name)
 	}
 
-	// make sure the db exists in the metadata store
-	rows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbName))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbName, err)
-	}
-
-	// Add the collection
-	if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection (name, database_id) VALUES ('%s', %v)", collection.Name, rows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to add collection to metadata store: %v", err)
-	}
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", rows[0]["id"], collection.Name))
-	if err != nil {
-		return fmt.Errorf("Unable to get collection meta entry: %v", err)
-	}
-
 	fieldQuery := ""
-	for i, field := range collection.Fields {
+	for _, field := range collection.Fields {
 		if strings.HasPrefix(field.Name, "_") {
 			return fmt.Errorf("The `_` namespace for collection fields is reserved: %v", field)
 		}
@@ -351,32 +271,6 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 			return err
 		}
 
-		// Add to internal metadata store
-		fieldTypeArgs, _ := json.Marshal(field.TypeArgs)
-		// If we have a schema, lets add that
-		if field.Schema != nil {
-			if schema := s.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
-				if err := s.AddSchema(field.Schema); err != nil {
-					return err
-				}
-			}
-
-			schemaRows, err := DoQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", field.Schema.Name, field.Schema.Version))
-			if err != nil {
-				return err
-			}
-
-			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, field_type_args, \"order\", schema_id) VALUES ('%s', %v, '%s', '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, fieldTypeArgs, i, schemaRows[0]["id"])); err != nil {
-				return fmt.Errorf("Unable to add collection_field to metadata store: %v", err)
-			}
-
-		} else {
-			// Add to internal metadata store
-			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, field_type_args, \"order\") VALUES ('%s', %v, '%s', '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, fieldTypeArgs, i)); err != nil {
-				return fmt.Errorf("Unable to add collection to metadata store: %v", err)
-			}
-		}
-
 	}
 
 	tableAddQuery := fmt.Sprintf(addTableTemplate, collection.Name, fieldQuery, collection.Name)
@@ -384,47 +278,47 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
-	// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
-	// add be a thin wrapper around it
-	// If a table has indexes defined, lets take care of that
-	if collection.Indexes != nil {
+	// TODO: indexes need to be implemented here, we need to actually list the indexes out  of the db etc.
+	/*
+		// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
+		// add be a thin wrapper around it
+		// If a table has indexes defined, lets take care of that
+		if collection.Indexes != nil {
 
-		collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
-		if err != nil {
-			return fmt.Errorf("Unable to query for existing collection_indexes: %v", err)
-		}
+			collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
+			if err != nil {
+				return fmt.Errorf("Unable to query for existing collection_indexes: %v", err)
+			}
 
-		// TODO: generic version?
-		currentIndexNames := make(map[string]map[string]interface{})
-		for _, currentIndex := range collectionIndexRows {
-			currentIndexNames[currentIndex["name"].(string)] = currentIndex
-		}
+			// TODO: generic version?
+			currentIndexNames := make(map[string]map[string]interface{})
+			for _, currentIndex := range collectionIndexRows {
+				currentIndexNames[currentIndex["name"].(string)] = currentIndex
+			}
 
-		// compare old and new-- make them what they need to be
-		// What should be removed?
-		for name, _ := range currentIndexNames {
-			if _, ok := collection.Indexes[name]; !ok {
-				if err := s.RemoveIndex(dbName, collection.Name, name); err != nil {
-					return err
+			// compare old and new-- make them what they need to be
+			// What should be removed?
+			for name, _ := range currentIndexNames {
+				if _, ok := collection.Indexes[name]; !ok {
+					if err := s.RemoveIndex(dbName, collection.Name, name); err != nil {
+						return err
+					}
+				}
+			}
+			// What should be added
+			for name, index := range collection.Indexes {
+				if _, ok := currentIndexNames[name]; !ok {
+					if err := s.AddIndex(dbName, collection.Name, index); err != nil {
+						return err
+					}
 				}
 			}
 		}
-		// What should be added
-		for name, index := range collection.Indexes {
-			if _, ok := currentIndexNames[name]; !ok {
-				if err := s.AddIndex(dbName, collection.Name, index); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
-
+	*/
 	return nil
 }
 
+// TODO: re-implement, this is now ONLY datastore focused
 func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collection) error {
 	// make sure the db exists in the metadata store
 	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
@@ -520,14 +414,12 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 		}
 	}
 
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
-
 	return nil
 }
 
 const removeTableTemplate = `DROP TABLE public.%s`
 
+// TODO: use db listing to remove things
 // TODO: remove indexes on removal
 func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 	// make sure the db exists in the metadata store
@@ -568,23 +460,22 @@ func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 		return fmt.Errorf("Unable to remove metadata entry for collection %s: %v", collectionname, err)
 	}
 
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
-
 	return nil
 }
 
-// TODO: add to interface
+// TODO: add to interface?
 func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field, i int) error {
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
+	/*
+		dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
+		if err != nil {
+			return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+		}
 
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection  %s.%s: %v", dbname, collectionname, err)
-	}
+		collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
+		if err != nil {
+			return fmt.Errorf("Unable to find collection  %s.%s: %v", dbname, collectionname, err)
+		}
+	*/
 
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
@@ -595,34 +486,37 @@ func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field,
 		return err
 	}
 
-	// If we have a schema, lets add that
-	if field.Schema != nil {
-		if schema := s.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
-			if err := s.AddSchema(field.Schema); err != nil {
+	// TODO: what?
+	/*
+		// If we have a schema, lets add that
+		if field.Schema != nil {
+			if schema := s.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
+				if err := s.AddSchema(field.Schema); err != nil {
+					return err
+				}
+			}
+
+			schemaRows, err := DoQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", field.Schema.Name, field.Schema.Version))
+			if err != nil {
 				return err
 			}
-		}
 
-		schemaRows, err := DoQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", field.Schema.Name, field.Schema.Version))
-		if err != nil {
-			return err
-		}
+			// Add to internal metadata store
+			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, i, schemaRows[0]["id"])); err != nil {
+				return fmt.Errorf("Unable to add collection_field to metadata store: %v", err)
+			}
 
-		// Add to internal metadata store
-		if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, i, schemaRows[0]["id"])); err != nil {
-			return fmt.Errorf("Unable to add collection_field to metadata store: %v", err)
+		} else {
+			// Add to internal metadata store
+			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\") VALUES ('%s', %v, '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, i)); err != nil {
+				return fmt.Errorf("Unable to add table to metadata store: %v", err)
+			}
 		}
-
-	} else {
-		// Add to internal metadata store
-		if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\") VALUES ('%s', %v, '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, i)); err != nil {
-			return fmt.Errorf("Unable to add table to metadata store: %v", err)
-		}
-	}
+	*/
 	return nil
 }
 
-// TODO: add to interface
+// TODO: add to interface?
 func (s *Storage) RemoveField(dbname, collectionname, fieldName string) error {
 	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
 	if err != nil {
@@ -644,36 +538,86 @@ func (s *Storage) RemoveField(dbname, collectionname, fieldName string) error {
 	return nil
 }
 
-const addIndexTemplate = `
-INSERT INTO public.collection_index ("name", "collection_id", "data_json", "unique") VALUES ('%s', %v, '%s', %v)
+// TODO: better, taken from http://stackoverflow.com/questions/6777456/list-all-index-names-column-names-and-its-table-name-of-a-postgresql-database
+var listIndexQuery = `
+SELECT
+  U.usename                AS user_name,
+  ns.nspname               AS schema_name,
+  idx.indrelid :: REGCLASS AS table_name,
+  i.relname                AS index_name,
+  idx.indisunique          AS is_unique,
+  idx.indisprimary         AS is_primary,
+  am.amname                AS index_type,
+  idx.indkey,
+        array_to_json(ARRAY(
+           SELECT pg_get_indexdef(idx.indexrelid, k + 1, TRUE)
+           FROM
+             generate_subscripts(idx.indkey, 1) AS k
+           ORDER BY k
+       )) AS index_keys,
+  (idx.indexprs IS NOT NULL) OR (idx.indkey::int[] @> array[0]) AS is_functional,
+  idx.indpred IS NOT NULL AS is_partial
+FROM pg_index AS idx
+  JOIN pg_class AS i
+    ON i.oid = idx.indexrelid
+  JOIN pg_am AS am
+    ON i.relam = am.oid
+  JOIN pg_namespace AS NS ON i.relnamespace = NS.OID
+  JOIN pg_user AS U ON i.relowner = U.usesysid
+WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
 `
+
+func (s *Storage) GetIndex(dbname, indexname string) *metadata.CollectionIndex {
+	indexEntries, err := DoQuery(s.db, listIndexQuery)
+	if err != nil {
+		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
+	}
+
+	for _, indexEntry := range indexEntries {
+		if string(indexEntry["index_name"].([]byte)) == indexname {
+			var indexFields []string
+			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			return &metadata.CollectionIndex{
+				Name:   string(indexEntry["index_name"].([]byte)),
+				Fields: indexFields,
+				Unique: indexEntry["is_unique"].(bool),
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.CollectionIndex {
+	indexEntries, err := DoQuery(s.db, listIndexQuery)
+	if err != nil {
+		logrus.Fatalf("Unable to list indexes for %s.%s: %v", dbname, collectionname, err)
+	}
+
+	indexes := make([]*metadata.CollectionIndex, 0, len(indexEntries))
+
+	for _, indexEntry := range indexEntries {
+		if string(indexEntry["table_name"].([]byte)) == collectionname {
+			var indexFields []string
+			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			index := &metadata.CollectionIndex{
+				Name:   string(indexEntry["index_name"].([]byte)),
+				Fields: indexFields,
+				Unique: indexEntry["is_unique"].(bool),
+			}
+			indexes = append(indexes, index)
+		}
+	}
+	return indexes
+
+}
 
 // Index changes
 func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
-	// make sure the db exists in the metadata store
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil || len(dbRows) == 0 {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
 
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(dbname, collectionname)
 	if err != nil {
-		return fmt.Errorf("Unable to find collection  %s.%s: %v", dbname, collectionname, err)
-	}
-
-	collectionFieldRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_field WHERE collection_id=%v", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection_field  %s.%s: %v", dbname, collectionname, err)
-	}
-	// TODO: elsewhere, this is bad to copy around
-	collectionFields := make(map[string]*metadata.Field)
-	for i, collectionFieldEntry := range collectionFieldRows {
-		field := &metadata.Field{
-			Name:  collectionFieldEntry["name"].(string),
-			Type:  metadata.FieldType(collectionFieldEntry["field_type"].(string)),
-			Order: i,
-		}
-		collectionFields[field.Name] = field
+		return err
 	}
 
 	// Create the actual index
@@ -692,7 +636,7 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 		fieldParts := strings.Split(fieldName, ".")
 		// If more than one, then it is a json doc field
 		if len(fieldParts) > 1 {
-			field, ok := collectionFields[fieldParts[0]]
+			field, ok := collection.FieldMap[fieldParts[0]]
 			if !ok {
 				return fmt.Errorf("Index %s on unknown field %s", index.Name, fieldName)
 			}
@@ -714,153 +658,20 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 		return fmt.Errorf("Unable to add collection_index %s: %v", collectionname, err)
 	}
 
-	bytes, _ := json.Marshal(index.Fields)
-	indexMetaAddQuery := fmt.Sprintf(addIndexTemplate, index.Name, collectionRows[0]["id"], bytes, index.Unique)
-	if _, err := s.db.Query(indexMetaAddQuery); err != nil {
-		return fmt.Errorf("Unable to add collection_index meta entry: %v", err)
-	}
-
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
 	return nil
 }
 
 const removeTableIndexTemplate = `DROP INDEX "index_%s_%s"`
 
 func (s *Storage) RemoveIndex(dbname, collectionname, indexname string) error {
-	// make sure the db exists in the metadata store
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
-
-	// make sure the table exists in the metadata store
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection %s.%s: %v", dbname, collectionname, err)
-	}
-
-	// make sure the index exists
-	collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v AND name='%s'", collectionRows[0]["id"], indexname))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection_index %s.%s %s: %v", dbname, collectionname, indexname, err)
-	}
-
 	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, collectionname, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
 	}
 
-	if result, err := s.db.Exec(fmt.Sprintf("DELETE FROM public.collection_index WHERE id=%v", collectionIndexRows[0]["id"])); err == nil {
-		if numRows, err := result.RowsAffected(); err == nil {
-			if numRows == 1 {
-				return nil
-			} else {
-				return fmt.Errorf("RemoveIndex removed %v rows, instead of 1", numRows)
-			}
-		} else {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Unable to remove index entry : %v", err)
-	}
-
-	// TODO: track this in some "context" object-- to not re-load stuff so much
-	s.RefreshMeta()
 	return nil
 }
 
-// Schema management
-const addSchemaTemplate = `
-INSERT INTO public.schema (name, version, data_json) VALUES ('%s', %v, '%s')
-`
-
-// TODO: check for previous version, and set the "backwards_compatible" flag
-func (s *Storage) AddSchema(schema *metadata.Schema) error {
-	if schema.Schema == nil {
-		return fmt.Errorf("Cannot add empty schema")
-	}
-	// TODO: pull this up a level?
-	// Validate the schema
-	if _, err := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema.Schema)); err != nil {
-		return fmt.Errorf("Invalid schema defined: %v", err)
-	}
-	bytes, _ := json.Marshal(schema.Schema)
-	if _, err := s.db.Query(fmt.Sprintf(addSchemaTemplate, schema.Name, schema.Version, string(bytes))); err != nil {
-		return fmt.Errorf("Unable to add schema meta entry: %v", err)
-	}
-	return nil
-}
-
-func (s *Storage) ListSchemas() []*metadata.Schema {
-	rows, err := DoQuery(s.db, "SELECT * FROM public.schema")
-	// TODO: return an err? This shouldn't ever error...
-	if err != nil {
-		return nil
-	}
-
-	schemas := make([]*metadata.Schema, len(rows))
-	for i, row := range rows {
-		schema := make(map[string]interface{})
-		// TODO: check for errors
-		json.Unmarshal(row["data_json"].([]byte), &schema)
-		schemas[i] = &metadata.Schema{
-			Name:    row["name"].(string),
-			Version: row["version"].(int64),
-			Schema:  schema,
-		}
-	}
-
-	return schemas
-}
-
-const selectSchemaTemplate = `
-SELECT * FROM public.schema WHERE name='%s' and version=%v
-`
-
-func (s *Storage) GetSchema(name string, version int64) *metadata.Schema {
-	rows, err := DoQuery(s.db, fmt.Sprintf(selectSchemaTemplate, name, version))
-	// TODO: return an err? This shouldn't ever error...
-	if err != nil {
-		return nil
-	}
-	// This means we have a uniqueness constraint problem-- which should *never* happen
-	if len(rows) != 1 {
-		return nil
-	}
-	schema := make(map[string]interface{})
-	// TODO: check for errors
-	json.Unmarshal(rows[0]["data_json"].([]byte), &schema)
-
-	return &metadata.Schema{
-		Name:    rows[0]["name"].(string),
-		Version: rows[0]["version"].(int64),
-		Schema:  schema,
-	}
-}
-
-const removeSchemaTemplate = `
-DELETE FROM public.schema WHERE name='%s' AND version=%v
-`
-
-func (s *Storage) RemoveSchema(name string, version int64) error {
-	if result, err := s.db.Exec(fmt.Sprintf(removeSchemaTemplate, name, version)); err == nil {
-		if numRows, err := result.RowsAffected(); err == nil {
-			if numRows == 1 {
-				return nil
-			} else {
-				return fmt.Errorf("RemoveSchema removed %v rows, instead of 1", numRows)
-			}
-		} else {
-			return err
-		}
-	} else {
-		return fmt.Errorf("Unable to remove schema entry : %v", err)
-	}
-	return nil
-}
-
-// TODO: remove? not sure how we want to differentiate this from Filter (maybe require that it be on a unique index?)
 // Do a single item get
 func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	result := &query.Result{
@@ -876,7 +687,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 
 	selectQuery := fmt.Sprintf("SELECT * FROM public.%s WHERE _id=%v", args["collection"], args["_id"])
 	var err error
-	result.Return, err = DoQuery(s.dbMap[args["db"].(string)], selectQuery)
+	result.Return, err = DoQuery(s.getDB(args["db"].(string)), selectQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -921,7 +732,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.FieldMap[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
+			result.Error = fmt.Sprintf("Field1 %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.FieldMap)
 			return result
 		}
 
@@ -944,7 +755,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	}
 
 	insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
-	result.Return, err = DoQuery(s.dbMap[args["db"].(string)], insertQuery)
+	result.Return, err = DoQuery(s.getDB(args["db"].(string)), insertQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -1020,7 +831,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 		}
 		field, ok := collection.FieldMap[filterName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
+			result.Error = fmt.Sprintf("Field2 %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
 			return result
 		}
 
@@ -1051,7 +862,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	}
 	updateQuery := fmt.Sprintf("UPDATE public.%s SET _updated='now',%s WHERE %s RETURNING *", args["collection"], setClause, whereClause)
 
-	result.Return, err = DoQuery(s.dbMap[args["db"].(string)], updateQuery)
+	result.Return, err = DoQuery(s.getDB(args["db"].(string)), updateQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -1072,7 +883,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 	}
 
 	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v RETURNING *", args["collection"], args["_id"])
-	rows, err := DoQuery(s.dbMap[args["db"].(string)], sqlQuery)
+	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -1106,10 +917,10 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			return result
 		}
 
-		whereClause := ""
+		whereParts := make([]string, 0)
 		for fieldName, fieldValue := range recordData {
 			if strings.HasPrefix(fieldName, "_") {
-				whereClause += fmt.Sprintf(" %s=%v", fieldName, fieldValue)
+				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
 				continue
 			}
 			field, ok := collection.FieldMap[fieldName]
@@ -1122,22 +933,22 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 			case metadata.Document:
 				// TODO: recurse and add many
 				for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-					whereClause += fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue)
+					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue))
 				}
 			case metadata.Text:
 				fallthrough
 			case metadata.String:
-				whereClause += fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue)
+				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue))
 			default:
-				whereClause += fmt.Sprintf(" \"%s\"=%v", fieldName, fieldValue)
+				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=%v", fieldName, fieldValue))
 			}
 		}
-		if whereClause != "" {
-			sqlQuery += " WHERE " + whereClause
+		if len(whereParts) > 0 {
+			sqlQuery += " WHERE " + strings.Join(whereParts, " AND ")
 		}
 	}
 
-	rows, err := DoQuery(s.dbMap[args["db"].(string)], sqlQuery)
+	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result

@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/julienschmidt/httprouter"
+
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
-	"github.com/julienschmidt/httprouter"
 )
 
 type HTTPApi struct {
@@ -58,7 +59,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 // List all databases that we have in the metadata store
 func (h *HTTPApi) listDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	dbs := h.storageNode.Store.GetMeta().ListDatabases()
+	dbs := h.storageNode.GetMeta().ListDatabases()
 
 	// Now we need to return the results
 	if bytes, err := json.Marshal(dbs); err != nil {
@@ -81,7 +82,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		if err := h.storageNode.Store.AddDatabase(&database); err != nil {
+		if err := h.storageNode.AddDatabase(&database); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -91,7 +92,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 
 // Show a single DB
 func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Store.GetMeta()
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		// Now we need to return the results
 		if bytes, err := json.Marshal(db); err != nil {
@@ -115,7 +116,7 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.Store.RemoveDatabase(dbname); err != nil {
+	if err := h.storageNode.RemoveDatabase(dbname); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -123,14 +124,14 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Store.GetMeta()
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Store.AddCollection(db.Name, &collection); err != nil {
+			if err := h.storageNode.AddCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -148,7 +149,7 @@ func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httpr
 
 // Show a single DB
 func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Store.GetMeta()
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		if collection, ok := db.Collections[ps.ByName("collectionname")]; ok {
 			// Now we need to return the results
@@ -172,14 +173,14 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Store.GetMeta()
+	meta := h.storageNode.GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Store.UpdateCollection(db.Name, &collection); err != nil {
+			if err := h.storageNode.UpdateCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -198,13 +199,13 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
-	meta := h.storageNode.Store.GetMeta()
+	meta := h.storageNode.GetMeta()
 
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
 	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Store.RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
+		if err := h.storageNode.RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
@@ -216,7 +217,7 @@ func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps ht
 
 // List all schemas
 func (h *HTTPApi) listSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	schemas := h.storageNode.Store.ListSchemas()
+	schemas := h.storageNode.MetaStore.ListSchema()
 	if bytes, err := json.Marshal(schemas); err == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
@@ -234,7 +235,7 @@ func (h *HTTPApi) viewSchema(w http.ResponseWriter, r *http.Request, ps httprout
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
-	if schema := h.storageNode.Store.GetSchema(ps.ByName("name"), version); schema != nil {
+	if schema := h.storageNode.MetaStore.GetSchema(ps.ByName("name"), version); schema != nil {
 		if bytes, err := json.Marshal(schema); err == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(bytes)
@@ -257,7 +258,7 @@ func (h *HTTPApi) addSchema(w http.ResponseWriter, r *http.Request, ps httproute
 
 	var schema metadata.Schema
 	if err := json.Unmarshal(bytes, &schema); err == nil {
-		if err := h.storageNode.Store.AddSchema(&schema); err != nil {
+		if err := h.storageNode.MetaStore.AddSchema(&schema); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -275,7 +276,7 @@ func (h *HTTPApi) removeSchema(w http.ResponseWriter, r *http.Request, ps httpro
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
-	if err := h.storageNode.Store.RemoveSchema(ps.ByName("name"), version); err != nil {
+	if err := h.storageNode.MetaStore.RemoveSchema(ps.ByName("name"), version); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}

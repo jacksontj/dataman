@@ -2,13 +2,7 @@ package storagenode
 
 // A collection of benchmarks to test the storagenode interface
 
-import (
-	"encoding/json"
-	"testing"
-
-	"github.com/jacksontj/dataman/src/storage_node/metadata"
-)
-
+/*
 func BenchmarkDocumentDatabase(b *testing.B) {
 	store, err := getStore()
 	if err != nil {

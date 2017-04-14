@@ -5,41 +5,33 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-// Interface that a storage node must implement
-type StorageInterface interface {
-	// Initialization, this is the "config_json" for the `storage_node`
-	Init(map[string]interface{}) error
+// TODO: consolidate the storageSchema interfaces?
 
-	// Get the current meta from however it is stored
-	GetMeta() *metadata.Meta
-	RefreshMeta() error
-
-	// Schema-Functions
+// Schema read interface to the underlying datastore
+type StorageSchemaInterface interface {
+	GetDatabase(dname string) *metadata.Database
+	//ListDatabase() []*metadata.Database
 	AddDatabase(db *metadata.Database) error
 	RemoveDatabase(dbname string) error
 
+	//GetCollection(dbname, collectionname string) *metadata.Collection
+	//ListCollection(dbname string) []*metadata.Collection
+	// TODO: implement better, some missing parts in the implementation
 	AddCollection(dbname string, collection *metadata.Collection) error
 	UpdateCollection(dbname string, collection *metadata.Collection) error
 	RemoveCollection(dbname string, collectionname string) error
 
-	// TODO: move index and schema into a separate interface, since they are only
-	// required for document stores (the rest are for all-- including k/v stores)
+	GetIndex(dbname, indexname string) *metadata.CollectionIndex
+	ListIndex(dbname, collectionname string) []*metadata.CollectionIndex
 	AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error
 	RemoveIndex(dbname, collectionname, indexname string) error
+}
 
-	// TODO: change this to a cache of the router schema?
-	AddSchema(schema *metadata.Schema) error
-	GetSchema(name string, version int64) *metadata.Schema
-	ListSchemas() []*metadata.Schema
-	RemoveSchema(name string, version int64) error
-
-	// Data-Functions
-	// TODO: split out the various functions into grouped interfaces that make sense
-	// for now we'll just have one, but eventually we could support "TransactionalStorageNode" etc.
-	// TODO: more specific types for each method
+// Storage data interface for handling all the queries etc
+type StorageDataInterface interface {
+	// TODO: rename
+	Init(metadata.MetaFunc, map[string]interface{}) error
 	Get(query.QueryArgs) *query.Result
-	// TODO: pull up into the actual storage node itself, the implementation here
-	// is simply switching between Update/Insert
 	Set(query.QueryArgs) *query.Result
 	Insert(query.QueryArgs) *query.Result
 	Update(query.QueryArgs) *query.Result

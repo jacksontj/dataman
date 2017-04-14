@@ -3,31 +3,62 @@ package storagenode
 import (
 	"fmt"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/julienschmidt/httprouter"
 	"github.com/xeipuuv/gojsonschema"
+
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // This node is responsible for handling all of the queries for a specific storage node
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 // and applying them to the actual storage subsystem
 type StorageNode struct {
-	Config *Config
-	Store  StorageInterface
+	Config    *Config
+	MetaStore *MetadataStore
+
+	storeSchema StorageSchemaInterface
+	Store       StorageDataInterface
+
+	meta atomic.Value
 }
 
 func NewStorageNode(config *Config) (*StorageNode, error) {
-	store, err := config.GetStore()
+
+	// Create the meta store
+	metaStore, err := NewMetadataStore(config)
+	if err != nil {
+		return nil, err
+	}
+
+	store, err := config.GetStore(metaStore.GetMeta)
 	if err != nil {
 		return nil, err
 	}
 	node := &StorageNode{
-		Config: config,
-		Store:  store,
+		Config:    config,
+		MetaStore: metaStore,
+		Store:     store,
 	}
 
+	if storeSchema, ok := store.(StorageSchemaInterface); ok {
+		node.storeSchema = storeSchema
+	}
+
+	node.RefreshMeta()
+
 	return node, nil
+}
+
+func (s *StorageNode) GetMeta() *metadata.Meta {
+	return s.meta.Load().(*metadata.Meta)
+}
+
+// TODO: handle errors?
+func (s *StorageNode) RefreshMeta() {
+	s.meta.Store(s.MetaStore.GetMeta())
 }
 
 // TODO: have a stop?
@@ -52,7 +83,7 @@ func (s *StorageNode) HandleQueries(queries []map[query.QueryType]query.QueryArg
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.Store.GetMeta()
+	meta := s.MetaStore.GetMeta()
 
 QUERYLOOP:
 	for i, queryMap := range queries {
@@ -130,83 +161,50 @@ QUERYLOOP:
 }
 
 // TODO: schema management changes here
-
-// TODO: pull this up into router_node
-/*
-
-
-// This method will create a new `Databases` map and swap it in
-func (s *StorageNode) FetchMeta() error {
-	// First we need to determine all the databases that we are responsible for
-	// TODO: this could eventually just come from a topology API in the routing layers
-	// TODO: lots of error handling required
-
-	// TODO: we need to get this on our own...
-	storageNodeId := 1
-	results := s.MetaStore.Filter(map[string]interface{}{
-		"db":    "dataman",
-		"table": "datastore_shard_item",
-		"fields": map[string]interface{}{
-			"storage_node_id": storageNodeId,
-		},
-	})
-
-	//logrus.Infof("results: %v", results.Return[0])
-
-	results = s.MetaStore.Get(map[string]interface{}{
-		"db":    "dataman",
-		"table": "datastore_shard",
-		"id":    results.Return[0]["id"],
-	})
-
-	//logrus.Infof("results: %v", results.Return[0])
-
-	results = s.MetaStore.Get(map[string]interface{}{
-		"db":    "dataman",
-		"table": "datastore",
-		"id":    results.Return[0]["id"],
-	})
-
-	//logrus.Infof("results: %v", results.Return[0])
-
-	results = s.MetaStore.Filter(map[string]interface{}{
-		"db":    "dataman",
-		"table": "database",
-		"fields": map[string]interface{}{
-			"datastore_id": results.Return[0]["id"],
-		},
-	})
-
-	//logrus.Infof("results: %v", results.Return)
-
-	// Now that we know what databases we are a part of, lets load all the schema
-	// etc. associated with them
-	databases := make(map[string]*metadata.Database)
-	for _, databaseEntry := range results.Return {
-		tableResults := s.MetaStore.Filter(map[string]interface{}{
-			"db":    "dataman",
-			"table": "table",
-			"fields": map[string]interface{}{
-				"database_id": databaseEntry["id"],
-			},
-		})
-		//logrus.Infof("tableResults: %v", tableResults)
-
-		tables := make(map[string]*metadata.Table)
-		for _, tableEntry := range tableResults.Return {
-			// TODO: load indexes and primary stuff
-			tables[tableEntry["name"].(string)] = &metadata.Table{
-				Name: tableEntry["name"].(string),
-			}
-		}
-		databases[databaseEntry["name"].(string)] = &metadata.Database{
-			Name:   databaseEntry["name"].(string),
-			Tables: tables,
-		}
+func (s *StorageNode) AddDatabase(db *metadata.Database) error {
+	if s.storeSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	s.Meta.Store(&metadata.Meta{databases})
+	// Add the database in the store
+	if err := s.storeSchema.AddDatabase(db); err != nil {
+		return err
+	}
+	// Add it in the meta
+	if err := s.MetaStore.AddDatabase(db); err != nil {
+		return err
+	}
+
+	// Refresh the metadata
+	s.RefreshMeta()
 
 	return nil
 }
-*/
+
+func (s *StorageNode) RemoveDatabase(dbname string) error {
+	if s.storeSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.RemoveDatabase(dbname); err != nil {
+		return err
+	}
+	// Refresh the metadata
+	s.RefreshMeta()
+	// Remove from the datastore
+	if err := s.storeSchema.RemoveDatabase(dbname); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// TODO: to-implement
+func (s *StorageNode) AddCollection(dbname string, collection *metadata.Collection) error { return nil }
+func (s *StorageNode) UpdateCollection(dbname string, collection *metadata.Collection) error {
+	return nil
+}
+func (s *StorageNode) RemoveCollection(dbname, collectionname string) error { return nil }
+
+// TODO: move add/get/set schema stuff here (to allow for config contol

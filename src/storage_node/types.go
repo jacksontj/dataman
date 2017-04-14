@@ -8,7 +8,7 @@ const (
 	Postgres StorageType = "postgres"
 )
 
-func (s StorageType) Get() StorageInterface {
+func (s StorageType) Get() StorageDataInterface {
 	switch s {
 	case Postgres:
 		return &pgstorage.Storage{}

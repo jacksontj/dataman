@@ -156,7 +156,7 @@ schemad_db = {
 def drop_db(urlbase):
     ret = requests.delete(urlbase+"/v1/database/"+DBNAME)
     print 'drop database (', ret.request.method, ret.request.url, ')'
-    print ret
+    print ret.content
 
 def create_db(urlbase, kind=None):
     if kind is None:
