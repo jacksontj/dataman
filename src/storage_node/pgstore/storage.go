@@ -288,6 +288,14 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", dbName, collection.Name)
 	}
 
+	// TODO: this should be done elsewhere
+	if collection.FieldMap == nil {
+		collection.FieldMap = make(map[string]*metadata.Field)
+		for _, field := range collection.Fields {
+			collection.FieldMap[field.Name] = field
+		}
+	}
+
 	fieldQuery := ""
 	for _, field := range collection.Fields {
 		if strings.HasPrefix(field.Name, "_") {
@@ -309,7 +317,7 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 	// If a table has indexes defined, lets take care of that
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := s.AddIndex(dbName, collection.Name, index); err != nil {
+			if err := s.AddIndex(dbName, collection, index); err != nil {
 				return err
 			}
 		}
@@ -374,7 +382,7 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 		// What should be added
 		for name, index := range collection.Indexes {
 			if _, ok := currentCollection.Indexes[name]; !ok {
-				if err := s.AddIndex(dbname, collection.Name, index); err != nil {
+				if err := s.AddIndex(dbname, collection, index); err != nil {
 					return err
 				}
 			}
@@ -505,14 +513,7 @@ func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.Collectio
 }
 
 // Index changes
-func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
-
-	meta := s.GetMeta()
-	collection, err := meta.GetCollection(dbname, collectionname)
-	if err != nil {
-		return err
-	}
-
+func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
@@ -520,7 +521,7 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s_%s\" ON public.%s (", collectionname, index.Name, collectionname)
+	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s_%s\" ON public.%s (", collection.Name, index.Name, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
@@ -548,7 +549,7 @@ func (s *Storage) AddIndex(dbname, collectionname string, index *metadata.Collec
 	}
 	indexAddQuery += ")"
 	if _, err := s.dbMap[dbname].Query(indexAddQuery); err != nil {
-		return fmt.Errorf("Unable to add collection_index %s: %v", collectionname, err)
+		return fmt.Errorf("Unable to add collection_index %s: %v", collection.Name, err)
 	}
 
 	return nil

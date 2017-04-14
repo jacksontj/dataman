@@ -22,7 +22,7 @@ type StorageSchemaInterface interface {
 
 	GetIndex(dbname, indexname string) *metadata.CollectionIndex
 	ListIndex(dbname, collectionname string) []*metadata.CollectionIndex
-	AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error
+	AddIndex(dbname string, collection *metadata.Collection, index *metadata.CollectionIndex) error
 	RemoveIndex(dbname, collectionname, indexname string) error
 }
 
