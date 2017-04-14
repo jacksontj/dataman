@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-14 08:33:21
+Date: 2017-04-14 10:09:38
 */
 
 
@@ -23,8 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 42
  CACHE 1;
+SELECT setval('"public"."collection__id_seq"', 42, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -34,8 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 42
  CACHE 1;
+SELECT setval('"public"."collection_field__id_seq"', 42, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -45,8 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 35
  CACHE 1;
+SELECT setval('"public"."collection_index__id_seq"', 35, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -56,8 +59,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 28
  CACHE 1;
+SELECT setval('"public"."database__id_seq"', 28, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -67,8 +71,9 @@ CREATE SEQUENCE "public"."schema__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 69
  CACHE 1;
+SELECT setval('"public"."schema__id_seq"', 69, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -186,7 +191,7 @@ ALTER TABLE "public"."collection_field" ADD PRIMARY KEY ("_id");
 -- ----------------------------
 -- Indexes structure for table collection_index
 -- ----------------------------
-CREATE UNIQUE INDEX "index_collection_index_collection_index_table" ON "public"."collection_index" USING btree ("name", "collection_id");
+CREATE UNIQUE INDEX "collection_index_name" ON "public"."collection_index" USING btree ("name", "collection_id");
 
 -- ----------------------------
 -- Primary Key structure for table collection_index
