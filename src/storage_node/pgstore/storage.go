@@ -389,25 +389,13 @@ const removeTableTemplate = `DROP TABLE public.%s`
 // TODO: use db listing to remove things
 // TODO: remove indexes on removal
 func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
-	// make sure the db exists in the metadata store
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
+	collection := s.GetCollection(dbname, collectionname)
+	if collection == nil {
+		return fmt.Errorf("Unable to find collection %s.%s", dbname, collectionname)
 	}
 
-	// make sure the collection exists in the metadata store
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection %s.%s: %v", dbname, collectionname, err)
-	}
-
-	// remove indexes
-	collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to query indexes on collection: %v", err)
-	}
-	for _, collectionIndexRow := range collectionIndexRows {
-		if err := s.RemoveIndex(dbname, collectionname, collectionIndexRow["name"].(string)); err != nil {
+	for name, _ := range collection.Indexes {
+		if err := s.RemoveIndex(dbname, collectionname, name); err != nil {
 			return fmt.Errorf("Unable to remove table_index: %v", err)
 		}
 	}
@@ -417,33 +405,11 @@ func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", collectionname, err)
 	}
 
-	// Remove Fields
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection_field WHERE collection_id=%v", collectionRows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to remove collection_field: %v", collectionname, err)
-	}
-
-	// Now that it has been removed, lets remove it from the internal metadata store
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection WHERE id=%v", collectionRows[0]["id"])); err != nil {
-		return fmt.Errorf("Unable to remove metadata entry for collection %s: %v", collectionname, err)
-	}
-
 	return nil
 }
 
 // TODO: add to interface?
 func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field, i int) error {
-	/*
-		dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-		if err != nil {
-			return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-		}
-
-		collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
-		if err != nil {
-			return fmt.Errorf("Unable to find collection  %s.%s: %v", dbname, collectionname, err)
-		}
-	*/
-
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
 		if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s ADD %s", collectionname, fieldStr)); err != nil {
@@ -453,55 +419,15 @@ func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field,
 		return err
 	}
 
-	// TODO: what?
-	/*
-		// If we have a schema, lets add that
-		if field.Schema != nil {
-			if schema := s.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
-				if err := s.AddSchema(field.Schema); err != nil {
-					return err
-				}
-			}
-
-			schemaRows, err := DoQuery(s.db, fmt.Sprintf("SELECT id FROM public.schema WHERE name='%s' AND version=%v", field.Schema.Name, field.Schema.Version))
-			if err != nil {
-				return err
-			}
-
-			// Add to internal metadata store
-			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\", schema_id) VALUES ('%s', %v, '%s', %v, %v)", field.Name, collectionRows[0]["id"], field.Type, i, schemaRows[0]["id"])); err != nil {
-				return fmt.Errorf("Unable to add collection_field to metadata store: %v", err)
-			}
-
-		} else {
-			// Add to internal metadata store
-			if _, err := DoQuery(s.db, fmt.Sprintf("INSERT INTO public.collection_field (name, collection_id, field_type, \"order\") VALUES ('%s', %v, '%s', %v)", field.Name, collectionRows[0]["id"], field.Type, i)); err != nil {
-				return fmt.Errorf("Unable to add table to metadata store: %v", err)
-			}
-		}
-	*/
 	return nil
 }
 
 // TODO: add to interface?
 func (s *Storage) RemoveField(dbname, collectionname, fieldName string) error {
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
-
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collectionname))
-	if err != nil {
-		return fmt.Errorf("Unable to find collection  %s.%s: %v", dbname, collectionname, err)
-	}
-
 	if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s DROP \"%s\"", collectionname, fieldName)); err != nil {
 		return fmt.Errorf("Unable to remove old field: %v", err)
 	}
 
-	if _, err := s.db.Query(fmt.Sprintf("DELETE FROM public.collection_field WHERE collection_id=%v AND name='%s'", collectionRows[0]["id"], fieldName)); err != nil {
-		return fmt.Errorf("Unable to remove collection_field: %v", collectionname, err)
-	}
 	return nil
 }
 
