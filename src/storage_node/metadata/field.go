@@ -14,7 +14,7 @@ const (
 	Text               = "text"
 	Int                = "int"
 	Bool               = "bool"
-	DateTime	   = "datetime"
+	DateTime           = "datetime"
 )
 
 type Field struct {

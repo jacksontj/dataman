@@ -118,6 +118,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 			// TODO: do we want to do this based on size?
 			case "smallint":
 				fieldType = metadata.Int
+				// TODO: this isn't actually 100% accurate, since it might be a list or something :/
 			case "jsonb":
 				fieldType = metadata.Document
 			case "boolean":
@@ -125,7 +126,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 			case "text":
 				fieldType = metadata.Text
 			case "timestamp without time zone":
-			    fieldType = metadata.DateTime
+				fieldType = metadata.DateTime
 			default:
 				logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], name, tableName, fieldEntry)
 			}
@@ -232,7 +233,7 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	case metadata.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
 	case metadata.DateTime:
-        fieldStr += "\"" + field.Name + "\" timestamp without time zone"
+		fieldStr += "\"" + field.Name + "\" timestamp without time zone"
 	default:
 		return "", fmt.Errorf("Unknown field type: %v", field.Type)
 	}
