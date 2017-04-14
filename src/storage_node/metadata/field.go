@@ -14,6 +14,7 @@ const (
 	Text               = "text"
 	Int                = "int"
 	Bool               = "bool"
+	DateTime	   = "datetime"
 )
 
 type Field struct {
@@ -41,6 +42,7 @@ func (s *Schema) Equal(o *Schema) bool {
 	return s.Name == o.Name && s.Version == o.Version
 }
 
+// TODO: flag for "is primary" ?
 type CollectionIndex struct {
 	Name string `json:"name"`
 	// TODO: better schema-- this will be the data_json in the DB

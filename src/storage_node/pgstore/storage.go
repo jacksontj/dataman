@@ -124,8 +124,10 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 				fieldType = metadata.Bool
 			case "text":
 				fieldType = metadata.Text
+			case "timestamp without time zone":
+			    fieldType = metadata.DateTime
 			default:
-				logrus.Fatalf("Unknown data_type in %s.%s %v", name, tableName, fieldEntry)
+				logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], name, tableName, fieldEntry)
 			}
 
 			if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
@@ -229,6 +231,8 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 		fieldStr += "\"" + field.Name + "\" int"
 	case metadata.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
+	case metadata.DateTime:
+        fieldStr += "\"" + field.Name + "\" timestamp without time zone"
 	default:
 		return "", fmt.Errorf("Unknown field type: %v", field.Type)
 	}
