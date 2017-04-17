@@ -2,12 +2,8 @@ package routernode
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/jacksontj/dataman/src/httpclient"
-	"github.com/jacksontj/dataman/src/metadata"
-	"github.com/jacksontj/dataman/src/query"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -25,7 +21,87 @@ func NewHTTPApi(routerNode *RouterNode) *HTTPApi {
 
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
+	// DB Management
+	// DB collection
+	router.GET("/v1/database", h.listDatabase)
+	//router.POST("/v1/database", h.addDatabase)
+
+	// DB instance
+	router.GET("/v1/database/:dbname", h.viewDatabase)
+	//router.POST("/v1/database/:dbname", h.addCollection)
+	//router.DELETE("/v1/database/:dbname", h.removeDatabase)
+
+	// Collections
+	router.GET("/v1/database/:dbname/:collectionname", h.viewCollection)
+	//router.PUT("/v1/database/:dbname/:collectionname", h.updateCollection)
+	//router.DELETE("/v1/database/:dbname/:collectionname", h.removeCollection)
+
+	// Schema
+	//router.GET("/v1/schema", h.listSchema)
+	// TODO: add generic jsonSchema endpoint  (to show just the jsonSchema content)
+	//router.GET("/v1/schema/:name/:version", h.viewSchema)
+	//router.POST("/v1/schema/:name/:version", h.addSchema)
+	//router.DELETE("/v1/schema/:name/:version", h.removeSchema)
+
 	router.POST("/v1/data/raw", h.rawQueryHandler)
+}
+
+// List all databases that we have in the metadata store
+func (h *HTTPApi) listDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	dbs := h.routerNode.GetMeta().ListDatabases()
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(dbs); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+// Show a single DB
+func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.routerNode.GetMeta()
+	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+		// Now we need to return the results
+		if bytes, err := json.Marshal(db); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
+
+// Show a single DB
+func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.routerNode.GetMeta()
+	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+		if collection, ok := db.Collections[ps.ByName("collectionname")]; ok {
+			// Now we need to return the results
+			if bytes, err := json.Marshal(collection); err == nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+			} else {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 }
 
 // TODO: streaming parser
@@ -39,89 +115,8 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 		- forward to storage_node
 
 */
+// TODO: implement
 func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	defer r.Body.Close()
-	bytes, _ := ioutil.ReadAll(r.Body)
+	w.WriteHeader(http.StatusInternalServerError)
 
-	var queries []map[query.QueryType]query.QueryArgs
-
-	if err := json.Unmarshal(bytes, &queries); err != nil {
-		// TODO: correct status code, 4xx for invalid request
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	} else {
-		// At this point we have a list of queries that we need to do, so lets do it
-		// TODO: we should actually do these in parallel (potentially with some
-		// config of *how* parallel)
-		results := make([]*query.Result, len(queries))
-
-		// We specifically want to load this once for the batch so we don't have mixed
-		// schema information across this batch of queries
-		meta := h.routerNode.Meta.Load().(*metadata.Meta)
-
-		// TODO: this should really determine where all of the requests need to go
-		// then re-swizzle the queries to make a smaller number of queries (or at least
-		// parallelize them out). This current implementation is not fast-- but it works
-		// enough for now-- definitely needs a re-do
-		for i, queryMap := range queries {
-			// We only allow a single method to be defined per item
-			if len(queryMap) == 1 {
-				for queryType, queryArgs := range queryMap {
-					dbName := queryArgs["db"].(string)
-
-					database, ok := meta.Databases[dbName]
-					if !ok {
-						results[i] = &query.Result{Error: "Unknown DB " + dbName}
-					}
-
-					// TODO: actually do the sharding and replica selection
-					shards := make([]*metadata.DataStoreShard, 0)
-
-					// TODO: have a map or some other switch from query -> interface?
-					// This will need to get more complex as we support multiple
-					// storage interfaces
-					switch queryType {
-					// For a get we have a specific key we can check shards against
-					case query.Get:
-						// TODO: determine the shard key, else just get all of them
-						shards = database.Store.Shards
-					case query.Set:
-						// TODO: determine the shard key
-						shards = database.Store.Shards
-					case query.Filter:
-						// TODO: determine the shard key, else just get all of them
-						shards = database.Store.Shards
-					default:
-						results[i] = &query.Result{
-							Error: "Unsupported query type " + string(queryType),
-						}
-					}
-
-					result, err := httpclient.MultiQuerySingle(
-						shards,
-						&query.Query{Type: queryType, Args: queryArgs},
-					)
-					if err == nil {
-						results[i] = result
-					} else {
-						results[i] = &query.Result{Error: err.Error()}
-					}
-				}
-
-			} else {
-				results[i] = &query.Result{
-					Error: "Only one QueryType supported per query",
-				}
-			}
-		}
-		// Now we need to return the results
-		if bytes, err := json.Marshal(results); err != nil {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(bytes)
-		}
-	}
 }

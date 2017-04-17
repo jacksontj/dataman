@@ -1,7 +1,7 @@
 # Metadata store config
 metastore_type: postgres
 metastore_config:
-  pg_string: user=postgres password=password dbname=dataman sslmode=disable
+  pg_string: user=postgres password=password dbname=dataman_proxy sslmode=disable
 
 # config for the HTTP api
 http_api:

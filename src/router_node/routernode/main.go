@@ -2,13 +2,11 @@ package main
 
 import (
 	"io/ioutil"
-	"net/http"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
-	"github.com/julienschmidt/httprouter"
 
 	"github.com/jacksontj/dataman/src/router_node"
 )
@@ -35,21 +33,11 @@ func main() {
 	}
 	logrus.Infof("config: %v", config)
 
-	// Load the metadata store
-	metaStore, err := config.GetMetaStore()
+	routerNode, err := routernode.NewRouterNode(config)
 	if err != nil {
-		logrus.Fatalf("Unable to load metaStore: %v", err)
-	}
-
-	routerNode, err := routernode.NewRouterNode(metaStore)
-	if err != nil {
-		logrus.Fatalf("Unable to create StorageNode: %v", err)
+		logrus.Fatalf("Unable to create RouterNode: %v", err)
 	}
 
 	// initialize the http api (since at this point we are ready to go!
-	router := httprouter.New()
-	api := routernode.NewHTTPApi(routerNode)
-	api.Start(router)
-
-	http.ListenAndServe(config.HTTP.Addr, router)
+	routerNode.Start()
 }
