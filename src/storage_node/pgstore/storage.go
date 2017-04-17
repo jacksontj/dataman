@@ -91,7 +91,7 @@ func (s *Storage) GetMeta() *metadata.Meta {
 func (s *Storage) GetDatabase(name string) *metadata.Database {
 	database := metadata.NewDatabase(name)
 
-	tables, err := DoQuery(s.db, "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_schema,table_name;")
+	tables, err := DoQuery(s.getDB(name), "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_schema,table_name;")
 	if err != nil {
 		logrus.Fatalf("Unable to get table list for db %s: %v", name, err)
 	}
@@ -101,7 +101,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 		collection := metadata.NewCollection(tableName)
 
 		// Get the fields for the collection
-		fields, err := DoQuery(s.db, "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
+		fields, err := DoQuery(s.getDB(name), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
 		if err != nil {
 			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", name, tableName, err)
 		}
@@ -158,7 +158,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 // Database changes
 func (s *Storage) AddDatabase(db *metadata.Database) error {
 	// Create the database
-	if _, err := s.db.Query("CREATE DATABASE " + db.Name); err != nil {
+	if _, err := DoQuery(s.db, "CREATE DATABASE "+db.Name); err != nil {
 		return fmt.Errorf("Unable to create database: %v", err)
 	}
 
@@ -193,7 +193,7 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	// if there are people using the connection-- that is itself concerning
 	// Revoke perms to connect?     REVOKE CONNECT ON DATABASE TARGET_DB FROM public;
 	// Close any outstanding connecitons (so we can drop the DB)
-	_, err := s.db.Query(fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
+	_, err := DoQuery(s.db, fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE pg_stat_activity.datname = '%s';`, dbname))
 	if err != nil {
@@ -201,7 +201,7 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	}
 
 	// Remove the database
-	if _, err := s.db.Query(fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
+	if _, err := DoQuery(s.db, fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
 		return fmt.Errorf("Unable to drop db: %v", err)
 	}
 
@@ -315,7 +315,7 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 	}
 
 	tableAddQuery := fmt.Sprintf(addTableTemplate, collection.Name, fieldQuery, collection.Name)
-	if _, err := s.dbMap[dbName].Query(tableAddQuery); err != nil {
+	if _, err := DoQuery(s.getDB(dbName), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
@@ -510,6 +510,9 @@ func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.Collectio
 				Fields: indexFields,
 				Unique: indexEntry["is_unique"].(bool),
 			}
+			if len(index.Name) > 55 {
+				logrus.Fatalf("Index name too long in %s.%s: %v", dbname, collectionname, index)
+			}
 			indexes = append(indexes, index)
 		}
 	}
@@ -526,7 +529,7 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s_%s\" ON public.%s (", collection.Name, index.Name, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s\" ON public.%s (", index.Name, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
@@ -553,17 +556,17 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 		}
 	}
 	indexAddQuery += ")"
-	if _, err := s.dbMap[dbname].Query(indexAddQuery); err != nil {
-		return fmt.Errorf("Unable to add collection_index %s: %v", collection.Name, err)
+	if _, err := DoQuery(s.dbMap[dbname], indexAddQuery); err != nil {
+		return fmt.Errorf("Unable to add collection index %s to %s.%s: %v", index.Name, dbname, collection.Name, err)
 	}
 
 	return nil
 }
 
-const removeTableIndexTemplate = `DROP INDEX "index_%s_%s"`
+const removeTableIndexTemplate = `DROP INDEX "index_%s"`
 
 func (s *Storage) RemoveIndex(dbname, collectionname, indexname string) error {
-	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, collectionname, indexname)
+	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
 	}
