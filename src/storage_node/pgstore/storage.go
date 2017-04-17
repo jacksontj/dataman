@@ -873,7 +873,7 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 	}
 	for _, row := range result.Return {
 		for k, v := range row {
-			if field, ok := collection.FieldMap[k]; ok {
+			if field, ok := collection.FieldMap[k]; ok && v != nil {
 				switch field.Type {
 				case metadata.Document:
 					var tmp map[string]interface{}
