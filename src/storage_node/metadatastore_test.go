@@ -206,3 +206,41 @@ func TestMetaStore_Schema2(t *testing.T) {
 	}
 
 }
+
+/*
+
+   Tests TODO
+
+   - AddDatabase
+       - add invalid one
+       - add valid one
+       - add one that exists
+   - RemoveDatabase
+       - remove one that doesn't exist
+       - remove one that does exist
+   - AddCollection
+       - add invalid one
+       - add valid one
+       - add one that exists
+   - UpdateCollection (LATER)
+   - RemoveCollection
+       - remove one that doesn't exist
+       - remove one that does exist
+   - AddIndex
+       - add invalid one
+       - add valid one
+       - add one that exists
+   - RemoveIndex
+       - remove one that doesn't exist
+       - remove one that does exist
+   - AddSchema
+       - add invalid one
+       - add valid one
+       - add one that exists
+   - ListSchema
+   - GetSchema
+   - RemoveIndex
+       - remove one that doesn't exist
+       - remove one that does exist
+
+*/
