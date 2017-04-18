@@ -1,4 +1,4 @@
-package httpclient
+package routernode
 
 import (
 	"bytes"
@@ -7,12 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/jacksontj/dataman/src/metadata"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/router_node/metadata"
 )
 
+/*
 // Get a result from at least one replica per shard
-func MultiQuery(shards []*metadata.DataStoreShard, queries []*query.Query) ([]*query.Result, error) {
+func MultiQuery(shards []*metadata.DatastoreShard, queries []*query.Query) ([]*query.Result, error) {
 	mergedResults := make([]*query.Result, len(queries))
 
 	for _, shard := range shards {
@@ -38,13 +39,15 @@ func MultiQuery(shards []*metadata.DataStoreShard, queries []*query.Query) ([]*q
 }
 
 // Get a result from at least one replica per shard
-func MultiQuerySingle(shards []*metadata.DataStoreShard, q *query.Query) (*query.Result, error) {
+func MultiQuerySingle(shards []*metadata.DatastoreShard, q *query.Query) (*query.Result, error) {
 	if ret, err := MultiQuery(shards, []*query.Query{q}); err == nil {
 		return ret[0], nil
 	} else {
 		return nil, err
 	}
 }
+
+*/
 
 // Take a query and send it to a given destination
 func Query(storageNode *metadata.StorageNode, queries []*query.Query) ([]*query.Result, error) {

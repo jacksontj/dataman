@@ -2,8 +2,10 @@ package routernode
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -117,6 +119,24 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 */
 // TODO: implement
 func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	w.WriteHeader(http.StatusInternalServerError)
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
 
+	var queries []map[query.QueryType]query.QueryArgs
+
+	if err := json.Unmarshal(bytes, &queries); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		results := h.routerNode.HandleQueries(queries)
+		// Now we need to return the results
+		if bytes, err := json.Marshal(results); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+		}
+	}
 }

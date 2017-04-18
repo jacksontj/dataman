@@ -1,6 +1,7 @@
 package routernode
 
 import (
+	"fmt"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 )
 
@@ -86,4 +88,56 @@ func (s *RouterNode) FetchMeta() error {
 	}
 	logrus.Debugf("Loaded meta: %v", meta)
 	return nil
+}
+
+func (s *RouterNode) HandleQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
+	return s.HandleQueries([]map[query.QueryType]query.QueryArgs{q})[0]
+}
+
+func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+	// TODO: we should actually do these in parallel (potentially with some
+	// config of *how* parallel)
+	results := make([]*query.Result, len(queries))
+
+	// We specifically want to load this once for the batch so we don't have mixed
+	// schema information across this batch of queries
+	meta := s.GetMeta()
+
+QUERYLOOP:
+	for i, queryMap := range queries {
+		// We only allow a single method to be defined per item
+		if len(queryMap) == 1 {
+			for queryType, queryArgs := range queryMap {
+				database, ok := meta.Databases[queryArgs["db"].(string)]
+				if !ok {
+					results[i] = &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+					continue QUERYLOOP
+				}
+
+				// TODO: actually do this!
+				// Get shard
+				// Get replica
+				// Send request
+				result, err := QuerySingle(
+					database.Datastore.Shards[0].Replicas[0].Store,
+					&query.Query{queryType, queryArgs},
+				)
+				if err != nil {
+					results[i] = &query.Result{
+						Error: err.Error(),
+					}
+					continue
+				} else {
+					results[i] = result
+				}
+
+			}
+
+		} else {
+			results[i] = &query.Result{
+				Error: fmt.Sprintf("Only one QueryType supported per query: %v -- %v", queryMap, queries),
+			}
+		}
+	}
+	return results
 }
