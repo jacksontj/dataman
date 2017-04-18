@@ -5,7 +5,7 @@ import "net"
 type StorageNode struct {
 	Name string
 
-	IP     net.Addr
+	IP     net.IP
 	Port   int
 	Type   StorageNodeType
 	State  StorageNodeState

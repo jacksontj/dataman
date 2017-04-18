@@ -1,6 +1,8 @@
 package routernode
 
 import (
+	"net"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node"
@@ -154,9 +156,9 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
 				Store: &metadata.StorageNode{
 					Name: storageNodeRecord["name"].(string),
+					IP: net.ParseIP(storageNodeRecord["ip"].(string)),
+					Port: int(storageNodeRecord["port"].(int64)),
 					// TODO: get the rest of it
-					// IP
-					// Port
 					// Type
 					// State
 					// Config

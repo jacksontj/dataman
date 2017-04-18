@@ -90,10 +90,6 @@ func (s *RouterNode) FetchMeta() error {
 	return nil
 }
 
-func (s *RouterNode) HandleQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
-	return s.HandleQueries([]map[query.QueryType]query.QueryArgs{q})[0]
-}
-
 func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
 	// TODO: we should actually do these in parallel (potentially with some
 	// config of *how* parallel)
@@ -103,34 +99,32 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 	// schema information across this batch of queries
 	meta := s.GetMeta()
 
-QUERYLOOP:
 	for i, queryMap := range queries {
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
-				database, ok := meta.Databases[queryArgs["db"].(string)]
-				if !ok {
-					results[i] = &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
-					continue QUERYLOOP
-				}
+				// Switch between read and write operations
+				switch queryType {
+				// Write operations
+				case query.Set:
+					fallthrough
+				case query.Insert:
+					fallthrough
+				case query.Update:
+					fallthrough
+				case query.Delete:
+					results[i] = s.handleWrite(meta, queryType, queryArgs)
 
-				// TODO: actually do this!
-				// Get shard
-				// Get replica
-				// Send request
-				result, err := QuerySingle(
-					database.Datastore.Shards[0].Replicas[0].Store,
-					&query.Query{queryType, queryArgs},
-				)
-				if err != nil {
-					results[i] = &query.Result{
-						Error: err.Error(),
-					}
-					continue
-				} else {
-					results[i] = result
-				}
+				// Read operations
+				case query.Get:
+					fallthrough
+				case query.Filter:
+					results[i] = s.handleRead(meta, queryType, queryArgs)
 
+					// All other operations should error
+				default:
+					results[i] = &query.Result{Error: "Unkown query type: " + string(queryType)}
+				}
 			}
 
 		} else {
@@ -140,4 +134,61 @@ QUERYLOOP:
 		}
 	}
 	return results
+}
+
+func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
+	database, ok := meta.Databases[queryArgs["db"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+	}
+
+	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
+	// and to do that we'll need the collection metadata
+
+	// Once we have the metadata all found we need to do the following:
+	//      - Authentication/authorization
+	//      - Cache
+	//      - Sharding
+	//      - Replicas
+
+	result, err := QuerySingle(
+		database.Datastore.Shards[0].Replicas[0].Store,
+		&query.Query{queryType, queryArgs},
+	)
+
+	if err == nil {
+		return result
+	} else {
+		return &query.Result{Error: err.Error()}
+	}
+
+	return nil
+}
+
+func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
+	database, ok := meta.Databases[queryArgs["db"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+	}
+
+	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
+	// and to do that we'll need the collection metadata
+
+	// Once we have the metadata all found we need to do the following:
+	//      - Authentication/authorization
+	//      - Cache
+	//      - Sharding
+
+	result, err := QuerySingle(
+		database.Datastore.Shards[0].Replicas[0].Store,
+		&query.Query{queryType, queryArgs},
+	)
+
+	if err == nil {
+		return result
+	} else {
+		return &query.Result{Error: err.Error()}
+	}
+
+	return nil
 }
