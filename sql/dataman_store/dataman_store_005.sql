@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-14 10:09:38
+Date: 2017-04-18 08:58:27
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 42
+ START 55
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 42, true);
+SELECT setval('"public"."collection__id_seq"', 55, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 42
+ START 89
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 42, true);
+SELECT setval('"public"."collection_field__id_seq"', 89, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 35
+ START 46
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 35, true);
+SELECT setval('"public"."collection_index__id_seq"', 46, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 28
+ START 31
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 28, true);
+SELECT setval('"public"."database__id_seq"', 31, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -101,7 +101,6 @@ CREATE TABLE "public"."collection_field" (
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
 "field_type" varchar(255) COLLATE "default",
-"order" int4,
 "schema_id" int4,
 "not_null" int4,
 "field_type_args" jsonb

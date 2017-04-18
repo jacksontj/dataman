@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-17 11:53:16
+Date: 2017-04-18 08:58:09
 */
 
 
@@ -23,8 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 3
  CACHE 1;
+SELECT setval('"public"."collection__id_seq"', 3, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -34,8 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 4
  CACHE 1;
+SELECT setval('"public"."collection_field__id_seq"', 4, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -58,6 +60,7 @@ CREATE SEQUENCE "public"."database__id_seq"
  MAXVALUE 9223372036854775807
  START 1
  CACHE 1;
+SELECT setval('"public"."database__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -69,6 +72,7 @@ CREATE SEQUENCE "public"."datastore__id_seq"
  MAXVALUE 9223372036854775807
  START 1
  CACHE 1;
+SELECT setval('"public"."datastore__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_shard__id_seq
@@ -80,6 +84,7 @@ CREATE SEQUENCE "public"."datastore_shard__id_seq"
  MAXVALUE 9223372036854775807
  START 1
  CACHE 1;
+SELECT setval('"public"."datastore_shard__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_shard_replica__id_seq
@@ -91,6 +96,7 @@ CREATE SEQUENCE "public"."datastore_shard_replica__id_seq"
  MAXVALUE 9223372036854775807
  START 1
  CACHE 1;
+SELECT setval('"public"."datastore_shard_replica__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -113,6 +119,7 @@ CREATE SEQUENCE "public"."storage_node__id_seq"
  MAXVALUE 9223372036854775807
  START 1
  CACHE 1;
+SELECT setval('"public"."storage_node__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for storage_node_state__id_seq
@@ -162,8 +169,7 @@ CREATE TABLE "public"."collection_field" (
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
 "field_type" varchar(255) COLLATE "default",
-"field_type_args" varchar(255) COLLATE "default",
-"order" int4,
+"field_type_args" jsonb,
 "schema_id" int4,
 "not_null" bool
 )
@@ -424,7 +430,6 @@ ALTER TABLE "public"."collection" ADD FOREIGN KEY ("database_id") REFERENCES "pu
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field"
 -- ----------------------------
-ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
