@@ -84,9 +84,8 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			collection.FieldMap = make(map[string]*metadata.Field)
 			for i, collectionFieldRecord := range collectionFieldResult.Return {
 				field := &metadata.Field{
-					Name:  collectionFieldRecord["name"].(string),
-					Type:  metadata.FieldType(collectionFieldRecord["field_type"].(string)),
-					Order: i,
+					Name: collectionFieldRecord["name"].(string),
+					Type: metadata.FieldType(collectionFieldRecord["field_type"].(string)),
 				}
 				if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
 					field.TypeArgs = fieldTypeArgs.(map[string]interface{})
@@ -400,11 +399,6 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 		return fmt.Errorf("Unable to get collection_field meta entry: %v", err)
 	}
 
-	// TODO: handle up a layer?
-	for i, field := range collection.Fields {
-		field.Order = i
-	}
-
 	oldFields := make(map[string]map[string]interface{}, len(collectionFieldRows))
 	for _, fieldEntry := range collectionFieldRows {
 		oldFields[fieldEntry["name"].(string)] = fieldEntry
@@ -425,7 +419,7 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 	// Fields we need to add
 	for name, field := range newFields {
 		if _, ok := oldFields[name]; !ok {
-			if err := s.AddField(dbname, collection.Name, field, field.Order); err != nil {
+			if err := s.AddField(dbname, collection.Name, field); err != nil {
 				return fmt.Errorf("Unable to add field: %v", err)
 			}
 		}

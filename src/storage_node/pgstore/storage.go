@@ -107,7 +107,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 		}
 
 		collection.Fields = make([]*metadata.Field, 0, len(fields))
-		for i, fieldEntry := range fields {
+		for _, fieldEntry := range fields {
 			var fieldType metadata.FieldType
 			fieldTypeArgs := make(map[string]interface{})
 			switch fieldEntry["data_type"] {
@@ -139,7 +139,6 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 				Name:     fieldEntry["column_name"].(string),
 				Type:     fieldType,
 				TypeArgs: fieldTypeArgs,
-				Order:    i,
 			}
 			indexes := s.ListIndex(name, tableName)
 			collection.Indexes = make(map[string]*metadata.CollectionIndex)
@@ -358,7 +357,7 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 	// Fields we need to add
 	for name, field := range collection.FieldMap {
 		if _, ok := currentCollection.FieldMap[name]; !ok {
-			if err := s.AddField(dbname, collection.Name, field, field.Order); err != nil {
+			if err := s.AddField(dbname, collection.Name, field); err != nil {
 				return fmt.Errorf("Unable to add field: %v", err)
 			}
 		}
@@ -422,7 +421,7 @@ func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 }
 
 // TODO: add to interface?
-func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field, i int) error {
+func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
 		if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s ADD %s", collectionname, fieldStr)); err != nil {

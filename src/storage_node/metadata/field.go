@@ -24,8 +24,6 @@ type Field struct {
 	TypeArgs map[string]interface{} `json:"type_args,omitempty"`
 	// only to be filled out if FieldType is Document
 	Schema *Schema `json:"schema,omitempty"`
-	// TODO: remove
-	Order int `json:"-"`
 
 	// Various configuration options
 	NotNull bool `json:"not_null,omitempty"` // Should we allow NULL fields

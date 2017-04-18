@@ -156,7 +156,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
 				Store: &metadata.StorageNode{
 					Name: storageNodeRecord["name"].(string),
-					IP: net.ParseIP(storageNodeRecord["ip"].(string)),
+					IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
 					Port: int(storageNodeRecord["port"].(int64)),
 					// TODO: get the rest of it
 					// Type
