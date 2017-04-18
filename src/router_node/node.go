@@ -3,6 +3,7 @@ package routernode
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -151,18 +152,33 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	//      - Sharding
 	//      - Replicas
 
-	result, err := QuerySingle(
-		database.Datastore.Shards[0].Replicas[0].Store,
-		&query.Query{queryType, queryArgs},
-	)
+	//TODO:Authentication/authorization
+	//TODO:Cache (configurable)
 
-	if err == nil {
-		return result
-	} else {
-		return &query.Result{Error: err.Error()}
+	// Sharding
+	var shards []*metadata.DatastoreShard
+	switch queryType {
+	case query.Get:
+		shardNum := PickShard(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
+	case query.Filter:
+		shards = database.Datastore.Shards
 	}
 
-	return nil
+	shardResults := make([]*query.Result, len(shards))
+
+	// TODO: parallel
+	for i, shard := range shards {
+		// TODO: replicas
+		if result, err := QuerySingle(shard.Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+			shardResults[i] = result
+		} else {
+			shardResults[i] = &query.Result{Error: err.Error()}
+		}
+
+	}
+
+	return query.MergeResult(shardResults...)
 }
 
 func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
