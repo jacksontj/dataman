@@ -2,16 +2,16 @@
 Navicat PGSQL Data Transfer
 
 Source Server         : local
-Source Server Version : 90506
+Source Server Version : 90602
 Source Host           : localhost:5432
 Source Database       : dataman_storage
 Source Schema         : public
 
 Target Server Type    : PGSQL
-Target Server Version : 90506
+Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-18 08:58:27
+Date: 2017-04-20 09:49:27
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 55
+ START 67
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 55, true);
+SELECT setval('"public"."collection__id_seq"', 67, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 89
+ START 101
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 89, true);
+SELECT setval('"public"."collection_field__id_seq"', 101, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 46
+ START 63
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 46, true);
+SELECT setval('"public"."collection_index__id_seq"', 63, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 31
+ START 35
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 31, true);
+SELECT setval('"public"."database__id_seq"', 35, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."schema__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 69
+ START 71
  CACHE 1;
-SELECT setval('"public"."schema__id_seq"', 69, true);
+SELECT setval('"public"."schema__id_seq"', 71, true);
 
 -- ----------------------------
 -- Table structure for collection

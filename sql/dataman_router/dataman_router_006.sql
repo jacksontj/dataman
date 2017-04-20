@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-20 09:08:51
+Date: 2017-04-20 09:49:17
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3
+ START 7
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 3, true);
+SELECT setval('"public"."collection__id_seq"', 7, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4
+ START 7
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 4, true);
+SELECT setval('"public"."collection_field__id_seq"', 7, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,8 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 3
  CACHE 1;
+SELECT setval('"public"."collection_index__id_seq"', 3, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -82,9 +83,9 @@ CREATE SEQUENCE "public"."datastore_shard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 2
  CACHE 1;
-SELECT setval('"public"."datastore_shard__id_seq"', 1, true);
+SELECT setval('"public"."datastore_shard__id_seq"', 2, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_shard_replica__id_seq
@@ -94,9 +95,9 @@ CREATE SEQUENCE "public"."datastore_shard_replica__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 3
  CACHE 1;
-SELECT setval('"public"."datastore_shard_replica__id_seq"', 1, true);
+SELECT setval('"public"."datastore_shard_replica__id_seq"', 3, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -117,9 +118,9 @@ CREATE SEQUENCE "public"."storage_node__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1
+ START 2
  CACHE 1;
-SELECT setval('"public"."storage_node__id_seq"', 1, true);
+SELECT setval('"public"."storage_node__id_seq"', 2, true);
 
 -- ----------------------------
 -- Sequence structure for storage_node_state__id_seq
@@ -300,7 +301,7 @@ CREATE TABLE "public"."datastore_shard_replica" (
 "_created" timestamp(6),
 "_updated" timestamp(6),
 "datastore_shard_id" int4,
-"storage_node_id" int4
+"datasource_instance_id" int4
 )
 WITH (OIDS=FALSE)
 
@@ -473,5 +474,5 @@ ALTER TABLE "public"."datastore_shard" ADD FOREIGN KEY ("datastore_id") REFERENC
 -- ----------------------------
 -- Foreign Key structure for table "public"."datastore_shard_replica"
 -- ----------------------------
-ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("datasource_instance_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("datastore_shard_id") REFERENCES "public"."datastore_shard" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
