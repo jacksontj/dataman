@@ -77,9 +77,6 @@ schemad_db = {
 	                        "title": "Thread",
 	                        "type": "object",
 	                        "properties": {
-	                            "id": {
-	                                "type": "string",
-                                },
 		                        "title": {
 			                        "type": "string"
 		                        },
@@ -90,7 +87,7 @@ schemad_db = {
                                     "type": "string"
 		                        }
 	                        },
-	                        "required": ["id", "title", "created_by", "created"]
+	                        "required": ["title", "created_by", "created"]
                         }
                     },
                 }
@@ -99,10 +96,6 @@ schemad_db = {
                 "created": {
                     "name": "created",
                     "fields": ["data.created"],
-                },
-                "id": {
-                    "name": "id",
-                    "fields": ["data.id"],
                 },
                 "title": {
                     "name": "title",

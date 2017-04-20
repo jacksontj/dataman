@@ -54,7 +54,7 @@ class DatamanClient(object):
             {'filter': {
                 'db': db,
                 'collection': collection,
-                'record': record,
+                'filter': record,
             }}])
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
@@ -137,7 +137,6 @@ class NewThreadHandler(BaseHandler):
     @tornado.gen.coroutine
     def post(self):
         thread = {
-            "id": str(uuid.uuid4()),
             "title": self.get_argument("body"),
             'created_by': self.current_user,
             'created': int(time.time()),
@@ -154,7 +153,7 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.filter(schema.DBNAME, 'thread', {'data': {'id': thread_id}})
+        threads = yield dataman.filter(schema.DBNAME, 'thread', {'_id': thread_id})
         if not threads:
             self.redirect("/")
         else:
