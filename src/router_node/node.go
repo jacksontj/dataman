@@ -195,15 +195,93 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	//      - Cache
 	//      - Sharding
 
-	result, err := QuerySingle(
-		database.Datastore.Shards[0].Replicas[0].Store,
-		&query.Query{queryType, queryArgs},
-	)
+	// TODO: Authentication/authorization
+	// TODO: Cache poison
 
-	if err == nil {
-		return result
-	} else {
-		return &query.Result{Error: err.Error()}
+	// Sharding
+
+	// TODO: eventually we'll want to be more sophisticated and do this same thing if there
+	// are a set of id's we can derive from the original query, so we can do a limited
+	// scatter-gather. For now we'll either know the specific shard, or not (for ease of implementation)
+
+	// For now we'll take a na
+	switch queryType {
+	// Write operations
+	case query.Set:
+		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
+		if id, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
+			shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+
+			// TODO: replica selection (master for r/w)?
+			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+				return result
+			} else {
+				return &query.Result{Error: err.Error()}
+			}
+		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
+			// TODO: what do we want to do for brand new things?
+
+			// TODO: remove this-- this is defnitely *not* what we want :)
+			result, err := QuerySingle(
+				database.Datastore.Shards[0].Replicas[0].Store,
+				&query.Query{queryType, queryArgs},
+			)
+
+			if err == nil {
+				return result
+			} else {
+				return &query.Result{Error: err.Error()}
+			}
+		}
+	// TODO: what do we want to do for brand new things?
+	case query.Insert:
+		// TODO: remove this-- this is defnitely *not* what we want :)
+		result, err := QuerySingle(
+			database.Datastore.Shards[0].Replicas[0].Store,
+			&query.Query{queryType, queryArgs},
+		)
+
+		if err == nil {
+			return result
+		} else {
+			return &query.Result{Error: err.Error()}
+		}
+	case query.Update:
+		// If there is an "_id"_ defined, then we can send this to a single shard
+		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
+			shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+			// TODO: replica selection (master for r/w)?
+			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+				return result
+			} else {
+				return &query.Result{Error: err.Error()}
+			}
+
+		} else { // Otherwise we need to send this query to all shards to let them handle it
+			shardResults := make([]*query.Result, len(database.Datastore.Shards))
+
+			// TODO: parallel
+			for i, shard := range database.Datastore.Shards {
+				// TODO: replicas
+				if result, err := QuerySingle(shard.Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+					shardResults[i] = result
+				} else {
+					shardResults[i] = &query.Result{Error: err.Error()}
+				}
+
+			}
+
+			return query.MergeResult(shardResults...)
+		}
+	case query.Delete:
+		shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		// TODO: replica selection (master for r/w)?
+		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+			return result
+		} else {
+			return &query.Result{Error: err.Error()}
+		}
+
 	}
 
 	return nil
