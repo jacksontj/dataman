@@ -220,10 +220,13 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
 			// TODO: what do we want to do for brand new things?
+			// TODO: consolidate into a single insert method
+			// We want to RR between the shards for new inserts
+			insertCounter := atomic.AddInt64(&database.InsertCounter, 1)
+			shardNum := insertCounter % int64(len(database.Datastore.Shards))
 
-			// TODO: remove this-- this is defnitely *not* what we want :)
 			result, err := QuerySingle(
-				database.Datastore.Shards[0].Replicas[0].Store,
+				database.Datastore.Shards[shardNum].Replicas[0].Store,
 				&query.Query{queryType, queryArgs},
 			)
 
@@ -235,9 +238,13 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		// TODO: remove this-- this is defnitely *not* what we want :)
+		// TODO: consolidate into a single insert method
+		// We want to RR between the shards for new inserts
+		insertCounter := atomic.AddInt64(&database.InsertCounter, 1)
+		shardNum := insertCounter % int64(len(database.Datastore.Shards))
+
 		result, err := QuerySingle(
-			database.Datastore.Shards[0].Replicas[0].Store,
+			database.Datastore.Shards[shardNum].Replicas[0].Store,
 			&query.Query{queryType, queryArgs},
 		)
 

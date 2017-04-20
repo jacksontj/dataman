@@ -14,4 +14,7 @@ type Database struct {
 
 	// mapping of all collections
 	Collections map[string]*Collection
+
+	// TODO: elsewhere?
+	InsertCounter int64
 }
