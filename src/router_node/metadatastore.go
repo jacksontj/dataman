@@ -5,6 +5,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
+	"github.com/jacksontj/dataman/src/router_node/sharding"
 	"github.com/jacksontj/dataman/src/storage_node"
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -105,6 +106,8 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 	datastoreRecord := datastoreResult.Return[0]
 
 	datastore := metadata.NewDatastore(datastoreRecord["name"].(string))
+	// TODO: define schema for shard config
+	datastore.ShardFunc = sharding.ShardMethod(datastoreRecord["shard_config_json"].(map[string]interface{})["shard_method"].(string)).Get()
 
 	// Now load all the shards
 	datastoreShardResult := m.Store.Filter(map[string]interface{}{

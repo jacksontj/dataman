@@ -159,7 +159,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	var shards []*metadata.DatastoreShard
 	switch queryType {
 	case query.Get:
-		shardNum := PickShard(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
 		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
 	case query.Filter:
 		shards = database.Datastore.Shards

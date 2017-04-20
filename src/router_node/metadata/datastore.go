@@ -1,5 +1,7 @@
 package metadata
 
+import "github.com/jacksontj/dataman/src/router_node/sharding"
+
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
 		Name:   name,
@@ -13,7 +15,8 @@ type Datastore struct {
 	// TODO
 	//ReplicaConfig
 	//ShardConfig
-	Shards []*DatastoreShard
+	Shards    []*DatastoreShard
+	ShardFunc sharding.ShardFunc
 }
 
 func NewDatastoreShard(name string) *DatastoreShard {
