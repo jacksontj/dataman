@@ -4,14 +4,14 @@ Navicat PGSQL Data Transfer
 Source Server         : local
 Source Server Version : 90506
 Source Host           : localhost:5432
-Source Database       : dataman_proxy
+Source Database       : dataman_router
 Source Schema         : public
 
 Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-04-18 08:58:09
+Date: 2017-04-18 13:57:43
 */
 
 
@@ -234,7 +234,8 @@ CREATE TABLE "public"."datastore_shard" (
 "_created" timestamp(6),
 "_updated" timestamp(6),
 "name" varchar(255) COLLATE "default",
-"datastore_id" int4
+"datastore_id" int4,
+"shard_number" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -385,6 +386,11 @@ ALTER TABLE "public"."database" ADD PRIMARY KEY ("_id");
 -- Primary Key structure for table datastore
 -- ----------------------------
 ALTER TABLE "public"."datastore" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Indexes structure for table datastore_shard
+-- ----------------------------
+CREATE UNIQUE INDEX "datastore_shard_number" ON "public"."datastore_shard" USING btree ("datastore_id", "shard_number");
 
 -- ----------------------------
 -- Primary Key structure for table datastore_shard

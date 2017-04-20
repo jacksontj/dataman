@@ -1,17 +1,17 @@
 /*
 Navicat PGSQL Data Transfer
 
-Source Server         : localhost_5432
+Source Server         : local postgres
 Source Server Version : 90506
 Source Host           : localhost:5432
-Source Database       : dataman_storagenode
+Source Database       : dataman_storage
 Source Schema         : public
 
 Target Server Type    : PGSQL
 Target Server Version : 90506
 File Encoding         : 65001
 
-Date: 2017-03-24 09:33:39
+Date: 2017-03-23 12:55:33
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."database_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 378
+ START 328
  CACHE 1;
-SELECT setval('"public"."database_id_seq"', 378, true);
+SELECT setval('"public"."database_id_seq"', 328, true);
 
 -- ----------------------------
 -- Sequence structure for schema_id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."schema_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 310
+ START 293
  CACHE 1;
-SELECT setval('"public"."schema_id_seq"', 310, true);
+SELECT setval('"public"."schema_id_seq"', 293, true);
 
 -- ----------------------------
 -- Sequence structure for table_column_id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."table_column_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 307
+ START 221
  CACHE 1;
-SELECT setval('"public"."table_column_id_seq"', 307, true);
+SELECT setval('"public"."table_column_id_seq"', 221, true);
 
 -- ----------------------------
 -- Sequence structure for table_id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."table_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 549
+ START 487
  CACHE 1;
-SELECT setval('"public"."table_id_seq"', 549, true);
+SELECT setval('"public"."table_id_seq"', 487, true);
 
 -- ----------------------------
 -- Sequence structure for table_index_id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."table_index_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 279
+ START 201
  CACHE 1;
-SELECT setval('"public"."table_index_id_seq"', 279, true);
+SELECT setval('"public"."table_index_id_seq"', 201, true);
 
 -- ----------------------------
 -- Table structure for database
@@ -125,9 +125,7 @@ CREATE TABLE "public"."table_column" (
 "table_id" int4 NOT NULL,
 "column_type" varchar(255) COLLATE "default" NOT NULL,
 "order" int4 NOT NULL,
-"schema_id" int4,
-"not_null" int2,
-"size" int4
+"schema_id" int4
 )
 WITH (OIDS=FALSE)
 

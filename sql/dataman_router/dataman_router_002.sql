@@ -4,7 +4,7 @@ Navicat PGSQL Data Transfer
 Source Server         : localhost_5432
 Source Server Version : 90506
 Source Host           : localhost:5432
-Source Database       : dataman
+Source Database       : dataman_router
 Source Schema         : public
 
 Target Server Type    : PGSQL
