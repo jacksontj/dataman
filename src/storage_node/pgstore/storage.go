@@ -528,7 +528,7 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"index_%s\" ON public.%s (", index.Name, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"idx_%s_%s\" ON public.%s (", collection.Name, index.Name, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
@@ -562,10 +562,10 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 	return nil
 }
 
-const removeTableIndexTemplate = `DROP INDEX "index_%s"`
+const removeTableIndexTemplate = `DROP INDEX "idx_%s_%s"`
 
 func (s *Storage) RemoveIndex(dbname, collectionname, indexname string) error {
-	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, indexname)
+	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, collectionname, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
 	}
