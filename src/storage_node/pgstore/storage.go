@@ -54,7 +54,7 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 	}
 
 	// TODO: pass in a database name for the metadata store locally
-	s.db, err = sql.Open("postgres", s.config.pgStringForDB("dataman_storagenode"))
+	s.db, err = sql.Open("postgres", s.config.pgStringForDB("dataman_storage"))
 	if err != nil {
 		return err
 	}

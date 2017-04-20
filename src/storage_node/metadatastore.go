@@ -41,7 +41,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 	// Get all databases
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 	})
 	// TODO: better error handle
@@ -54,7 +54,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
 
 		collectionResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_storagenode",
+			"db":         "dataman_storage",
 			"collection": "collection",
 			"filter": map[string]interface{}{
 				"database_id": databaseRecord["_id"],
@@ -70,7 +70,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			// Load fields
 			collectionFieldResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_storagenode",
+				"db":         "dataman_storage",
 				"collection": "collection_field",
 				"filter": map[string]interface{}{
 					"collection_id": collectionRecord["_id"],
@@ -103,7 +103,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			// Now load all the indexes for the collection
 			collectionIndexResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_storagenode",
+				"db":         "dataman_storage",
 				"collection": "collection_index",
 				"filter": map[string]interface{}{
 					"collection_id": collectionRecord["_id"],
@@ -139,7 +139,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 func (m *MetadataStore) GetSchemaById(id int64) *metadata.Schema {
 	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"filter": map[string]interface{}{
 			"_id": id,
@@ -160,7 +160,7 @@ func (m *MetadataStore) GetSchemaById(id int64) *metadata.Schema {
 
 func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	databaseResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 		"record": map[string]interface{}{
 			"name": db.Name,
@@ -183,7 +183,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 func (m *MetadataStore) RemoveDatabase(dbname string) error {
 	// GetDatabase Entry
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 		"filter": map[string]interface{}{
 			"name": dbname,
@@ -200,7 +200,7 @@ func (m *MetadataStore) RemoveDatabase(dbname string) error {
 	databaseRecord := databaseResult.Return[0]
 
 	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		"filter": map[string]interface{}{
 			"database_id": databaseRecord["_id"],
@@ -220,7 +220,7 @@ func (m *MetadataStore) RemoveDatabase(dbname string) error {
 
 	// Delete database entry
 	databaseDelete := m.Store.Delete(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 		"_id":        databaseRecord["_id"],
 	})
@@ -240,7 +240,7 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 	})
 	// TODO: better error handle
@@ -252,7 +252,7 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 
 	// Add the collection
 	collectionResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		"record": map[string]interface{}{
 			"name":        collection.Name,
@@ -266,7 +266,7 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 	collectionRecord := collectionResult.Return[0]
 
 	// Add all the fields in the collection
-	for i, field := range collection.Fields {
+	for _, field := range collection.Fields {
 		if strings.HasPrefix(field.Name, "_") {
 			return fmt.Errorf("The `_` namespace for collection fields is reserved: %v", field)
 		}
@@ -282,7 +282,7 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 			// TODO: embed the "_id" in each of the metadata objects (as a private only attribute)
 			// Get the database record
 			schemaResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_storagenode",
+				"db":         "dataman_storage",
 				"collection": "schema",
 				"filter": map[string]interface{}{
 					"name":    field.Schema.Name,
@@ -296,14 +296,13 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 			schemaRecord := schemaResult.Return[0]
 
 			collectionFieldResult := m.Store.Insert(map[string]interface{}{
-				"db":         "dataman_storagenode",
+				"db":         "dataman_storage",
 				"collection": "collection_field",
 				"record": map[string]interface{}{
 					"name":            field.Name,
 					"collection_id":   collectionRecord["_id"],
 					"field_type":      field.Type,
 					"field_type_args": field.TypeArgs,
-					"order":           i,
 					"schema_id":       schemaRecord["_id"],
 				},
 			})
@@ -314,14 +313,13 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 		} else {
 			// Add to internal metadata store
 			collectionFieldResult := m.Store.Insert(map[string]interface{}{
-				"db":         "dataman_storagenode",
+				"db":         "dataman_storage",
 				"collection": "collection_field",
 				"record": map[string]interface{}{
 					"name":            field.Name,
 					"collection_id":   collectionRecord["_id"],
 					"field_type":      field.Type,
 					"field_type_args": field.TypeArgs,
-					"order":           i,
 				},
 			})
 			if collectionFieldResult.Error != "" {
@@ -337,7 +335,7 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 	if collection.Indexes != nil {
 
 		collectionIndexResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_storagenode",
+			"db":         "dataman_storage",
 			"collection": "collection_index",
 			"filter": map[string]interface{}{
 				"collection_id": collectionRecord["_id"],
@@ -474,7 +472,7 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 		"filter": map[string]interface{}{
 			"name": dbname,
@@ -488,7 +486,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 
 	// Get the collection record
 	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		"filter": map[string]interface{}{
 			"database_id": databaseRecord["_id"],
@@ -503,7 +501,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 
 	// Delete collection_index
 	collectionIndexResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection_index",
 		"filter": map[string]interface{}{
 			"collection_id": collectionRecord["_id"],
@@ -515,7 +513,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 
 	for _, collectionIndexRecord := range collectionIndexResult.Return {
 		collectionIndexDelete := m.Store.Delete(map[string]interface{}{
-			"db":         "dataman_storagenode",
+			"db":         "dataman_storage",
 			"collection": "collection_index",
 			// TODO: add internal columns to schemaman stuff
 			"_id": collectionIndexRecord["_id"],
@@ -527,7 +525,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 
 	// Delete collection_field
 	collectionFieldResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection_field",
 		"filter": map[string]interface{}{
 			"collection_id": collectionRecord["_id"],
@@ -538,7 +536,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 	}
 	for _, collectionFieldRecord := range collectionFieldResult.Return {
 		collectionIndexDelete := m.Store.Delete(map[string]interface{}{
-			"db":         "dataman_storagenode",
+			"db":         "dataman_storage",
 			"collection": "collection_field",
 			// TODO: add internal columns to schemaman stuff
 			"_id": collectionFieldRecord["_id"],
@@ -550,7 +548,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 
 	// Delete collection
 	collectionDelete := m.Store.Delete(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		// TODO: add internal columns to schemaman stuff
 		"_id": collectionRecord["_id"],
@@ -566,7 +564,7 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 	})
 	// TODO: better error handle
@@ -578,7 +576,7 @@ func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.
 
 	// get the collection
 	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		"filter": map[string]interface{}{
 			"name":        collectionname,
@@ -594,7 +592,7 @@ func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.
 	bytes, _ := json.Marshal(index.Fields)
 
 	collectionIndexResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection_index",
 		"record": map[string]interface{}{
 			"name":          index.Name,
@@ -613,7 +611,7 @@ func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.
 func (m *MetadataStore) RemoveIndex(dbname, collectionname, indexname string) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "database",
 	})
 	// TODO: better error handle
@@ -625,7 +623,7 @@ func (m *MetadataStore) RemoveIndex(dbname, collectionname, indexname string) er
 
 	// get the collection
 	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection",
 		"filter": map[string]interface{}{
 			"name":        collectionname,
@@ -639,7 +637,7 @@ func (m *MetadataStore) RemoveIndex(dbname, collectionname, indexname string) er
 	collectionRecord := collectionResult.Return[0]
 
 	collectionIndexResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection_index",
 		"filter": map[string]interface{}{
 			"name":          indexname,
@@ -651,7 +649,7 @@ func (m *MetadataStore) RemoveIndex(dbname, collectionname, indexname string) er
 	}
 
 	collectionIndexDelete := m.Store.Delete(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "collection_index",
 		"_id":        collectionIndexResult.Return[0]["_id"],
 	})
@@ -673,7 +671,7 @@ func (m *MetadataStore) AddSchema(schema *metadata.Schema) error {
 		return fmt.Errorf("Invalid schema defined: %v", err)
 	}
 	schemaResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"record": map[string]interface{}{
 			"name":      schema.Name,
@@ -690,7 +688,7 @@ func (m *MetadataStore) AddSchema(schema *metadata.Schema) error {
 func (m *MetadataStore) ListSchema() []*metadata.Schema {
 	// Get the schema records
 	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"filter":     map[string]interface{}{},
 	})
@@ -714,7 +712,7 @@ func (m *MetadataStore) ListSchema() []*metadata.Schema {
 func (m *MetadataStore) GetSchema(name string, version int64) *metadata.Schema {
 	// Get the schema record
 	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"filter": map[string]interface{}{
 			"name":    name,
@@ -740,7 +738,7 @@ func (m *MetadataStore) GetSchema(name string, version int64) *metadata.Schema {
 func (m *MetadataStore) RemoveSchema(name string, version int64) error {
 	// Get the database record
 	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"filter": map[string]interface{}{
 			"name":    name,
@@ -757,7 +755,7 @@ func (m *MetadataStore) RemoveSchema(name string, version int64) error {
 	schemaRecord := schemaResult.Return[0]
 
 	schemaDelete := m.Store.Delete(map[string]interface{}{
-		"db":         "dataman_storagenode",
+		"db":         "dataman_storage",
 		"collection": "schema",
 		"_id":        schemaRecord["_id"],
 	})

@@ -4,7 +4,7 @@ package storagenode
 const schemaJson string = `
 {
 	"databases": {
-		"dataman_storagenode": {
+		"dataman_storage": {
 			"collections": {
 				"collection_index": {
 					"indexes": {
@@ -152,10 +152,6 @@ const schemaJson string = `
 							"name": "field_type"
 						},
 						{
-							"type": "int",
-							"name": "order"
-						},
-						{
 							"name": "schema_id",
 							"type": "int"
 						},
@@ -267,7 +263,7 @@ const schemaJson string = `
 					}
 				}
 			},
-			"name": "dataman_storagenode"
+			"name": "dataman_storage"
 		}
 	}
 }
