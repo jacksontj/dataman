@@ -79,7 +79,8 @@ class DatamanClient(object):
         # TODO: handle errors?
         raise tornado.gen.Return(json.loads(ret.body)[0])
 
-dataman = DatamanClient('http://localhost:8081')
+define("dataman_uri", default='http://localhost:8081', help="what dataman to talk to", type=str)
+dataman = None
 
 
 define("port", default=8888, help="run on the given port", type=int)
@@ -183,6 +184,7 @@ class LegacyUserHandler(tornado.web.RequestHandler):
     '''
 
     pool = concurrent.futures.ThreadPoolExecutor(10)
+    # TODO: another CLI opt to define this?
     conn = psycopg2.connect("dbname=%s user='postgres' host='localhost' password='password'" % schema.DBNAME)
 
     @tornado.gen.coroutine
@@ -196,6 +198,7 @@ class LegacyUserHandler(tornado.web.RequestHandler):
 
 
 def main():
+    global dataman
     parse_command_line()
     app = tornado.web.Application(
         [
@@ -210,6 +213,7 @@ def main():
         login_url="/login",
         debug=options.debug,
         )
+    dataman = DatamanClient(options.dataman_uri)
     app.listen(options.port)
     tornado.ioloop.IOLoop.current().start()
 
