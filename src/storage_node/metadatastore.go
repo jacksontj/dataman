@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -52,6 +53,12 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	// for each database load the database + collections etc.
 	for _, databaseRecord := range databaseResult.Return {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
+
+		// TODO: error if only one is nil
+		if databaseRecord["shard_count"] != nil {
+			database.ShardCount = databaseRecord["shard_count"].(int64)
+			database.ShardInstance = databaseRecord["shard_instance"].(int64)
+		}
 
 		collectionResult := m.Store.Filter(map[string]interface{}{
 			"db":         "dataman_storage",
@@ -159,13 +166,27 @@ func (m *MetadataStore) GetSchemaById(id int64) *metadata.Schema {
 }
 
 func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
-	databaseResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_storage",
-		"collection": "database",
-		"record": map[string]interface{}{
-			"name": db.Name,
-		},
-	})
+	var databaseResult *query.Result
+	if db.ShardCount > 0 {
+		databaseResult = m.Store.Insert(map[string]interface{}{
+			"db":         "dataman_storage",
+			"collection": "database",
+			"record": map[string]interface{}{
+				"name":           db.Name,
+				"shard_count":    db.ShardCount,
+				"shard_instance": db.ShardInstance,
+			},
+		})
+	} else {
+		databaseResult = m.Store.Insert(map[string]interface{}{
+			"db":         "dataman_storage",
+			"collection": "database",
+			"record": map[string]interface{}{
+				"name": db.Name,
+			},
+		})
+	}
+
 	if databaseResult.Error != "" {
 		return fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
 	}

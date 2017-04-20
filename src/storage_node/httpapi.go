@@ -32,6 +32,9 @@ func NewHTTPApi(storageNode *StorageNode) *HTTPApi {
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
 
+	// Just dump the current meta we have
+	router.GET("/v1/metadata", h.showMetadata)
+
 	// DB Management
 	// DB collection
 	router.GET("/v1/database", h.listDatabase)
@@ -55,6 +58,21 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.DELETE("/v1/schema/:name/:version", h.removeSchema)
 
 	router.POST("/v1/data/raw", h.rawQueryHandler)
+}
+
+// List all databases that we have in the metadata store
+func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.storageNode.GetMeta()
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(meta); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
 }
 
 // List all databases that we have in the metadata store

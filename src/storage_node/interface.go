@@ -16,7 +16,7 @@ type StorageSchemaInterface interface {
 
 	GetCollection(dbname, collectionname string) *metadata.Collection
 	ListCollection(dbname string) []*metadata.Collection
-	AddCollection(dbname string, collection *metadata.Collection) error
+	AddCollection(db *metadata.Database, collection *metadata.Collection) error
 	UpdateCollection(dbname string, collection *metadata.Collection) error
 	RemoveCollection(dbname string, collectionname string) error
 

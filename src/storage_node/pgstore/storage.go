@@ -170,7 +170,7 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 
 	// Add any tables in the db
 	for _, collection := range db.Collections {
-		if err := s.AddCollection(db.Name, collection); err != nil {
+		if err := s.AddCollection(db, collection); err != nil {
 			return fmt.Errorf("Error adding collection %s: %v", collection.Name, err)
 		}
 	}
@@ -286,10 +286,10 @@ const addTableTemplate = `CREATE TABLE public.%s
 `
 
 // Collection Changes
-func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) error {
+func (s *Storage) AddCollection(db *metadata.Database, collection *metadata.Collection) error {
 	// Make sure at least one field is defined
 	if collection.Fields == nil || len(collection.Fields) == 0 {
-		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", dbName, collection.Name)
+		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
 	}
 
 	// TODO: this should be done elsewhere
@@ -314,14 +314,23 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 	}
 
 	tableAddQuery := fmt.Sprintf(addTableTemplate, collection.Name, fieldQuery, collection.Name)
-	if _, err := DoQuery(s.getDB(dbName), tableAddQuery); err != nil {
+	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
+	}
+
+	// TODO: do this on initial creation, lame to change afterwards
+	// If this is a sharded database, we need to change our sequence
+	if db.ShardCount > 0 {
+		alterQuery := fmt.Sprintf("ALTER SEQUENCE %s__id_seq INCREMENT BY %d RESTART WITH %d;", collection.Name, db.ShardCount, db.ShardInstance)
+		if _, err := DoQuery(s.getDB(db.Name), alterQuery); err != nil {
+			return fmt.Errorf("Unable to add set shard increment %s: %v", collection.Name, err)
+		}
 	}
 
 	// If a table has indexes defined, lets take care of that
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := s.AddIndex(dbName, collection, index); err != nil {
+			if err := s.AddIndex(db.Name, collection, index); err != nil {
 				return err
 			}
 		}
@@ -332,6 +341,9 @@ func (s *Storage) AddCollection(dbName string, collection *metadata.Collection) 
 
 // TODO: re-implement, this is now ONLY datastore focused
 func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collection) error {
+	// TODO: implement
+	return fmt.Errorf("Unable to update collection")
+
 	currentCollection := s.GetCollection(dbname, collection.Name)
 
 	if currentCollection == nil {
@@ -633,7 +645,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.FieldMap[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field1 %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.FieldMap)
+			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.FieldMap)
 			return result
 		}
 
