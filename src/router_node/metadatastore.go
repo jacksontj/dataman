@@ -87,6 +87,33 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 		meta.Databases[database.Name] = database
 	}
+
+	// Add all nodes
+	// Get all databases
+	storageNodeResult := m.Store.Filter(map[string]interface{}{
+		"db":         "dataman_router",
+		"collection": "datasource_instance",
+	})
+	// TODO: better error handle
+	if storageNodeResult.Error != "" {
+		logrus.Fatalf("Error in getting storageNodeResult: %v", storageNodeResult.Error)
+	}
+
+	meta.Nodes = make([]*metadata.DatasourceInstance, len(storageNodeResult.Return))
+
+	// for each database load the database + collections etc.
+	for i, storageNodeRecord := range storageNodeResult.Return {
+		meta.Nodes[i] = &metadata.DatasourceInstance{
+			Name: storageNodeRecord["name"].(string),
+			IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
+			Port: int(storageNodeRecord["port"].(int64)),
+			// TODO: get the rest of it
+			// Type
+			// State
+			// Config
+		}
+	}
+
 	return meta
 }
 

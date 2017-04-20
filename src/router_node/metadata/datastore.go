@@ -16,7 +16,7 @@ type Datastore struct {
 	//ReplicaConfig
 	//ShardConfig
 	Shards    []*DatastoreShard
-	ShardFunc sharding.ShardFunc
+	ShardFunc sharding.ShardFunc `json:"-"`
 }
 
 func NewDatastoreShard(name string) *DatastoreShard {
