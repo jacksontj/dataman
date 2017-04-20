@@ -140,9 +140,9 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			// get the storagenode
 			storageNodeResult := m.Store.Filter(map[string]interface{}{
 				"db":         "dataman_router",
-				"collection": "storage_node",
+				"collection": "datasource_instance",
 				"filter": map[string]interface{}{
-					"_id": datastoreShardReplicaRecord["storage_node_id"],
+					"_id": datastoreShardReplicaRecord["datasource_instance_id"],
 				},
 			})
 
@@ -154,7 +154,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			storageNodeRecord := storageNodeResult.Return[0]
 
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				Store: &metadata.StorageNode{
+				Store: &metadata.DatasourceInstance{
 					Name: storageNodeRecord["name"].(string),
 					IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
 					Port: int(storageNodeRecord["port"].(int64)),

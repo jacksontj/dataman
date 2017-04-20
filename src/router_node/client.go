@@ -50,7 +50,7 @@ func MultiQuerySingle(shards []*metadata.DatastoreShard, q *query.Query) (*query
 */
 
 // Take a query and send it to a given destination
-func Query(storageNode *metadata.StorageNode, queries []*query.Query) ([]*query.Result, error) {
+func Query(storageNode *metadata.DatasourceInstance, queries []*query.Query) ([]*query.Result, error) {
 	url := fmt.Sprintf("http://%s:%d/v1/data/raw", storageNode.IP, storageNode.Port)
 
 	// TODO: pass in? Or options?
@@ -97,7 +97,7 @@ func Query(storageNode *metadata.StorageNode, queries []*query.Query) ([]*query.
 	return results, nil
 }
 
-func QuerySingle(storageNode *metadata.StorageNode, q *query.Query) (*query.Result, error) {
+func QuerySingle(storageNode *metadata.DatasourceInstance, q *query.Query) (*query.Result, error) {
 	if results, err := Query(storageNode, []*query.Query{q}); err == nil {
 		return results[0], nil
 	} else {

@@ -30,5 +30,5 @@ type DatastoreShard struct {
 }
 
 type DatastoreShardReplica struct {
-	Store *StorageNode
+	Store *DatasourceInstance
 }
