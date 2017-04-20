@@ -52,7 +52,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 	// Get all databases
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_proxy",
+		"db":         "dataman_router",
 		"collection": "database",
 	})
 	// TODO: better error handle
@@ -68,7 +68,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 		// Load all collections for the DB
 		collectionResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_proxy",
+			"db":         "dataman_router",
 			"collection": "collection",
 		})
 		// TODO: better error handle
@@ -92,7 +92,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 	// Get the datastore record
 	datastoreResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_proxy",
+		"db":         "dataman_router",
 		"collection": "datastore",
 		"filter": map[string]interface{}{
 			"_id": id,
@@ -108,7 +108,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 
 	// Now load all the shards
 	datastoreShardResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_proxy",
+		"db":         "dataman_router",
 		"collection": "datastore_shard",
 		"filter": map[string]interface{}{
 			"datastore_id": datastoreRecord["_id"],
@@ -124,7 +124,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 
 		// load all of the replicas
 		datastoreShardReplicaResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_proxy",
+			"db":         "dataman_router",
 			"collection": "datastore_shard_replica",
 			"filter": map[string]interface{}{
 				"datastore_shard_id": datastoreShardRecord["_id"],
@@ -139,7 +139,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 		for _, datastoreShardReplicaRecord := range datastoreShardReplicaResult.Return {
 			// get the storagenode
 			storageNodeResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_proxy",
+				"db":         "dataman_router",
 				"collection": "storage_node",
 				"filter": map[string]interface{}{
 					"_id": datastoreShardReplicaRecord["storage_node_id"],

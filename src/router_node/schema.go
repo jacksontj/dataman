@@ -3,8 +3,8 @@ package routernode
 const schemaJson string = `
 {
    "databases" : {
-      "dataman_proxy" : {
-         "name" : "dataman_proxy",
+      "dataman_router" : {
+         "name" : "dataman_router",
          "collections" : {
             "datastore_shard" : {
                "name" : "datastore_shard",
@@ -101,10 +101,6 @@ const schemaJson string = `
                   {
                      "type" : "document",
                      "name" : "field_type_args"
-                  },
-                  {
-                     "name" : "order",
-                     "type" : "int"
                   },
                   {
                      "type" : "int",
