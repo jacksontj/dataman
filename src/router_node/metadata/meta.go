@@ -3,13 +3,13 @@ package metadata
 func NewMeta() *Meta {
 	return &Meta{
 		Databases: make(map[string]*Database),
-		Nodes:     make([]*DatasourceInstance, 0),
+		Nodes:     make([]*StorageNodeInstance, 0),
 	}
 }
 
 type Meta struct {
-	Databases map[string]*Database
-	Nodes     []*DatasourceInstance
+	Databases map[string]*Database   `json:"database"`
+	Nodes     []*StorageNodeInstance `json:"storage_node_instance"`
 }
 
 // TODO: more than just names?

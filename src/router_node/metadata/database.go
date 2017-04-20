@@ -8,13 +8,13 @@ func NewDatabase(name string) *Database {
 }
 
 type Database struct {
-	Name string
+	Name string `json:"name"`
 	// TODO: list or map? We eventually want to support many of these (for tombstone reasons)
-	Datastore *Datastore
+	Datastore *Datastore `json:"datastore"`
 
 	// mapping of all collections
-	Collections map[string]*Collection
+	Collections map[string]*Collection `json:"collections"`
 
 	// TODO: elsewhere?
-	InsertCounter int64
+	InsertCounter int64 `json:"-"`
 }

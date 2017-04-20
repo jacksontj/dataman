@@ -10,12 +10,12 @@ func NewDatastore(name string) *Datastore {
 }
 
 type Datastore struct {
-	Name string
+	Name string `json:"name"`
 
 	// TODO
 	//ReplicaConfig
 	//ShardConfig
-	Shards    []*DatastoreShard
+	Shards    []*DatastoreShard  `json:"shards"`
 	ShardFunc sharding.ShardFunc `json:"-"`
 }
 
@@ -27,11 +27,11 @@ func NewDatastoreShard(name string) *DatastoreShard {
 }
 
 type DatastoreShard struct {
-	Name string
+	Name string `json:"name"`
 
-	Replicas []*DatastoreShardReplica
+	Replicas []*DatastoreShardReplica `json:"replicas"`
 }
 
 type DatastoreShardReplica struct {
-	Store *DatasourceInstance
+	Store *StorageNodeInstance `json:"storage_node_instance"`
 }

@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-20 13:54:40
+Date: 2017-04-20 14:16:50
 */
 
 
@@ -212,55 +212,6 @@ WITH (OIDS=FALSE)
 ;
 
 -- ----------------------------
--- Table structure for datasource
--- ----------------------------
-DROP TABLE IF EXISTS "public"."datasource";
-CREATE TABLE "public"."datasource" (
-"_id" int4 DEFAULT nextval('storage_node_type__id_seq'::regclass) NOT NULL,
-"_created" timestamp(6),
-"_updated" timestamp(6),
-"name" varchar(255) COLLATE "default" NOT NULL,
-"config_json_schema_id" int4
-)
-WITH (OIDS=FALSE)
-
-;
-
--- ----------------------------
--- Table structure for datasource_instance
--- ----------------------------
-DROP TABLE IF EXISTS "public"."datasource_instance";
-CREATE TABLE "public"."datasource_instance" (
-"_id" int4 DEFAULT nextval('storage_node__id_seq'::regclass) NOT NULL,
-"_created" timestamp(6),
-"_updated" timestamp(6),
-"name" varchar(255) COLLATE "default" NOT NULL,
-"ip" varchar(255) COLLATE "default" NOT NULL,
-"port" int4 NOT NULL,
-"datasource_id" int4,
-"datasource_state_id" int4,
-"config_json" jsonb
-)
-WITH (OIDS=FALSE)
-
-;
-
--- ----------------------------
--- Table structure for datasource_state
--- ----------------------------
-DROP TABLE IF EXISTS "public"."datasource_state";
-CREATE TABLE "public"."datasource_state" (
-"_id" int4 DEFAULT nextval('storage_node_state__id_seq'::regclass) NOT NULL,
-"_created" timestamp(6),
-"_updated" timestamp(6),
-"name" varchar(255) COLLATE "default",
-"info" varchar(255) COLLATE "default"
-)
-WITH (OIDS=FALSE)
-
-;
-
--- ----------------------------
 -- Table structure for datastore
 -- ----------------------------
 DROP TABLE IF EXISTS "public"."datastore";
@@ -301,7 +252,7 @@ CREATE TABLE "public"."datastore_shard_replica" (
 "_created" timestamp(6),
 "_updated" timestamp(6),
 "datastore_shard_id" int4,
-"datasource_instance_id" int4
+"storage_node_instance_id" int4
 )
 WITH (OIDS=FALSE)
 
@@ -325,6 +276,55 @@ WITH (OIDS=FALSE)
 ;
 
 -- ----------------------------
+-- Table structure for storage_node
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."storage_node";
+CREATE TABLE "public"."storage_node" (
+"_id" int4 DEFAULT nextval('storage_node_type__id_seq'::regclass) NOT NULL,
+"_created" timestamp(6),
+"_updated" timestamp(6),
+"name" varchar(255) COLLATE "default" NOT NULL,
+"config_json_schema_id" int4
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
+-- Table structure for storage_node_instance
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."storage_node_instance";
+CREATE TABLE "public"."storage_node_instance" (
+"_id" int4 DEFAULT nextval('storage_node__id_seq'::regclass) NOT NULL,
+"_created" timestamp(6),
+"_updated" timestamp(6),
+"name" varchar(255) COLLATE "default" NOT NULL,
+"ip" varchar(255) COLLATE "default" NOT NULL,
+"port" int4 NOT NULL,
+"storage_node_id" int4,
+"storage_node_state_id" int4,
+"config_json" jsonb
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
+-- Table structure for storage_node_state
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."storage_node_state";
+CREATE TABLE "public"."storage_node_state" (
+"_id" int4 DEFAULT nextval('storage_node_state__id_seq'::regclass) NOT NULL,
+"_created" timestamp(6),
+"_updated" timestamp(6),
+"name" varchar(255) COLLATE "default",
+"info" varchar(255) COLLATE "default"
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
 -- Alter Sequences Owned By 
 -- ----------------------------
 ALTER SEQUENCE "public"."collection__id_seq" OWNED BY "collection"."_id";
@@ -335,9 +335,9 @@ ALTER SEQUENCE "public"."datastore__id_seq" OWNED BY "datastore"."_id";
 ALTER SEQUENCE "public"."datastore_shard__id_seq" OWNED BY "datastore_shard"."_id";
 ALTER SEQUENCE "public"."datastore_shard_replica__id_seq" OWNED BY "datastore_shard_replica"."_id";
 ALTER SEQUENCE "public"."schema__id_seq" OWNED BY "schema"."_id";
-ALTER SEQUENCE "public"."storage_node__id_seq" OWNED BY "datasource_instance"."_id";
-ALTER SEQUENCE "public"."storage_node_state__id_seq" OWNED BY "datasource_state"."_id";
-ALTER SEQUENCE "public"."storage_node_type__id_seq" OWNED BY "datasource"."_id";
+ALTER SEQUENCE "public"."storage_node__id_seq" OWNED BY "storage_node_instance"."_id";
+ALTER SEQUENCE "public"."storage_node_state__id_seq" OWNED BY "storage_node_state"."_id";
+ALTER SEQUENCE "public"."storage_node_type__id_seq" OWNED BY "storage_node"."_id";
 
 -- ----------------------------
 -- Indexes structure for table collection
@@ -385,26 +385,6 @@ CREATE UNIQUE INDEX "index_database_pkey" ON "public"."database" USING btree ("_
 ALTER TABLE "public"."database" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
--- Indexes structure for table datasource
--- ----------------------------
-CREATE UNIQUE INDEX "datasource_name_idx" ON "public"."datasource" USING btree ("name");
-
--- ----------------------------
--- Primary Key structure for table datasource
--- ----------------------------
-ALTER TABLE "public"."datasource" ADD PRIMARY KEY ("_id");
-
--- ----------------------------
--- Primary Key structure for table datasource_instance
--- ----------------------------
-ALTER TABLE "public"."datasource_instance" ADD PRIMARY KEY ("_id");
-
--- ----------------------------
--- Primary Key structure for table datasource_state
--- ----------------------------
-ALTER TABLE "public"."datasource_state" ADD PRIMARY KEY ("_id");
-
--- ----------------------------
 -- Primary Key structure for table datastore
 -- ----------------------------
 ALTER TABLE "public"."datastore" ADD PRIMARY KEY ("_id");
@@ -436,6 +416,26 @@ CREATE UNIQUE INDEX "index_schema_pkey" ON "public"."schema" USING btree ("_id")
 ALTER TABLE "public"."schema" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
+-- Indexes structure for table storage_node
+-- ----------------------------
+CREATE UNIQUE INDEX "storage_node_name_idx" ON "public"."storage_node" USING btree ("name");
+
+-- ----------------------------
+-- Primary Key structure for table storage_node
+-- ----------------------------
+ALTER TABLE "public"."storage_node" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Primary Key structure for table storage_node_instance
+-- ----------------------------
+ALTER TABLE "public"."storage_node_instance" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Primary Key structure for table storage_node_state
+-- ----------------------------
+ALTER TABLE "public"."storage_node_state" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
 -- Foreign Key structure for table "public"."collection"
 -- ----------------------------
 ALTER TABLE "public"."collection" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -456,17 +456,6 @@ ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERE
 ALTER TABLE "public"."database" ADD FOREIGN KEY ("primary_datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
--- Foreign Key structure for table "public"."datasource"
--- ----------------------------
-ALTER TABLE "public"."datasource" ADD FOREIGN KEY ("config_json_schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
--- ----------------------------
--- Foreign Key structure for table "public"."datasource_instance"
--- ----------------------------
-ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REFERENCES "public"."datasource" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_state_id") REFERENCES "public"."datasource_state" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
--- ----------------------------
 -- Foreign Key structure for table "public"."datastore_shard"
 -- ----------------------------
 ALTER TABLE "public"."datastore_shard" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -474,5 +463,16 @@ ALTER TABLE "public"."datastore_shard" ADD FOREIGN KEY ("datastore_id") REFERENC
 -- ----------------------------
 -- Foreign Key structure for table "public"."datastore_shard_replica"
 -- ----------------------------
-ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("datasource_instance_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("datastore_shard_id") REFERENCES "public"."datastore_shard" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datastore_shard_replica" ADD FOREIGN KEY ("storage_node_instance_id") REFERENCES "public"."storage_node_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."storage_node"
+-- ----------------------------
+ALTER TABLE "public"."storage_node" ADD FOREIGN KEY ("config_json_schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."storage_node_instance"
+-- ----------------------------
+ALTER TABLE "public"."storage_node_instance" ADD FOREIGN KEY ("storage_node_state_id") REFERENCES "public"."storage_node_state" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."storage_node_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;

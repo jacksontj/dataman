@@ -92,18 +92,18 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	// Get all databases
 	storageNodeResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_router",
-		"collection": "datasource_instance",
+		"collection": "storage_node_instance",
 	})
 	// TODO: better error handle
 	if storageNodeResult.Error != "" {
 		logrus.Fatalf("Error in getting storageNodeResult: %v", storageNodeResult.Error)
 	}
 
-	meta.Nodes = make([]*metadata.DatasourceInstance, len(storageNodeResult.Return))
+	meta.Nodes = make([]*metadata.StorageNodeInstance, len(storageNodeResult.Return))
 
 	// for each database load the database + collections etc.
 	for i, storageNodeRecord := range storageNodeResult.Return {
-		meta.Nodes[i] = &metadata.DatasourceInstance{
+		meta.Nodes[i] = &metadata.StorageNodeInstance{
 			Name: storageNodeRecord["name"].(string),
 			IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
 			Port: int(storageNodeRecord["port"].(int64)),
@@ -170,9 +170,9 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			// get the storagenode
 			storageNodeResult := m.Store.Filter(map[string]interface{}{
 				"db":         "dataman_router",
-				"collection": "datasource_instance",
+				"collection": "storage_node_instance",
 				"filter": map[string]interface{}{
-					"_id": datastoreShardReplicaRecord["datasource_instance_id"],
+					"_id": datastoreShardReplicaRecord["storage_node_instance_id"],
 				},
 			})
 
@@ -184,7 +184,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			storageNodeRecord := storageNodeResult.Return[0]
 
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				Store: &metadata.DatasourceInstance{
+				Store: &metadata.StorageNodeInstance{
 					Name: storageNodeRecord["name"].(string),
 					IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
 					Port: int(storageNodeRecord["port"].(int64)),
