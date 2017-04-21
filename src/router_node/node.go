@@ -178,6 +178,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 				return &query.Result{Error: err.Error()}
 			}
 			shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
+			fmt.Printf("here %v %v %d\n", queryArgs, shards[0], shardNum)
 		} else {
 			shards = database.Datastore.Shards
 		}
@@ -247,12 +248,35 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
 			// TODO: what do we want to do for brand new things?
 			// TODO: consolidate into a single insert method
-			// We want to RR between the shards for new inserts
-			// TODO: counter instead of random (have to deal with the meta being syncd all over)
-			shardNum := rand.Int63n(int64(len(database.Datastore.Shards)))
+			// We assume that it is always safe to do the insert on the "newest"
+			// partition. This should be safe as the storage_node is responsible for
+			// generating the "_id" which will be within a partition range that the node
+			// was responsible for. Specifically this means that even if we have a newer partition
+			// than the storage_node knows of, it will do the insert with an _id that falls into
+			// a partition which is owned by that storage_node.
+			partition := collection.Partitions[len(collection.Partitions)-1]
 
-			// TODO: replicas -- add args for slave etc.
+			var shardNum int
+			// If the key is _id (our monotomically increasing number) then we'll just RR between the shards
+			if partition.ShardConfig.Key == "_id" {
+				// TODO: consolidate into a single insert method
+				// We want to RR between the shards for new inserts
+				// TODO: counter instead of random (have to deal with the meta being syncd all over)
+				shardNum = rand.Intn(len(database.Datastore.Shards))
+			} else { // Otherwise we *must* have the shard key defined to do the sharding
+				shardKeyValue, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+				if !ok {
+					return &query.Result{Error: "Record missing shardKey " + partition.ShardConfig.Key}
+				}
+				var err error
+				shardNum, err = partition.ShardFunc(shardKeyValue, len(database.Datastore.Shards))
+				if err != nil {
+					return &query.Result{Error: err.Error()}
+				}
+			}
+
 			result, err := QuerySingle(
+				// TODO: replicas -- add args for slave etc.
 				database.Datastore.Shards[shardNum].Replicas.GetMaster().Store,
 				&query.Query{queryType, queryArgs},
 			)
@@ -265,8 +289,12 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		// TODO: not a good assumption if the key is _id (for example) since we won't know
-		// Since this is a new item, we'll fall into the newest partition (presumably?)
+		// We assume that it is always safe to do the insert on the "newest"
+		// partition. This should be safe as the storage_node is responsible for
+		// generating the "_id" which will be within a partition range that the node
+		// was responsible for. Specifically this means that even if we have a newer partition
+		// than the storage_node knows of, it will do the insert with an _id that falls into
+		// a partition which is owned by that storage_node.
 		partition := collection.Partitions[len(collection.Partitions)-1]
 
 		var shardNum int
