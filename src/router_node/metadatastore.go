@@ -107,7 +107,12 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					collection.Partitions[i].EndId = collectionPartitionRecord["end_id"].(int64)
 				}
 
-				collection.Partitions[i].ShardConfig = collectionPartitionRecord["shard_config_json"].(map[string]interface{})
+				// TODO: better
+				shardConfigField := collectionPartitionRecord["shard_config_json"].(map[string]interface{})
+				collection.Partitions[i].ShardConfig = &metadata.ShardConfig{
+					Key:    shardConfigField["shard_key"].(string),
+					Method: sharding.ShardMethod(shardConfigField["shard_method"].(string)),
+				}
 				collection.Partitions[i].ShardFunc = sharding.ShardMethod(collectionPartitionRecord["shard_config_json"].(map[string]interface{})["shard_method"].(string)).Get()
 			}
 

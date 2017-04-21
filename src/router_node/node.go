@@ -12,7 +12,6 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
-	storagemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // This node is responsible for routing requests to the appropriate storage node
@@ -166,13 +165,22 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	case query.Get:
 		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
 		// TODO: configurable shard key
-		shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(queryArgs["_id"].(float64)), len(database.Datastore.Shards))
+		shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
 		if err != nil {
 			return &query.Result{Error: err.Error()}
 		}
 		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
 	case query.Filter:
-		shards = database.Datastore.Shards
+		// if there is only one partition and we have our shard key, we can be more specific
+		if shardKeyValue, ok := queryArgs["filter"].(map[string]interface{})[collection.Partitions[0].ShardConfig.Key]; len(collection.Partitions) == 1 && ok {
+			shardNum, err := collection.Partitions[0].ShardFunc(shardKeyValue, len(database.Datastore.Shards))
+			if err != nil {
+				return &query.Result{Error: err.Error()}
+			}
+			shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
+		} else {
+			shards = database.Datastore.Shards
+		}
 	}
 
 	shardResults := make([]*query.Result, len(shards))
@@ -223,9 +231,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Set:
 		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
 		if id, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
-			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+			partition := collection.GetPartition(int64(id.(float64)))
 			// TODO: configurable shard key
-			shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(id.(float64)), len(database.Datastore.Shards))
+			shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
 			if err != nil {
 				return &query.Result{Error: err.Error()}
 			}
@@ -257,10 +265,28 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		// TODO: consolidate into a single insert method
-		// We want to RR between the shards for new inserts
-		// TODO: counter instead of random (have to deal with the meta being syncd all over)
-		shardNum := rand.Int63n(int64(len(database.Datastore.Shards)))
+		// TODO: not a good assumption if the key is _id (for example) since we won't know
+		// Since this is a new item, we'll fall into the newest partition (presumably?)
+		partition := collection.Partitions[len(collection.Partitions)-1]
+
+		var shardNum int
+		// If the key is _id (our monotomically increasing number) then we'll just RR between the shards
+		if partition.ShardConfig.Key == "_id" {
+			// TODO: consolidate into a single insert method
+			// We want to RR between the shards for new inserts
+			// TODO: counter instead of random (have to deal with the meta being syncd all over)
+			shardNum = rand.Intn(len(database.Datastore.Shards))
+		} else { // Otherwise we *must* have the shard key defined to do the sharding
+			shardKeyValue, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+			if !ok {
+				return &query.Result{Error: "Record missing shardKey " + partition.ShardConfig.Key}
+			}
+			var err error
+			shardNum, err = partition.ShardFunc(shardKeyValue, len(database.Datastore.Shards))
+			if err != nil {
+				return &query.Result{Error: err.Error()}
+			}
+		}
 
 		result, err := QuerySingle(
 			// TODO: replicas -- add args for slave etc.
@@ -276,9 +302,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Update:
 		// If there is an "_id"_ defined, then we can send this to a single shard
 		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
-			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+			partition := collection.GetPartition(int64(id.(float64)))
 			// TODO: configurable shard key
-			shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(id.(float64)), len(database.Datastore.Shards))
+			shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
 			if err != nil {
 				return &query.Result{Error: err.Error()}
 			}
@@ -307,7 +333,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	case query.Delete:
 		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-		shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(queryArgs["_id"].(float64)), len(database.Datastore.Shards))
+		shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
 		if err != nil {
 			return &query.Result{Error: err.Error()}
 		}
