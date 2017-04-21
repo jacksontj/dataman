@@ -213,7 +213,6 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	// are a set of id's we can derive from the original query, so we can do a limited
 	// scatter-gather. For now we'll either know the specific shard, or not (for ease of implementation)
 
-	// For now we'll take a na
 	switch queryType {
 	// Write operations
 	case query.Set:
