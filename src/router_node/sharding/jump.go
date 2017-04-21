@@ -1,9 +1,20 @@
 package sharding
 
-import jump "github.com/renstrom/go-jump-consistent-hash"
+import (
+	"fmt"
 
-func JumpHash(key string, numShards int) int {
-	hasher := jump.New(numShards, jump.CRC64)
-	i := hasher.Hash(key)
-	return i
+	storagemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+	jump "github.com/renstrom/go-jump-consistent-hash"
+)
+
+func JumpSelect(fieldType storagemetadata.FieldType, key interface{}, numShards int) (int, error) {
+	switch fieldType {
+	case storagemetadata.String:
+		hasher := jump.New(numShards, jump.CRC64)
+		i := hasher.Hash(key.(string))
+		return i, nil
+	default:
+		return 0, fmt.Errorf("Unsupported fieldType=%s for jumpselect", fieldType)
+	}
+
 }

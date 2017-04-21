@@ -3,7 +3,6 @@ package routernode
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
+	storagemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // This node is responsible for routing requests to the appropriate storage node
@@ -164,7 +164,11 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	switch queryType {
 	case query.Get:
 		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-		shardNum := partition.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		// TODO: configurable shard key
+		shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(queryArgs["_id"].(float64)), len(database.Datastore.Shards))
+		if err != nil {
+			return &query.Result{Error: err.Error()}
+		}
 		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
 	case query.Filter:
 		shards = database.Datastore.Shards
@@ -219,7 +223,11 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
 		if id, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
 			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+			// TODO: configurable shard key
+			shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(id.(float64)), len(database.Datastore.Shards))
+			if err != nil {
+				return &query.Result{Error: err.Error()}
+			}
 
 			// TODO: replicas -- add args for slave etc.
 			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
@@ -268,7 +276,11 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// If there is an "_id"_ defined, then we can send this to a single shard
 		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
 			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+			// TODO: configurable shard key
+			shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(id.(float64)), len(database.Datastore.Shards))
+			if err != nil {
+				return &query.Result{Error: err.Error()}
+			}
 			// TODO: replicas -- add args for slave etc.
 			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 				return result
@@ -294,7 +306,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	case query.Delete:
 		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-		shardNum := partition.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		shardNum, err := partition.ShardFunc(storagemetadata.Int, int64(queryArgs["_id"].(float64)), len(database.Datastore.Shards))
+		if err != nil {
+			return &query.Result{Error: err.Error()}
+		}
 		// TODO: replicas -- add args for slave etc.
 		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 			return result
