@@ -56,6 +56,7 @@ func main() {
 		meta.Databases[databasename] = storeSchema.GetDatabase(databasename)
 	}
 
+	// TODO: sort? it'd be nice to have the files not change if there was no schema change
 	bytes, _ := json.Marshal(meta)
 	fmt.Println(string(bytes))
 
