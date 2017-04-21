@@ -795,7 +795,61 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v RETURNING *", args["collection"], args["_id"])
+	whereClause := ""
+
+	if filter, ok := args["filter"]; ok {
+		meta := s.GetMeta()
+		collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+		if err != nil {
+			result.Error = err.Error()
+			return result
+		}
+
+		// TODO: move to some method
+		filterData := filter.(map[string]interface{})
+		filterHeaders := make([]string, 0, len(filterData))
+		filterValues := make([]string, 0, len(filterData))
+
+		for filterName, filterValue := range filterData {
+			if strings.HasPrefix(filterName, "_") {
+				filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+				filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+				continue
+			}
+			field, ok := collection.FieldMap[filterName]
+			if !ok {
+				result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
+				return result
+			}
+
+			filterHeaders = append(filterHeaders, "\""+filterName+"\"")
+			switch field.Type {
+			case metadata.Document:
+				fieldJson, err := json.Marshal(filterValue)
+				if err != nil {
+					result.Error = err.Error()
+					return result
+				}
+				filterValues = append(filterValues, "'"+string(fieldJson)+"'")
+			case metadata.Text:
+				fallthrough
+			case metadata.String:
+				filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
+			default:
+				filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
+			}
+		}
+
+		whereClause += ","
+		for i, header := range filterHeaders {
+			whereClause += header + "=" + filterValues[i]
+			if i+1 < len(filterHeaders) {
+				whereClause += ", "
+			}
+		}
+	}
+
+	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v%s RETURNING *", args["collection"], args["_id"], whereClause)
 	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
