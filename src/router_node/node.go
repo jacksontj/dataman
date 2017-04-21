@@ -2,6 +2,7 @@ package routernode
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -239,8 +240,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			// TODO: what do we want to do for brand new things?
 			// TODO: consolidate into a single insert method
 			// We want to RR between the shards for new inserts
-			insertCounter := atomic.AddInt64(&database.InsertCounter, 1)
-			shardNum := insertCounter % int64(len(database.Datastore.Shards))
+			// TODO: counter instead of random (have to deal with the meta being syncd all over)
+			shardNum := rand.Int63n(int64(len(database.Datastore.Shards)))
 
 			// TODO: replicas -- add args for slave etc.
 			result, err := QuerySingle(
@@ -258,8 +259,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Insert:
 		// TODO: consolidate into a single insert method
 		// We want to RR between the shards for new inserts
-		insertCounter := atomic.AddInt64(&database.InsertCounter, 1)
-		shardNum := insertCounter % int64(len(database.Datastore.Shards))
+		// TODO: counter instead of random (have to deal with the meta being syncd all over)
+		shardNum := rand.Int63n(int64(len(database.Datastore.Shards)))
 
 		result, err := QuerySingle(
 			// TODO: replicas -- add args for slave etc.

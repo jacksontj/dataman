@@ -14,7 +14,4 @@ type Database struct {
 
 	// mapping of all collections
 	Collections map[string]*Collection `json:"collections"`
-
-	// TODO: elsewhere?
-	InsertCounter int64 `json:"-"`
 }
