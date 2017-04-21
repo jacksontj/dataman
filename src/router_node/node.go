@@ -142,6 +142,10 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	if !ok {
 		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
 	}
+	collection, ok := database.Collections[queryArgs["collection"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+	}
 
 	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
 	// and to do that we'll need the collection metadata
@@ -159,7 +163,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	var shards []*metadata.DatastoreShard
 	switch queryType {
 	case query.Get:
-		shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+		shardNum := partition.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
 		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
 	case query.Filter:
 		shards = database.Datastore.Shards
@@ -186,6 +191,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	if !ok {
 		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
 	}
+	collection, ok := database.Collections[queryArgs["collection"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+	}
 
 	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
 	// and to do that we'll need the collection metadata
@@ -210,7 +219,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Set:
 		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
 		if id, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
-			shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
 
 			// TODO: replica selection (master for r/w)?
 			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
@@ -256,7 +266,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Update:
 		// If there is an "_id"_ defined, then we can send this to a single shard
 		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
-			shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
+			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
 			// TODO: replica selection (master for r/w)?
 			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
 				return result
@@ -281,7 +292,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return query.MergeResult(shardResults...)
 		}
 	case query.Delete:
-		shardNum := database.Datastore.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
+		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
+		shardNum := partition.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
 		// TODO: replica selection (master for r/w)?
 		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
 			return result

@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-20 14:16:50
+Date: 2017-04-21 08:58:08
 */
 
 
@@ -50,6 +50,18 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  START 3
  CACHE 1;
 SELECT setval('"public"."collection_index__id_seq"', 3, true);
+
+-- ----------------------------
+-- Sequence structure for collection_partition_id_seq
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "public"."collection_partition_id_seq";
+CREATE SEQUENCE "public"."collection_partition_id_seq"
+ INCREMENT 1
+ MINVALUE 1
+ MAXVALUE 9223372036854775807
+ START 3
+ CACHE 1;
+SELECT setval('"public"."collection_partition_id_seq"', 3, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -197,6 +209,21 @@ WITH (OIDS=FALSE)
 ;
 
 -- ----------------------------
+-- Table structure for collection_partition
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."collection_partition";
+CREATE TABLE "public"."collection_partition" (
+"_id" int4 DEFAULT nextval('collection_partition_id_seq'::regclass) NOT NULL,
+"collection_id" int4 NOT NULL,
+"start_id" int4 NOT NULL,
+"end_id" int4,
+"shard_config_json" jsonb
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
 -- Table structure for database
 -- ----------------------------
 DROP TABLE IF EXISTS "public"."database";
@@ -330,6 +357,7 @@ WITH (OIDS=FALSE)
 ALTER SEQUENCE "public"."collection__id_seq" OWNED BY "collection"."_id";
 ALTER SEQUENCE "public"."collection_field__id_seq" OWNED BY "collection_field"."_id";
 ALTER SEQUENCE "public"."collection_index__id_seq" OWNED BY "collection_index"."_id";
+ALTER SEQUENCE "public"."collection_partition_id_seq" OWNED BY "collection_partition"."_id";
 ALTER SEQUENCE "public"."database__id_seq" OWNED BY "database"."_id";
 ALTER SEQUENCE "public"."datastore__id_seq" OWNED BY "datastore"."_id";
 ALTER SEQUENCE "public"."datastore_shard__id_seq" OWNED BY "datastore_shard"."_id";
@@ -372,6 +400,11 @@ CREATE UNIQUE INDEX "index_collection_index_name" ON "public"."collection_index"
 -- Primary Key structure for table collection_index
 -- ----------------------------
 ALTER TABLE "public"."collection_index" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Primary Key structure for table collection_partition
+-- ----------------------------
+ALTER TABLE "public"."collection_partition" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
 -- Indexes structure for table database

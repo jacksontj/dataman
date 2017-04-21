@@ -82,6 +82,36 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			// TODO: load the rest of the collection
 
+			// Load the partitions
+			collectionPartitionResult := m.Store.Filter(map[string]interface{}{
+				"db":         "dataman_router",
+				"collection": "collection_partition",
+				"filter": map[string]interface{}{
+					"collection_id": collectionRecord["_id"],
+				},
+			})
+			// TODO: better error handle
+			if collectionPartitionResult.Error != "" {
+				logrus.Fatalf("Error in collectionPartitionResult: %v", collectionPartitionResult.Error)
+			}
+
+			collection.Partitions = make([]*metadata.CollectionPartition, len(collectionPartitionResult.Return))
+
+			for i, collectionPartitionRecord := range collectionPartitionResult.Return {
+				collection.Partitions[i] = &metadata.CollectionPartition{
+					ID:      collectionPartitionRecord["_id"].(int64),
+					StartId: collectionPartitionRecord["start_id"].(int64),
+				}
+				// EndId is optional (as this might be the first/only partition)
+				if collectionPartitionRecord["end_id"] != nil {
+					collection.Partitions[i].EndId = collectionPartitionRecord["end_id"].(int64)
+				}
+
+				collection.Partitions[i].ShardConfig = collectionPartitionRecord["shard_config_json"].(map[string]interface{})
+				collection.Partitions[i].ShardFunc = sharding.ShardMethod(collectionPartitionRecord["shard_config_json"].(map[string]interface{})["shard_method"].(string)).Get()
+			}
+
+			// Lastly add this collection to the database
 			database.Collections[collection.Name] = collection
 		}
 
@@ -134,8 +164,7 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 
 	datastore := metadata.NewDatastore(datastoreRecord["name"].(string))
 	// TODO: define schema for shard config
-	datastore.ShardFunc = sharding.ShardMethod(datastoreRecord["shard_config_json"].(map[string]interface{})["shard_method"].(string)).Get()
-
+	datastore.ShardConfig = datastoreRecord["shard_config_json"].(map[string]interface{})
 	// Now load all the shards
 	datastoreShardResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_router",
