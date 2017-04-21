@@ -222,8 +222,9 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 					// State
 					// Config
 				},
+				Master: datastoreShardReplicaRecord["master"].(bool),
 			}
-			datastoreShard.Replicas = append(datastoreShard.Replicas, datastoreShardReplica)
+			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
 		}
 
 		datastore.Shards = append(datastore.Shards, datastoreShard)

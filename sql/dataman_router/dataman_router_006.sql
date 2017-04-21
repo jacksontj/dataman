@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-21 09:05:39
+Date: 2017-04-21 09:19:04
 */
 
 
@@ -280,7 +280,7 @@ CREATE TABLE "public"."datastore_shard_replica" (
 "_updated" timestamp(6),
 "datastore_shard_id" int4,
 "storage_node_instance_id" int4,
-"master" bool
+"master" bool NOT NULL
 )
 WITH (OIDS=FALSE)
 

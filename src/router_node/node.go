@@ -174,8 +174,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	// TODO: parallel
 	for i, shard := range shards {
-		// TODO: replicas
-		if result, err := QuerySingle(shard.Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+		// TODO: replicas -- add args for slave etc.
+		if result, err := QuerySingle(shard.Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 			shardResults[i] = result
 		} else {
 			shardResults[i] = &query.Result{Error: err.Error()}
@@ -222,8 +222,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
 			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
 
-			// TODO: replica selection (master for r/w)?
-			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+			// TODO: replicas -- add args for slave etc.
+			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -235,8 +235,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			insertCounter := atomic.AddInt64(&database.InsertCounter, 1)
 			shardNum := insertCounter % int64(len(database.Datastore.Shards))
 
+			// TODO: replicas -- add args for slave etc.
 			result, err := QuerySingle(
-				database.Datastore.Shards[shardNum].Replicas[0].Store,
+				database.Datastore.Shards[shardNum].Replicas.GetMaster().Store,
 				&query.Query{queryType, queryArgs},
 			)
 
@@ -254,7 +255,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		shardNum := insertCounter % int64(len(database.Datastore.Shards))
 
 		result, err := QuerySingle(
-			database.Datastore.Shards[shardNum].Replicas[0].Store,
+			// TODO: replicas -- add args for slave etc.
+			database.Datastore.Shards[shardNum].Replicas.GetMaster().Store,
 			&query.Query{queryType, queryArgs},
 		)
 
@@ -268,8 +270,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
 			partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
 			shardNum := partition.ShardFunc(strconv.FormatFloat(id.(float64), 'e', -1, 64), len(database.Datastore.Shards))
-			// TODO: replica selection (master for r/w)?
-			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+			// TODO: replicas -- add args for slave etc.
+			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -280,8 +282,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: parallel
 			for i, shard := range database.Datastore.Shards {
-				// TODO: replicas
-				if result, err := QuerySingle(shard.Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+				// TODO: replicas -- add args for slave etc.
+				if result, err := QuerySingle(shard.Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 					shardResults[i] = result
 				} else {
 					shardResults[i] = &query.Result{Error: err.Error()}
@@ -294,8 +296,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	case query.Delete:
 		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
 		shardNum := partition.ShardFunc(strconv.FormatFloat(queryArgs["_id"].(float64), 'e', -1, 64), len(database.Datastore.Shards))
-		// TODO: replica selection (master for r/w)?
-		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas[0].Store, &query.Query{queryType, queryArgs}); err == nil {
+		// TODO: replicas -- add args for slave etc.
+		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
