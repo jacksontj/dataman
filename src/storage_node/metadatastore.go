@@ -263,6 +263,9 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_storage",
 		"collection": "database",
+		"filter": map[string]interface{}{
+			"name": dbName,
+		},
 	})
 	// TODO: better error handle
 	if databaseResult.Error != "" {
@@ -587,6 +590,9 @@ func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_storage",
 		"collection": "database",
+		"filter": map[string]interface{}{
+			"name": dbname,
+		},
 	})
 	// TODO: better error handle
 	if databaseResult.Error != "" {
