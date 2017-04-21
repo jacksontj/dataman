@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-04-21 08:58:08
+Date: 2017-04-21 09:05:39
 */
 
 
@@ -279,7 +279,8 @@ CREATE TABLE "public"."datastore_shard_replica" (
 "_created" timestamp(6),
 "_updated" timestamp(6),
 "datastore_shard_id" int4,
-"storage_node_instance_id" int4
+"storage_node_instance_id" int4,
+"master" bool
 )
 WITH (OIDS=FALSE)
 
@@ -402,6 +403,11 @@ CREATE UNIQUE INDEX "index_collection_index_name" ON "public"."collection_index"
 ALTER TABLE "public"."collection_index" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
+-- Indexes structure for table collection_partition
+-- ----------------------------
+CREATE INDEX "collection_partition_collection_id_idx" ON "public"."collection_partition" USING btree ("collection_id");
+
+-- ----------------------------
 -- Primary Key structure for table collection_partition
 -- ----------------------------
 ALTER TABLE "public"."collection_partition" ADD PRIMARY KEY ("_id");
@@ -482,6 +488,11 @@ ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERE
 -- Foreign Key structure for table "public"."collection_index"
 -- ----------------------------
 ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."collection_partition"
+-- ----------------------------
+ALTER TABLE "public"."collection_partition" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."database"

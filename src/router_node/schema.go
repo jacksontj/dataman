@@ -4,10 +4,180 @@ const schemaJson string = `
 {
    "databases" : {
       "dataman_router" : {
-         "shard_instance" : 0,
          "name" : "dataman_router",
          "collections" : {
-            "datastore" : {
+            "collection_index" : {
+               "fields" : [
+                  {
+                     "name" : "_id",
+                     "type" : "int"
+                  },
+                  {
+                     "name" : "_created",
+                     "type" : "datetime"
+                  },
+                  {
+                     "name" : "_updated",
+                     "type" : "datetime"
+                  },
+                  {
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "type" : "string",
+                     "name" : "name"
+                  },
+                  {
+                     "name" : "collection_id",
+                     "type" : "int"
+                  },
+                  {
+                     "name" : "data_json",
+                     "type" : "document"
+                  },
+                  {
+                     "type" : "bool",
+                     "name" : "unique"
+                  }
+               ],
+               "indexes" : {
+                  "collection_index_name" : {
+                     "name" : "collection_index_name",
+                     "unique" : true,
+                     "fields" : [
+                        "name",
+                        "collection_id"
+                     ]
+                  },
+                  "collection_index_pkey" : {
+                     "name" : "collection_index_pkey",
+                     "unique" : true,
+                     "fields" : [
+                        "_id"
+                     ]
+                  }
+               },
+               "name" : "collection_index"
+            },
+            "datastore_shard_replica" : {
+               "fields" : [
+                  {
+                     "type" : "int",
+                     "name" : "_id"
+                  },
+                  {
+                     "name" : "_created",
+                     "type" : "datetime"
+                  },
+                  {
+                     "name" : "_updated",
+                     "type" : "datetime"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "datastore_shard_id"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "storage_node_instance_id"
+                  },
+                  {
+                     "type" : "bool",
+                     "name" : "master"
+                  }
+               ],
+               "name" : "datastore_shard_replica"
+            },
+            "database" : {
+               "indexes" : {
+                  "index_database_name" : {
+                     "fields" : [
+                        "name"
+                     ],
+                     "unique" : true,
+                     "name" : "index_database_name"
+                  },
+                  "database_pkey" : {
+                     "name" : "database_pkey",
+                     "unique" : true,
+                     "fields" : [
+                        "_id"
+                     ]
+                  }
+               },
+               "name" : "database",
+               "fields" : [
+                  {
+                     "name" : "_id",
+                     "type" : "int"
+                  },
+                  {
+                     "type" : "datetime",
+                     "name" : "_created"
+                  },
+                  {
+                     "type" : "datetime",
+                     "name" : "_updated"
+                  },
+                  {
+                     "name" : "name",
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "type" : "string"
+                  },
+                  {
+                     "name" : "primary_datastore_id",
+                     "type" : "int"
+                  }
+               ]
+            },
+            "collection" : {
+               "indexes" : {
+                  "index_collection_collection_name" : {
+                     "name" : "index_collection_collection_name",
+                     "unique" : true,
+                     "fields" : [
+                        "name",
+                        "database_id"
+                     ]
+                  },
+                  "collection_pkey" : {
+                     "fields" : [
+                        "_id"
+                     ],
+                     "name" : "collection_pkey",
+                     "unique" : true
+                  }
+               },
+               "name" : "collection",
+               "fields" : [
+                  {
+                     "type" : "int",
+                     "name" : "_id"
+                  },
+                  {
+                     "name" : "_created",
+                     "type" : "datetime"
+                  },
+                  {
+                     "name" : "_updated",
+                     "type" : "datetime"
+                  },
+                  {
+                     "type" : "string",
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "name" : "name"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "database_id"
+                  }
+               ]
+            },
+            "storage_node" : {
                "fields" : [
                   {
                      "type" : "int",
@@ -29,17 +199,122 @@ const schemaJson string = `
                      }
                   },
                   {
-                     "name" : "replica_config_json",
+                     "name" : "config_json_schema_id",
+                     "type" : "int"
+                  }
+               ],
+               "name" : "storage_node"
+            },
+            "storage_node_state" : {
+               "name" : "storage_node_state",
+               "fields" : [
+                  {
+                     "type" : "int",
+                     "name" : "_id"
+                  },
+                  {
+                     "type" : "datetime",
+                     "name" : "_created"
+                  },
+                  {
+                     "name" : "_updated",
+                     "type" : "datetime"
+                  },
+                  {
+                     "name" : "name",
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "type" : "string"
+                  },
+                  {
+                     "type" : "string",
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "name" : "info"
+                  }
+               ]
+            },
+            "schema" : {
+               "fields" : [
+                  {
+                     "type" : "int",
+                     "name" : "_id"
+                  },
+                  {
+                     "type" : "datetime",
+                     "name" : "_created"
+                  },
+                  {
+                     "name" : "_updated",
+                     "type" : "datetime"
+                  },
+                  {
+                     "type_args" : {
+                        "size" : 255
+                     },
+                     "type" : "string",
+                     "name" : "name"
+                  },
+                  {
+                     "name" : "version",
+                     "type" : "int"
+                  },
+                  {
+                     "name" : "data_json",
                      "type" : "document"
                   },
                   {
-                     "type" : "document",
-                     "name" : "shard_config_json"
+                     "name" : "backwards_compatible",
+                     "type" : "bool"
                   }
                ],
-               "name" : "datastore"
+               "name" : "schema",
+               "indexes" : {
+                  "schema_pkey" : {
+                     "fields" : [
+                        "_id"
+                     ],
+                     "name" : "schema_pkey",
+                     "unique" : true
+                  },
+                  "index_schema_name_version" : {
+                     "fields" : [
+                        "name",
+                        "version"
+                     ],
+                     "unique" : true,
+                     "name" : "index_schema_name_version"
+                  }
+               }
             },
-            "collection_index" : {
+            "collection_partition" : {
+               "name" : "collection_partition",
+               "fields" : [
+                  {
+                     "name" : "_id",
+                     "type" : "int"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "collection_id"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "start_id"
+                  },
+                  {
+                     "type" : "int",
+                     "name" : "end_id"
+                  },
+                  {
+                     "name" : "shard_config_json",
+                     "type" : "document"
+                  }
+               ]
+            },
+            "storage_node_instance" : {
                "fields" : [
                   {
                      "name" : "_id",
@@ -50,67 +325,14 @@ const schemaJson string = `
                      "type" : "datetime"
                   },
                   {
-                     "name" : "_updated",
-                     "type" : "datetime"
-                  },
-                  {
-                     "type_args" : {
-                        "size" : 255
-                     },
-                     "name" : "name",
-                     "type" : "string"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "collection_id"
-                  },
-                  {
-                     "name" : "data_json",
-                     "type" : "text"
-                  },
-                  {
-                     "type" : "bool",
-                     "name" : "unique"
-                  }
-               ],
-               "name" : "collection_index",
-               "indexes" : {
-                  "collection_index_pkey" : {
-                     "unique" : true,
-                     "name" : "collection_index_pkey",
-                     "fields" : [
-                        "_id"
-                     ]
-                  },
-                  "collection_index_name" : {
-                     "fields" : [
-                        "name",
-                        "collection_id"
-                     ],
-                     "name" : "collection_index_name",
-                     "unique" : true
-                  }
-               }
-            },
-            "storage_node_instance" : {
-               "fields" : [
-                  {
-                     "name" : "_id",
-                     "type" : "int"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_created"
-                  },
-                  {
                      "type" : "datetime",
                      "name" : "_updated"
                   },
                   {
+                     "type" : "string",
                      "type_args" : {
                         "size" : 255
                      },
-                     "type" : "string",
                      "name" : "name"
                   },
                   {
@@ -133,75 +355,14 @@ const schemaJson string = `
                      "type" : "int"
                   },
                   {
-                     "type" : "document",
-                     "name" : "config_json"
+                     "name" : "config_json",
+                     "type" : "document"
                   }
                ],
                "name" : "storage_node_instance"
             },
-            "database" : {
-               "fields" : [
-                  {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_created"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_updated"
-                  },
-                  {
-                     "type_args" : {
-                        "size" : 255
-                     },
-                     "name" : "name",
-                     "type" : "string"
-                  },
-                  {
-                     "name" : "primary_datastore_id",
-                     "type" : "int"
-                  }
-               ],
-               "name" : "database",
-               "indexes" : {
-                  "database_pkey" : {
-                     "unique" : true,
-                     "name" : "database_pkey",
-                     "fields" : [
-                        "_id"
-                     ]
-                  },
-                  "index_database_name" : {
-                     "fields" : [
-                        "name"
-                     ],
-                     "unique" : true,
-                     "name" : "index_database_name"
-                  }
-               }
-            },
-            "schema" : {
-               "indexes" : {
-                  "index_schema_name_version" : {
-                     "fields" : [
-                        "name",
-                        "version"
-                     ],
-                     "unique" : true,
-                     "name" : "index_schema_name_version"
-                  },
-                  "schema_pkey" : {
-                     "unique" : true,
-                     "name" : "schema_pkey",
-                     "fields" : [
-                        "_id"
-                     ]
-                  }
-               },
-               "name" : "schema",
+            "datastore" : {
+               "name" : "datastore",
                "fields" : [
                   {
                      "name" : "_id",
@@ -216,48 +377,19 @@ const schemaJson string = `
                      "name" : "_updated"
                   },
                   {
+                     "name" : "name",
+                     "type" : "string",
                      "type_args" : {
                         "size" : 255
-                     },
-                     "name" : "name",
-                     "type" : "string"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "version"
+                     }
                   },
                   {
                      "type" : "document",
-                     "name" : "data_json"
+                     "name" : "replica_config_json"
                   },
                   {
-                     "type" : "bool",
-                     "name" : "backwards_compatible"
-                  }
-               ]
-            },
-            "collection_partition" : {
-               "name" : "collection_partition",
-               "fields" : [
-                  {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "name" : "collection_id",
-                     "type" : "int"
-                  },
-                  {
-                     "name" : "start_id",
-                     "type" : "int"
-                  },
-                  {
-                     "name" : "end_id",
-                     "type" : "int"
-                  },
-                  {
-                     "type" : "document",
-                     "name" : "shard_config_json"
+                     "name" : "shard_config_json",
+                     "type" : "document"
                   }
                ]
             },
@@ -265,66 +397,6 @@ const schemaJson string = `
                "name" : "datastore_shard",
                "fields" : [
                   {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_created"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_updated"
-                  },
-                  {
-                     "type_args" : {
-                        "size" : 255
-                     },
-                     "type" : "string",
-                     "name" : "name"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "datastore_id"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "shard_number"
-                  }
-               ]
-            },
-            "storage_node" : {
-               "name" : "storage_node",
-               "fields" : [
-                  {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_created"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_updated"
-                  },
-                  {
-                     "type_args" : {
-                        "size" : 255
-                     },
-                     "type" : "string",
-                     "name" : "name"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "config_json_schema_id"
-                  }
-               ]
-            },
-            "datastore_shard_replica" : {
-               "name" : "datastore_shard_replica",
-               "fields" : [
-                  {
                      "name" : "_id",
                      "type" : "int"
                   },
@@ -333,120 +405,51 @@ const schemaJson string = `
                      "name" : "_created"
                   },
                   {
-                     "name" : "_updated",
-                     "type" : "datetime"
-                  },
-                  {
-                     "name" : "datastore_shard_id",
-                     "type" : "int"
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "storage_node_instance_id"
-                  }
-               ]
-            },
-            "collection" : {
-               "indexes" : {
-                  "collection_pkey" : {
-                     "fields" : [
-                        "_id"
-                     ],
-                     "name" : "collection_pkey",
-                     "unique" : true
-                  },
-                  "index_collection_collection_name" : {
-                     "unique" : true,
-                     "name" : "index_collection_collection_name",
-                     "fields" : [
-                        "name",
-                        "database_id"
-                     ]
-                  }
-               },
-               "name" : "collection",
-               "fields" : [
-                  {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "name" : "_created",
-                     "type" : "datetime"
-                  },
-                  {
                      "type" : "datetime",
                      "name" : "_updated"
-                  },
-                  {
-                     "type" : "string",
-                     "name" : "name",
-                     "type_args" : {
-                        "size" : 255
-                     }
-                  },
-                  {
-                     "type" : "int",
-                     "name" : "database_id"
-                  }
-               ]
-            },
-            "storage_node_state" : {
-               "fields" : [
-                  {
-                     "type" : "int",
-                     "name" : "_id"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_created"
-                  },
-                  {
-                     "type" : "datetime",
-                     "name" : "_updated"
-                  },
-                  {
-                     "type" : "string",
-                     "name" : "name",
-                     "type_args" : {
-                        "size" : 255
-                     }
                   },
                   {
                      "type_args" : {
                         "size" : 255
                      },
-                     "name" : "info",
-                     "type" : "string"
+                     "type" : "string",
+                     "name" : "name"
+                  },
+                  {
+                     "name" : "datastore_id",
+                     "type" : "int"
+                  },
+                  {
+                     "name" : "shard_number",
+                     "type" : "int"
                   }
-               ],
-               "name" : "storage_node_state"
+               ]
             },
             "collection_field" : {
-               "name" : "collection_field",
                "indexes" : {
-                  "collection_field_pkey" : {
-                     "unique" : true,
-                     "name" : "collection_field_pkey",
+                  "index_collection_field_collection_field_table" : {
                      "fields" : [
-                        "_id"
-                     ]
+                        "collection_id"
+                     ],
+                     "name" : "index_collection_field_collection_field_table"
                   },
                   "index_collection_field_collection_field_name" : {
-                     "unique" : true,
                      "name" : "index_collection_field_collection_field_name",
+                     "unique" : true,
                      "fields" : [
                         "collection_id",
                         "name"
                      ]
                   },
-                  "index_collection_field_collection_field_table" : {
-                     "name" : "index_collection_field_collection_field_table",
+                  "collection_field_pkey" : {
                      "fields" : [
-                        "collection_id"
-                     ]
+                        "_id"
+                     ],
+                     "name" : "collection_field_pkey",
+                     "unique" : true
                   }
                },
+               "name" : "collection_field",
                "fields" : [
                   {
                      "type" : "int",
@@ -461,26 +464,26 @@ const schemaJson string = `
                      "name" : "_updated"
                   },
                   {
-                     "name" : "name",
                      "type" : "string",
                      "type_args" : {
                         "size" : 255
-                     }
+                     },
+                     "name" : "name"
                   },
                   {
                      "type" : "int",
                      "name" : "collection_id"
                   },
                   {
+                     "name" : "field_type",
                      "type_args" : {
                         "size" : 255
                      },
-                     "type" : "string",
-                     "name" : "field_type"
+                     "type" : "string"
                   },
                   {
-                     "type" : "document",
-                     "name" : "field_type_args"
+                     "name" : "field_type_args",
+                     "type" : "document"
                   },
                   {
                      "type" : "int",
@@ -492,7 +495,8 @@ const schemaJson string = `
                   }
                ]
             }
-         }
+         },
+         "shard_instance" : 0
       }
    }
 }
