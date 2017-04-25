@@ -157,7 +157,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 // Database changes
 func (s *Storage) AddDatabase(db *metadata.Database) error {
 	// Create the database
-	if _, err := DoQuery(s.db, "CREATE DATABASE "+db.Name); err != nil {
+	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE DATABASE \"%s\"" ,db.Name)); err != nil {
 		return fmt.Errorf("Unable to create database: %v", err)
 	}
 
@@ -178,7 +178,7 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 	return nil
 }
 
-const dropDatabaseTemplate = `DROP DATABASE IF EXISTS %s;`
+const dropDatabaseTemplate = `DROP DATABASE IF EXISTS "%s";`
 
 func (s *Storage) RemoveDatabase(dbname string) error {
 	// Close the connection we have (so people don't do queries)
