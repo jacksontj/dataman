@@ -13,14 +13,14 @@ import (
 func NewMetadataStore(config *Config) (*MetadataStore, error) {
 	// First we need to create the storagenode layer, to get the metadata from
 	// the datastore
-	storageNodeConfig := &storagenode.Config{
+	datasourceInstanceConfig := &storagenode.DatasourceInstanceConfig{
 		StorageNodeType: config.MetaStoreType,
 		StorageConfig:   config.MetaStoreConfig,
 	}
 
 	// TODO: better? I don't like having to re-init the store, but this works for now
 	// probably need some lower layer initialization func to integrate at
-	storageNode, err := storagenode.NewStorageNode(storageNodeConfig)
+	datasourceInstance, err := storagenode.NewDatasourceInstance(datasourceInstanceConfig)
 	// TODO: more specific error?
 	if err != nil {
 		return nil, err
@@ -31,12 +31,12 @@ func NewMetadataStore(config *Config) (*MetadataStore, error) {
 		return nil, err
 	}
 
-	if err := storageNode.Store.Init(metaFunc, storageNodeConfig.StorageConfig); err != nil {
+	if err := datasourceInstance.Store.Init(metaFunc, datasourceInstanceConfig.StorageConfig); err != nil {
 		return nil, err
 	}
 
 	metaStore := &MetadataStore{
-		Store: storageNode.Store,
+		Store: datasourceInstance.Store,
 	}
 
 	return metaStore, nil

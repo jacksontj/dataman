@@ -23,5 +23,5 @@ type DatasourceInstance struct {
 }
 
 func (d *DatasourceInstance) GetURL() string {
-	return fmt.Sprintf("http://%s:%d/v1/data/raw", d.StorageNode.IP, d.StorageNode.Port)
+	return fmt.Sprintf("http://%s:%d/v1/datasource_instance/%s/data/raw", d.StorageNode.IP, d.StorageNode.Port, d.Name)
 }

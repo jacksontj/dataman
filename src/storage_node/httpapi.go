@@ -31,38 +31,58 @@ func NewHTTPApi(storageNode *StorageNode) *HTTPApi {
 //   DELETE - DELETE
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
+	// List of datasource_instances on the storage node
+	router.GET("/v1/datasource_instance", h.listDatasourceInstance)
 
 	// Just dump the current meta we have
-	router.GET("/v1/metadata", h.showMetadata)
+	router.GET("/v1/datasource_instance/:datasource/metadata", h.showMetadata)
 
 	// DB Management
 	// DB collection
-	router.GET("/v1/database", h.listDatabase)
-	router.POST("/v1/database", h.addDatabase)
+	router.GET("/v1/datasource_instance/:datasource/database", h.listDatabase)
+	router.POST("/v1/datasource_instance/:datasource/database", h.addDatabase)
 
 	// DB instance
-	router.GET("/v1/database/:dbname", h.viewDatabase)
-	router.POST("/v1/database/:dbname", h.addCollection)
-	router.DELETE("/v1/database/:dbname", h.removeDatabase)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname", h.addCollection)
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
 
 	// Collections
-	router.GET("/v1/database/:dbname/:collectionname", h.viewCollection)
-	router.PUT("/v1/database/:dbname/:collectionname", h.updateCollection)
-	router.DELETE("/v1/database/:dbname/:collectionname", h.removeCollection)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.viewCollection)
+	router.PUT("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.updateCollection)
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.removeCollection)
 
 	// Schema
-	router.GET("/v1/schema", h.listSchema)
+	router.GET("/v1/datasource_instance/:datasource/schema", h.listSchema)
 	// TODO: add generic jsonSchema endpoint  (to show just the jsonSchema content)
-	router.GET("/v1/schema/:name/:version", h.viewSchema)
-	router.POST("/v1/schema/:name/:version", h.addSchema)
-	router.DELETE("/v1/schema/:name/:version", h.removeSchema)
+	router.GET("/v1/datasource_instance/:datasource/schema/:name/:version", h.viewSchema)
+	router.POST("/v1/datasource_instance/:datasource/schema/:name/:version", h.addSchema)
+	router.DELETE("/v1/datasource_instance/:datasource/schema/:name/:version", h.removeSchema)
 
-	router.POST("/v1/data/raw", h.rawQueryHandler)
+	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
+}
+
+// List all of the datasource_instances on the storage node
+func (h *HTTPApi) listDatasourceInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	datasourceInstances := make([]string, 0, len(h.storageNode.Datasources))
+	for k, _ := range h.storageNode.Datasources {
+		datasourceInstances = append(datasourceInstances, k)
+	}
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(datasourceInstances); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
 }
 
 // List all databases that we have in the metadata store
 func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 
 	// Now we need to return the results
 	if bytes, err := json.Marshal(meta); err != nil {
@@ -77,7 +97,7 @@ func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httpro
 
 // List all databases that we have in the metadata store
 func (h *HTTPApi) listDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	dbs := h.storageNode.GetMeta().ListDatabases()
+	dbs := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta().ListDatabases()
 
 	// Now we need to return the results
 	if bytes, err := json.Marshal(dbs); err != nil {
@@ -100,7 +120,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		if err := h.storageNode.AddDatabase(&database); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].AddDatabase(&database); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -110,7 +130,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 
 // Show a single DB
 func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		// Now we need to return the results
 		if bytes, err := json.Marshal(db); err != nil {
@@ -134,7 +154,7 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.RemoveDatabase(dbname); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].RemoveDatabase(dbname); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -142,14 +162,14 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.AddCollection(db.Name, &collection); err != nil {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].AddCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -167,7 +187,7 @@ func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httpr
 
 // Show a single DB
 func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		if collection, ok := db.Collections[ps.ByName("collectionname")]; ok {
 			// Now we need to return the results
@@ -191,14 +211,14 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 		defer r.Body.Close()
 		bytes, _ := ioutil.ReadAll(r.Body)
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.UpdateCollection(db.Name, &collection); err != nil {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].UpdateCollection(db.Name, &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -217,13 +237,13 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	dbname := ps.ByName("dbname")
-	meta := h.storageNode.GetMeta()
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
 	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
@@ -235,7 +255,7 @@ func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps ht
 
 // List all schemas
 func (h *HTTPApi) listSchema(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	schemas := h.storageNode.MetaStore.ListSchema()
+	schemas := h.storageNode.Datasources[ps.ByName("datasource")].MetaStore.ListSchema()
 	if bytes, err := json.Marshal(schemas); err == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
@@ -253,7 +273,7 @@ func (h *HTTPApi) viewSchema(w http.ResponseWriter, r *http.Request, ps httprout
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
-	if schema := h.storageNode.MetaStore.GetSchema(ps.ByName("name"), version); schema != nil {
+	if schema := h.storageNode.Datasources[ps.ByName("datasource")].MetaStore.GetSchema(ps.ByName("name"), version); schema != nil {
 		if bytes, err := json.Marshal(schema); err == nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(bytes)
@@ -276,7 +296,7 @@ func (h *HTTPApi) addSchema(w http.ResponseWriter, r *http.Request, ps httproute
 
 	var schema metadata.Schema
 	if err := json.Unmarshal(bytes, &schema); err == nil {
-		if err := h.storageNode.MetaStore.AddSchema(&schema); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].MetaStore.AddSchema(&schema); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -294,7 +314,7 @@ func (h *HTTPApi) removeSchema(w http.ResponseWriter, r *http.Request, ps httpro
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 	}
-	if err := h.storageNode.MetaStore.RemoveSchema(ps.ByName("name"), version); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].MetaStore.RemoveSchema(ps.ByName("name"), version); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -311,7 +331,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	} else {
-		results := h.storageNode.HandleQueries(queries)
+		results := h.storageNode.Datasources[ps.ByName("datasource")].HandleQueries(queries)
 		// Now we need to return the results
 		if bytes, err := json.Marshal(results); err != nil {
 			// TODO: log this better?

@@ -7,12 +7,21 @@ import "fmt"
 type Config struct {
 	HTTP HTTPApiConfig `yaml:"http_api"`
 
-	// Rename to driver? Need a consistent name for this
+	Datasources map[string]*DatasourceInstanceConfig `yaml:"datasource_instances"`
+}
+
+// HTTP API configuration
+type HTTPApiConfig struct {
+	Addr string `yaml:"addr"`
+}
+
+type DatasourceInstanceConfig struct {
+	// TODO: Rename to driver? Need a consistent name for this
 	StorageNodeType StorageType            `yaml:"storage_type"`
 	StorageConfig   map[string]interface{} `yaml:"storage_config"`
 }
 
-func (c *Config) GetStore(metaFunc metadata.MetaFunc) (StorageDataInterface, error) {
+func (c *DatasourceInstanceConfig) GetStore(metaFunc metadata.MetaFunc) (StorageDataInterface, error) {
 	node := c.StorageNodeType.Get()
 	if node == nil {
 		return nil, fmt.Errorf("Invalid storage_type defined: %s", c.StorageNodeType)
@@ -22,9 +31,4 @@ func (c *Config) GetStore(metaFunc metadata.MetaFunc) (StorageDataInterface, err
 		return nil, fmt.Errorf("Error loading storage_config: %v", err)
 	}
 	return node, nil
-}
-
-// HTTP API configuration
-type HTTPApiConfig struct {
-	Addr string `yaml:"addr"`
 }

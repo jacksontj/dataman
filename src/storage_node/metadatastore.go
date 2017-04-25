@@ -11,7 +11,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-func NewMetadataStore(config *Config) (*MetadataStore, error) {
+func NewMetadataStore(config *DatasourceInstanceConfig) (*MetadataStore, error) {
 	// We want this layer to be responsible for initializing the storage node,
 	// since this layer is responsible for the schema of the metadata anyways
 	metaFunc, err := metadata.StaticMetaFunc(schemaJson)

@@ -289,9 +289,43 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
 
-			// TODO: COPY-PASTE HERE
+			// TODO: THIS IS A DIRECT COPY-PASTE of the insert switch
 			// TODO: what do we want to do for brand new things?
 			// TODO: consolidate into a single insert method
+
+			var shardNum int
+			// TODO: don't special case this-- but for now we will. This should be some
+			// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
+			if partition.ShardConfig.Key == "_id" {
+				shardNum = rand.Intn(len(datastore.VShards))
+			} else {
+				rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+				if !ok {
+					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", partition.ShardConfig.Key)}
+				}
+				shardKey, err := partition.HashFunc(rawShardKey)
+				if err != nil {
+					// TODO: wrap the error
+					return &query.Result{Error: err.Error()}
+				}
+				shardNum = partition.ShardFunc(shardKey, len(datastore.VShards))
+			}
+
+			// TODO: replicas -- add args for slave etc.
+			datasource_instance := datastore.VShards[shardNum].Shard.Replicas.GetMaster().Datasource
+
+			result, err := QuerySingle(
+				// TODO: replicas -- add args for slave etc.
+				datasource_instance,
+				&query.Query{queryType, queryArgs},
+			)
+
+			if err == nil {
+				return result
+			} else {
+				return &query.Result{Error: err.Error()}
+			}
+
 		}
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
