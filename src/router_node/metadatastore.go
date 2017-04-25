@@ -51,6 +51,30 @@ type MetadataStore struct {
 func (m *MetadataStore) GetMeta() *metadata.Meta {
 	meta := metadata.NewMeta()
 
+	// Add all nodes
+	storageNodeResult := m.Store.Filter(map[string]interface{}{
+		"db":         "dataman_router",
+		"collection": "storage_node",
+	})
+	// TODO: better error handle
+	if storageNodeResult.Error != "" {
+		logrus.Fatalf("Error in getting storageNodeResult: %v", storageNodeResult.Error)
+	}
+
+	meta.Nodes = make(map[int64]*metadata.StorageNode)
+
+	// for each database load the database + collections etc.
+	for _, storageNodeRecord := range storageNodeResult.Return {
+		meta.Nodes[storageNodeRecord["_id"].(int64)] = &metadata.StorageNode{
+			ID:   storageNodeRecord["_id"].(int64),
+			Name: storageNodeRecord["name"].(string),
+			IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
+			Port: int(storageNodeRecord["port"].(int64)),
+			// TODO: get the rest of it
+			// Config
+		}
+	}
+
 	// Get all databases
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_router",
@@ -64,8 +88,9 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	// for each database load the database + collections etc.
 	for _, databaseRecord := range databaseResult.Return {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
+		database.ID = databaseRecord["_id"].(int64)
 
-		database.Datastore = m.GetDatastoreById(databaseRecord["primary_datastore_id"].(int64))
+		database.Datastores = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
 
 		// Load all collections for the DB
 		collectionResult := m.Store.Filter(map[string]interface{}{
@@ -110,10 +135,12 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				// TODO: better
 				shardConfigField := collectionPartitionRecord["shard_config_json"].(map[string]interface{})
 				collection.Partitions[i].ShardConfig = &metadata.ShardConfig{
-					Key:    shardConfigField["shard_key"].(string),
-					Method: sharding.ShardMethod(shardConfigField["shard_method"].(string)),
+					Key:   shardConfigField["shard_key"].(string),
+					Hash:  sharding.HashMethod(shardConfigField["hash_method"].(string)),
+					Shard: sharding.ShardMethod(shardConfigField["shard_method"].(string)),
 				}
-				collection.Partitions[i].ShardFunc = sharding.ShardMethod(collectionPartitionRecord["shard_config_json"].(map[string]interface{})["shard_method"].(string)).Get()
+				collection.Partitions[i].HashFunc = collection.Partitions[i].ShardConfig.Hash.Get()
+				collection.Partitions[i].ShardFunc = collection.Partitions[i].ShardConfig.Shard.Get()
 			}
 
 			// Lastly add this collection to the database
@@ -123,42 +150,58 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		meta.Databases[database.Name] = database
 	}
 
-	// Add all nodes
-	// Get all databases
-	storageNodeResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "storage_node_instance",
-	})
-	// TODO: better error handle
-	if storageNodeResult.Error != "" {
-		logrus.Fatalf("Error in getting storageNodeResult: %v", storageNodeResult.Error)
-	}
-
-	meta.Nodes = make([]*metadata.StorageNodeInstance, len(storageNodeResult.Return))
-
-	// for each database load the database + collections etc.
-	for i, storageNodeRecord := range storageNodeResult.Return {
-		meta.Nodes[i] = &metadata.StorageNodeInstance{
-			Name: storageNodeRecord["name"].(string),
-			IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
-			Port: int(storageNodeRecord["port"].(int64)),
-			// TODO: get the rest of it
-			// Type
-			// State
-			// Config
-		}
-	}
-
 	return meta
 }
 
-func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
+// Here we want to query the database_datastore, and then get the datastores themselves
+func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, database_id int64) *metadata.DatastoreSet {
+	set := metadata.NewDatastoreSet()
+
 	// Get the datastore record
+	databaseDatastoreResult := m.Store.Filter(map[string]interface{}{
+		"db":         "dataman_router",
+		"collection": "database_datastore",
+		"filter": map[string]interface{}{
+			"database_id": database_id,
+		},
+	})
+	// TODO: better error handle
+	if databaseDatastoreResult.Error != "" {
+		logrus.Fatalf("Error in databaseDatastoreResult: %v", databaseDatastoreResult.Error)
+	}
+
+	for _, databaseDatastoreRecord := range databaseDatastoreResult.Return {
+		datastore := m.getDatastoreById(meta, databaseDatastoreRecord["datastore_id"].(int64))
+
+		// Set attributes associated with the linking table
+		datastore.Read = databaseDatastoreRecord["read"].(bool)
+		datastore.Write = databaseDatastoreRecord["write"].(bool)
+		datastore.Required = databaseDatastoreRecord["required"].(bool)
+
+		// Add to the set
+		if datastore.Read {
+			set.Read = append(set.Read, datastore)
+		}
+
+		if datastore.Write {
+			if set.Write == nil {
+				set.Write = datastore
+			} else {
+				logrus.Fatalf("Can only have one write datastore per database")
+			}
+		}
+
+	}
+	return set
+}
+
+// Get a single datastore by id
+func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64) *metadata.Datastore {
 	datastoreResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_router",
 		"collection": "datastore",
 		"filter": map[string]interface{}{
-			"_id": id,
+			"_id": datastore_id,
 		},
 	})
 	// TODO: better error handle
@@ -168,23 +211,46 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 	datastoreRecord := datastoreResult.Return[0]
 
 	datastore := metadata.NewDatastore(datastoreRecord["name"].(string))
+	datastore.ID = datastoreRecord["_id"].(int64)
 	// TODO: define schema for shard config
 	datastore.ShardConfig = datastoreRecord["shard_config_json"].(map[string]interface{})
-	// Now load all the shards
-	datastoreShardResult := m.Store.Filter(map[string]interface{}{
+
+	// TODO: order!
+	// Load all of the vshards
+	datastoreVShardResult := m.Store.Filter(map[string]interface{}{
 		"db":         "dataman_router",
-		"collection": "datastore_shard",
+		"collection": "datastore_vshard",
 		"filter": map[string]interface{}{
 			"datastore_id": datastoreRecord["_id"],
 		},
 	})
 
 	// TODO: better error handle
-	if datastoreShardResult.Error != "" {
-		logrus.Fatalf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
+	if datastoreVShardResult.Error != "" {
+		logrus.Fatalf("Error in datastoreVShardResult: %v", datastoreVShardResult.Error)
 	}
-	for _, datastoreShardRecord := range datastoreShardResult.Return {
+	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
+		vshard := metadata.NewDatastoreVShard()
+		vshard.ID = datastoreVShardRecord["_id"].(int64)
+
+		// Now load all the shards
+		datastoreShardResult := m.Store.Filter(map[string]interface{}{
+			"db":         "dataman_router",
+			"collection": "datastore_shard",
+			"filter": map[string]interface{}{
+				"_id":          datastoreVShardRecord["datastore_shard_id"],
+				"datastore_id": datastoreRecord["_id"],
+			},
+		})
+
+		// TODO: better error handle
+		if datastoreShardResult.Error != "" {
+			logrus.Fatalf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
+		}
+
+		datastoreShardRecord := datastoreShardResult.Return[0]
 		datastoreShard := metadata.NewDatastoreShard(datastoreShardRecord["name"].(string))
+		datastoreShard.ID = datastoreShardRecord["_id"].(int64)
 
 		// load all of the replicas
 		datastoreShardReplicaResult := m.Store.Filter(map[string]interface{}{
@@ -201,30 +267,30 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 		}
 
 		for _, datastoreShardReplicaRecord := range datastoreShardReplicaResult.Return {
-			// get the storagenode
-			storageNodeResult := m.Store.Filter(map[string]interface{}{
+			// get the datasource instance
+			datasourceInstanceResult := m.Store.Filter(map[string]interface{}{
 				"db":         "dataman_router",
-				"collection": "storage_node_instance",
+				"collection": "datasource_instance",
 				"filter": map[string]interface{}{
-					"_id": datastoreShardReplicaRecord["storage_node_instance_id"],
+					"_id": datastoreShardReplicaRecord["datasource_instance_id"],
 				},
 			})
 
 			// TODO: better error handle
-			if storageNodeResult.Error != "" {
-				logrus.Fatalf("Error in storageNodeResult: %v", storageNodeResult.Error)
+			if datasourceInstanceResult.Error != "" {
+				logrus.Fatalf("Error in datasourceInstanceResult: %v", datasourceInstanceResult.Error)
 			}
 
-			storageNodeRecord := storageNodeResult.Return[0]
+			datasourceInstanceRecord := datasourceInstanceResult.Return[0]
 
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				Store: &metadata.StorageNodeInstance{
-					Name: storageNodeRecord["name"].(string),
-					IP:   net.ParseIP(storageNodeRecord["ip"].(string)),
-					Port: int(storageNodeRecord["port"].(int64)),
+				ID: datastoreShardReplicaRecord["_id"].(int64),
+				Datasource: &metadata.DatasourceInstance{
+					ID:            datasourceInstanceRecord["_id"].(int64),
+					Name:          datasourceInstanceRecord["name"].(string),
+					StorageNodeID: datasourceInstanceRecord["storage_node_id"].(int64),
+					StorageNode:   meta.Nodes[datasourceInstanceRecord["storage_node_id"].(int64)],
 					// TODO: get the rest of it
-					// Type
-					// State
 					// Config
 				},
 				Master: datastoreShardReplicaRecord["master"].(bool),
@@ -232,8 +298,9 @@ func (m *MetadataStore) GetDatastoreById(id int64) *metadata.Datastore {
 			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
 		}
 
-		datastore.Shards = append(datastore.Shards, datastoreShard)
+		vshard.Shard = datastoreShard
 
+		datastore.VShards = append(datastore.VShards, vshard)
 	}
 	return datastore
 }

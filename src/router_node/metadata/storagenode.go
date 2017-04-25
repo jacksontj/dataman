@@ -3,20 +3,12 @@ package metadata
 import "net"
 
 type StorageNode struct {
-	Name string `json:"name"`
-	// Config schema
-}
-
-type StorageNodeInstance struct {
+	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 
-	IP    net.IP           `json:"ip"`
-	Port  int              `json:"port"`
-	State StorageNodeState `json:"state"`
-	//Config *StorageNodeConfig
+	IP   net.IP `json:"ip"`
+	Port int    `json:"port"`
+
+	// TODO populate?
+	//Datasources []*DatasourceInstance `json:"datasources"`
 }
-
-type StorageNodeState string
-
-//type StorageNodeInstanceConfig struct {
-//}

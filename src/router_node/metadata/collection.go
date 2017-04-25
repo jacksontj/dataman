@@ -21,11 +21,6 @@ type Collection struct {
 	Partitions []*CollectionPartition `json:"partitions"`
 }
 
-func (c *Collection) GetPartition(id int64) *CollectionPartition {
-	// TODO: implement for real
-	return c.Partitions[0]
-}
-
 // TODO: fill out
 type CollectionField struct {
 	Name string
@@ -43,10 +38,12 @@ type CollectionPartition struct {
 
 	// TODO: separate struct for shard config?
 	ShardConfig *ShardConfig
+	HashFunc    sharding.HashFunc  `json:"-"`
 	ShardFunc   sharding.ShardFunc `json:"-"`
 }
 
 type ShardConfig struct {
-	Key    string               `json:"shard_key"`
-	Method sharding.ShardMethod `json:"shard_method"`
+	Key   string               `json:"shard_key"`
+	Hash  sharding.HashMethod  `json:"hash_method"`
+	Shard sharding.ShardMethod `json:"shard_method"`
 }

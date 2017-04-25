@@ -8,9 +8,10 @@ func NewDatabase(name string) *Database {
 }
 
 type Database struct {
+	ID   int64  `json:"_id"`
 	Name string `json:"name"`
-	// TODO: list or map? We eventually want to support many of these (for tombstone reasons)
-	Datastore *Datastore `json:"datastore"`
+	// This is the representation of the database_datastore linking table
+	Datastores *DatastoreSet `json:"datastore_set"`
 
 	// mapping of all collections
 	Collections map[string]*Collection `json:"collections"`

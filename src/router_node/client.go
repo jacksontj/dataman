@@ -3,7 +3,6 @@ package routernode
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -50,10 +49,9 @@ func MultiQuerySingle(shards []*metadata.DatastoreShard, q *query.Query) (*query
 */
 
 // Take a query and send it to a given destination
-func Query(storageNode *metadata.StorageNodeInstance, queries []*query.Query) ([]*query.Result, error) {
-	url := fmt.Sprintf("http://%s:%d/v1/data/raw", storageNode.IP, storageNode.Port)
-
+func Query(datasource *metadata.DatasourceInstance, queries []*query.Query) ([]*query.Result, error) {
 	// TODO: pass in? Or options?
+	// TODO: these should be associated with the storage_node (since that is what we are talking through)
 	client := &http.Client{}
 
 	// TODO: better marshalling
@@ -71,7 +69,7 @@ func Query(storageNode *metadata.StorageNodeInstance, queries []*query.Query) ([
 	// send task to node
 	req, err := http.NewRequest(
 		"POST",
-		url,
+		datasource.GetURL(),
 		bodyReader,
 	)
 	if err != nil {
@@ -97,8 +95,8 @@ func Query(storageNode *metadata.StorageNodeInstance, queries []*query.Query) ([
 	return results, nil
 }
 
-func QuerySingle(storageNode *metadata.StorageNodeInstance, q *query.Query) (*query.Result, error) {
-	if results, err := Query(storageNode, []*query.Query{q}); err == nil {
+func QuerySingle(datasource *metadata.DatasourceInstance, q *query.Query) (*query.Result, error) {
+	if results, err := Query(datasource, []*query.Query{q}); err == nil {
 		return results[0], nil
 	} else {
 		return nil, err

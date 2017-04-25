@@ -2,14 +2,33 @@ package metadata
 
 import "sync/atomic"
 
+func NewDatastoreSet() *DatastoreSet {
+	return &DatastoreSet{
+		Read: make([]*Datastore, 0),
+	}
+}
+
+// A set of datastores associated with a specific database
+type DatastoreSet struct {
+	Read  []*Datastore `json:"read"`
+	Write *Datastore   `json:"write"`
+}
+
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
-		Name:   name,
-		Shards: make([]*DatastoreShard, 0),
+		Name:    name,
+		VShards: make([]*DatastoreVShard, 0),
 	}
 }
 
 type Datastore struct {
+	ID int64 `json:"_id"`
+
+	// TODO: elsewhere? This data is pulled in from a linking table-- but is associated
+	Read     bool `json:"read"`
+	Write    bool `json:"write"`
+	Required bool `json:"required"`
+
 	Name string `json:"name"`
 
 	// TODO
@@ -17,7 +36,19 @@ type Datastore struct {
 	// TODO: better type
 	ShardConfig map[string]interface{} `json:"shard_config"`
 
-	Shards []*DatastoreShard `json:"shards"`
+	// TODO: in order, or a map on shard_number (in-order should be fine-- assuming we load the slice as such)
+	VShards []*DatastoreVShard `json:"vshards"`
+}
+
+func NewDatastoreVShard() *DatastoreVShard {
+	return &DatastoreVShard{}
+}
+
+type DatastoreVShard struct {
+	ID int64 `json:"_id"`
+
+	// The datastore_shard we map to
+	Shard *DatastoreShard `json:"datastore_shard"`
 }
 
 func NewDatastoreShard(name string) *DatastoreShard {
@@ -28,6 +59,7 @@ func NewDatastoreShard(name string) *DatastoreShard {
 }
 
 type DatastoreShard struct {
+	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 
 	Replicas *DatastoreShardReplicaSet `json:"replicas"`
@@ -68,6 +100,7 @@ func (d *DatastoreShardReplicaSet) GetSlave() *DatastoreShardReplica {
 }
 
 type DatastoreShardReplica struct {
-	Store  *StorageNodeInstance `json:"storage_node_instance"`
-	Master bool                 `json:"master"`
+	ID         int64               `json:"_id"`
+	Datasource *DatasourceInstance `json:"datasource_instance"`
+	Master     bool                `json:"master"`
 }

@@ -147,9 +147,6 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
 	}
 
-	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
-	// and to do that we'll need the collection metadata
-
 	// Once we have the metadata all found we need to do the following:
 	//      - Authentication/authorization
 	//      - Cache
@@ -159,45 +156,74 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	//TODO:Authentication/authorization
 	//TODO:Cache (configurable)
 
-	// Sharding
-	var shards []*metadata.DatastoreShard
+	// Sharding consists of:
+	//		- select datasource(s)
+	//		- select partition(s) -- for now only one
+	//		- select vbucket(s)
+	//			- hash "shard-key"
+	//			- select vshard
+	//		- send requests (involves mapping vshard -> shard)
+	//			-- TODO: we could combine the requests into a muxed one
+
+	// TODO: support multiple datastores
+	datastore := database.Datastores.Read[0]
+	// TODO: support multiple partitions
+	partition := collection.Partitions[0]
+	var vshards []*metadata.DatastoreVShard
+
+	// Depending on query type we might be able to be more specific about which vshards we go to
 	switch queryType {
+	// TODO: change the query format for Get()
 	case query.Get:
-		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-		// TODO: configurable shard key
-		shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
+		if partition.ShardConfig.Key != "_id" {
+			return &query.Result{Error: "Get *must* have _id be the shard-key for now"}
+		}
+		rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
+		}
+		shardKey, err := partition.HashFunc(rawShardKey)
 		if err != nil {
+			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
-		shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
+		shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
+		vshards = []*metadata.DatastoreVShard{datastore.VShards[shardNum]}
+
 	case query.Filter:
 		// if there is only one partition and we have our shard key, we can be more specific
-		if shardKeyValue, ok := queryArgs["filter"].(map[string]interface{})[collection.Partitions[0].ShardConfig.Key]; len(collection.Partitions) == 1 && ok {
-			shardNum, err := collection.Partitions[0].ShardFunc(shardKeyValue, len(database.Datastore.Shards))
+		if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
+			shardKey, err := partition.HashFunc(rawShardKey)
 			if err != nil {
+				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			shards = []*metadata.DatastoreShard{database.Datastore.Shards[shardNum]}
-			fmt.Printf("here %v %v %d\n", queryArgs, shards[0], shardNum)
+			shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
+			vshards = []*metadata.DatastoreVShard{datastore.VShards[shardNum]}
 		} else {
-			shards = database.Datastore.Shards
+			vshards = datastore.VShards
 		}
+
+	default:
+		return &query.Result{Error: "Unknown read query type " + string(queryType)}
+
 	}
 
-	shardResults := make([]*query.Result, len(shards))
+	// Query all of the vshards
+	vshardResults := make([]*query.Result, len(vshards))
 
-	// TODO: parallel
-	for i, shard := range shards {
+	for i, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
-		if result, err := QuerySingle(shard.Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
-			shardResults[i] = result
-		} else {
-			shardResults[i] = &query.Result{Error: err.Error()}
-		}
+		datasource_instance := vshard.Shard.Replicas.GetMaster().Datasource
 
+		if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+			vshardResults[i] = result
+		} else {
+			vshardResults[i] = &query.Result{Error: err.Error()}
+		}
 	}
 
-	return query.MergeResult(shardResults...)
+	return query.MergeResult(vshardResults...)
 }
 
 func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
@@ -221,104 +247,78 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	// TODO: Authentication/authorization
 	// TODO: Cache poison
 
-	// Sharding
+	// Sharding consists of:
+	//		- select datasource(s)
+	//		- select partition(s) -- for now only one
+	//		- select vbucket(s)
+	//			- hash "shard-key"
+	//			- select vshard
+	//		- send requests (involves mapping vshard -> shard)
+	//			-- TODO: we could combine the requests into a muxed one
+
+	datastore := database.Datastores.Write
+	// TODO: support multiple partitions
+	partition := collection.Partitions[0]
 
 	// TODO: eventually we'll want to be more sophisticated and do this same thing if there
 	// are a set of id's we can derive from the original query, so we can do a limited
 	// scatter-gather. For now we'll either know the specific shard, or not (for ease of implementation)
-
 	switch queryType {
 	// Write operations
 	case query.Set:
 		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
-		if id, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
-			partition := collection.GetPartition(int64(id.(float64)))
-			// TODO: configurable shard key
-			shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
+		if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
+			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+			if !ok {
+				return &query.Result{Error: fmt.Sprintf("Set()s must include the shard-key: %v", partition.ShardConfig.Key)}
+			}
+			shardKey, err := partition.HashFunc(rawShardKey)
 			if err != nil {
+				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
+			shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
 
 			// TODO: replicas -- add args for slave etc.
-			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
+			datasource_instance := datastore.VShards[shardNum].Shard.Replicas.GetMaster().Datasource
+
+			if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
 			}
 		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
+
+			// TODO: COPY-PASTE HERE
 			// TODO: what do we want to do for brand new things?
 			// TODO: consolidate into a single insert method
-			// We assume that it is always safe to do the insert on the "newest"
-			// partition. This should be safe as the storage_node is responsible for
-			// generating the "_id" which will be within a partition range that the node
-			// was responsible for. Specifically this means that even if we have a newer partition
-			// than the storage_node knows of, it will do the insert with an _id that falls into
-			// a partition which is owned by that storage_node.
-			partition := collection.Partitions[len(collection.Partitions)-1]
-
-			var shardNum int
-			// If the key is _id (our monotomically increasing number) then we'll just RR between the shards
-			if partition.ShardConfig.Key == "_id" {
-				// TODO: consolidate into a single insert method
-				// We want to RR between the shards for new inserts
-				// TODO: counter instead of random (have to deal with the meta being syncd all over)
-				shardNum = rand.Intn(len(database.Datastore.Shards))
-			} else { // Otherwise we *must* have the shard key defined to do the sharding
-				shardKeyValue, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
-				if !ok {
-					return &query.Result{Error: "Record missing shardKey " + partition.ShardConfig.Key}
-				}
-				var err error
-				shardNum, err = partition.ShardFunc(shardKeyValue, len(database.Datastore.Shards))
-				if err != nil {
-					return &query.Result{Error: err.Error()}
-				}
-			}
-
-			result, err := QuerySingle(
-				// TODO: replicas -- add args for slave etc.
-				database.Datastore.Shards[shardNum].Replicas.GetMaster().Store,
-				&query.Query{queryType, queryArgs},
-			)
-
-			if err == nil {
-				return result
-			} else {
-				return &query.Result{Error: err.Error()}
-			}
 		}
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		// We assume that it is always safe to do the insert on the "newest"
-		// partition. This should be safe as the storage_node is responsible for
-		// generating the "_id" which will be within a partition range that the node
-		// was responsible for. Specifically this means that even if we have a newer partition
-		// than the storage_node knows of, it will do the insert with an _id that falls into
-		// a partition which is owned by that storage_node.
-		partition := collection.Partitions[len(collection.Partitions)-1]
-
 		var shardNum int
-		// If the key is _id (our monotomically increasing number) then we'll just RR between the shards
+		// TODO: don't special case this-- but for now we will. This should be some
+		// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
 		if partition.ShardConfig.Key == "_id" {
-			// TODO: consolidate into a single insert method
-			// We want to RR between the shards for new inserts
-			// TODO: counter instead of random (have to deal with the meta being syncd all over)
-			shardNum = rand.Intn(len(database.Datastore.Shards))
-		} else { // Otherwise we *must* have the shard key defined to do the sharding
-			shardKeyValue, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+			shardNum = rand.Intn(len(datastore.VShards))
+		} else {
+			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
 			if !ok {
-				return &query.Result{Error: "Record missing shardKey " + partition.ShardConfig.Key}
+				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", partition.ShardConfig.Key)}
 			}
-			var err error
-			shardNum, err = partition.ShardFunc(shardKeyValue, len(database.Datastore.Shards))
+			shardKey, err := partition.HashFunc(rawShardKey)
 			if err != nil {
+				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
+			shardNum = partition.ShardFunc(shardKey, len(datastore.VShards))
 		}
+
+		// TODO: replicas -- add args for slave etc.
+		datasource_instance := datastore.VShards[shardNum].Shard.Replicas.GetMaster().Datasource
 
 		result, err := QuerySingle(
 			// TODO: replicas -- add args for slave etc.
-			database.Datastore.Shards[shardNum].Replicas.GetMaster().Store,
+			datasource_instance,
 			&query.Query{queryType, queryArgs},
 		)
 
@@ -328,28 +328,32 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: err.Error()}
 		}
 	case query.Update:
-		// If there is an "_id"_ defined, then we can send this to a single shard
-		if id, ok := queryArgs["filter"].(map[string]interface{})["_id"]; ok {
-			partition := collection.GetPartition(int64(id.(float64)))
-			// TODO: configurable shard key
-			shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
+		// If the shard_key is defined, then we can send this to a single shard
+		if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
+			shardKey, err := partition.HashFunc(rawShardKey)
 			if err != nil {
+				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
+			shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
+
 			// TODO: replicas -- add args for slave etc.
-			if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
+			datasource_instance := datastore.VShards[shardNum].Shard.Replicas.GetMaster().Datasource
+			// TODO: replicas -- add args for slave etc.
+			if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
 			}
 
 		} else { // Otherwise we need to send this query to all shards to let them handle it
-			shardResults := make([]*query.Result, len(database.Datastore.Shards))
+			shardResults := make([]*query.Result, len(datastore.VShards))
 
 			// TODO: parallel
-			for i, shard := range database.Datastore.Shards {
+			for i, vshard := range datastore.VShards {
+				datasource_instance := vshard.Shard.Replicas.GetMaster().Datasource
 				// TODO: replicas -- add args for slave etc.
-				if result, err := QuerySingle(shard.Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
+				if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
 					shardResults[i] = result
 				} else {
 					shardResults[i] = &query.Result{Error: err.Error()}
@@ -359,14 +363,29 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			return query.MergeResult(shardResults...)
 		}
+	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
+	// current implementation won't work. Instead of doing the get/set
 	case query.Delete:
-		partition := collection.GetPartition(int64(queryArgs["_id"].(float64)))
-		shardNum, err := partition.ShardFunc(queryArgs[partition.ShardConfig.Key], len(database.Datastore.Shards))
+		if partition.ShardConfig.Key != "_id" {
+			return &query.Result{Error: "Delete *must* have _id be the shard-key for now"}
+		}
+
+		rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
+		}
+		shardKey, err := partition.HashFunc(rawShardKey)
 		if err != nil {
+			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
+		shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
+
 		// TODO: replicas -- add args for slave etc.
-		if result, err := QuerySingle(database.Datastore.Shards[shardNum].Replicas.GetMaster().Store, &query.Query{queryType, queryArgs}); err == nil {
+		datasource_instance := datastore.VShards[shardNum].Shard.Replicas.GetMaster().Datasource
+
+		// TODO: replicas -- add args for slave etc.
+		if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
