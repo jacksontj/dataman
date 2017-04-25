@@ -1,0 +1,2 @@
+curl -sd @storage_node.json localhost:8080/v1/metadata/storage_node
+curl -X DELETE -s localhost:8080/v1/metadata/storage_node/<ID>

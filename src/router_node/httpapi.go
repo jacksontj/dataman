@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -26,6 +28,12 @@ func NewHTTPApi(routerNode *RouterNode) *HTTPApi {
 func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Just dump the current meta we have
 	router.GET("/v1/metadata", h.showMetadata)
+
+	// Storage node APIs
+	router.GET("/v1/metadata/storage_node", h.listStorageNodes)
+	router.POST("/v1/metadata/storage_node", h.addStorageNode)
+	router.GET("/v1/metadata/storage_node/:id", h.viewStorageNode)
+	router.DELETE("/v1/metadata/storage_node/:id", h.deleteStorageNode)
 
 	// DB Management
 	// DB collection
@@ -65,6 +73,80 @@ func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httpro
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
+	}
+}
+
+// TODO: change to a list? JSON doesn't do number keys which is a little weird here
+// List all of the storage nodes that the router knows about
+func (h *HTTPApi) listStorageNodes(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.routerNode.GetMeta()
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(meta.Nodes); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		logrus.Errorf("Err: %v", err)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+// TODO: return should be the loaded storage_node (so we can get the id)
+// Add a storage_node
+func (h *HTTPApi) addStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var storageNode metadata.StorageNode
+
+	if err := json.Unmarshal(bytes, &storageNode); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		if err := h.routerNode.MetaStore.AddStorageNode(&storageNode); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			logrus.Errorf("Err: %v", err)
+			return
+		}
+	}
+}
+
+// View a specific storage node
+func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	meta := h.routerNode.GetMeta()
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(meta.Nodes[storageNodeId]); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		logrus.Errorf("Err: %v", err)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+// Delete a specific storage node
+func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if err := h.routerNode.MetaStore.RemoveStorageNode(storageNodeId); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		logrus.Errorf("Err: %v", err)
 	}
 }
 

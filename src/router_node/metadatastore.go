@@ -1,6 +1,8 @@
 package routernode
 
 import (
+	"encoding/json"
+	"fmt"
 	"net"
 
 	"github.com/Sirupsen/logrus"
@@ -303,4 +305,49 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		datastore.VShards = append(datastore.VShards, vshard)
 	}
 	return datastore
+}
+
+func structToRecord(item interface{}) map[string]interface{} {
+	// TODO: better -- just don't want to spend all the time/space to do the conversions for now
+	var record map[string]interface{}
+	buf, _ := json.Marshal(item)
+	json.Unmarshal(buf, &record)
+	if _, ok := record["_id"]; ok {
+		delete(record, "_id")
+	}
+	return record
+}
+
+func (m *MetadataStore) AddStorageNode(storageNode *metadata.StorageNode) error {
+	record := structToRecord(storageNode)
+
+	// load all of the replicas
+	storageNodeResult := m.Store.Insert(map[string]interface{}{
+		"db":         "dataman_router",
+		"collection": "storage_node",
+		"record":     record,
+	})
+
+	// TODO: better error handle
+	if storageNodeResult.Error != "" {
+		return fmt.Errorf(storageNodeResult.Error)
+	}
+
+	return nil
+}
+
+func (m *MetadataStore) RemoveStorageNode(id int64) error {
+	// load all of the replicas
+	storageNodeResult := m.Store.Delete(map[string]interface{}{
+		"db":         "dataman_router",
+		"collection": "storage_node",
+		"_id":        id,
+	})
+
+	// TODO: better error handle
+	if storageNodeResult.Error != "" {
+		return fmt.Errorf(storageNodeResult.Error)
+	}
+
+	return nil
 }
