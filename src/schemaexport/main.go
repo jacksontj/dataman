@@ -62,7 +62,7 @@ func main() {
 	}
 
 	// TODO: sort? it'd be nice to have the files not change if there was no schema change
-	bytes, _ := json.Marshal(meta)
+	bytes, _ := json.MarshalIndent(meta, "", "  ")
 	fmt.Println(string(bytes))
 
 }
