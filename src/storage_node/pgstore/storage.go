@@ -108,6 +108,10 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 
 		collection.Fields = make([]*metadata.Field, 0, len(fields))
 		for _, fieldEntry := range fields {
+			// TODO: have "_" be a constant somewhere
+			if strings.HasPrefix(fieldEntry["column_name"].(string), "_") {
+				continue
+			}
 			var fieldType metadata.FieldType
 			fieldTypeArgs := make(map[string]interface{})
 			switch fieldEntry["data_type"] {
