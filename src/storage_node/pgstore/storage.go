@@ -157,7 +157,7 @@ func (s *Storage) GetDatabase(name string) *metadata.Database {
 // Database changes
 func (s *Storage) AddDatabase(db *metadata.Database) error {
 	// Create the database
-	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE DATABASE \"%s\"" ,db.Name)); err != nil {
+	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE DATABASE \"%s\"", db.Name)); err != nil {
 		return fmt.Errorf("Unable to create database: %v", err)
 	}
 
