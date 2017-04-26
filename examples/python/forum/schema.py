@@ -146,12 +146,12 @@ schemad_db = {
 }
 
 
-def drop_db(urlbase):
-    ret = requests.delete(urlbase+"/v1/database/"+DBNAME)
+def drop_db(urlbase, datasource_instance):
+    ret = requests.delete(urlbase+"/v1/datasource_instance/"+datasource_instance+"/database/"+DBNAME)
     print 'drop database (', ret.request.method, ret.request.url, ')'
     print ret.content
 
-def create_db(urlbase, kind=None):
+def create_db(urlbase, datasource_instance, kind=None):
     if kind is None:
         kind = 'base'
 
@@ -160,7 +160,7 @@ def create_db(urlbase, kind=None):
         'schema': schemad_db,
     }[kind]
     ret = requests.post(
-        urlbase+"/v1/database",
+        urlbase+"/v1/datasource_instance/"+datasource_instance+"/database",
         json=schema,
     )
     print 'add database (', ret.request.method, ret.request.url, ')'
@@ -171,10 +171,11 @@ def create_db(urlbase, kind=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--storage-node", required=True)
+    parser.add_argument('--datasource-instance', required=True)
     parser.add_argument("--kind")
 
     args = parser.parse_args()
 
     # Create the database and collections
-    drop_db(args.storage_node)
-    create_db(args.storage_node, kind=args.kind)
+    drop_db(args.storage_node, args.datasource_instance)
+    create_db(args.storage_node, args.datasource_instance, kind=args.kind)
