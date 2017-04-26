@@ -47,7 +47,12 @@ func main() {
 		logrus.Fatalf("error loading storage node: %v", err)
 	}
 
-	storeSchema, ok := node.Store.(storagenode.StorageSchemaInterface)
+	var storeSchema storagenode.StorageSchemaInterface
+	var ok bool
+	for _, datasource_instance := range node.Datasources {
+		storeSchema, ok = datasource_instance.Store.(storagenode.StorageSchemaInterface)
+		break
+	}
 	if !ok {
 		logrus.Fatalf("Not a schema interface?")
 	}
