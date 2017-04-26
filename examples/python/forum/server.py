@@ -154,7 +154,7 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.filter(schema.DBNAME, 'thread', {'_id': thread_id})
+        threads = yield dataman.filter(schema.DBNAME, 'thread', {'_id': int(thread_id)})
         if not threads:
             self.redirect("/")
         else:
