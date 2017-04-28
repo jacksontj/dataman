@@ -42,20 +42,16 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("invalid config: %v", err)
 	}
-	node, err := storagenode.NewStorageNode(config)
-	if err != nil {
-		logrus.Fatalf("error loading storage node: %v", err)
-	}
 
-	var storeSchema storagenode.StorageSchemaInterface
-	var ok bool
-	for _, datasource_instance := range node.Datasources {
-		storeSchema, ok = datasource_instance.Store.(storagenode.StorageSchemaInterface)
+	var datasourceInstanceConfig *storagenode.DatasourceInstanceConfig
+	for _, c := range config.Datasources {
+		datasourceInstanceConfig = c
 		break
 	}
-	if !ok {
-		logrus.Fatalf("Not a schema interface?")
-	}
+
+	// TODO: better
+	store, err := datasourceInstanceConfig.GetStore(func() *metadata.Meta { return nil })
+	storeSchema := store.(storagenode.StorageSchemaInterface)
 
 	for _, databasename := range opts.Databases {
 		meta.Databases[databasename] = storeSchema.GetDatabase(databasename)
