@@ -22,6 +22,20 @@ func (m *Meta) ListDatabases() []string {
 }
 
 // TODO: REMOVE!
-func (m *Meta) GetCollection(a, b string) (*Collection, error) {
-	return nil, fmt.Errorf("TO IMPLEMENT")
+func (m *Meta) GetCollection(db, shardinstance, collection string) (*Collection, error) {
+
+	if database, ok := m.Databases[db]; ok {
+		if shardInstance, ok := database.ShardInstances[shardinstance]; ok {
+			if collection, ok := shardInstance.Collections[collection]; ok {
+				return collection, nil
+			} else {
+				return nil, fmt.Errorf("Unknown collection %s", collection)
+			}
+		} else {
+			return nil, fmt.Errorf("Unknown shardinstance %s", shardinstance)
+		}
+	} else {
+		return nil, fmt.Errorf("Unknown db %s", db)
+	}
+
 }

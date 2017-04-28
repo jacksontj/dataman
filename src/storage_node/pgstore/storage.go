@@ -134,7 +134,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	}
 
 	meta := s.GetMeta()
-	collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -190,7 +190,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	}
 
 	meta := s.GetMeta()
-	collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -301,7 +301,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 
 	if filter, ok := args["filter"]; ok {
 		meta := s.GetMeta()
-		collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 		if err != nil {
 			result.Error = err.Error()
 			return result
@@ -380,7 +380,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	if _, ok := args["filter"]; ok && args["filter"] != nil {
 		recordData := args["filter"].(map[string]interface{})
 		meta := s.GetMeta()
-		collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 		if err != nil {
 			result.Error = err.Error()
 			return result
@@ -433,7 +433,7 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 
 	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
 	meta := s.GetMeta()
-	collection, err := meta.GetCollection(args["db"].(string), args["collection"].(string))
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return

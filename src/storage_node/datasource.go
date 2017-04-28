@@ -73,7 +73,7 @@ QUERYLOOP:
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
-				collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["collection"].(string))
+				collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), queryArgs["collection"].(string))
 				// Verify that the table is within our domain
 				if err != nil {
 					results[i] = &query.Result{
