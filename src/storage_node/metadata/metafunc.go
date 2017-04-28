@@ -15,10 +15,12 @@ func StaticMetaFunc(jsonString string) (MetaFunc, error) {
 
 	// TODO: remove this, really need to do this elsewhere
 	for _, database := range meta.Databases {
-		for _, collection := range database.Collections {
-			collection.FieldMap = make(map[string]*Field)
-			for _, field := range collection.Fields {
-				collection.FieldMap[field.Name] = field
+		for _, shardInstance := range database.ShardInstances {
+			for _, collection := range shardInstance.Collections {
+				collection.FieldMap = make(map[string]*Field)
+				for _, field := range collection.Fields {
+					collection.FieldMap[field.Name] = field
+				}
 			}
 		}
 	}

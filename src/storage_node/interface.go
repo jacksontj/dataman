@@ -14,16 +14,24 @@ type StorageSchemaInterface interface {
 	AddDatabase(db *metadata.Database) error
 	RemoveDatabase(dbname string) error
 
-	GetCollection(dbname, collectionname string) *metadata.Collection
-	ListCollection(dbname string) []*metadata.Collection
-	AddCollection(db *metadata.Database, collection *metadata.Collection) error
-	UpdateCollection(dbname string, collection *metadata.Collection) error
-	RemoveCollection(dbname string, collectionname string) error
+	GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance
+	ListShardInstance(dbname string) []*metadata.ShardInstance
+	AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error
+	RemoveShardInstance(dbname, shardInstance string) error
 
-	GetIndex(dbname, indexname string) *metadata.CollectionIndex
-	ListIndex(dbname, collectionname string) []*metadata.CollectionIndex
-	AddIndex(dbname string, collection *metadata.Collection, index *metadata.CollectionIndex) error
-	RemoveIndex(dbname, collectionname, indexname string) error
+	// TODO: everything below needs to include the shardInstance dimension
+
+	GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection
+	ListCollection(dbname, shardinstance string) []*metadata.Collection
+	AddCollection(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection) error
+	UpdateCollection(dbname, shardinstance string, collection *metadata.Collection) error
+	RemoveCollection(dbname, shardinstance, collectionname string) error
+
+	GetIndex(dbname, shardinstance, indexname string) *metadata.CollectionIndex
+	ListIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex
+	// TODO: pass the actual objects (not just names)
+	AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error
+	RemoveIndex(dbname, shardinstance, collectionname, indexname string) error
 }
 
 // Storage data interface for handling all the queries etc

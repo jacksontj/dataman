@@ -183,8 +183,16 @@ func (s *DatasourceInstance) RemoveDatabase(dbname string) error {
 	return nil
 }
 
+func (s *DatasourceInstance) AddShardInstance(dbname string, shardInstance *metadata.ShardInstance) error {
+	return fmt.Errorf("TOIMPLEMENT")
+}
+
+func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance string) error {
+	return fmt.Errorf("TOIMPLEMENT")
+}
+
 // TODO: to-implement
-func (s *DatasourceInstance) AddCollection(dbname string, collection *metadata.Collection) error {
+func (s *DatasourceInstance) AddCollection(dbname string, shardinstance string, collection *metadata.Collection) error {
 	return nil
 }
 func (s *DatasourceInstance) UpdateCollection(dbname string, collection *metadata.Collection) error {

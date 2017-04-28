@@ -8,6 +8,7 @@ func NewCollection(name string) *Collection {
 }
 
 type Collection struct {
+	ID   int64  `json:"_id,omitempty"`
 	Name string `json:"name"`
 
 	// NOTE: we reserve the "_" namespace for fields for our own data (created, etc.)

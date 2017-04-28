@@ -18,6 +18,7 @@ const (
 )
 
 type Field struct {
+	ID   int64     `json:"_id,omitempty"`
 	Name string    `json:"name"`
 	Type FieldType `json:"type"`
 	// Arguments (limits etc.) for a given FieldType (varies per field)
@@ -30,6 +31,7 @@ type Field struct {
 }
 
 type Schema struct {
+	ID      int64                  `json:"_id,omitempty"`
 	Name    string                 `json:"name"`
 	Version int64                  `json:"version"`
 	Schema  map[string]interface{} `json:"schema"`
@@ -43,6 +45,7 @@ func (s *Schema) Equal(o *Schema) bool {
 
 // TODO: flag for "is primary" ?
 type CollectionIndex struct {
+	ID   int64  `json:"_id,omitempty"`
 	Name string `json:"name"`
 	// TODO: better schema-- this will be the data_json in the DB
 	Fields []string `json:"fields"`

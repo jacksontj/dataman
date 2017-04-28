@@ -38,26 +38,33 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/datasource_instance/:datasource/metadata", h.showMetadata)
 
 	// DB Management
-	// DB collection
+	// DB sets
 	router.GET("/v1/datasource_instance/:datasource/database", h.listDatabase)
 	router.POST("/v1/datasource_instance/:datasource/database", h.addDatabase)
 
 	// DB instance
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname", h.addCollection)
+	// TODO: update db instance
+	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname", h.updateDatabase)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
 
-	// Collections
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.viewCollection)
-	router.PUT("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.updateCollection)
-	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/:collectionname", h.removeCollection)
+	// Shard Instances
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.listShardInstance)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.addShardInstance)
 
-	// Schema
-	router.GET("/v1/datasource_instance/:datasource/schema", h.listSchema)
-	// TODO: add generic jsonSchema endpoint  (to show just the jsonSchema content)
-	router.GET("/v1/datasource_instance/:datasource/schema/:name/:version", h.viewSchema)
-	router.POST("/v1/datasource_instance/:datasource/schema/:name/:version", h.addSchema)
-	router.DELETE("/v1/datasource_instance/:datasource/schema/:name/:version", h.removeSchema)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.viewShardInstance)
+	// TODO: update shard_instance
+	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.addCollection)
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.removeShardInstance)
+
+	// Collections
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shard_instance/collection", h.listCollection)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shard_instance/collection", h.addCollection)
+
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
+	// TODO: update collection
+	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.addCollection)
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.removeCollection)
 
 	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
 }
@@ -160,6 +167,94 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 	}
 }
 
+// List all databases that we have in the metadata store
+func (h *HTTPApi) listShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	db := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta().Databases[ps.ByName("dbname")]
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(db.ShardInstances); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+// Add database that we have in the metadata store
+func (h *HTTPApi) addShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var shardInstance metadata.ShardInstance
+	if err := json.Unmarshal(bytes, &shardInstance); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].AddShardInstance(ps.ByName("dbname"), &shardInstance); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	}
+}
+
+// Show a single DB
+func (h *HTTPApi) viewShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+		if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
+			// Now we need to return the results
+			if bytes, err := json.Marshal(shardInstance); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+			}
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+}
+
+// Add database that we have in the metadata store
+func (h *HTTPApi) removeShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	dbname := ps.ByName("dbname")
+	shardinstance := ps.ByName("shardinstance")
+
+	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
+	// we'll leave this in place for now, until we have some more specific errors that we can type
+	// switch around to give meaningful error messages
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].RemoveShardInstance(dbname, shardinstance); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+}
+
+// TODO: here
+
+// List all databases that we have in the metadata store
+func (h *HTTPApi) listCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	shardInstance := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta().Databases[ps.ByName("dbname")].ShardInstances[ps.ByName("shardinstance")]
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(shardInstance.Collections); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
 // Add database that we have in the metadata store
 func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
@@ -169,7 +264,7 @@ func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httpr
 
 		var collection metadata.Collection
 		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Datasources[ps.ByName("datasource")].AddCollection(db.Name, &collection); err != nil {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].AddCollection(db.Name, ps.ByName("shardinstance"), &collection); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -189,14 +284,19 @@ func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httpr
 func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
-		if collection, ok := db.Collections[ps.ByName("collectionname")]; ok {
-			// Now we need to return the results
-			if bytes, err := json.Marshal(collection); err == nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(bytes)
+		if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
+			if collection, ok := shardInstance.Collections[ps.ByName("collectionname")]; ok {
+				// Now we need to return the results
+				if bytes, err := json.Marshal(collection); err == nil {
+					w.Header().Set("Content-Type", "application/json")
+					w.Write(bytes)
+				} else {
+					// TODO: log this better?
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
 			} else {
-				// TODO: log this better?
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 		} else {

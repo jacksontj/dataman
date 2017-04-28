@@ -21,14 +21,7 @@ func (m *Meta) ListDatabases() []string {
 	return dbnames
 }
 
-func (m *Meta) GetCollection(dbName, collectionName string) (*Collection, error) {
-	if database, ok := m.Databases[dbName]; ok {
-		if collection, ok := database.Collections[collectionName]; ok {
-			return collection, nil
-		} else {
-			return nil, fmt.Errorf("Unknown table in %s: %s", dbName, collectionName)
-		}
-	} else {
-		return nil, fmt.Errorf("Unknown database %s", dbName)
-	}
+// TODO: REMOVE!
+func (m *Meta) GetCollection(a, b string) (*Collection, error) {
+	return nil, fmt.Errorf("TO IMPLEMENT")
 }

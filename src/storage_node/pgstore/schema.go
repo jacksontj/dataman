@@ -46,71 +46,12 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	return fieldStr, nil
 }
 
-func (s *Storage) GetDatabase(name string) *metadata.Database {
-	database := metadata.NewDatabase(name)
-
-	tables, err := DoQuery(s.getDB(name), "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_schema,table_name;")
-	if err != nil {
-		logrus.Fatalf("Unable to get table list for db %s: %v", name, err)
-	}
-
-	for _, tableEntry := range tables {
-		tableName := tableEntry["table_name"].(string)
-		collection := metadata.NewCollection(tableName)
-
-		// Get the fields for the collection
-		fields, err := DoQuery(s.getDB(name), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
-		if err != nil {
-			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", name, tableName, err)
-		}
-
-		collection.Fields = make([]*metadata.Field, 0, len(fields))
-		for _, fieldEntry := range fields {
-			// TODO: have "_" be a constant somewhere
-			if strings.HasPrefix(fieldEntry["column_name"].(string), "_") {
-				continue
-			}
-			var fieldType metadata.FieldType
-			fieldTypeArgs := make(map[string]interface{})
-			switch fieldEntry["data_type"] {
-			case "integer":
-				fieldType = metadata.Int
-			case "character varying":
-				fieldType = metadata.String
-			// TODO: do we want to do this based on size?
-			case "smallint":
-				fieldType = metadata.Int
-				// TODO: this isn't actually 100% accurate, since it might be a list or something :/
-			case "jsonb":
-				fieldType = metadata.Document
-			case "boolean":
-				fieldType = metadata.Bool
-			case "text":
-				fieldType = metadata.Text
-			case "timestamp without time zone":
-				fieldType = metadata.DateTime
-			default:
-				logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], name, tableName, fieldEntry)
-			}
-
-			if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
-				fieldTypeArgs["size"] = maxSize
-			}
-
-			field := &metadata.Field{
-				Name:     fieldEntry["column_name"].(string),
-				Type:     fieldType,
-				TypeArgs: fieldTypeArgs,
-			}
-			indexes := s.ListIndex(name, tableName)
-			collection.Indexes = make(map[string]*metadata.CollectionIndex)
-			for _, index := range indexes {
-				collection.Indexes[index.Name] = index
-			}
-			collection.Fields = append(collection.Fields, field)
-		}
-
-		database.Collections[collection.Name] = collection
+func (s *Storage) GetDatabase(dbname string) *metadata.Database {
+	// SELECT datname FROM pg_database WHERE datistemplate = false;
+	database := metadata.NewDatabase(dbname)
+	shardInstances := s.ListShardInstance(dbname)
+	for _, shardInstance := range shardInstances {
+		database.ShardInstances[shardInstance.Name] = shardInstance
 	}
 
 	return database
@@ -130,10 +71,10 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 	}
 	s.dbMap[db.Name] = dbConn
 
-	// Add any tables in the db
-	for _, collection := range db.Collections {
-		if err := s.AddCollection(db, collection); err != nil {
-			return fmt.Errorf("Error adding collection %s: %v", collection.Name, err)
+	// Add any shards defined
+	for _, shardInstance := range db.ShardInstances {
+		if err := s.AddShardInstance(db, shardInstance); err != nil {
+			return fmt.Errorf("Error adding shardInstance %s: %v", shardInstance.Name, err)
 		}
 	}
 
@@ -167,41 +108,159 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	}
 
 	return nil
+}
 
+func (s *Storage) GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance {
+	// TODO: better
+	shardInstances := s.ListShardInstance(dbname)
+	if shardInstances == nil {
+		return nil
+	}
+	for _, shardInstance := range shardInstances {
+		if shardInstance.Name == shardinstance {
+			return shardInstance
+		}
+	}
+
+	return nil
+}
+
+func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
+	schemas, err := DoQuery(s.getDB(dbname), "SELECT * from information_schema.schemata")
+	if err != nil {
+		logrus.Fatalf("Unable to get shard list for db %s: %v", dbname, err)
+	}
+
+	shardInstances := make([]*metadata.ShardInstance, 0)
+
+	for _, schemaRecord := range schemas {
+		schemaName := schemaRecord["schema_name"].(string)
+		if strings.HasPrefix(schemaName, "pg_") {
+			continue
+		}
+		switch schemaName {
+		case "information_schema":
+			continue
+		default:
+			shardInstance := metadata.NewShardInstance(schemaName)
+
+			// TODO: parse out the name to get the shard info
+			shardInstance.Count = 1
+			shardInstance.Instance = 1
+
+			collections := s.ListCollection(dbname, schemaName)
+			for _, collection := range collections {
+				shardInstance.Collections[collection.Name] = collection
+			}
+			shardInstances = append(shardInstances, shardInstance)
+		}
+
+	}
+	return shardInstances
+}
+
+// TODO: implement
+func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+	return fmt.Errorf("TO IMPLEMENT")
+}
+
+// TODO: implement
+func (s *Storage) RemoveShardInstance(dbname, shardInstance string) error {
+	return fmt.Errorf("TO IMPLEMENT")
+}
+
+func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection {
+
+	// TODO: better
+	collections := s.ListCollection(dbname, shardinstance)
+	if collections == nil {
+		return nil
+	}
+	for _, collection := range collections {
+		if collection.Name == collectionname {
+			return collection
+		}
+	}
+	return nil
 }
 
 // TODO: nicer, this works but is way more work than necessary
-func (s *Storage) GetCollection(dbname, collectionname string) *metadata.Collection {
-	db := s.GetDatabase(dbname)
-	if db == nil {
-		return nil
-	}
-	if collection, ok := db.Collections[collectionname]; ok {
-		return collection
-	} else {
-		return nil
-	}
-}
+func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Collection {
+	collections := make([]*metadata.Collection, 0)
 
-// TODO: nicer, this works but is way more work than necessary
-func (s *Storage) ListCollection(dbname string) []*metadata.Collection {
-	db := s.GetDatabase(dbname)
-	if db == nil {
-		return nil
+	query := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_schema='%s' ORDER BY table_schema,table_name;", shardinstance)
+
+	tables, err := DoQuery(s.getDB(dbname), query)
+	if err != nil {
+		logrus.Fatalf("Unable to get table list for db %s: %v", dbname, err)
 	}
 
-	collections := make([]*metadata.Collection, 0, len(db.Collections))
+	for _, tableEntry := range tables {
+		tableName := tableEntry["table_name"].(string)
+		collection := metadata.NewCollection(tableName)
 
-	for _, collection := range db.Collections {
+		// Get the fields for the collection
+		fields, err := DoQuery(s.getDB(dbname), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
+		if err != nil {
+			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, tableName, err)
+		}
+
+		collection.Fields = make([]*metadata.Field, 0, len(fields))
+		for _, fieldEntry := range fields {
+			// TODO: have "_" be a constant somewhere
+			if strings.HasPrefix(fieldEntry["column_name"].(string), "_") {
+				continue
+			}
+			var fieldType metadata.FieldType
+			fieldTypeArgs := make(map[string]interface{})
+			switch fieldEntry["data_type"] {
+			case "integer":
+				fieldType = metadata.Int
+			case "character varying":
+				fieldType = metadata.String
+			// TODO: do we want to do this based on size?
+			case "smallint":
+				fieldType = metadata.Int
+				// TODO: this isn't actually 100% accurate, since it might be a list or something :/
+			case "jsonb":
+				fieldType = metadata.Document
+			case "boolean":
+				fieldType = metadata.Bool
+			case "text":
+				fieldType = metadata.Text
+			case "timestamp without time zone":
+				fieldType = metadata.DateTime
+			default:
+				logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, tableName, fieldEntry)
+			}
+
+			if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
+				fieldTypeArgs["size"] = maxSize
+			}
+
+			field := &metadata.Field{
+				Name:     fieldEntry["column_name"].(string),
+				Type:     fieldType,
+				TypeArgs: fieldTypeArgs,
+			}
+			indexes := s.ListIndex(dbname, shardinstance, tableName)
+			collection.Indexes = make(map[string]*metadata.CollectionIndex)
+			for _, index := range indexes {
+				collection.Indexes[index.Name] = index
+			}
+			collection.Fields = append(collection.Fields, field)
+		}
+
 		collections = append(collections, collection)
 	}
+
 	return collections
 }
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
 // TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
-const addTableTemplate = `CREATE TABLE public.%s
+const addTableTemplate = `CREATE TABLE %s.%s
 (
   _id serial4 NOT NULL,
   _created timestamp,
@@ -212,7 +271,7 @@ const addTableTemplate = `CREATE TABLE public.%s
 `
 
 // Collection Changes
-func (s *Storage) AddCollection(db *metadata.Database, collection *metadata.Collection) error {
+func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	// Make sure at least one field is defined
 	if collection.Fields == nil || len(collection.Fields) == 0 {
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
@@ -239,15 +298,15 @@ func (s *Storage) AddCollection(db *metadata.Database, collection *metadata.Coll
 
 	}
 
-	tableAddQuery := fmt.Sprintf(addTableTemplate, collection.Name, fieldQuery, collection.Name)
+	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, fieldQuery, collection.Name)
 	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
 	// TODO: do this on initial creation, lame to change afterwards
 	// If this is a sharded database, we need to change our sequence
-	if db.ShardCount > 0 {
-		alterQuery := fmt.Sprintf("ALTER SEQUENCE %s__id_seq INCREMENT BY %d RESTART WITH %d;", collection.Name, db.ShardCount, db.ShardInstance)
+	if shardInstance.Count > 0 {
+		alterQuery := fmt.Sprintf("ALTER SEQUENCE %s__id_seq INCREMENT BY %d RESTART WITH %d;", collection.Name, shardInstance.Count, shardInstance.Instance)
 		if _, err := DoQuery(s.getDB(db.Name), alterQuery); err != nil {
 			return fmt.Errorf("Unable to add set shard increment %s: %v", collection.Name, err)
 		}
@@ -256,7 +315,7 @@ func (s *Storage) AddCollection(db *metadata.Database, collection *metadata.Coll
 	// If a table has indexes defined, lets take care of that
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := s.AddIndex(db.Name, collection, index); err != nil {
+			if err := s.AddIndex(db.Name, shardInstance.Name, collection, index); err != nil {
 				return err
 			}
 		}
@@ -266,86 +325,88 @@ func (s *Storage) AddCollection(db *metadata.Database, collection *metadata.Coll
 }
 
 // TODO: re-implement, this is now ONLY datastore focused
-func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collection) error {
+func (s *Storage) UpdateCollection(dbname, shardinstance string, collection *metadata.Collection) error {
 	// TODO: implement
 	return fmt.Errorf("Unable to update collection")
 
-	currentCollection := s.GetCollection(dbname, collection.Name)
+	/*
+		currentCollection := s.GetCollection(dbname, collection.Name)
 
-	if currentCollection == nil {
-		return fmt.Errorf("Unable to find collection %s.%s", dbname, collection.Name)
-	}
-
-	// TODO: this should be done elsewhere
-	if collection.FieldMap == nil {
-		collection.FieldMap = make(map[string]*metadata.Field)
-		for _, field := range collection.Fields {
-			collection.FieldMap[field.Name] = field
+		if currentCollection == nil {
+			return fmt.Errorf("Unable to find collection %s.%s", dbname, collection.Name)
 		}
-	}
 
-	// fields we need to remove
-	for name, _ := range currentCollection.FieldMap {
-		if _, ok := collection.FieldMap[name]; !ok {
-			if err := s.RemoveField(dbname, collection.Name, name); err != nil {
-				return fmt.Errorf("Unable to remove field: %v", err)
+		// TODO: this should be done elsewhere
+		if collection.FieldMap == nil {
+			collection.FieldMap = make(map[string]*metadata.Field)
+			for _, field := range collection.Fields {
+				collection.FieldMap[field.Name] = field
 			}
 		}
-	}
-	// Fields we need to add
-	for name, field := range collection.FieldMap {
-		if _, ok := currentCollection.FieldMap[name]; !ok {
-			if err := s.AddField(dbname, collection.Name, field); err != nil {
-				return fmt.Errorf("Unable to add field: %v", err)
-			}
-		}
-	}
 
-	// TODO: compare order and schema
-	// TODO: Fields we need to change
-
-	// If the new def has no indexes, remove them all
-	if collection.Indexes == nil {
-		for _, collectionIndex := range currentCollection.Indexes {
-			if err := s.RemoveIndex(dbname, collection.Name, collectionIndex.Name); err != nil {
-				return fmt.Errorf("Unable to remove collection_index: %v", err)
-			}
-		}
-	} else {
-		// compare old and new-- make them what they need to be
-		// What should be removed?
-		for name, _ := range currentCollection.Indexes {
-			if _, ok := collection.Indexes[name]; !ok {
-				if err := s.RemoveIndex(dbname, collection.Name, name); err != nil {
-					return err
+		// fields we need to remove
+		for name, _ := range currentCollection.FieldMap {
+			if _, ok := collection.FieldMap[name]; !ok {
+				if err := s.RemoveField(dbname, collection.Name, name); err != nil {
+					return fmt.Errorf("Unable to remove field: %v", err)
 				}
 			}
 		}
-		// What should be added
-		for name, index := range collection.Indexes {
-			if _, ok := currentCollection.Indexes[name]; !ok {
-				if err := s.AddIndex(dbname, collection, index); err != nil {
-					return err
+		// Fields we need to add
+		for name, field := range collection.FieldMap {
+			if _, ok := currentCollection.FieldMap[name]; !ok {
+				if err := s.AddField(dbname, collection.Name, field); err != nil {
+					return fmt.Errorf("Unable to add field: %v", err)
 				}
 			}
 		}
-	}
 
-	return nil
+		// TODO: compare order and schema
+		// TODO: Fields we need to change
+
+		// If the new def has no indexes, remove them all
+		if collection.Indexes == nil {
+			for _, collectionIndex := range currentCollection.Indexes {
+				if err := s.RemoveIndex(dbname, collection.Name, collectionIndex.Name); err != nil {
+					return fmt.Errorf("Unable to remove collection_index: %v", err)
+				}
+			}
+		} else {
+			// compare old and new-- make them what they need to be
+			// What should be removed?
+			for name, _ := range currentCollection.Indexes {
+				if _, ok := collection.Indexes[name]; !ok {
+					if err := s.RemoveIndex(dbname, collection.Name, name); err != nil {
+						return err
+					}
+				}
+			}
+			// What should be added
+			for name, index := range collection.Indexes {
+				if _, ok := currentCollection.Indexes[name]; !ok {
+					if err := s.AddIndex(dbname, collection, index); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		return nil
+	*/
 }
 
 const removeTableTemplate = `DROP TABLE public.%s`
 
 // TODO: use db listing to remove things
 // TODO: remove indexes on removal
-func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
-	collection := s.GetCollection(dbname, collectionname)
+func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string) error {
+	collection := s.GetCollection(dbname, shardinstance, collectionname)
 	if collection == nil {
 		return fmt.Errorf("Unable to find collection %s.%s", dbname, collectionname)
 	}
 
 	for name, _ := range collection.Indexes {
-		if err := s.RemoveIndex(dbname, collectionname, name); err != nil {
+		if err := s.RemoveIndex(dbname, shardinstance, collectionname, name); err != nil {
 			return fmt.Errorf("Unable to remove table_index: %v", err)
 		}
 	}
@@ -359,10 +420,10 @@ func (s *Storage) RemoveCollection(dbname string, collectionname string) error {
 }
 
 // TODO: add to interface?
-func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field) error {
+func (s *Storage) AddField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
-		if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s ADD %s", collectionname, fieldStr)); err != nil {
+		if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance, collectionname, fieldStr)); err != nil {
 			return err
 		}
 	} else {
@@ -373,8 +434,8 @@ func (s *Storage) AddField(dbname, collectionname string, field *metadata.Field)
 }
 
 // TODO: add to interface?
-func (s *Storage) RemoveField(dbname, collectionname, fieldName string) error {
-	if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE public.%s DROP \"%s\"", collectionname, fieldName)); err != nil {
+func (s *Storage) RemoveField(dbname, shardinstance, collectionname, fieldName string) error {
+	if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s DROP \"%s\"", shardinstance, collectionname, fieldName)); err != nil {
 		return fmt.Errorf("Unable to remove old field: %v", err)
 	}
 
@@ -410,14 +471,16 @@ FROM pg_index AS idx
 WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
 `
 
-func (s *Storage) GetIndex(dbname, indexname string) *metadata.CollectionIndex {
+func (s *Storage) GetIndex(dbname, shardinstance, indexname string) *metadata.CollectionIndex {
 	indexEntries, err := DoQuery(s.db, listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
 	}
 
 	for _, indexEntry := range indexEntries {
-		if string(indexEntry["index_name"].([]byte)) == indexname {
+		schemaName := string(indexEntry["schema_name"].([]byte))
+		pgIndexName := string(indexEntry["index_name"].([]byte))
+		if schemaName == shardinstance && pgIndexName == indexname {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			return &metadata.CollectionIndex{
@@ -430,7 +493,7 @@ func (s *Storage) GetIndex(dbname, indexname string) *metadata.CollectionIndex {
 	return nil
 }
 
-func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.CollectionIndex {
+func (s *Storage) ListIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
 	indexEntries, err := DoQuery(s.db, listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to list indexes for %s.%s: %v", dbname, collectionname, err)
@@ -439,7 +502,10 @@ func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.Collectio
 	indexes := make([]*metadata.CollectionIndex, 0, len(indexEntries))
 
 	for _, indexEntry := range indexEntries {
-		if string(indexEntry["table_name"].([]byte)) == collectionname {
+		schemaName := string(indexEntry["schema_name"].([]byte))
+		tableName := string(indexEntry["table_name"].([]byte))
+
+		if schemaName == shardInstance && tableName == collectionname {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			index := &metadata.CollectionIndex{
@@ -459,7 +525,7 @@ func (s *Storage) ListIndex(dbname, collectionname string) []*metadata.Collectio
 }
 
 // Index changes
-func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
@@ -467,7 +533,7 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"idx_%s_%s\" ON public.%s (", collection.Name, index.Name, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON %s.%s (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
@@ -501,10 +567,11 @@ func (s *Storage) AddIndex(dbname string, collection *metadata.Collection, index
 	return nil
 }
 
-const removeTableIndexTemplate = `DROP INDEX "idx_%s_%s"`
+const removeTableIndexTemplate = `DROP INDEX "%s.idx_%s_%s"`
 
-func (s *Storage) RemoveIndex(dbname, collectionname, indexname string) error {
-	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, collectionname, indexname)
+// TODO: index names have to be unique across the whole DB?
+func (s *Storage) RemoveIndex(dbname, shardinstance, collectionname, indexname string) error {
+	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, shardinstance, collectionname, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)
 	}
