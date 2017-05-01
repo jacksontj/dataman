@@ -2,14 +2,27 @@ package metadata
 
 func NewMeta() *Meta {
 	return &Meta{
+		Nodes:              make(map[int64]*StorageNode),
+		DatasourceInstance: make(map[int64]*DatasourceInstance),
+		Datastore:          make(map[int64]*Datastore),
+		DatastoreShards:    make(map[int64]*DatastoreShard),
+
 		Databases: make(map[string]*Database),
-		Nodes:     make(map[int64]*StorageNode),
 	}
 }
 
 type Meta struct {
-	Databases map[string]*Database   `json:"database"`
-	Nodes     map[int64]*StorageNode `json:"storage_node"`
+	Nodes              map[int64]*StorageNode        `json:"storage_node"`
+	DatasourceInstance map[int64]*DatasourceInstance `json:"datasource_instance"`
+	Datastore          map[int64]*Datastore          `json:"datastore"`
+
+	// TODO: remove? or make private?
+	DatastoreShards map[int64]*DatastoreShard `json:"datastore_shard"`
+
+	// TODO
+	//Schema map[int64]*Schema `json:"schema"`
+
+	Databases map[string]*Database `json:"database"`
 }
 
 // TODO: more than just names?

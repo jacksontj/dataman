@@ -65,6 +65,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			},
 		})
 		if shardInstanceResult.Error != "" {
+			panic("foo")
 			logrus.Fatalf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 		}
 

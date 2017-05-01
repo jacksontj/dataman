@@ -16,8 +16,8 @@ type DatastoreSet struct {
 
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
-		Name:    name,
-		VShards: make([]*DatastoreVShard, 0),
+		Name:   name,
+		Shards: make([]*DatastoreShard, 0),
 	}
 }
 
@@ -31,36 +31,16 @@ type Datastore struct {
 
 	Name string `json:"name"`
 
-	// TODO
-	//ReplicaConfig
 	// TODO: better type
 	ShardConfig map[string]interface{} `json:"shard_config"`
 
-	// TODO: in order, or a map on shard_number (in-order should be fine-- assuming we load the slice as such)
-	VShards []*DatastoreVShard `json:"vshards"`
-}
-
-func NewDatastoreVShard() *DatastoreVShard {
-	return &DatastoreVShard{}
-}
-
-type DatastoreVShard struct {
-	ID int64 `json:"_id"`
-
-	// The datastore_shard we map to
-	Shard *DatastoreShard `json:"datastore_shard"`
-}
-
-func NewDatastoreShard(name string) *DatastoreShard {
-	return &DatastoreShard{
-		Name:     name,
-		Replicas: NewDatastoreShardReplicaSet(),
-	}
+	Shards []*DatastoreShard `json:"shards"`
 }
 
 type DatastoreShard struct {
-	ID   int64  `json:"_id"`
-	Name string `json:"name"`
+	ID       int64  `json:"_id"`
+	Name     string `json:"name"`
+	Instance int64  `json:"shard_instance"`
 
 	Replicas *DatastoreShardReplicaSet `json:"replicas"`
 }

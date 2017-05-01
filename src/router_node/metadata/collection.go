@@ -11,6 +11,9 @@ func NewCollection(name string) *Collection {
 type Collection struct {
 	Name string `json:"name"`
 
+	// Collection VShards (if defined)
+	VShard *CollectionVShard `json:"vshard,omitempty"`
+
 	// TODO: use, we don't need these for inital working product, but we will
 	// if we plan on doing more sophisticated sharding or schema validation
 	//Fields map[string]*CollectionField
@@ -19,6 +22,19 @@ type Collection struct {
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
 	Partitions []*CollectionPartition `json:"partitions"`
+}
+
+type CollectionVShard struct {
+	ID         int64 `json:"_id"`
+	ShardCount int64 `json:"shard_count"`
+	Instances  []*CollectionVShardInstance
+}
+
+type CollectionVShardInstance struct {
+	ID            int64 `json:"_id"`
+	ShardInstance int64 `json:"instance"`
+
+	DatastoreShard *DatastoreShard `json:"datastore_shard"`
 }
 
 // TODO: fill out

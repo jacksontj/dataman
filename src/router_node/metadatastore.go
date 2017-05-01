@@ -12,33 +12,21 @@ import (
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-func NewMetadataStore(config *Config) (*MetadataStore, error) {
-	// First we need to create the storagenode layer, to get the metadata from
-	// the datastore
-	datasourceInstanceConfig := &storagenode.DatasourceInstanceConfig{
-		StorageNodeType: config.MetaStoreType,
-		StorageConfig:   config.MetaStoreConfig,
-	}
-
-	// TODO: better? I don't like having to re-init the store, but this works for now
-	// probably need some lower layer initialization func to integrate at
-	datasourceInstance, err := storagenode.NewDatasourceInstance(datasourceInstanceConfig)
-	// TODO: more specific error?
-	if err != nil {
-		return nil, err
-	}
-
+func NewMetadataStore(config *storagenode.DatasourceInstanceConfig) (*MetadataStore, error) {
+	// We want this layer to be responsible for initializing the storage node,
+	// since this layer is responsible for the schema of the metadata anyways
 	metaFunc, err := storagenodemetadata.StaticMetaFunc(schemaJson)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := datasourceInstance.Store.Init(metaFunc, datasourceInstanceConfig.StorageConfig); err != nil {
+	store, err := config.GetStore(metaFunc)
+	if err != nil {
 		return nil, err
 	}
 
 	metaStore := &MetadataStore{
-		Store: datasourceInstance.Store,
+		Store: store,
 	}
 
 	return metaStore, nil
@@ -55,8 +43,9 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 	// Add all nodes
 	storageNodeResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "storage_node",
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "storage_node",
 	})
 	// TODO: better error handle
 	if storageNodeResult.Error != "" {
@@ -77,10 +66,56 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		}
 	}
 
+	// Load all of the datasource_instances
+	datasourceInstanceResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "datasource_instance",
+	})
+	// TODO: better error handle
+	if datasourceInstanceResult.Error != "" {
+		logrus.Fatalf("Error in getting datasourceInstanceResult: %v", datasourceInstanceResult.Error)
+	}
+	for _, datasourceInstanceRecord := range datasourceInstanceResult.Return {
+		datasourceInstance := metadata.NewDatasourceInstance(datasourceInstanceRecord["name"].(string))
+		datasourceInstance.ID = datasourceInstanceRecord["_id"].(int64)
+		datasourceInstance.StorageNodeID = datasourceInstanceRecord["storage_node_id"].(int64)
+		datasourceInstance.StorageNode = meta.Nodes[datasourceInstanceRecord["storage_node_id"].(int64)]
+
+		// Load all of the shard instances associated with this datasource_instance
+		datasourceInstanceShardInstanceResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "datasource_instance_shard_instance",
+			"filter": map[string]interface{}{
+				"datasource_instance_id": datasourceInstanceRecord["_id"],
+			},
+		})
+		// TODO: better error handle
+		if datasourceInstanceShardInstanceResult.Error != "" {
+			logrus.Fatalf("Error in getting datasourceInstanceShardInstanceResult: %v", datasourceInstanceShardInstanceResult.Error)
+		}
+		for _, datasourceInstanceShardInstanceRecord := range datasourceInstanceShardInstanceResult.Return {
+			dsisi := &metadata.DatasourceInstanceShardInstance{
+				ID:   datasourceInstanceShardInstanceRecord["_id"].(int64),
+				Name: datasourceInstanceShardInstanceRecord["name"].(string),
+			}
+			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_id"].(int64); databaseVShardID != 0 {
+				datasourceInstance.DatabaseShards[dsisi.ID] = dsisi
+			} else {
+				datasourceInstance.CollectionShards[dsisi.ID] = dsisi
+			}
+		}
+
+		// Set it in the map
+		meta.DatasourceInstance[datasourceInstance.ID] = datasourceInstance
+	}
+
 	// Get all databases
 	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "database",
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "database",
 	})
 	// TODO: better error handle
 	if databaseResult.Error != "" {
@@ -92,12 +127,58 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
 		database.ID = databaseRecord["_id"].(int64)
 
+		// Load the database_vshards
+		databaseVshardResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "database_vshard",
+			"filter": map[string]interface{}{
+				"database_id": databaseRecord["_id"],
+			},
+		})
+		// TODO: better error handle
+		if databaseVshardResult.Error != "" {
+			logrus.Fatalf("Error in databaseVshardResult: %v", databaseVshardResult.Error)
+		}
+
+		databaseVshardRecord := databaseVshardResult.Return[0]
+		database.VShard = metadata.NewDatabaseVShard()
+		database.VShard.ID = databaseVshardRecord["_id"].(int64)
+		database.VShard.ShardCount = databaseVshardRecord["shard_count"].(int64)
+
+		// TODO: order by!
+		// Load all of the vshard instances
+		databaseVshardInstanceResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "database_vshard_instance",
+			"filter": map[string]interface{}{
+				"database_vshard_id": databaseVshardRecord["_id"],
+			},
+		})
+		// TODO: better error handle
+		if databaseVshardInstanceResult.Error != "" {
+			logrus.Fatalf("Error in databaseVshardInstanceResult: %v", databaseVshardInstanceResult.Error)
+		}
+
+		for _, databaseVshardInstanceRecord := range databaseVshardInstanceResult.Return {
+			vshardInstance := &metadata.DatabaseVShardInstance{
+				ID:             databaseVshardInstanceRecord["_id"].(int64),
+				ShardInstance:  databaseVshardInstanceRecord["shard_instance"].(int64),
+				DatastoreShard: meta.DatastoreShards[databaseVshardInstanceRecord["datastore_shard_id"].(int64)],
+			}
+			database.VShard.Instances = append(database.VShard.Instances, vshardInstance)
+		}
+
 		database.Datastores = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
+
+		// TODO: resume here
 
 		// Load all collections for the DB
 		collectionResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_router",
-			"collection": "collection",
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection",
 		})
 		// TODO: better error handle
 		if collectionResult.Error != "" {
@@ -111,8 +192,9 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			// Load the partitions
 			collectionPartitionResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_router",
-				"collection": "collection_partition",
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_partition",
 				"filter": map[string]interface{}{
 					"collection_id": collectionRecord["_id"],
 				},
@@ -161,8 +243,9 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 
 	// Get the datastore record
 	databaseDatastoreResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "database_datastore",
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "database_datastore",
 		"filter": map[string]interface{}{
 			"database_id": database_id,
 		},
@@ -199,9 +282,13 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 
 // Get a single datastore by id
 func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64) *metadata.Datastore {
+	if datastore, ok := meta.Datastore[datastore_id]; ok {
+		return datastore
+	}
 	datastoreResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "datastore",
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "datastore",
 		"filter": map[string]interface{}{
 			"_id": datastore_id,
 		},
@@ -217,47 +304,35 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 	// TODO: define schema for shard config
 	datastore.ShardConfig = datastoreRecord["shard_config_json"].(map[string]interface{})
 
-	// TODO: order!
-	// Load all of the vshards
-	datastoreVShardResult := m.Store.Filter(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "datastore_vshard",
+	// TODO: order
+	// Now load all the shards
+	datastoreShardResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "datastore_shard",
 		"filter": map[string]interface{}{
 			"datastore_id": datastoreRecord["_id"],
 		},
 	})
 
 	// TODO: better error handle
-	if datastoreVShardResult.Error != "" {
-		logrus.Fatalf("Error in datastoreVShardResult: %v", datastoreVShardResult.Error)
+	if datastoreShardResult.Error != "" {
+		logrus.Fatalf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
 	}
-	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
-		vshard := metadata.NewDatastoreVShard()
-		vshard.ID = datastoreVShardRecord["_id"].(int64)
 
-		// Now load all the shards
-		datastoreShardResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_router",
-			"collection": "datastore_shard",
-			"filter": map[string]interface{}{
-				"_id":          datastoreVShardRecord["datastore_shard_id"],
-				"datastore_id": datastoreRecord["_id"],
-			},
-		})
-
-		// TODO: better error handle
-		if datastoreShardResult.Error != "" {
-			logrus.Fatalf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
+	for _, datastoreShardRecord := range datastoreShardResult.Return {
+		datastoreShard := &metadata.DatastoreShard{
+			ID:       datastoreShardRecord["_id"].(int64),
+			Name:     datastoreShardRecord["name"].(string),
+			Instance: datastoreShardRecord["shard_instance"].(int64),
+			Replicas: metadata.NewDatastoreShardReplicaSet(),
 		}
-
-		datastoreShardRecord := datastoreShardResult.Return[0]
-		datastoreShard := metadata.NewDatastoreShard(datastoreShardRecord["name"].(string))
-		datastoreShard.ID = datastoreShardRecord["_id"].(int64)
 
 		// load all of the replicas
 		datastoreShardReplicaResult := m.Store.Filter(map[string]interface{}{
-			"db":         "dataman_router",
-			"collection": "datastore_shard_replica",
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "datastore_shard_replica",
 			"filter": map[string]interface{}{
 				"datastore_shard_id": datastoreShardRecord["_id"],
 			},
@@ -269,41 +344,18 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		}
 
 		for _, datastoreShardReplicaRecord := range datastoreShardReplicaResult.Return {
-			// get the datasource instance
-			datasourceInstanceResult := m.Store.Filter(map[string]interface{}{
-				"db":         "dataman_router",
-				"collection": "datasource_instance",
-				"filter": map[string]interface{}{
-					"_id": datastoreShardReplicaRecord["datasource_instance_id"],
-				},
-			})
-
-			// TODO: better error handle
-			if datasourceInstanceResult.Error != "" {
-				logrus.Fatalf("Error in datasourceInstanceResult: %v", datasourceInstanceResult.Error)
-			}
-
-			datasourceInstanceRecord := datasourceInstanceResult.Return[0]
-
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				ID: datastoreShardReplicaRecord["_id"].(int64),
-				Datasource: &metadata.DatasourceInstance{
-					ID:            datasourceInstanceRecord["_id"].(int64),
-					Name:          datasourceInstanceRecord["name"].(string),
-					StorageNodeID: datasourceInstanceRecord["storage_node_id"].(int64),
-					StorageNode:   meta.Nodes[datasourceInstanceRecord["storage_node_id"].(int64)],
-					// TODO: get the rest of it
-					// Config
-				},
-				Master: datastoreShardReplicaRecord["master"].(bool),
+				ID:         datastoreShardReplicaRecord["_id"].(int64),
+				Master:     datastoreShardReplicaRecord["master"].(bool),
+				Datasource: meta.DatasourceInstance[datastoreShardReplicaRecord["datasource_instance_id"].(int64)],
 			}
+
 			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
 		}
-
-		vshard.Shard = datastoreShard
-
-		datastore.VShards = append(datastore.VShards, vshard)
+		datastore.Shards = append(datastore.Shards, datastoreShard)
 	}
+
+	meta.Datastore[datastore_id] = datastore
 	return datastore
 }
 
@@ -323,9 +375,10 @@ func (m *MetadataStore) AddStorageNode(storageNode *metadata.StorageNode) error 
 
 	// load all of the replicas
 	storageNodeResult := m.Store.Insert(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "storage_node",
-		"record":     record,
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "storage_node",
+		"record":         record,
 	})
 
 	// TODO: better error handle
@@ -339,9 +392,10 @@ func (m *MetadataStore) AddStorageNode(storageNode *metadata.StorageNode) error 
 func (m *MetadataStore) RemoveStorageNode(id int64) error {
 	// load all of the replicas
 	storageNodeResult := m.Store.Delete(map[string]interface{}{
-		"db":         "dataman_router",
-		"collection": "storage_node",
-		"_id":        id,
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "storage_node",
+		"_id":            id,
 	})
 
 	// TODO: better error handle

@@ -9,6 +9,14 @@ type Datasource struct {
 	// Config schema
 }
 
+func NewDatasourceInstance(name string) *DatasourceInstance {
+	return &DatasourceInstance{
+		Name:             name,
+		DatabaseShards:   make(map[int64]*DatasourceInstanceShardInstance),
+		CollectionShards: make(map[int64]*DatasourceInstanceShardInstance),
+	}
+}
+
 type DatasourceInstance struct {
 	ID   int64  `json:"_id"`
 	Name string `json:"name"`
@@ -20,8 +28,19 @@ type DatasourceInstance struct {
 
 	// TODO: actual config
 	Config map[string]interface{} `json:"config"`
+
+	// All of the shard instances it has
+	// database_vshard.ID -> DatasourceInstanceShardInstance
+	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"database_shard_instance"`
+	// collection_vshard.ID -> DatasourceInstanceShardInstance
+	CollectionShards map[int64]*DatasourceInstanceShardInstance `json:"collection_shard_instance"`
 }
 
 func (d *DatasourceInstance) GetURL() string {
 	return fmt.Sprintf("http://%s:%d/v1/datasource_instance/%s/data/raw", d.StorageNode.IP, d.StorageNode.Port, d.Name)
+}
+
+type DatasourceInstanceShardInstance struct {
+	ID   int64  `json:"_id"`
+	Name string `json:"name"`
 }

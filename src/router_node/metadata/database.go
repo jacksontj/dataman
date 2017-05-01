@@ -15,4 +15,26 @@ type Database struct {
 
 	// mapping of all collections
 	Collections map[string]*Collection `json:"collections"`
+
+	VShard *DatabaseVShard `json:"vshard"`
+}
+
+func NewDatabaseVShard() *DatabaseVShard {
+	return &DatabaseVShard{
+		Instances: make([]*DatabaseVShardInstance, 0),
+	}
+}
+
+type DatabaseVShard struct {
+	ID         int64 `json:"_id"`
+	ShardCount int64 `json:"shard_count"`
+
+	Instances []*DatabaseVShardInstance `json:"instances"`
+}
+
+type DatabaseVShardInstance struct {
+	ID            int64 `json:"_id"`
+	ShardInstance int64 `json:"instance"`
+
+	DatastoreShard *DatastoreShard `json:"datastore_shard"`
 }
