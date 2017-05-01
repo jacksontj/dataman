@@ -263,6 +263,19 @@ const schemaJson string = `
                 {
                   "name": "shard_instance",
                   "type": "int"
+                }
+              ]
+            },
+            "database_vshard_instance_datastore_shard": {
+              "name": "database_vshard_instance_datastore_shard",
+              "fields": [
+                {
+                  "name": "database_vshard_instance_id",
+                  "type": "int"
+                },
+                {
+                  "name": "datastore_id",
+                  "type": "int"
                 },
                 {
                   "name": "datastore_shard_id",
@@ -369,7 +382,7 @@ const schemaJson string = `
                   "type": "int"
                 },
                 {
-                  "name": "shard_number",
+                  "name": "shard_instance",
                   "type": "int"
                 }
               ]
