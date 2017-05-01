@@ -162,8 +162,14 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	// Create the database
 	// TODO: error if exists already?
-	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", shardInstance.Name)); err != nil {
+	if _, err := DoQuery(s.getDB(db.Name), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", shardInstance.Name)); err != nil {
 		return fmt.Errorf("Unable to create schema: %v", err)
+	}
+
+	for _, collection := range shardInstance.Collections {
+		if err := s.AddCollection(db, shardInstance, collection); err != nil {
+			return fmt.Errorf("Error adding collection to shardInstance: %v", err)
+		}
 	}
 
 	return nil
@@ -262,12 +268,15 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 	return collections
 }
 
+// TODO: also delete this
+const addSequenceTemplate = `CREATE SEQUENCE %s INCREMENT BY %d RESTART WITH %d`
+
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
 // TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
 const addTableTemplate = `CREATE TABLE %s.%s
 (
-  _id serial4 NOT NULL,
+  _id %s NOT NULL,
   _created timestamp,
   _updated timestamp,
   %s
@@ -303,18 +312,16 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 
 	}
 
-	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, fieldQuery, collection.Name)
-	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
+	// Create the sequence
+	sequenceName := fmt.Sprintf("%s_%s_seq", shardInstance.Name, collection.Name)
+	sequenceAddQuery := fmt.Sprintf(addSequenceTemplate, sequenceName, shardInstance.Count, shardInstance.Instance)
+	if _, err := DoQuery(s.getDB(db.Name), sequenceAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
-	// TODO: do this on initial creation, lame to change afterwards
-	// If this is a sharded database, we need to change our sequence
-	if shardInstance.Count > 0 {
-		alterQuery := fmt.Sprintf("ALTER SEQUENCE %s__id_seq INCREMENT BY %d RESTART WITH %d;", collection.Name, shardInstance.Count, shardInstance.Instance)
-		if _, err := DoQuery(s.getDB(db.Name), alterQuery); err != nil {
-			return fmt.Errorf("Unable to add set shard increment %s: %v", collection.Name, err)
-		}
+	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName, fieldQuery, collection.Name)
+	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
+		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
 	// If a table has indexes defined, lets take care of that
