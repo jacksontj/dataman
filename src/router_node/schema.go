@@ -118,7 +118,7 @@ const schemaJson string = `
                 },
                 {
                   "name": "data_json",
-                  "type": "document"
+                  "type": "text"
                 },
                 {
                   "name": "unique",
