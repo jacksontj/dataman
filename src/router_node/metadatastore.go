@@ -36,6 +36,9 @@ type MetadataStore struct {
 	Store storagenode.StorageDataInterface
 }
 
+// TODO: this should ideally load exactly *one* of any given record into a struct. This 
+// will require some work to do so, and we really should probably have something to codegen
+// the record -> struct transition
 // TODO: split into get/list for each item?
 // TODO: have error?
 func (m *MetadataStore) GetMeta() *metadata.Meta {
