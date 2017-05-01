@@ -54,6 +54,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	// for each database load the database + shard + collections etc.
 	for _, databaseRecord := range databaseResult.Return {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
+		database.ID = databaseRecord["_id"].(int64)
 
 		shardInstanceResult := m.Store.Filter(map[string]interface{}{
 			"db":             "dataman_storage",
@@ -89,6 +90,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			// Now loop over all collections in the database to load them
 			for _, collectionRecord := range collectionResult.Return {
 				collection := metadata.NewCollection(collectionRecord["name"].(string))
+				collection.ID = collectionRecord["_id"].(int64)
 
 				// Load fields
 				collectionFieldResult := m.Store.Filter(map[string]interface{}{
@@ -107,6 +109,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				collection.FieldMap = make(map[string]*metadata.Field)
 				for i, collectionFieldRecord := range collectionFieldResult.Return {
 					field := &metadata.Field{
+						ID:   collectionFieldRecord["_id"].(int64),
 						Name: collectionFieldRecord["name"].(string),
 						Type: metadata.FieldType(collectionFieldRecord["field_type"].(string)),
 					}
@@ -141,6 +144,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					var indexFields []string
 					json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
 					index := &metadata.CollectionIndex{
+						ID:     collectionIndexRecord["_id"].(int64),
 						Name:   collectionIndexRecord["name"].(string),
 						Fields: indexFields,
 					}
