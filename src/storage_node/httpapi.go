@@ -58,8 +58,8 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.removeShardInstance)
 
 	// Collections
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shard_instance/collection", h.listCollection)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shard_instance/collection", h.addCollection)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.listCollection)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.addCollection)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
 	// TODO: update collection

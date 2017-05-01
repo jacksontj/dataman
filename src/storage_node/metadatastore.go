@@ -51,89 +51,110 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		logrus.Fatalf("Error getting databaseResult: %v", databaseResult.Error)
 	}
 
-	// for each database load the database + collections etc.
+	// for each database load the database + shard + collections etc.
 	for _, databaseRecord := range databaseResult.Return {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
 
-		collectionResult := m.Store.Filter(map[string]interface{}{
+		shardInstanceResult := m.Store.Filter(map[string]interface{}{
 			"db":             "dataman_storage",
 			"shard_instance": "public",
-			"collection":     "collection",
+			"collection":     "shard_instance",
 			"filter": map[string]interface{}{
 				"database_id": databaseRecord["_id"],
 			},
 		})
-		if collectionResult.Error != "" {
-			logrus.Fatalf("Error getting collectionResult: %v", collectionResult.Error)
+		if shardInstanceResult.Error != "" {
+			logrus.Fatalf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 		}
 
 		// Now loop over all collections in the database to load them
-		for _, collectionRecord := range collectionResult.Return {
-			collection := metadata.NewCollection(collectionRecord["name"].(string))
+		for _, shardInstanceRecord := range shardInstanceResult.Return {
+			shardInstance := metadata.NewShardInstance(shardInstanceRecord["name"].(string))
+			shardInstance.ID = shardInstanceRecord["_id"].(int64)
+			shardInstance.Count = shardInstanceRecord["count"].(int64)
+			shardInstance.Instance = shardInstanceRecord["instance"].(int64)
 
-			// Load fields
-			collectionFieldResult := m.Store.Filter(map[string]interface{}{
+			collectionResult := m.Store.Filter(map[string]interface{}{
 				"db":             "dataman_storage",
 				"shard_instance": "public",
-				"collection":     "collection_field",
+				"collection":     "collection",
 				"filter": map[string]interface{}{
-					"collection_id": collectionRecord["_id"],
+					"shard_instance_id": shardInstanceRecord["_id"],
 				},
 			})
-			if collectionFieldResult.Error != "" {
-				logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+			if collectionResult.Error != "" {
+				logrus.Fatalf("Error getting collectionResult: %v", collectionResult.Error)
 			}
 
-			collection.Fields = make([]*metadata.Field, len(collectionFieldResult.Return))
-			collection.FieldMap = make(map[string]*metadata.Field)
-			for i, collectionFieldRecord := range collectionFieldResult.Return {
-				field := &metadata.Field{
-					Name: collectionFieldRecord["name"].(string),
-					Type: metadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			// Now loop over all collections in the database to load them
+			for _, collectionRecord := range collectionResult.Return {
+				collection := metadata.NewCollection(collectionRecord["name"].(string))
+
+				// Load fields
+				collectionFieldResult := m.Store.Filter(map[string]interface{}{
+					"db":             "dataman_storage",
+					"shard_instance": "public",
+					"collection":     "collection_field",
+					"filter": map[string]interface{}{
+						"collection_id": collectionRecord["_id"],
+					},
+				})
+				if collectionFieldResult.Error != "" {
+					logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
 				}
-				if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
-					field.TypeArgs = fieldTypeArgs.(map[string]interface{})
+
+				collection.Fields = make([]*metadata.Field, len(collectionFieldResult.Return))
+				collection.FieldMap = make(map[string]*metadata.Field)
+				for i, collectionFieldRecord := range collectionFieldResult.Return {
+					field := &metadata.Field{
+						Name: collectionFieldRecord["name"].(string),
+						Type: metadata.FieldType(collectionFieldRecord["field_type"].(string)),
+					}
+					if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
+						field.TypeArgs = fieldTypeArgs.(map[string]interface{})
+					}
+					if schemaId, ok := collectionFieldRecord["schema_id"]; ok && schemaId != nil {
+						field.Schema = m.GetSchemaById(collectionFieldRecord["schema_id"].(int64))
+						field.Schema.Gschema, _ = gojsonschema.NewSchema(gojsonschema.NewGoLoader(field.Schema.Schema))
+					}
+					if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
+						field.NotNull = true
+					}
+					collection.Fields[i] = field
+					collection.FieldMap[field.Name] = field
 				}
-				if schemaId, ok := collectionFieldRecord["schema_id"]; ok && schemaId != nil {
-					field.Schema = m.GetSchemaById(collectionFieldRecord["schema_id"].(int64))
-					field.Schema.Gschema, _ = gojsonschema.NewSchema(gojsonschema.NewGoLoader(field.Schema.Schema))
+
+				// Now load all the indexes for the collection
+				collectionIndexResult := m.Store.Filter(map[string]interface{}{
+					"db":             "dataman_storage",
+					"shard_instance": "public",
+					"collection":     "collection_index",
+					"filter": map[string]interface{}{
+						"collection_id": collectionRecord["_id"],
+					},
+				})
+				if collectionIndexResult.Error != "" {
+					logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
 				}
-				if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
-					field.NotNull = true
+
+				for _, collectionIndexRecord := range collectionIndexResult.Return {
+					var indexFields []string
+					json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
+					index := &metadata.CollectionIndex{
+						Name:   collectionIndexRecord["name"].(string),
+						Fields: indexFields,
+					}
+					if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
+						index.Unique = unique.(bool)
+					}
+					collection.Indexes[index.Name] = index
 				}
-				collection.Fields[i] = field
-				collection.FieldMap[field.Name] = field
+
+				// TODO: fix
+				shardInstance.Collections[collection.Name] = collection
+
 			}
-
-			// Now load all the indexes for the collection
-			collectionIndexResult := m.Store.Filter(map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection_index",
-				"filter": map[string]interface{}{
-					"collection_id": collectionRecord["_id"],
-				},
-			})
-			if collectionIndexResult.Error != "" {
-				logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
-			}
-
-			for _, collectionIndexRecord := range collectionIndexResult.Return {
-				var indexFields []string
-				json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
-				index := &metadata.CollectionIndex{
-					Name:   collectionIndexRecord["name"].(string),
-					Fields: indexFields,
-				}
-				if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
-					index.Unique = unique.(bool)
-				}
-				collection.Indexes[index.Name] = index
-			}
-
-			// TODO: fix
-			//database.Collections[collection.Name] = collection
-
+			database.ShardInstances[shardInstance.Name] = shardInstance
 		}
 
 		meta.Databases[database.Name] = database
