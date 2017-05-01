@@ -143,97 +143,101 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 }
 
 func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
-	return nil
-	/*
-		database, ok := meta.Databases[queryArgs["db"].(string)]
-		if !ok {
-			return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+	database, ok := meta.Databases[queryArgs["db"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+	}
+	collection, ok := database.Collections[queryArgs["collection"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+	}
+
+	// Once we have the metadata all found we need to do the following:
+	//      - Authentication/authorization
+	//      - Cache
+	//      - Sharding
+	//      - Replicas
+
+	//TODO:Authentication/authorization
+	//TODO:Cache (configurable)
+
+	// Sharding consists of:
+	//		- select datasource(s)
+	//		- select partition(s) -- for now only one
+	//		- select vshard (collection or partition)
+	//			- hash "shard-key"
+	//			- select vshard
+	//		- send requests (involves mapping vshard -> shard)
+	//			-- TODO: we could combine the requests into a muxed one
+
+	// TODO: support multiple datastores
+	datastore := database.Datastores.Read[0]
+	// TODO: support multiple partitions
+	partition := collection.Partitions[0]
+
+	// TODO: support collection vshards -- to do this we'll probably need a combined struct?
+	var vshards []*metadata.DatabaseVShardInstance
+
+	// Depending on query type we might be able to be more specific about which vshards we go to
+	switch queryType {
+	// TODO: change the query format for Get()
+	case query.Get:
+		if partition.ShardConfig.Key != "_id" {
+			return &query.Result{Error: "Get *must* have _id be the shard-key for now"}
 		}
-		collection, ok := database.Collections[queryArgs["collection"].(string)]
+		rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
 		if !ok {
-			return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
+		}
+		shardKey, err := partition.HashFunc(rawShardKey)
+		if err != nil {
+			// TODO: wrap the error
+			return &query.Result{Error: err.Error()}
 		}
 
-		// Once we have the metadata all found we need to do the following:
-		//      - Authentication/authorization
-		//      - Cache
-		//      - Sharding
-		//      - Replicas
+		shardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
+		vshards = []*metadata.DatabaseVShardInstance{database.VShard.Instances[shardNum]}
 
-		//TODO:Authentication/authorization
-		//TODO:Cache (configurable)
-
-		// Sharding consists of:
-		//		- select datasource(s)
-		//		- select partition(s) -- for now only one
-		//		- select vbucket(s)
-		//			- hash "shard-key"
-		//			- select vshard
-		//		- send requests (involves mapping vshard -> shard)
-		//			-- TODO: we could combine the requests into a muxed one
-
-		// TODO: support multiple datastores
-		datastore := database.Datastores.Read[0]
-		// TODO: support multiple partitions
-		partition := collection.Partitions[0]
-		var vshards []*metadata.DatastoreVShard
-
-		// Depending on query type we might be able to be more specific about which vshards we go to
-		switch queryType {
-		// TODO: change the query format for Get()
-		case query.Get:
-			if partition.ShardConfig.Key != "_id" {
-				return &query.Result{Error: "Get *must* have _id be the shard-key for now"}
-			}
-			rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
-			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
-			}
+	case query.Filter:
+		// if there is only one partition and we have our shard key, we can be more specific
+		if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
 			shardKey, err := partition.HashFunc(rawShardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
-			vshards = []*metadata.DatastoreVShard{datastore.VShards[shardNum]}
-
-		case query.Filter:
-			// if there is only one partition and we have our shard key, we can be more specific
-			if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
-				shardKey, err := partition.HashFunc(rawShardKey)
-				if err != nil {
-					// TODO: wrap the error
-					return &query.Result{Error: err.Error()}
-				}
-				shardNum := partition.ShardFunc(shardKey, len(datastore.VShards))
-				vshards = []*metadata.DatastoreVShard{datastore.VShards[shardNum]}
-			} else {
-				vshards = datastore.VShards
-			}
-
-		default:
-			return &query.Result{Error: "Unknown read query type " + string(queryType)}
-
+			shardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
+			vshards = []*metadata.DatabaseVShardInstance{database.VShard.Instances[shardNum]}
+		} else {
+			vshards = database.VShard.Instances
 		}
 
-		// Query all of the vshards
-		vshardResults := make([]*query.Result, len(vshards))
+	default:
+		return &query.Result{Error: "Unknown read query type " + string(queryType)}
 
-		for i, vshard := range vshards {
-			// TODO: replicas -- add args for slave etc.
-			datasource_instance := vshard.Shard.Replicas.GetMaster().Datasource
+	}
 
-			if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
-				vshardResults[i] = result
-			} else {
-				vshardResults[i] = &query.Result{Error: err.Error()}
-			}
+	// Query all of the vshards
+	vshardResults := make([]*query.Result, len(vshards))
+
+	for i, vshard := range vshards {
+		// TODO: replicas -- add args for slave etc.
+		datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+
+		// TODO: generate or store/read the name!
+		queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+
+		if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+			vshardResults[i] = result
+		} else {
+			vshardResults[i] = &query.Result{Error: err.Error()}
 		}
+	}
 
-		return query.MergeResult(vshardResults...)
-	*/
+	return query.MergeResult(vshardResults...)
 }
 
+// TODO: fix
 func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
 	return nil
 	/*

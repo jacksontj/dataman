@@ -100,9 +100,8 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		}
 		for _, datasourceInstanceShardInstanceRecord := range datasourceInstanceShardInstanceResult.Return {
 			dsisi := &metadata.DatasourceInstanceShardInstance{
-				ID: datasourceInstanceShardInstanceRecord["_id"].(int64),
-				// TODO: need?
-				//Name: datasourceInstanceShardInstanceRecord["name"].(string),
+				ID:   datasourceInstanceShardInstanceRecord["_id"].(int64),
+				Name: datasourceInstanceShardInstanceRecord["name"].(string),
 			}
 			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_instance_id"]; databaseVShardID != nil {
 				datasourceInstance.DatabaseShards[dsisi.ID] = dsisi
@@ -170,8 +169,26 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			vshardInstance := &metadata.DatabaseVShardInstance{
 				ID:             databaseVshardInstanceRecord["_id"].(int64),
 				ShardInstance:  databaseVshardInstanceRecord["shard_instance"].(int64),
-				DatastoreShard: meta.DatastoreShards[databaseVshardInstanceRecord["datastore_shard_id"].(int64)],
+				DatastoreShard: make(map[int64]*metadata.DatastoreShard),
 			}
+			// Populate the linking of database_vshard_instance -> datastore_shard
+			datastoreShardResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "database_vshard_instance_datastore_shard",
+				"filter": map[string]interface{}{
+					"database_vshard_instance_id": vshardInstance.ID,
+				},
+			})
+			// TODO: better error handle
+			if datastoreShardResult.Error != "" {
+				logrus.Fatalf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
+			}
+
+			for _, datastoreShardRecord := range datastoreShardResult.Return {
+				vshardInstance.DatastoreShard[datastoreShardRecord["datastore_id"].(int64)] = meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
+			}
+
 			database.VShard.Instances = append(database.VShard.Instances, vshardInstance)
 		}
 

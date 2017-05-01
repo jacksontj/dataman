@@ -29,6 +29,7 @@ type DatabaseVShard struct {
 	ID         int64 `json:"_id"`
 	ShardCount int64 `json:"shard_count"`
 
+	// TODO: make a map so insert order isn't an issue? (I imagine slice is more performant?)
 	Instances []*DatabaseVShardInstance `json:"instances"`
 }
 
@@ -36,5 +37,6 @@ type DatabaseVShardInstance struct {
 	ID            int64 `json:"_id"`
 	ShardInstance int64 `json:"instance"`
 
-	DatastoreShard *DatastoreShard `json:"datastore_shard"`
+	// Map of datastore_id -> datastore_shard
+	DatastoreShard map[int64]*DatastoreShard `json:"datastore_shard"`
 }
