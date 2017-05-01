@@ -100,7 +100,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 
-	selectQuery := fmt.Sprintf("SELECT * FROM public.%s WHERE _id=%v", args["collection"], args["_id"])
+	selectQuery := fmt.Sprintf("SELECT * FROM %s.%s WHERE _id=%v", args["shard_instance"].(string), args["collection"], args["_id"])
 	var err error
 	result.Return, err = DoQuery(s.getDB(args["db"].(string)), selectQuery)
 	if err != nil {
@@ -169,7 +169,9 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
+	// TODO: re-add
+	// insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
+	insertQuery := fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES (%s) RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
 	result.Return, err = DoQuery(s.getDB(args["db"].(string)), insertQuery)
 	if err != nil {
 		result.Error = err.Error()
@@ -275,7 +277,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			whereClause += ", "
 		}
 	}
-	updateQuery := fmt.Sprintf("UPDATE public.%s SET _updated='now',%s WHERE %s RETURNING *", args["collection"], setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE %s.%s SET _updated='now',%s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 
 	result.Return, err = DoQuery(s.getDB(args["db"].(string)), updateQuery)
 	if err != nil {
@@ -351,7 +353,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM public.%s WHERE _id=%v%s RETURNING *", args["collection"], args["_id"], whereClause)
+	sqlQuery := fmt.Sprintf("DELETE FROM %s.%s WHERE _id=%v%s RETURNING *", args["shard_instance"].(string), args["collection"], args["_id"], whereClause)
 	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
@@ -375,7 +377,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	sqlQuery := fmt.Sprintf("SELECT * FROM public.%s", args["collection"])
+	sqlQuery := fmt.Sprintf("SELECT * FROM %s.%s", args["shard_instance"].(string), args["collection"])
 
 	if _, ok := args["filter"]; ok && args["filter"] != nil {
 		recordData := args["filter"].(map[string]interface{})

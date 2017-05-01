@@ -159,9 +159,14 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 	return shardInstances
 }
 
-// TODO: implement
 func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
-	return fmt.Errorf("TO IMPLEMENT")
+	// Create the database
+	// TODO: error if exists already?
+	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", shardInstance.Name)); err != nil {
+		return fmt.Errorf("Unable to create schema: %v", err)
+	}
+
+	return nil
 }
 
 // TODO: implement
@@ -395,7 +400,7 @@ func (s *Storage) UpdateCollection(dbname, shardinstance string, collection *met
 	*/
 }
 
-const removeTableTemplate = `DROP TABLE public.%s`
+const removeTableTemplate = `DROP TABLE %s.%s`
 
 // TODO: use db listing to remove things
 // TODO: remove indexes on removal
@@ -411,7 +416,7 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 		}
 	}
 
-	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, collectionname)
+	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, shardinstance, collectionname)
 	if _, err := s.dbMap[dbname].Query(tableRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", collectionname, err)
 	}

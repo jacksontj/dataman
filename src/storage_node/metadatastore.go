@@ -218,42 +218,67 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 }
 
 func (m *MetadataStore) RemoveDatabase(dbname string) error {
-	// GetDatabase Entry
-	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
-		"filter": map[string]interface{}{
-			"name": dbname,
-		},
-	})
-	if databaseResult.Error != "" {
-		return fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
+	meta := m.GetMeta()
+
+	database, ok := meta.Databases[dbname]
+	if !ok {
+		return fmt.Errorf("Unknown database %s", dbname)
 	}
 
-	if len(databaseResult.Return) != 1 {
-		return fmt.Errorf("Unable to find requested database %s", dbname)
-	}
+	for _, shardInstance := range database.ShardInstances {
 
-	databaseRecord := databaseResult.Return[0]
+		for _, collection := range shardInstance.Collections {
+			// Remove index
+			collectionIndexResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_storage",
+				"shard_instance": "public",
+				"collection":     "collection_index",
+				"filter": map[string]interface{}{
+					"collection_id": collection.ID,
+				},
+			})
+			if collectionIndexResult.Error != "" {
+				return fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+			}
 
-	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection",
-		"filter": map[string]interface{}{
-			"database_id": databaseRecord["_id"],
-		},
-	})
-	if collectionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
-	}
-	// TODO: filter delete?
+			// Remove field
+			collectionFieldResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_storage",
+				"shard_instance": "public",
+				"collection":     "collection_field",
+				"filter": map[string]interface{}{
+					"collection_id": collection.ID,
+				},
+			})
+			if collectionFieldResult.Error != "" {
+				return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+			}
 
-	// Delete each collection in the database
-	for _, collectionRecord := range collectionResult.Return {
-		if err := m.RemoveCollection(dbname, collectionRecord["name"].(string)); err != nil {
-			return fmt.Errorf("Unable to delete collection: %v", err)
+			// Remove collection
+			collectionResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_storage",
+				"shard_instance": "public",
+				"collection":     "collection",
+				"filter": map[string]interface{}{
+					"_id": collection.ID,
+				},
+			})
+			if collectionResult.Error != "" {
+				return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
+			}
+		}
+
+		// Remove shard instance
+		shardInstanceResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "shard_instance",
+			"filter": map[string]interface{}{
+				"_id": shardInstance.ID,
+			},
+		})
+		if shardInstanceResult.Error != "" {
+			return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 		}
 	}
 
@@ -262,7 +287,7 @@ func (m *MetadataStore) RemoveDatabase(dbname string) error {
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "database",
-		"_id":            databaseRecord["_id"],
+		"_id":            database.ID,
 	})
 	if databaseDelete.Error != "" {
 		return fmt.Errorf("Error getting databaseDelete: %v", databaseDelete.Error)
@@ -271,8 +296,9 @@ func (m *MetadataStore) RemoveDatabase(dbname string) error {
 	return nil
 }
 
+// TODO: Implement
 // Collection Changes
-func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collection) error {
+func (m *MetadataStore) TODOAddCollection(dbName string, collection *metadata.Collection) error {
 	// Make sure at least one field is defined
 	if collection.Fields == nil || len(collection.Fields) == 0 {
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", dbName, collection.Name)
@@ -400,23 +426,25 @@ func (m *MetadataStore) AddCollection(dbName string, collection *metadata.Collec
 			currentIndexNames[currentIndex["name"].(string)] = currentIndex
 		}
 
-		// compare old and new-- make them what they need to be
-		// What should be removed?
-		for name, _ := range currentIndexNames {
-			if _, ok := collection.Indexes[name]; !ok {
-				if err := m.RemoveIndex(dbName, collection.Name, name); err != nil {
-					return err
+		/*
+			// compare old and new-- make them what they need to be
+			// What should be removed?
+			for name, _ := range currentIndexNames {
+				if _, ok := collection.Indexes[name]; !ok {
+					if err := m.RemoveIndex(dbName, collection.Name, name); err != nil {
+						return err
+					}
 				}
 			}
-		}
-		// What should be added
-		for name, index := range collection.Indexes {
-			if _, ok := currentIndexNames[name]; !ok {
-				if err := m.AddIndex(dbName, collection.Name, index); err != nil {
-					return err
+			// What should be added
+			for name, index := range collection.Indexes {
+				if _, ok := currentIndexNames[name]; !ok {
+					if err := m.AddIndex(dbName, collection.Name, index); err != nil {
+						return err
+					}
 				}
 			}
-		}
+		*/
 	}
 
 	return nil
@@ -518,7 +546,8 @@ func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collectio
 }
 */
 
-func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) error {
+// TODO: Implement
+func (m *MetadataStore) TODORemoveCollection(dbname, shardinstance, collectionname string) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":             "dataman_storage",
@@ -616,8 +645,9 @@ func (m *MetadataStore) RemoveCollection(dbname string, collectionname string) e
 	return nil
 }
 
+// TODO: Implement
 // Index changes
-func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
+func (m *MetadataStore) TODOAddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":             "dataman_storage",
@@ -670,7 +700,8 @@ func (m *MetadataStore) AddIndex(dbname, collectionname string, index *metadata.
 	return nil
 }
 
-func (m *MetadataStore) RemoveIndex(dbname, collectionname, indexname string) error {
+// TODO: Implement
+func (m *MetadataStore) TODORemoveIndex(dbname, collectionname, indexname string) error {
 	// Get the database record
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":             "dataman_storage",
