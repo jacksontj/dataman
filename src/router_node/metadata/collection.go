@@ -12,7 +12,7 @@ type Collection struct {
 	Name string `json:"name"`
 
 	// Collection VShards (if defined)
-	VShard *CollectionVShard `json:"vshard,omitempty"`
+	VShard *CollectionVShard `json:"collection_vshard,omitempty"`
 
 	// TODO: use, we don't need these for inital working product, but we will
 	// if we plan on doing more sophisticated sharding or schema validation

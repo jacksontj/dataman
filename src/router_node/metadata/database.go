@@ -11,12 +11,12 @@ type Database struct {
 	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 	// This is the representation of the database_datastore linking table
-	Datastores *DatastoreSet `json:"datastore_set"`
+	Datastores *DatastoreSet `json:"datastores"`
 
 	// mapping of all collections
 	Collections map[string]*Collection `json:"collections"`
 
-	VShard *DatabaseVShard `json:"vshard"`
+	VShard *DatabaseVShard `json:"database_vshard"`
 }
 
 func NewDatabaseVShard() *DatabaseVShard {
