@@ -41,6 +41,7 @@ func (d *DatasourceInstance) GetURL() string {
 }
 
 type DatasourceInstanceShardInstance struct {
-	ID   int64  `json:"_id"`
-	Name string `json:"name"`
+	ID int64 `json:"_id"`
+	// TODO: remove?
+	Name string `json:"name,omitempty"`
 }

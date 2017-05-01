@@ -97,10 +97,11 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		}
 		for _, datasourceInstanceShardInstanceRecord := range datasourceInstanceShardInstanceResult.Return {
 			dsisi := &metadata.DatasourceInstanceShardInstance{
-				ID:   datasourceInstanceShardInstanceRecord["_id"].(int64),
-				Name: datasourceInstanceShardInstanceRecord["name"].(string),
+				ID: datasourceInstanceShardInstanceRecord["_id"].(int64),
+				// TODO: need?
+				//Name: datasourceInstanceShardInstanceRecord["name"].(string),
 			}
-			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_id"].(int64); databaseVShardID != 0 {
+			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_instance_id"]; databaseVShardID != nil {
 				datasourceInstance.DatabaseShards[dsisi.ID] = dsisi
 			} else {
 				datasourceInstance.CollectionShards[dsisi.ID] = dsisi
@@ -145,6 +146,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		database.VShard = metadata.NewDatabaseVShard()
 		database.VShard.ID = databaseVshardRecord["_id"].(int64)
 		database.VShard.ShardCount = databaseVshardRecord["shard_count"].(int64)
+		database.Datastores = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
 
 		// TODO: order by!
 		// Load all of the vshard instances
@@ -169,8 +171,6 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			}
 			database.VShard.Instances = append(database.VShard.Instances, vshardInstance)
 		}
-
-		database.Datastores = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
 
 		// TODO: resume here
 
@@ -353,6 +353,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
 		}
 		datastore.Shards = append(datastore.Shards, datastoreShard)
+		meta.DatastoreShards[datastoreShard.ID] = datastoreShard
 	}
 
 	meta.Datastore[datastore_id] = datastore
