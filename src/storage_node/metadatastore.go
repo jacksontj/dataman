@@ -150,7 +150,6 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					collection.Indexes[index.Name] = index
 				}
 
-				// TODO: fix
 				shardInstance.Collections[collection.Name] = collection
 
 			}

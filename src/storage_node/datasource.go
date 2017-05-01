@@ -193,11 +193,13 @@ func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance st
 
 // TODO: to-implement
 func (s *DatasourceInstance) AddCollection(dbname string, shardinstance string, collection *metadata.Collection) error {
-	return nil
+	return fmt.Errorf("TOIMPLEMENT")
 }
 func (s *DatasourceInstance) UpdateCollection(dbname string, collection *metadata.Collection) error {
-	return nil
+	return fmt.Errorf("TOIMPLEMENT")
 }
-func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) error { return nil }
+func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) error {
+	return fmt.Errorf("TOIMPLEMENT")
+}
 
 // TODO: move add/get/set schema stuff here (to allow for config contol
