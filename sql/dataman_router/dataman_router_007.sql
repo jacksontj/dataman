@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-01 18:33:55
+Date: 2017-05-02 09:08:50
 */
 
 
@@ -320,8 +320,7 @@ WITH (OIDS=FALSE)
 DROP TABLE IF EXISTS "public"."collection_vshard";
 CREATE TABLE "public"."collection_vshard" (
 "_id" int4 DEFAULT nextval('collection_vshard__id_seq'::regclass) NOT NULL,
-"shard_count" int4,
-"database_id" int4
+"shard_count" int4
 )
 WITH (OIDS=FALSE)
 
@@ -654,9 +653,19 @@ CREATE INDEX "database_id_idx" ON "public"."database_datastore" USING btree ("da
 ALTER TABLE "public"."database_datastore" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
+-- Indexes structure for table database_vshard
+-- ----------------------------
+CREATE UNIQUE INDEX "database_vshard_database_id_idx" ON "public"."database_vshard" USING btree ("database_id");
+
+-- ----------------------------
 -- Primary Key structure for table database_vshard
 -- ----------------------------
 ALTER TABLE "public"."database_vshard" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Indexes structure for table database_vshard_instance
+-- ----------------------------
+CREATE UNIQUE INDEX "database_vshard_instance_database_vshard_id_shard_instance_idx" ON "public"."database_vshard_instance" USING btree ("database_vshard_id", "shard_instance");
 
 -- ----------------------------
 -- Primary Key structure for table database_vshard_instance
@@ -749,9 +758,9 @@ ALTER TABLE "public"."collection" ADD FOREIGN KEY ("database_id") REFERENCES "pu
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field"
 -- ----------------------------
+ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("parent_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index"
@@ -762,11 +771,6 @@ ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERE
 -- Foreign Key structure for table "public"."collection_partition"
 -- ----------------------------
 ALTER TABLE "public"."collection_partition" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-
--- ----------------------------
--- Foreign Key structure for table "public"."collection_vshard"
--- ----------------------------
-ALTER TABLE "public"."collection_vshard" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_vshard_instance"
@@ -783,8 +787,8 @@ ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD FOREIGN KE
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_datastore"
 -- ----------------------------
-ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_vshard"
@@ -800,8 +804,8 @@ ALTER TABLE "public"."database_vshard_instance" ADD FOREIGN KEY ("database_vshar
 -- Foreign Key structure for table "public"."database_vshard_instance_datastore_shard"
 -- ----------------------------
 ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("database_vshard_instance_id") REFERENCES "public"."database_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("datastore_shard_id") REFERENCES "public"."datastore_shard" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource"
@@ -811,8 +815,8 @@ ALTER TABLE "public"."datasource" ADD FOREIGN KEY ("config_json_schema_id") REFE
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance"
 -- ----------------------------
-ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REFERENCES "public"."datasource" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance_shard_instance"
