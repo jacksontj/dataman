@@ -222,12 +222,17 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	for i, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
-		datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-		// TODO: generate or store/read the name!
-		queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		if !ok {
+			vshardResults[i] = &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			continue
+		}
 
-		if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+		queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
+
+		if result, err := QuerySingle(datasourceInstance, &query.Query{queryType, queryArgs}); err == nil {
 			vshardResults[i] = result
 		} else {
 			vshardResults[i] = &query.Result{Error: err.Error()}
@@ -294,11 +299,16 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
 			// TODO: generate or store/read the name!
-			queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
-			if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			if !ok {
+				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			}
+
+			queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
+			if result, err := QuerySingle(datasourceInstance, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -330,14 +340,18 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-			// TODO: generate or store/read the name!
-			queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			if !ok {
+				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			}
+
+			queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
 
 			result, err := QuerySingle(
 				// TODO: replicas -- add args for slave etc.
-				datasource_instance,
+				datasourceInstance,
 				&query.Query{queryType, queryArgs},
 			)
 
@@ -370,14 +384,18 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 		// TODO: replicas -- add args for slave etc.
 		vshard := database.VShard.Instances[vshardNum-1]
-		datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-		// TODO: generate or store/read the name!
-		queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		if !ok {
+			return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+		}
+
+		queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
 
 		result, err := QuerySingle(
 			// TODO: replicas -- add args for slave etc.
-			datasource_instance,
+			datasourceInstance,
 			&query.Query{queryType, queryArgs},
 		)
 
@@ -398,37 +416,46 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: replicas -- add args for slave etc.
 			vshard := database.VShard.Instances[vshardNum-1]
-			datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-			// TODO: generate or store/read the name!
-			queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			if !ok {
+				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			}
+
+			queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
 
 			// TODO: replicas -- add args for slave etc.
-			if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+			if result, err := QuerySingle(datasourceInstance, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
 			}
 
 		} else { // Otherwise we need to send this query to all shards to let them handle it
-			shardResults := make([]*query.Result, len(database.VShard.Instances))
+			vshardResults := make([]*query.Result, len(database.VShard.Instances))
 
 			// TODO: parallel
 			for i, vshard := range database.VShard.Instances {
-				datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+				datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-				// TODO: generate or store/read the name!
-				queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+				if !ok {
+					vshardResults[i] = &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+					continue
+				}
+
+				queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
 				// TODO: replicas -- add args for slave etc.
-				if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
-					shardResults[i] = result
+				if result, err := QuerySingle(datasourceInstance, &query.Query{queryType, queryArgs}); err == nil {
+					vshardResults[i] = result
 				} else {
-					shardResults[i] = &query.Result{Error: err.Error()}
+					vshardResults[i] = &query.Result{Error: err.Error()}
 				}
 
 			}
 
-			return query.MergeResult(shardResults...)
+			return query.MergeResult(vshardResults...)
 		}
 	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
 	// current implementation won't work. Instead of doing the get/set
@@ -451,13 +478,17 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		vshard := database.VShard.Instances[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
-		datasource_instance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
 
-		// TODO: generate or store/read the name!
-		queryArgs["shard_instance"] = fmt.Sprintf("shard%d", vshard.ShardInstance)
+		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		if !ok {
+			return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+		}
+
+		queryArgs["shard_instance"] = datasourceInstanceShardInstance.Name
 
 		// TODO: replicas -- add args for slave etc.
-		if result, err := QuerySingle(datasource_instance, &query.Query{queryType, queryArgs}); err == nil {
+		if result, err := QuerySingle(datasourceInstance, &query.Query{queryType, queryArgs}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}

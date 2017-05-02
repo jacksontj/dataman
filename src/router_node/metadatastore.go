@@ -108,9 +108,10 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				DatabaseVshardInstanceId: datasourceInstanceShardInstanceRecord["database_vshard_instance_id"].(int64),
 			}
 			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_instance_id"]; databaseVShardID != nil {
-				datasourceInstance.DatabaseShards[dsisi.ID] = dsisi
+				datasourceInstance.DatabaseShards[dsisi.DatabaseVshardInstanceId] = dsisi
 			} else {
-				datasourceInstance.CollectionShards[dsisi.ID] = dsisi
+				// TODO
+				//datasourceInstance.CollectionShards[dsisi.CollectionVshardInstanceId] = dsisi
 			}
 		}
 
@@ -646,6 +647,8 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			}
 		}
 	}
+
+	// TODO: Add entry to datasource_instance_shard_instance
 	for datasourceInstance, storageNodeDatabase := range provisionRequests {
 		// Send the actual request!
 		// TODO: the right thing, definitely wrong right now ;)
