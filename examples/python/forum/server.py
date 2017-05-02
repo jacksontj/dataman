@@ -59,7 +59,7 @@ class DatamanClient(object):
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
         response = json.loads(ret.body)[0]
-        if response['error']:
+        if 'error' in response:
             raise Exception(response['error'])
         # TODO: handle errors?
         items = []
@@ -79,7 +79,7 @@ class DatamanClient(object):
         )
         logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
         response = json.loads(ret.body)[0]
-        if response['error']:
+        if 'error' in response:
             raise Exception(response['error'])
 
         # TODO: handle errors?
