@@ -276,7 +276,7 @@ const addSequenceTemplate = `CREATE SEQUENCE %s INCREMENT BY %d RESTART WITH %d`
 // TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
 const addTableTemplate = `CREATE TABLE %s.%s
 (
-  _id %s NOT NULL,
+  _id int4 NOT NULL DEFAULT nextval('"%s"'),
   _created timestamp,
   _updated timestamp,
   %s
@@ -313,6 +313,7 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 	}
 
 	// Create the sequence
+	// TODO: method for this
 	sequenceName := fmt.Sprintf("%s_%s_seq", shardInstance.Name, collection.Name)
 	sequenceAddQuery := fmt.Sprintf(addSequenceTemplate, sequenceName, shardInstance.Count, shardInstance.Instance)
 	if _, err := DoQuery(s.getDB(db.Name), sequenceAddQuery); err != nil {
