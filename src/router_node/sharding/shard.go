@@ -20,7 +20,13 @@ func (s ShardMethod) Get() ShardFunc {
 		}
 	case Mod:
 		return func(hash uint64, numShards int) int {
-			return int(hash % uint64(numShards))
+			shardNum := int(hash % uint64(numShards))
+			if shardNum == 0 {
+				return numShards - 1
+			} else {
+				return shardNum
+			}
+
 		}
 	default:
 		return nil
