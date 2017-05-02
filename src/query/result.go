@@ -24,7 +24,9 @@ func MergeResult(results ...*Result) *Result {
 	}
 
 	for _, result := range results {
-		combinedResult.Error += "\n" + result.Error
+		if result.Error != "" {
+			combinedResult.Error += "\n" + result.Error
+		}
 		// TODO: merge meta
 
 		for _, resultReturn := range result.Return {
