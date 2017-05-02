@@ -119,6 +119,23 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		meta.DatasourceInstance[datasourceInstance.ID] = datasourceInstance
 	}
 
+	// Load all of the datastores
+	datastoreResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "datastore",
+	})
+	// TODO: better error handle
+	if datastoreResult.Error != "" {
+		logrus.Fatalf("Error in getting datastoreResult: %v", datastoreResult.Error)
+	}
+
+	// for each database load the database + collections etc.
+	for _, datastoreRecord := range datastoreResult.Return {
+		datastore := m.getDatastoreById(meta, datastoreRecord["_id"].(int64))
+		meta.Datastore[datastore.ID] = datastore
+	}
+
 	// Get all databases
 	databaseResult := m.Store.Filter(map[string]interface{}{
 		"db":             "dataman_router",
@@ -644,11 +661,29 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 
 					datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
 				}
+
+				// Add entry to datasource_instance_shard_instance
+				// load all of the replicas
+				datasourceInstanceShardInstanceResult := m.Store.Insert(map[string]interface{}{
+					"db":             "dataman_router",
+					"shard_instance": "public",
+					"collection":     "datasource_instance_shard_instance",
+					"record": map[string]interface{}{
+						"datasource_instance_id":      datasourceInstance.ID,
+						"database_vshard_instance_id": vshardInstance.ID,
+						"name": fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance),
+					},
+				})
+
+				// TODO: better error handle
+				if datasourceInstanceShardInstanceResult.Error != "" {
+					return fmt.Errorf(datasourceInstanceShardInstanceResult.Error)
+				}
+
 			}
 		}
 	}
 
-	// TODO: Add entry to datasource_instance_shard_instance
 	for datasourceInstance, storageNodeDatabase := range provisionRequests {
 		// Send the actual request!
 		// TODO: the right thing, definitely wrong right now ;)
@@ -682,6 +717,8 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			}
 			return fmt.Errorf(string(body))
 		}
+
+		// Update entry to datasource_instance_shard_instance (saying it is ready)
 
 	}
 
