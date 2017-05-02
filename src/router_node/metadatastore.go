@@ -102,6 +102,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			dsisi := &metadata.DatasourceInstanceShardInstance{
 				ID:   datasourceInstanceShardInstanceRecord["_id"].(int64),
 				Name: datasourceInstanceShardInstanceRecord["name"].(string),
+				DatabaseVshardInstanceId: datasourceInstanceShardInstanceRecord["database_vshard_instance_id"].(int64),
 			}
 			if databaseVShardID := datasourceInstanceShardInstanceRecord["database_vshard_instance_id"]; databaseVShardID != nil {
 				datasourceInstance.DatabaseShards[dsisi.ID] = dsisi
@@ -148,7 +149,8 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 		database.VShard = metadata.NewDatabaseVShard()
 		database.VShard.ID = databaseVshardRecord["_id"].(int64)
 		database.VShard.ShardCount = databaseVshardRecord["shard_count"].(int64)
-		database.Datastores = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
+		database.DatastoreSet = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
+		database.Datastores = database.DatastoreSet.ToSlice()
 
 		// TODO: order by!
 		// Load all of the vshard instances

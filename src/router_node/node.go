@@ -171,7 +171,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	//			-- TODO: we could combine the requests into a muxed one
 
 	// TODO: support multiple datastores
-	datastore := database.Datastores.Read[0]
+	datastore := database.DatastoreSet.Read[0]
 	// TODO: support multiple partitions
 	partition := collection.Partitions[0]
 
@@ -268,7 +268,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	//		- send requests (involves mapping vshard -> shard)
 	//			-- TODO: we could combine the requests into a muxed one
 
-	datastore := database.Datastores.Write
+	datastore := database.DatastoreSet.Write
 	// TODO: support multiple partitions
 	partition := collection.Partitions[0]
 

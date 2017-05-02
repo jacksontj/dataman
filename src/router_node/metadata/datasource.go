@@ -44,4 +44,6 @@ type DatasourceInstanceShardInstance struct {
 	ID int64 `json:"_id"`
 	// TODO: remove?
 	Name string `json:"name,omitempty"`
+	// TODO: either support both in this struct, or have 2 structs
+	DatabaseVshardInstanceId int64 `json:"database_vshard_instance_id"`
 }

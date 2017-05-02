@@ -14,6 +14,23 @@ type DatastoreSet struct {
 	Write *Datastore   `json:"write"`
 }
 
+func (d *DatastoreSet) ToSlice() []*Datastore {
+	ids := make(map[int64]struct{})
+
+	datastores := make([]*Datastore, 0, len(d.Read))
+	datastores = append(datastores, d.Write)
+	ids[d.Write.ID] = struct{}{}
+
+	for _, readStore := range d.Read {
+		if _, ok := ids[readStore.ID]; !ok {
+			datastores = append(datastores, readStore)
+			ids[readStore.ID] = struct{}{}
+		}
+	}
+
+	return datastores
+}
+
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
 		Name:   name,

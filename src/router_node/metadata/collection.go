@@ -53,7 +53,7 @@ type CollectionPartition struct {
 	EndId   int64 `json:"end_id,omitempty"`
 
 	// TODO: separate struct for shard config?
-	ShardConfig *ShardConfig
+	ShardConfig *ShardConfig       `json:"shard_config"`
 	HashFunc    sharding.HashFunc  `json:"-"`
 	ShardFunc   sharding.ShardFunc `json:"-"`
 }
