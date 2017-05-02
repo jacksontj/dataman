@@ -58,9 +58,12 @@ class DatamanClient(object):
             }}])
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
+        response = json.loads(ret.body)[0]
+        if response['error']:
+            raise Exception(response['error'])
         # TODO: handle errors?
         items = []
-        raise tornado.gen.Return(json.loads(ret.body)[0]['return'])
+        raise tornado.gen.Return(response['return'])
 
     @tornado.gen.coroutine
     def insert(self, db, collection, record):
@@ -75,9 +78,12 @@ class DatamanClient(object):
             }}])
         )
         logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
+        response = json.loads(ret.body)[0]
+        if response['error']:
+            raise Exception(response['error'])
 
         # TODO: handle errors?
-        raise tornado.gen.Return(json.loads(ret.body)[0])
+        raise tornado.gen.Return(response)
 
 define("dataman_uri", default='http://localhost:8081', help="what dataman to talk to", type=str)
 dataman = None
@@ -185,7 +191,10 @@ class LegacyUserHandler(tornado.web.RequestHandler):
 
     pool = concurrent.futures.ThreadPoolExecutor(10)
     # TODO: another CLI opt to define this?
-    conn = psycopg2.connect("dbname=%s user='postgres' host='localhost' password='password'" % schema.DBNAME)
+    try:
+        conn = psycopg2.connect("dbname=%s user='postgres' host='localhost' password='password'" % schema.DBNAME)
+    except:
+        conn = None
 
     @tornado.gen.coroutine
     def get(self):
