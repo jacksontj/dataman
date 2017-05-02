@@ -65,6 +65,10 @@ const schemaJson string = `
                 {
                   "name": "field_type_args",
                   "type": "document"
+                },
+                {
+                  "name": "schema_id",
+                  "type": "int"
                 }
               ],
               "indexes": {
@@ -107,7 +111,7 @@ const schemaJson string = `
                 },
                 {
                   "name": "data_json",
-                  "type": "text"
+                  "type": "string"
                 },
                 {
                   "name": "unique",
@@ -144,8 +148,48 @@ const schemaJson string = `
                 }
               ],
               "indexes": {
+                "database_name_idx": {
+                  "name": "database_name_idx",
+                  "fields": [
+                    "name"
+                  ],
+                  "unique": true
+                },
                 "database_pkey": {
                   "name": "database_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true
+                }
+              }
+            },
+            "schema": {
+              "name": "schema",
+              "fields": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "type_args": {
+                    "size": 255
+                  }
+                },
+                {
+                  "name": "version",
+                  "type": "int"
+                },
+                {
+                  "name": "data_json",
+                  "type": "document"
+                },
+                {
+                  "name": "backwards_compatible",
+                  "type": "bool"
+                }
+              ],
+              "indexes": {
+                "schema_pkey": {
+                  "name": "schema_pkey",
                   "fields": [
                     "_id"
                   ],
@@ -185,13 +229,6 @@ const schemaJson string = `
                 }
               ],
               "indexes": {
-                "TOREMOVE": {
-                  "name": "TOREMOVE",
-                  "fields": [
-                    "name"
-                  ],
-                  "unique": true
-                },
                 "shard_instance_database_id_count_instance_database_shard_co_idx": {
                   "name": "shard_instance_database_id_count_instance_database_shard_co_idx",
                   "fields": [
@@ -200,6 +237,14 @@ const schemaJson string = `
                     "instance",
                     "database_shard",
                     "collection_shard"
+                  ],
+                  "unique": true
+                },
+                "shard_instance_name_database_id_idx": {
+                  "name": "shard_instance_name_database_id_idx",
+                  "fields": [
+                    "name",
+                    "database_id"
                   ],
                   "unique": true
                 },

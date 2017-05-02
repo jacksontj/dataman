@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/julienschmidt/httprouter"
@@ -40,7 +39,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// DB Management
 	// DB collection
 	router.GET("/v1/database", h.listDatabase)
-	//router.POST("/v1/database", h.addDatabase)
+	router.POST("/v1/database", h.addDatabase)
 
 	// DB instance
 	router.GET("/v1/database/:dbname", h.viewDatabase)
@@ -73,7 +72,7 @@ func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httpro
 	if bytes, err := json.Marshal(meta); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Errorf("Err: %v", err)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -90,7 +89,7 @@ func (h *HTTPApi) listStorageNodes(w http.ResponseWriter, r *http.Request, ps ht
 	if bytes, err := json.Marshal(meta.Nodes); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Errorf("Err: %v", err)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -113,7 +112,7 @@ func (h *HTTPApi) addStorageNode(w http.ResponseWriter, r *http.Request, ps http
 		if err := h.routerNode.MetaStore.AddStorageNode(&storageNode); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
-			logrus.Errorf("Err: %v", err)
+			w.Write([]byte(err.Error()))
 			return
 		}
 	}
@@ -132,7 +131,7 @@ func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps htt
 	if bytes, err := json.Marshal(meta.Nodes[storageNodeId]); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Errorf("Err: %v", err)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		w.Header().Set("Content-Type", "application/json")
@@ -151,7 +150,7 @@ func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps h
 	if err := h.routerNode.MetaStore.RemoveStorageNode(storageNodeId); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
-		logrus.Errorf("Err: %v", err)
+		w.Write([]byte(err.Error()))
 	}
 }
 
@@ -163,10 +162,31 @@ func (h *HTTPApi) listDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 	if bytes, err := json.Marshal(dbs); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
+	}
+}
+
+// Add a single Database
+func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var db *metadata.Database
+
+	if err := json.Unmarshal(bytes, &db); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else {
+		if err := h.routerNode.AddDatabase(db); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 	}
 }
 
@@ -178,6 +198,7 @@ func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 		if bytes, err := json.Marshal(db); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
 			return
 		} else {
 			w.Header().Set("Content-Type", "application/json")
@@ -201,6 +222,7 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 			} else {
 				// TODO: log this better?
 				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
 				return
 			}
 		} else {
@@ -240,6 +262,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 		if bytes, err := json.Marshal(results); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
 			return
 		} else {
 			w.Header().Set("Content-Type", "application/json")

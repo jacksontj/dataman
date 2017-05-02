@@ -1,9 +1,12 @@
 package routernode
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -425,6 +428,258 @@ func (m *MetadataStore) RemoveStorageNode(id int64) error {
 	// TODO: better error handle
 	if storageNodeResult.Error != "" {
 		return fmt.Errorf(storageNodeResult.Error)
+	}
+
+	return nil
+}
+
+func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
+	// Add database
+	databaseResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "database",
+		"record": map[string]interface{}{
+			"name": db.Name,
+		},
+	})
+
+	// TODO: better error handle
+	if databaseResult.Error != "" {
+		return fmt.Errorf(databaseResult.Error)
+	}
+	databaseRecord := databaseResult.Return[0]
+	// TODO: support collection_vshards as well
+	// Add database_vshard
+	databaseVShardResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "database_vshard",
+		"record": map[string]interface{}{
+			"shard_count": db.VShard.ShardCount,
+			"database_id": databaseRecord["_id"],
+		},
+	})
+
+	// TODO: better error handle
+	if databaseVShardResult.Error != "" {
+		return fmt.Errorf(databaseVShardResult.Error)
+	}
+	databaseVShardRecord := databaseVShardResult.Return[0]
+
+	// Add database_vshard_instances
+	for _, vshardInstance := range db.VShard.Instances {
+		databaseVShardInstanceResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "database_vshard_instance",
+			"record": map[string]interface{}{
+				"database_vshard_id": databaseVShardRecord["_id"],
+				"shard_instance":     vshardInstance.ShardInstance,
+			},
+		})
+
+		// TODO: better error handle
+		if databaseVShardInstanceResult.Error != "" {
+			return fmt.Errorf(databaseVShardInstanceResult.Error)
+		}
+		databaseVShardInstanceRecord := databaseVShardInstanceResult.Return[0]
+		// map these to datastore_shard using the database_vshard_instance_datastore_shard table
+		for datastoreID, datastoreShard := range vshardInstance.DatastoreShard {
+			databaseVshardInstanceDatastoreShardResult := m.Store.Insert(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "database_vshard_instance_datastore_shard",
+				"record": map[string]interface{}{
+					"database_vshard_instance_id": databaseVShardInstanceRecord["_id"],
+					"datastore_id":                datastoreID,
+					"datastore_shard_id":          datastoreShard.ID,
+				},
+			})
+
+			// TODO: better error handle
+			if databaseVshardInstanceDatastoreShardResult.Error != "" {
+				return fmt.Errorf(databaseVshardInstanceDatastoreShardResult.Error)
+			}
+		}
+	}
+
+	// Add database_datastore entries
+	for _, datastore := range db.Datastores {
+		databaseDatastoreResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "database_datastore",
+			"record": map[string]interface{}{
+				"database_id":  databaseRecord["_id"],
+				"datastore_id": datastore.ID,
+				"read":         datastore.Read,
+				"write":        datastore.Write,
+				"required":     datastore.Required,
+			},
+		})
+
+		// TODO: better error handle
+		if databaseDatastoreResult.Error != "" {
+			return fmt.Errorf(databaseDatastoreResult.Error)
+		}
+	}
+
+	// Add collections
+	for _, collection := range db.Collections {
+		collectionResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection",
+			"record": map[string]interface{}{
+				"name":        collection.Name,
+				"database_id": databaseRecord["_id"],
+			},
+		})
+
+		// TODO: better error handle
+		if collectionResult.Error != "" {
+			return fmt.Errorf(collectionResult.Error)
+		}
+		collectionRecord := collectionResult.Return[0]
+
+		// Insert partition
+		collectionPartitionResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection_partition",
+			"record": map[string]interface{}{
+				"collection_id": collectionRecord["_id"],
+				"start_id":      1,
+				// TODO: eventually we'll want to be more dynamic, but for now we
+				// exactly one
+				"shard_config_json": collection.Partitions[0].ShardConfig,
+			},
+		})
+
+		// TODO: better error handle
+		if collectionPartitionResult.Error != "" {
+			return fmt.Errorf(collectionPartitionResult.Error)
+		}
+
+		// Insert fields
+		for _, field := range collection.Fields {
+			fieldResult := m.Store.Insert(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_field",
+				"record": map[string]interface{}{
+					"name":            field.Name,
+					"collection_id":   collectionRecord["_id"],
+					"field_type":      field.Type,
+					"field_type_args": field.TypeArgs,
+					// TODO
+					//"schema_id": field.Schema.ID,
+					"not_null": field.NotNull,
+				},
+			})
+
+			// TODO: better error handle
+			if fieldResult.Error != "" {
+				return fmt.Errorf(fieldResult.Error)
+			}
+		}
+
+		// TODO
+		// Insert indexes
+		/*
+				    for _, index := range collection.Indexes {
+			        	indexResult := m.Store.Insert(map[string]interface{}{
+					        "db":             "dataman_router",
+					        "shard_instance": "public",
+					        "collection":     "collection_index",
+					        "record":         map[string]interface{}{
+					            "name": index.Name,
+					            "collection_id": collectionRecord["_id"],
+					            "data_json": index.Type,
+					            "unique": index.Unique,
+					        },
+				        })
+
+				        // TODO: better error handle
+				        if indexResult.Error != "" {
+					        return fmt.Errorf(indexResult.Error)
+				        }
+				    }
+		*/
+
+	}
+
+	// Tell storagenodes about their new datasource_instance_shard_instances
+	// Notify the add by putting it in the datasource_instance_shard_instance table
+	client := &http.Client{}
+
+	provisionRequests := make(map[*metadata.DatasourceInstance]*storagenodemetadata.Database)
+
+	for _, vshardInstance := range db.VShard.Instances {
+		for _, datastoreShard := range vshardInstance.DatastoreShard {
+			// TODO: slaves as well
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				datasourceInstance := datastoreShardReplica.Datasource
+				// If we need to define the database, lets do so
+				if _, ok := provisionRequests[datasourceInstance]; !ok {
+					// TODO: better DB conversion
+					provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
+				}
+
+				// Add this shard_instance to the database for the datasource_instance
+				shardInstanceName := datasourceInstance.DatabaseShards[vshardInstance.ID].Name
+				datasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
+				// Create the ShardInstance for the DatasourceInstance
+				provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = datasourceInstanceShardInstance
+				datasourceInstanceShardInstance.Count = db.VShard.ShardCount
+				datasourceInstanceShardInstance.Instance = vshardInstance.ShardInstance
+
+				// TODO: convert from collections -> collections
+				for name, collection := range db.Collections {
+					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
+					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
+					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+
+					datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
+				}
+			}
+		}
+	}
+	for datasourceInstance, storageNodeDatabase := range provisionRequests {
+		// Send the actual request!
+		// TODO: the right thing, definitely wrong right now ;)
+		dbShard, err := json.Marshal(storageNodeDatabase)
+		if err != nil {
+			return err
+		}
+		bodyReader := bytes.NewReader(dbShard)
+
+		// send task to node
+		req, err := http.NewRequest(
+			"POST",
+			datasourceInstance.GetBaseURL()+"database",
+			bodyReader,
+		)
+		if err != nil {
+			return err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		// TODO: do at the end of the loop-- defer will only do it at the end of the function
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			fmt.Printf("sent request to %s\n%s\n", datasourceInstance.GetBaseURL(), dbShard)
+			fmt.Println(resp)
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf(string(body))
+		}
+
 	}
 
 	return nil

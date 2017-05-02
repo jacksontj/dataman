@@ -27,13 +27,17 @@ type DatasourceInstance struct {
 	StorageNode *StorageNode `json:"-"`
 
 	// TODO: actual config
-	Config map[string]interface{} `json:"config"`
+	Config map[string]interface{} `json:"config,omitempty"`
 
 	// All of the shard instances it has
 	// database_vshard.ID -> DatasourceInstanceShardInstance
 	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"database_shard_instance,omitempty"`
 	// collection_vshard.ID -> DatasourceInstanceShardInstance
 	CollectionShards map[int64]*DatasourceInstanceShardInstance `json:"collection_shard_instance,omitempty"`
+}
+
+func (d *DatasourceInstance) GetBaseURL() string {
+	return fmt.Sprintf("http://%s:%d/v1/datasource_instance/%s/", d.StorageNode.IP, d.StorageNode.Port, d.Name)
 }
 
 func (d *DatasourceInstance) GetURL() string {

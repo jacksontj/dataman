@@ -467,3 +467,48 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 	return nil
 }
+
+// TODO: this will eventually actually use a long-running task system for
+// provisioning, since we'll need to tell the various storage_nodes involved
+// what shards they need to add etc. For a POC I'm going to implement it all as
+// serial synchronous provisioning-- which is definitely not what we want long-term
+// Add a database
+func (s *RouterNode) AddDatabase(db *metadata.Database) error {
+	meta := s.GetMeta()
+
+	// TODO: move the validation to the metadata store?
+	// Validate the data (make sure we don't have conflicts w/e)
+
+	// Verify that referenced datastores exist
+	for _, datastore := range db.Datastores {
+		if datastore.ID == 0 {
+			return fmt.Errorf("Unknown datastore (missing ID): %v", datastore)
+		}
+		if _, ok := meta.Datastore[datastore.ID]; !ok {
+			return fmt.Errorf("Unknown datastore (ID %d not found): %v", datastore.ID, datastore)
+		}
+	}
+
+	// Verify that the vshards map to things that exist
+	for _, vshard := range db.VShard.Instances {
+		for datastoreID, datastoreShard := range vshard.DatastoreShard {
+			if _, ok := meta.Datastore[datastoreID]; !ok {
+				return fmt.Errorf("Datastore referenced in vshard doesn't exist: %v", vshard)
+			}
+			if datastoreShard.ID == 0 {
+				return fmt.Errorf("Unknown datastore_shard_id (missing ID): %v", datastoreShard)
+			}
+			if _, ok := meta.DatastoreShards[datastoreShard.ID]; !ok {
+				return fmt.Errorf("Unknown datastore_shard_id (ID %d not found): %v", datastoreShard.ID, datastoreShard)
+			}
+
+			// TODO: for all? or not at all?
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				datastoreShardReplica.Datasource.StorageNode = meta.Nodes[datastoreShardReplica.Datasource.StorageNodeID]
+				datastoreShardReplica.Datasource.DatabaseShards = meta.DatasourceInstance[datastoreShardReplica.Datasource.ID].DatabaseShards
+			}
+		}
+	}
+
+	return s.MetaStore.AddDatabase(db)
+}

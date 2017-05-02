@@ -1,6 +1,7 @@
 package metadata
 
 import "github.com/jacksontj/dataman/src/router_node/sharding"
+import storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 
 func NewCollection(name string) *Collection {
 	return &Collection{
@@ -16,8 +17,9 @@ type Collection struct {
 
 	// TODO: use, we don't need these for inital working product, but we will
 	// if we plan on doing more sophisticated sharding or schema validation
-	//Fields map[string]*CollectionField
-	//Indexes map[string]*CollectionIndex
+	// TODO: switch to a map
+	Fields  []*storagenodemetadata.Field                    `json:"fields"`
+	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
@@ -35,16 +37,6 @@ type CollectionVShardInstance struct {
 	ShardInstance int64 `json:"instance"`
 
 	DatastoreShard *DatastoreShard `json:"datastore_shard"`
-}
-
-// TODO: fill out
-type CollectionField struct {
-	Name string
-}
-
-// TODO: fill out
-type CollectionIndex struct {
-	Name string
 }
 
 type CollectionPartition struct {
