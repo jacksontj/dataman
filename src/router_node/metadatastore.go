@@ -323,8 +323,9 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 
 	datastore := metadata.NewDatastore(datastoreRecord["name"].(string))
 	datastore.ID = datastoreRecord["_id"].(int64)
+	// TODO: remove?
 	// TODO: define schema for shard config
-	datastore.ShardConfig = datastoreRecord["shard_config_json"].(map[string]interface{})
+	//datastore.ShardConfig = datastoreRecord["shard_config_json"].(map[string]interface{})
 
 	// TODO: order
 	// Now load all the shards

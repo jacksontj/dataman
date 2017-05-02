@@ -48,8 +48,9 @@ type Datastore struct {
 
 	Name string `json:"name"`
 
+	// TODO: remove?
 	// TODO: better type
-	ShardConfig map[string]interface{} `json:"shard_config"`
+	//ShardConfig map[string]interface{} `json:"shard_config"`
 
 	Shards []*DatastoreShard `json:"shards"`
 }

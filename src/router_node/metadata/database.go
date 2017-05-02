@@ -11,7 +11,7 @@ type Database struct {
 	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 
-	Datastores []*Datastore `json:"datastore"`
+	Datastores []*Datastore `json:"datastores"`
 
 	// We have a "set" struct to encapsulate datastore selection
 	// This is the representation of the database_datastore linking table
