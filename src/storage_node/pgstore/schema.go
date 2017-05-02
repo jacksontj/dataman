@@ -269,12 +269,12 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 }
 
 // TODO: also delete this
-const addSequenceTemplate = `CREATE SEQUENCE %s INCREMENT BY %d RESTART WITH %d`
+const addSequenceTemplate = `CREATE SEQUENCE "%s" INCREMENT BY %d RESTART WITH %d`
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
 // TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
-const addTableTemplate = `CREATE TABLE %s.%s
+const addTableTemplate = `CREATE TABLE "%s".%s
 (
   _id int4 NOT NULL DEFAULT nextval('"%s"'),
   _created timestamp,
@@ -546,7 +546,7 @@ func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Co
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON %s.%s (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".%s (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","

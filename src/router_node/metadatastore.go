@@ -502,6 +502,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			return fmt.Errorf(databaseVShardInstanceResult.Error)
 		}
 		databaseVShardInstanceRecord := databaseVShardInstanceResult.Return[0]
+		vshardInstance.ID = databaseVShardInstanceRecord["_id"].(int64)
 		// map these to datastore_shard using the database_vshard_instance_datastore_shard table
 		for datastoreID, datastoreShard := range vshardInstance.DatastoreShard {
 			databaseVshardInstanceDatastoreShardResult := m.Store.Insert(map[string]interface{}{
@@ -645,8 +646,27 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 					provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
 				}
 
+				shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
+
+				// Add entry to datasource_instance_shard_instance
+				// load all of the replicas
+				datasourceInstanceShardInstanceResult := m.Store.Insert(map[string]interface{}{
+					"db":             "dataman_router",
+					"shard_instance": "public",
+					"collection":     "datasource_instance_shard_instance",
+					"record": map[string]interface{}{
+						"datasource_instance_id":      datasourceInstance.ID,
+						"database_vshard_instance_id": vshardInstance.ID,
+						"name": shardInstanceName,
+					},
+				})
+
+				// TODO: better error handle
+				if datasourceInstanceShardInstanceResult.Error != "" {
+					return fmt.Errorf(datasourceInstanceShardInstanceResult.Error)
+				}
+
 				// Add this shard_instance to the database for the datasource_instance
-				shardInstanceName := datasourceInstance.DatabaseShards[vshardInstance.ID].Name
 				datasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
 				// Create the ShardInstance for the DatasourceInstance
 				provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = datasourceInstanceShardInstance
@@ -660,24 +680,6 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
 
 					datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
-				}
-
-				// Add entry to datasource_instance_shard_instance
-				// load all of the replicas
-				datasourceInstanceShardInstanceResult := m.Store.Insert(map[string]interface{}{
-					"db":             "dataman_router",
-					"shard_instance": "public",
-					"collection":     "datasource_instance_shard_instance",
-					"record": map[string]interface{}{
-						"datasource_instance_id":      datasourceInstance.ID,
-						"database_vshard_instance_id": vshardInstance.ID,
-						"name": fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance),
-					},
-				})
-
-				// TODO: better error handle
-				if datasourceInstanceShardInstanceResult.Error != "" {
-					return fmt.Errorf(datasourceInstanceShardInstanceResult.Error)
 				}
 
 			}
