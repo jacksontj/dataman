@@ -32,7 +32,9 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Storage node APIs
 	router.GET("/v1/metadata/storage_node", h.listStorageNodes)
 	router.POST("/v1/metadata/storage_node", h.addStorageNode)
+
 	router.GET("/v1/metadata/storage_node/:id", h.viewStorageNode)
+	//router.PUT("/v1/metadata/storage_node/:id", h.updateStorageNode)
 	router.DELETE("/v1/metadata/storage_node/:id", h.deleteStorageNode)
 
 	// DB Management
@@ -42,13 +44,16 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// DB instance
 	router.GET("/v1/database/:dbname", h.viewDatabase)
-	//router.POST("/v1/database/:dbname", h.addCollection)
+	//router.PUT("/v1/database/:dbname", h.updateDatabase)
 	//router.DELETE("/v1/database/:dbname", h.removeDatabase)
 
 	// Collections
-	router.GET("/v1/database/:dbname/:collectionname", h.viewCollection)
-	//router.PUT("/v1/database/:dbname/:collectionname", h.updateCollection)
-	//router.DELETE("/v1/database/:dbname/:collectionname", h.removeCollection)
+	//router.GET("/v1/database/:dbname/collections/", h.listCollections)
+	//router.POST("/v1/database/:dbname/collections/", h.addCollection)
+
+	router.GET("/v1/database/:dbname/collections/:collectionname", h.viewCollection)
+	//router.PUT("/v1/database/:dbname/collections/:collectionname", h.updateCollection)
+	//router.DELETE("/v1/database/:dbname/collections/:collectionname", h.removeCollection)
 
 	// Schema
 	//router.GET("/v1/schema", h.listSchema)
