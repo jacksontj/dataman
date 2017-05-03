@@ -5,7 +5,8 @@ import storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metada
 
 func NewCollection(name string) *Collection {
 	return &Collection{
-		Name: name,
+		Name:    name,
+		Indexes: make(map[string]*storagenodemetadata.CollectionIndex),
 	}
 }
 

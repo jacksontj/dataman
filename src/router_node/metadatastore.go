@@ -271,6 +271,62 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				collection.Partitions[i].ShardFunc = collection.Partitions[i].ShardConfig.Shard.Get()
 			}
 
+			// Load fields
+			collectionFieldResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_field",
+				"filter": map[string]interface{}{
+					"collection_id": collectionRecord["_id"],
+				},
+			})
+			if collectionFieldResult.Error != "" {
+				logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+			}
+
+			collection.Fields = make([]*storagenodemetadata.Field, len(collectionFieldResult.Return))
+			for i, collectionFieldRecord := range collectionFieldResult.Return {
+				field := &storagenodemetadata.Field{
+					ID:   collectionFieldRecord["_id"].(int64),
+					Name: collectionFieldRecord["name"].(string),
+					Type: storagenodemetadata.FieldType(collectionFieldRecord["field_type"].(string)),
+				}
+				if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
+					field.TypeArgs = fieldTypeArgs.(map[string]interface{})
+				}
+				if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
+					field.NotNull = true
+				}
+				collection.Fields[i] = field
+			}
+
+			// Now load all the indexes for the collection
+			collectionIndexResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_index",
+				"filter": map[string]interface{}{
+					"collection_id": collectionRecord["_id"],
+				},
+			})
+			if collectionIndexResult.Error != "" {
+				logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+			}
+
+			for _, collectionIndexRecord := range collectionIndexResult.Return {
+				var indexFields []string
+				json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
+				index := &storagenodemetadata.CollectionIndex{
+					ID:     collectionIndexRecord["_id"].(int64),
+					Name:   collectionIndexRecord["name"].(string),
+					Fields: indexFields,
+				}
+				if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
+					index.Unique = unique.(bool)
+				}
+				collection.Indexes[index.Name] = index
+			}
+
 			// Lastly add this collection to the database
 			database.Collections[collection.Name] = collection
 		}
@@ -506,14 +562,13 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 		databaseVShardInstanceRecord := databaseVShardInstanceResult.Return[0]
 		vshardInstance.ID = databaseVShardInstanceRecord["_id"].(int64)
 		// map these to datastore_shard using the database_vshard_instance_datastore_shard table
-		for datastoreID, datastoreShard := range vshardInstance.DatastoreShard {
+		for _, datastoreShard := range vshardInstance.DatastoreShard {
 			databaseVshardInstanceDatastoreShardResult := m.Store.Insert(map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "database_vshard_instance_datastore_shard",
 				"record": map[string]interface{}{
 					"database_vshard_instance_id": databaseVShardInstanceRecord["_id"],
-					"datastore_id":                datastoreID,
 					"datastore_shard_id":          datastoreShard.ID,
 				},
 			})
@@ -606,28 +661,26 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			}
 		}
 
-		// TODO
 		// Insert indexes
-		/*
-				    for _, index := range collection.Indexes {
-			        	indexResult := m.Store.Insert(map[string]interface{}{
-					        "db":             "dataman_router",
-					        "shard_instance": "public",
-					        "collection":     "collection_index",
-					        "record":         map[string]interface{}{
-					            "name": index.Name,
-					            "collection_id": collectionRecord["_id"],
-					            "data_json": index.Type,
-					            "unique": index.Unique,
-					        },
-				        })
+		for _, index := range collection.Indexes {
+			bytes, _ := json.Marshal(index.Fields)
+			indexResult := m.Store.Insert(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_index",
+				"record": map[string]interface{}{
+					"name":          index.Name,
+					"collection_id": collectionRecord["_id"],
+					"data_json":     string(bytes),
+					"unique":        index.Unique,
+				},
+			})
 
-				        // TODO: better error handle
-				        if indexResult.Error != "" {
-					        return fmt.Errorf(indexResult.Error)
-				        }
-				    }
-		*/
+			// TODO: better error handle
+			if indexResult.Error != "" {
+				return fmt.Errorf(indexResult.Error)
+			}
+		}
 
 	}
 

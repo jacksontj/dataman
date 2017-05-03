@@ -18,7 +18,7 @@ func NewMeta() *Meta {
 type Meta struct {
 	Nodes              map[int64]*StorageNode        `json:"storage_node"`
 	DatasourceInstance map[int64]*DatasourceInstance `json:"-"`
-	Datastore          map[int64]*Datastore          `json:"datastore"`
+	Datastore          map[int64]*Datastore          `json:"datastores"`
 
 	// TODO: remove? or make private?
 	DatastoreShards map[int64]*DatastoreShard `json:"-"`
@@ -26,7 +26,7 @@ type Meta struct {
 	// TODO
 	//Schema map[int64]*Schema `json:"schema"`
 
-	Databases map[string]*Database `json:"database"`
+	Databases map[string]*Database `json:"databases"`
 }
 
 // TODO: more than just names?
