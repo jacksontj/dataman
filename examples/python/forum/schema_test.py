@@ -2,7 +2,7 @@ import argparse
 import json
 import requests
 
-DBNAME = 'example_forum_shard_API'
+from schema import DBNAME
 
 def drop_db(urlbase):
     ret = requests.delete(urlbase+"/v1/database/"+DBNAME)
@@ -10,10 +10,12 @@ def drop_db(urlbase):
     print ret.content
 
 def create_db(urlbase):
+    schema_json = json.load(open('example_forum_sharded.json'))
+    schema_json['name'] = DBNAME
 
     ret = requests.post(
         urlbase+"/v1/database",
-        json=json.load(open('example_forum_sharded.json')),
+        json=schema_json,
     )
     print 'add database (', ret.request.method, ret.request.url, ')'
     print ret
