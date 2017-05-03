@@ -220,9 +220,12 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	// Query all of the vshards
 	vshardResults := make([]*query.Result, len(vshards))
 
+	logrus.Debugf("Query %s %v", queryType, queryArgs)
+
 	for i, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		logrus.Debugf("\tGoing to %v", datasourceInstance)
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
