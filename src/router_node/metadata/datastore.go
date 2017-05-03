@@ -61,6 +61,8 @@ type DatastoreShard struct {
 	Instance int64  `json:"shard_instance"`
 
 	Replicas *DatastoreShardReplicaSet `json:"replicas"`
+
+	DatastoreID int64 `json:"datastore_id"`
 }
 
 func NewDatastoreShardReplicaSet() *DatastoreShardReplicaSet {

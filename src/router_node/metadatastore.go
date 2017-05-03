@@ -209,7 +209,8 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			}
 
 			for _, datastoreShardRecord := range datastoreShardResult.Return {
-				vshardInstance.DatastoreShard[datastoreShardRecord["datastore_id"].(int64)] = meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
+				datastoreShard := meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
+				vshardInstance.DatastoreShard[datastoreShard.DatastoreID] = meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
 			}
 
 			database.VShard.Instances = append(database.VShard.Instances, vshardInstance)
@@ -366,10 +367,11 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 
 	for _, datastoreShardRecord := range datastoreShardResult.Return {
 		datastoreShard := &metadata.DatastoreShard{
-			ID:       datastoreShardRecord["_id"].(int64),
-			Name:     datastoreShardRecord["name"].(string),
-			Instance: datastoreShardRecord["shard_instance"].(int64),
-			Replicas: metadata.NewDatastoreShardReplicaSet(),
+			ID:          datastoreShardRecord["_id"].(int64),
+			Name:        datastoreShardRecord["name"].(string),
+			Instance:    datastoreShardRecord["shard_instance"].(int64),
+			Replicas:    metadata.NewDatastoreShardReplicaSet(),
+			DatastoreID: datastoreShardRecord["datastore_id"].(int64),
 		}
 
 		// load all of the replicas
