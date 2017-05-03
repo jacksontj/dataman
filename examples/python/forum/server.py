@@ -43,6 +43,27 @@ class DatamanClient(object):
         self.base_url = base_url
 
     @tornado.gen.coroutine
+    def get(self, db, collection, _id):
+
+        ret = yield self._client.fetch(
+            self.base_url+'/v1/data/raw',
+            method='POST',
+            body=json.dumps([
+            {'get': {
+                'db': db,
+                'collection': collection,
+                '_id': _id,
+            }}])
+        )
+        logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
+        response = json.loads(ret.body)[0]
+        if 'error' in response:
+            raise Exception(response['error'])
+        # TODO: handle errors?
+        items = []
+        raise tornado.gen.Return(response['return'])
+
+    @tornado.gen.coroutine
     def filter(self, db, collection, record=None):
         if record is None:
             record = {}
@@ -160,7 +181,7 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.filter(schema.DBNAME, 'thread', {'_id': int(thread_id)})
+        threads = yield dataman.get(schema.DBNAME, 'thread', int(thread_id))
         if not threads:
             self.redirect("/")
         else:
