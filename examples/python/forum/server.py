@@ -106,7 +106,7 @@ class DatamanClient(object):
         # TODO: handle errors?
         raise tornado.gen.Return(response)
 
-define("dataman_uri", default='http://localhost:8081', help="what dataman to talk to", type=str)
+define("dataman_uri", default='http://localhost:8080', help="what dataman to talk to", type=str)
 dataman = None
 
 
