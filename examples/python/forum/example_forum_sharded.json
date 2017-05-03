@@ -121,8 +121,8 @@
 				"_id": 2,
 				"start_id": 1,
 				"shard_config": {
-					"shard_key": "_id",
-					"hash_method": "cast",
+					"shard_key": "username",
+					"hash_method": "sha256",
 					"shard_method": "mod"
 				}
 			}]
