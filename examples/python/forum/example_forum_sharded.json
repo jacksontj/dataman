@@ -1,12 +1,5 @@
 {
 	"name": "TOOVERRIDEINCODE",
-	"datastores": [{
-		"_id": 2,
-		"read": true,
-		"write": true,
-		"required": true,
-		"name": "datastore_example"
-	}],
 	"collections": {
 		"message": {
 			"name": "message",
@@ -128,6 +121,14 @@
 			}]
 		}
 	},
+
+	"datastores": [{
+		"_id": 2,
+		"read": true,
+		"write": true,
+		"required": true,
+		"name": "datastore_example"
+	}],
 	"database_vshard": {
 		"_id": 1,
 		"shard_count": 2,
@@ -136,21 +137,7 @@
 				"instance": 1,
 				"datastore_shard": {
 					"2": {
-						"_id": 2,
-						"name": "test-shard1",
-						"shard_instance": 1,
-						"replicas": {
-							"masters": [{
-								"_id": 3,
-								"datasource_instance": {
-									"_id": 1,
-									"name": "postgres1",
-									"storage_node_id": 1
-								},
-								"master": true
-							}],
-							"slaves": []
-						}
+						"_id": 2
 					}
 				}
 			},
@@ -159,21 +146,7 @@
 				"instance": 2,
 				"datastore_shard": {
 					"2": {
-						"_id": 3,
-						"name": "test-shard2",
-						"shard_instance": 2,
-						"replicas": {
-							"masters": [{
-								"_id": 5,
-								"datasource_instance": {
-									"_id": 2,
-									"name": "postgres2",
-									"storage_node_id": 2
-								},
-								"master": true
-							}],
-							"slaves": []
-						}
+						"_id": 3
 					}
 				}
 			}
