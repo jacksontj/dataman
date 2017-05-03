@@ -538,9 +538,13 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 			if datastoreShard.ID == 0 {
 				return fmt.Errorf("Unknown datastore_shard_id (missing ID): %v", datastoreShard)
 			}
-			if _, ok := meta.DatastoreShards[datastoreShard.ID]; !ok {
+			var ok bool
+			datastoreShard, ok = meta.DatastoreShards[datastoreShard.ID]
+			if !ok {
 				return fmt.Errorf("Unknown datastore_shard_id (ID %d not found): %v", datastoreShard.ID, datastoreShard)
 			}
+			// If the datastore shard they requested is present, lets fill it in
+			vshard.DatastoreShard[datastoreID] = datastoreShard
 
 			// TODO: for all? or not at all?
 			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
