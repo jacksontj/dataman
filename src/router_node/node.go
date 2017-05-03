@@ -24,8 +24,8 @@ type RouterNode struct {
 	meta atomic.Value
 
 	// background sync stuff
-	stop chan struct{}
-	Sync chan struct{}
+	stop     chan struct{}
+	syncChan chan chan error
 }
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
@@ -40,16 +40,24 @@ func NewRouterNode(config *Config) (*RouterNode, error) {
 	node := &RouterNode{
 		Config:    config,
 		MetaStore: metaStore,
+		syncChan:  make(chan chan error),
 	}
 
-	// TODO: check that it worked?
-	// Before returning we should get the metadata from the metadata store
-	node.FetchMeta()
+	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
 	go node.background()
 
-	// TODO: background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
+	// Before returning we should get the metadata from the metadata store
+	if err := node.Sync(); err != nil {
+		return nil, err
+	}
 
 	return node, nil
+}
+
+func (s *RouterNode) Sync() error {
+	errChan := make(chan error, 1)
+	s.syncChan <- errChan
+	return <-errChan
 }
 
 // TODO: have a stop?
@@ -74,8 +82,9 @@ func (s *RouterNode) background() {
 		select {
 		case <-ticker.C: // time based trigger, in case of error etc.
 			s.FetchMeta()
-		case <-s.Sync: // event based trigger, so we can get stuff to disk ASAP
-			s.FetchMeta()
+		case retChan := <-s.syncChan: // event based trigger, so we can get stuff to disk ASAP
+			err := s.FetchMeta()
+			retChan <- err
 			// since we where just triggered, lets reset the interval
 			ticker = time.NewTicker(interval)
 		}
@@ -255,9 +264,6 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	if !ok {
 		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
 	}
-
-	// TODO: get collection? Later we'll want to do shard keys which aren't "_id"
-	// and to do that we'll need the collection metadata
 
 	// Once we have the metadata all found we need to do the following:
 	//      - Authentication/authorization
