@@ -554,5 +554,11 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 		}
 	}
 
+	// TODO: remove
+	// Now we enforce our silly development restrictions
+	if len(db.Datastores) > 1 {
+		return fmt.Errorf("Only support a max of 1 datastore during this stage of development")
+	}
+
 	return s.MetaStore.AddDatabase(db)
 }
