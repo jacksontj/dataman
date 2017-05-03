@@ -111,7 +111,6 @@
 				}
 			},
 			"partitions": [{
-				"_id": 2,
 				"start_id": 1,
 				"shard_config": {
 					"shard_key": "username",
@@ -126,14 +125,11 @@
 		"_id": 2,
 		"read": true,
 		"write": true,
-		"required": true,
-		"name": "datastore_example"
+		"required": true
 	}],
 	"database_vshard": {
-		"_id": 1,
-		"shard_count": 2,
+		"shard_count": 10,
 		"instances": [{
-				"_id": 1,
 				"instance": 1,
 				"datastore_shard": {
 					"2": {
@@ -142,8 +138,71 @@
 				}
 			},
 			{
-				"_id": 2,
 				"instance": 2,
+				"datastore_shard": {
+					"2": {
+						"_id": 3
+					}
+				}
+			},
+            {
+				"instance": 3,
+				"datastore_shard": {
+					"2": {
+						"_id": 2
+					}
+				}
+			},
+			{
+				"instance": 4,
+				"datastore_shard": {
+					"2": {
+						"_id": 3
+					}
+				}
+			},
+            {
+				"instance": 5,
+				"datastore_shard": {
+					"2": {
+						"_id": 2
+					}
+				}
+			},
+			{
+				"instance": 6,
+				"datastore_shard": {
+					"2": {
+						"_id": 3
+					}
+				}
+			},
+            {
+				"instance": 7,
+				"datastore_shard": {
+					"2": {
+						"_id": 2
+					}
+				}
+			},
+			{
+				"instance": 8,
+				"datastore_shard": {
+					"2": {
+						"_id": 3
+					}
+				}
+			},
+            {
+				"instance": 9,
+				"datastore_shard": {
+					"2": {
+						"_id": 2
+					}
+				}
+			},
+			{
+				"instance": 10,
 				"datastore_shard": {
 					"2": {
 						"_id": 3
@@ -151,6 +210,5 @@
 				}
 			}
 		]
-
 	}
 }
