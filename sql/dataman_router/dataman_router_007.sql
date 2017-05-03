@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-03 08:20:43
+Date: 2017-05-03 08:23:48
 */
 
 
@@ -275,9 +275,9 @@ CREATE TABLE "public"."collection_field" (
 "collection_id" int4,
 "field_type" varchar(255) COLLATE "default",
 "field_type_args" jsonb,
-"schema_id" int4,
 "not_null" bool,
-"parent_collection_field_id" int4
+"parent_collection_field_id" int4,
+"schema_id" int4
 )
 WITH (OIDS=FALSE)
 
@@ -754,8 +754,8 @@ ALTER TABLE "public"."collection" ADD FOREIGN KEY ("database_id") REFERENCES "pu
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field"
 -- ----------------------------
-ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("parent_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
@@ -776,8 +776,8 @@ ALTER TABLE "public"."collection_vshard_instance" ADD FOREIGN KEY ("collection_v
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_vshard_instance_datastore_shard"
 -- ----------------------------
-ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD FOREIGN KEY ("collection_vshard_instance_id") REFERENCES "public"."collection_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD FOREIGN KEY ("datastore_shard_id") REFERENCES "public"."datastore_shard" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD FOREIGN KEY ("collection_vshard_instance_id") REFERENCES "public"."collection_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_datastore"
@@ -809,15 +809,15 @@ ALTER TABLE "public"."datasource" ADD FOREIGN KEY ("config_json_schema_id") REFE
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance"
 -- ----------------------------
-ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REFERENCES "public"."datasource" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REFERENCES "public"."datasource" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance_shard_instance"
 -- ----------------------------
 ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("database_vshard_instance_id") REFERENCES "public"."database_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("collection_vshard_instance_id") REFERENCES "public"."collection_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("datasource_instance_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("collection_vshard_instance_id") REFERENCES "public"."collection_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datastore_shard"
