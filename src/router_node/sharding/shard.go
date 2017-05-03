@@ -22,7 +22,7 @@ func (s ShardMethod) Get() ShardFunc {
 		return func(hash uint64, numShards int) int {
 			shardNum := int(hash % uint64(numShards))
 			if shardNum == 0 {
-				return numShards - 1
+				return numShards
 			} else {
 				return shardNum
 			}
