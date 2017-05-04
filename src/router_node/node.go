@@ -560,5 +560,36 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 		return fmt.Errorf("Only support a max of 1 datastore during this stage of development")
 	}
 
+	// If the user didn't define instances, lets do it for them
+	if db.VShard.Instances == nil {
+		// We need a counter (to balance) for each datastore
+		shardMapState := make(map[int64]int64)
+
+		db.VShard.Instances = make([]*metadata.DatabaseVShardInstance, db.VShard.ShardCount)
+
+		// Now we create each instance
+		for i := int64(0); i < db.VShard.ShardCount; i++ {
+			// map of shards for this particular instance
+			shardMap := make(map[int64]*metadata.DatastoreShard)
+			// For each datastore we round-robin between the datastore_shards. This
+			// gives us the most even distribution of vshards across datastore_shards
+			for _, requestedDatastore := range db.Datastores {
+				datastore := meta.Datastore[requestedDatastore.ID]
+				currCount, ok := shardMapState[datastore.ID]
+				if !ok {
+					currCount = 1
+					shardMapState[datastore.ID] = currCount
+				}
+
+				shardMap[datastore.ID] = datastore.Shards[currCount%int64(len(datastore.Shards))]
+				shardMapState[datastore.ID] = currCount + 1
+			}
+			db.VShard.Instances[i] = &metadata.DatabaseVShardInstance{
+				ShardInstance:  int64(i + 1),
+				DatastoreShard: shardMap,
+			}
+		}
+	}
+
 	return s.MetaStore.AddDatabase(db)
 }

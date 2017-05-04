@@ -30,7 +30,7 @@ func NewDatabaseVShard() *DatabaseVShard {
 }
 
 type DatabaseVShard struct {
-	ID         int64 `json:"_id"`
+	ID         int64 `json:"_id,omitempty"`
 	ShardCount int64 `json:"shard_count"`
 
 	// TODO: make a map so insert order isn't an issue? (I imagine slice is more performant?)
@@ -38,7 +38,7 @@ type DatabaseVShard struct {
 }
 
 type DatabaseVShardInstance struct {
-	ID            int64 `json:"_id"`
+	ID            int64 `json:"_id,omitempty"`
 	ShardInstance int64 `json:"instance"`
 
 	// Map of datastore_id -> datastore_shard
