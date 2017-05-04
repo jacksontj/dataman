@@ -358,19 +358,23 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 	for _, databaseDatastoreRecord := range databaseDatastoreResult.Return {
 		datastore := m.getDatastoreById(meta, databaseDatastoreRecord["datastore_id"].(int64))
 
-		// Set attributes associated with the linking table
-		datastore.Read = databaseDatastoreRecord["read"].(bool)
-		datastore.Write = databaseDatastoreRecord["write"].(bool)
-		datastore.Required = databaseDatastoreRecord["required"].(bool)
-
-		// Add to the set
-		if datastore.Read {
-			set.Read = append(set.Read, datastore)
+		databaseDatastore := &metadata.DatabaseDatastore{
+			Read:      databaseDatastoreRecord["read"].(bool),
+			Write:     databaseDatastoreRecord["write"].(bool),
+			Required:  databaseDatastoreRecord["required"].(bool),
+			Datastore: datastore,
 		}
 
-		if datastore.Write {
+		// Set attributes associated with the linking table
+
+		// Add to the set
+		if databaseDatastore.Read {
+			set.Read = append(set.Read, databaseDatastore)
+		}
+
+		if databaseDatastore.Write {
 			if set.Write == nil {
-				set.Write = datastore
+				set.Write = databaseDatastore
 			} else {
 				logrus.Fatalf("Can only have one write datastore per database")
 			}
@@ -584,17 +588,17 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	}
 
 	// Add database_datastore entries
-	for _, datastore := range db.Datastores {
+	for _, databaseDatastore := range db.Datastores {
 		databaseDatastoreResult := m.Store.Insert(map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "database_datastore",
 			"record": map[string]interface{}{
 				"database_id":  databaseRecord["_id"],
-				"datastore_id": datastore.ID,
-				"read":         datastore.Read,
-				"write":        datastore.Write,
-				"required":     datastore.Required,
+				"datastore_id": databaseDatastore.Datastore.ID,
+				"read":         databaseDatastore.Read,
+				"write":        databaseDatastore.Write,
+				"required":     databaseDatastore.Required,
 			},
 		})
 

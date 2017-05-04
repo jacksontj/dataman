@@ -4,31 +4,43 @@ import "sync/atomic"
 
 func NewDatastoreSet() *DatastoreSet {
 	return &DatastoreSet{
-		Read: make([]*Datastore, 0),
+		Read: make([]*DatabaseDatastore, 0),
 	}
 }
 
 // A set of datastores associated with a specific database
 type DatastoreSet struct {
-	Read  []*Datastore `json:"read"`
-	Write *Datastore   `json:"write"`
+	Read  []*DatabaseDatastore `json:"read"`
+	Write *DatabaseDatastore   `json:"write"`
 }
 
-func (d *DatastoreSet) ToSlice() []*Datastore {
+func (d *DatastoreSet) ToSlice() []*DatabaseDatastore {
 	ids := make(map[int64]struct{})
 
-	datastores := make([]*Datastore, 0, len(d.Read))
+	datastores := make([]*DatabaseDatastore, 0, len(d.Read))
 	datastores = append(datastores, d.Write)
-	ids[d.Write.ID] = struct{}{}
+	ids[d.Write.Datastore.ID] = struct{}{}
 
 	for _, readStore := range d.Read {
-		if _, ok := ids[readStore.ID]; !ok {
+		if _, ok := ids[readStore.Datastore.ID]; !ok {
 			datastores = append(datastores, readStore)
-			ids[readStore.ID] = struct{}{}
+			ids[readStore.Datastore.ID] = struct{}{}
 		}
 	}
 
 	return datastores
+}
+
+// We need to have linking from database -> datastore, and some of the metadata
+// is associated to just that link
+type DatabaseDatastore struct {
+	// TODO: elsewhere? This data is pulled in from a linking table-- but is associated
+	Read  bool `json:"read"`
+	Write bool `json:"write"`
+	// TODO: use once we support more than one datastore per database
+	Required bool `json:"required"`
+
+	Datastore *Datastore `json:"datastore"`
 }
 
 func NewDatastore(name string) *Datastore {
@@ -40,11 +52,6 @@ func NewDatastore(name string) *Datastore {
 
 type Datastore struct {
 	ID int64 `json:"_id"`
-
-	// TODO: elsewhere? This data is pulled in from a linking table-- but is associated
-	Read     bool `json:"read"`
-	Write    bool `json:"write"`
-	Required bool `json:"required"`
 
 	Name string `json:"name"`
 

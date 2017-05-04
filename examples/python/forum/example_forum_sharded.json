@@ -122,10 +122,12 @@
 	},
 
 	"datastores": [{
-		"_id": 2,
 		"read": true,
 		"write": true,
-		"required": true
+		"required": true,
+		"datastore": {
+		  "_id": 2
+		}
 	}],
 	"database_vshard": {
 		"shard_count": 10

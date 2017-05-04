@@ -180,7 +180,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	//			-- TODO: we could combine the requests into a muxed one
 
 	// TODO: support multiple datastores
-	datastore := database.DatastoreSet.Read[0]
+	databaseDatastore := database.DatastoreSet.Read[0]
 	// TODO: support multiple partitions
 	partition := collection.Partitions[0]
 
@@ -233,7 +233,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	for i, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 		logrus.Debugf("\tGoing to %v", datasourceInstance)
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -282,7 +282,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	//		- send requests (involves mapping vshard -> shard)
 	//			-- TODO: we could combine the requests into a muxed one
 
-	datastore := database.DatastoreSet.Write
+	databaseDatastore := database.DatastoreSet.Write
 	// TODO: support multiple partitions
 	partition := collection.Partitions[0]
 
@@ -308,7 +308,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 			// TODO: generate or store/read the name!
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -349,7 +349,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -393,7 +393,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 		// TODO: replicas -- add args for slave etc.
 		vshard := database.VShard.Instances[vshardNum-1]
-		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
@@ -425,7 +425,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: replicas -- add args for slave etc.
 			vshard := database.VShard.Instances[vshardNum-1]
-			datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -446,7 +446,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: parallel
 			for i, vshard := range database.VShard.Instances {
-				datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+				datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 				if !ok {
@@ -487,7 +487,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		vshard := database.VShard.Instances[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
@@ -520,12 +520,12 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 	// Validate the data (make sure we don't have conflicts w/e)
 
 	// Verify that referenced datastores exist
-	for _, datastore := range db.Datastores {
-		if datastore.ID == 0 {
-			return fmt.Errorf("Unknown datastore (missing ID): %v", datastore)
+	for _, databaseDatastore := range db.Datastores {
+		if databaseDatastore.Datastore.ID == 0 {
+			return fmt.Errorf("Unknown datastore (missing ID): %v", databaseDatastore)
 		}
-		if _, ok := meta.Datastore[datastore.ID]; !ok {
-			return fmt.Errorf("Unknown datastore (ID %d not found): %v", datastore.ID, datastore)
+		if _, ok := meta.Datastore[databaseDatastore.Datastore.ID]; !ok {
+			return fmt.Errorf("Unknown datastore (ID %d not found): %v", databaseDatastore.Datastore.ID, databaseDatastore)
 		}
 	}
 
@@ -573,8 +573,8 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 			shardMap := make(map[int64]*metadata.DatastoreShard)
 			// For each datastore we round-robin between the datastore_shards. This
 			// gives us the most even distribution of vshards across datastore_shards
-			for _, requestedDatastore := range db.Datastores {
-				datastore := meta.Datastore[requestedDatastore.ID]
+			for _, databaseDatastore := range db.Datastores {
+				datastore := meta.Datastore[databaseDatastore.Datastore.ID]
 				currCount, ok := shardMapState[datastore.ID]
 				if !ok {
 					currCount = 1
