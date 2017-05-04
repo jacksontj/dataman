@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-04 13:26:58
+Date: 2017-05-04 13:32:07
 */
 
 
@@ -579,7 +579,6 @@ ALTER TABLE "public"."collection_field" ADD PRIMARY KEY ("_id");
 -- ----------------------------
 -- Indexes structure for table collection_index
 -- ----------------------------
-CREATE UNIQUE INDEX "index_collection_index_pkey" ON "public"."collection_index" USING btree ("_id");
 CREATE UNIQUE INDEX "index_collection_index_name" ON "public"."collection_index" USING btree ("name", "collection_id");
 
 -- ----------------------------
@@ -638,6 +637,7 @@ ALTER TABLE "public"."database" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table database_datastore
 -- ----------------------------
 CREATE INDEX "database_id_idx" ON "public"."database_datastore" USING btree ("database_id");
+CREATE UNIQUE INDEX "database_datastore_database_id_datastore_id_idx" ON "public"."database_datastore" USING btree ("database_id", "datastore_id");
 
 -- ----------------------------
 -- Primary Key structure for table database_datastore
@@ -675,6 +675,11 @@ CREATE UNIQUE INDEX "database_vshard_instance_datast_database_vshard_instance_id
 ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
+-- Indexes structure for table datasource
+-- ----------------------------
+CREATE UNIQUE INDEX "datasource_name_idx" ON "public"."datasource" USING btree ("name");
+
+-- ----------------------------
 -- Primary Key structure for table datasource
 -- ----------------------------
 ALTER TABLE "public"."datasource" ADD PRIMARY KEY ("_id");
@@ -699,6 +704,11 @@ CREATE UNIQUE INDEX "datasource_instance_shard_insta_datasource_instance_id_name
 -- Primary Key structure for table datasource_instance_shard_instance
 -- ----------------------------
 ALTER TABLE "public"."datasource_instance_shard_instance" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Indexes structure for table datastore
+-- ----------------------------
+CREATE UNIQUE INDEX "datastore_name_idx" ON "public"."datastore" USING btree ("name");
 
 -- ----------------------------
 -- Primary Key structure for table datastore
@@ -736,6 +746,7 @@ ALTER TABLE "public"."schema" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table storage_node
 -- ----------------------------
 CREATE UNIQUE INDEX "storage_node_name_idx" ON "public"."storage_node" USING btree ("name");
+CREATE UNIQUE INDEX "storage_node_ip_port_idx" ON "public"."storage_node" USING btree ("ip", "port");
 
 -- ----------------------------
 -- Primary Key structure for table storage_node
