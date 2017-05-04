@@ -7,7 +7,7 @@ type FieldType string
 // TODO: re-work to have multiple mappings
 // The intention here is to have a mapping of client -> dataman -> datastore
 // this should be our listing of dataman FieldTypes, which have limits and validation methods
-// which we then leave up to the datastore to store.
+// which we then leave up to the datasource to store.
 const (
 	Document FieldType = "document"
 	String             = "string"
