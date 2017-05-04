@@ -143,7 +143,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 				for _, collectionIndexRecord := range collectionIndexResult.Return {
 					var indexFields []string
-					json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
+					json.Unmarshal([]byte(collectionIndexRecord["data_json"].(string)), &indexFields)
 					index := &metadata.CollectionIndex{
 						ID:     collectionIndexRecord["_id"].(int64),
 						Name:   collectionIndexRecord["name"].(string),
@@ -333,6 +333,7 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 	}
 
 	collectionRecord := collectionResult.Return[0]
+	collection.ID = collectionRecord["_id"].(int64)
 
 	// Add all the fields in the collection
 	for _, field := range collection.Fields {
@@ -424,25 +425,23 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 			currentIndexNames[currentIndex["name"].(string)] = currentIndex
 		}
 
-		/*
-			// compare old and new-- make them what they need to be
-			// What should be removed?
-			for name, _ := range currentIndexNames {
-				if _, ok := collection.Indexes[name]; !ok {
-					if err := m.RemoveIndex(dbName, collection.Name, name); err != nil {
-						return err
-					}
+		// compare old and new-- make them what they need to be
+		// What should be removed?
+		for name, _ := range currentIndexNames {
+			if _, ok := collection.Indexes[name]; !ok {
+				if err := m.RemoveIndex(db.Name, shardInstance.Name, collection.Name, name); err != nil {
+					return err
 				}
 			}
-			// What should be added
-			for name, index := range collection.Indexes {
-				if _, ok := currentIndexNames[name]; !ok {
-					if err := m.AddIndex(dbName, collection.Name, index); err != nil {
-						return err
-					}
+		}
+		// What should be added
+		for name, index := range collection.Indexes {
+			if _, ok := currentIndexNames[name]; !ok {
+				if err := m.AddIndex(db, shardInstance, collection, index); err != nil {
+					return err
 				}
 			}
-		*/
+		}
 	}
 
 	return nil
@@ -617,39 +616,7 @@ func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname s
 
 // TODO: Implement
 // Index changes
-func (m *MetadataStore) TODOAddIndex(dbname, collectionname string, index *metadata.CollectionIndex) error {
-	// Get the database record
-	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
-		"filter": map[string]interface{}{
-			"name": dbname,
-		},
-	})
-	// TODO: better error handle
-	if databaseResult.Error != "" {
-		logrus.Fatalf("Error getting databaseResult: %v", databaseResult.Error)
-	}
-
-	databaseRecord := databaseResult.Return[0]
-
-	// get the collection
-	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection",
-		"filter": map[string]interface{}{
-			"name":        collectionname,
-			"database_id": databaseRecord["_id"],
-		},
-	})
-	if collectionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
-	}
-
-	collectionRecord := collectionResult.Return[0]
-
+func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	bytes, _ := json.Marshal(index.Fields)
 
 	collectionIndexResult := m.Store.Insert(map[string]interface{}{
@@ -658,7 +625,7 @@ func (m *MetadataStore) TODOAddIndex(dbname, collectionname string, index *metad
 		"collection":     "collection_index",
 		"record": map[string]interface{}{
 			"name":          index.Name,
-			"collection_id": collectionRecord["_id"],
+			"collection_id": collection.ID,
 			"data_json":     string(bytes),
 			"unique":        index.Unique,
 		},
@@ -671,54 +638,15 @@ func (m *MetadataStore) TODOAddIndex(dbname, collectionname string, index *metad
 }
 
 // TODO: Implement
-func (m *MetadataStore) TODORemoveIndex(dbname, collectionname, indexname string) error {
-	// Get the database record
-	databaseResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
-	})
-	// TODO: better error handle
-	if databaseResult.Error != "" {
-		logrus.Fatalf("Error getting databaseResult: %v", databaseResult.Error)
-	}
-
-	databaseRecord := databaseResult.Return[0]
-
-	// get the collection
-	collectionResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection",
-		"filter": map[string]interface{}{
-			"name":        collectionname,
-			"database_id": databaseRecord["_id"],
-		},
-	})
-	if collectionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
-	}
-
-	collectionRecord := collectionResult.Return[0]
-
-	collectionIndexResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_index",
-		"filter": map[string]interface{}{
-			"name":          indexname,
-			"collection_id": collectionRecord["_id"],
-		},
-	})
-	if collectionIndexResult.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
-	}
+func (m *MetadataStore) RemoveIndex(dbname, shardinstance, collectionname, indexname string) error {
+	meta := metadata.NewMeta()
+	collectionIndex := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname].Indexes[indexname]
 
 	collectionIndexDelete := m.Store.Delete(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection_index",
-		"_id":            collectionIndexResult.Return[0]["_id"],
+		"_id":            collectionIndex.ID,
 	})
 	if collectionIndexDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)

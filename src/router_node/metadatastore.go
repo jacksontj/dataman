@@ -315,7 +315,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			for _, collectionIndexRecord := range collectionIndexResult.Return {
 				var indexFields []string
-				json.Unmarshal(collectionIndexRecord["data_json"].([]byte), &indexFields)
+				json.Unmarshal([]byte(collectionIndexRecord["data_json"].(string)), &indexFields)
 				index := &storagenodemetadata.CollectionIndex{
 					ID:     collectionIndexRecord["_id"].(int64),
 					Name:   collectionIndexRecord["name"].(string),
