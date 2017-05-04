@@ -484,7 +484,7 @@ FROM pg_index AS idx
 WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
 `
 
-func (s *Storage) GetIndex(dbname, shardinstance, indexname string) *metadata.CollectionIndex {
+func (s *Storage) GetIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
 	indexEntries, err := DoQuery(s.db, listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
@@ -493,7 +493,8 @@ func (s *Storage) GetIndex(dbname, shardinstance, indexname string) *metadata.Co
 	for _, indexEntry := range indexEntries {
 		schemaName := string(indexEntry["schema_name"].([]byte))
 		pgIndexName := string(indexEntry["index_name"].([]byte))
-		if schemaName == shardinstance && pgIndexName == indexname {
+		tableName := string(indexEntry["table_name"].([]byte))
+		if schemaName == shardinstance && pgIndexName == indexname && tableName == collectionname {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			return &metadata.CollectionIndex{

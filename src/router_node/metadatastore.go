@@ -509,6 +509,9 @@ func (m *MetadataStore) RemoveStorageNode(id int64) error {
 	return nil
 }
 
+// TODO: this method should add the entries in an "unprovisioned" state in
+// the metadata, and then a background task should come around and do the actual
+// provisioning on the datasource_instances
 func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	// Add database
 	databaseResult := m.Store.Insert(map[string]interface{}{
@@ -775,7 +778,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			return fmt.Errorf(string(body))
 		}
 
-		// Update entry to datasource_instance_shard_instance (saying it is ready)
+		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
 
 	}
 

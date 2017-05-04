@@ -27,7 +27,7 @@ type StorageSchemaInterface interface {
 	UpdateCollection(dbname, shardinstance string, collection *metadata.Collection) error
 	RemoveCollection(dbname, shardinstance, collectionname string) error
 
-	GetIndex(dbname, shardinstance, indexname string) *metadata.CollectionIndex
+	GetIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex
 	ListIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex
 	// TODO: pass the actual objects (not just names)
 	AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error
