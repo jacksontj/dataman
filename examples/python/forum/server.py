@@ -187,7 +187,8 @@ class ThreadHandler(BaseHandler):
         else:
             messages = yield dataman.filter(schema.DBNAME, 'message', {'data': {'thread_id': thread_id}})
             # TODO: sort by _created server-side
-            messages = sorted(messages, key=lambda k: k['_id'])
+            # TODO: switch from _created -> timebased UUID
+            messages = sorted(messages, key=lambda k: k['_created'])
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
