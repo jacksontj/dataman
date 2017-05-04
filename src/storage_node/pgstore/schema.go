@@ -540,6 +540,10 @@ func (s *Storage) ListIndex(dbname, shardInstance, collectionname string) []*met
 
 // Index changes
 func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+	if index.Fields == nil || len(index.Fields) == 0 {
+		return fmt.Errorf("Indexes must have fields defined")
+	}
+
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
@@ -547,7 +551,7 @@ func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Co
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".%s (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".\"%s\" (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
