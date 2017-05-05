@@ -3,131 +3,144 @@
 	"collections": {
 		"message": {
 			"name": "message",
-			"fields": [{
-				"name": "data",
-				"type": "document",
-				"subfields": {
-				    "content": {
-				        "name": "content",
-				        "type": "string",
-				        "type_args": {"size": 255},
-				        "not_null": true
-				    },
-				    "thread_id": {
-				        "name": "thread_id",
-				        "type": "int",
-				        "not_null": true
-				    },
-				    "created": {
-				        "name": "created",
-				        "type": "int",
-				        "not_null": true
-				    },
-				    "created_by": {
-				        "name": "created_by",
-				        "type": "string",
-				        "type_args": {"size": 255},
-				        "not_null": true
-				    }
-				}
-			}],
-			"indexes": {
-				"created": {
-					"name": "created",
-					"fields": ["data.created"]
+			"fields": {
+				"data": {
+					"subfields": {
+						"content": {
+							"not_null": true,
+							"type": "string",
+							"name": "content",
+							"type_args": {
+								"size": 255
+							}
+						},
+						"thread_id": {
+							"not_null": true,
+							"type": "int",
+							"name": "thread_id"
+						},
+						"created_by": {
+							"not_null": true,
+							"type": "string",
+							"name": "created_by",
+							"type_args": {
+								"size": 255
+							}
+						},
+						"created": {
+							"not_null": true,
+							"type": "int",
+							"name": "created"
+						}
+					},
+					"type": "document",
+					"name": "data"
 				}
 			},
 			"partitions": [{
-				"_id": 1,
-				"start_id": 1,
 				"shard_config": {
-					"shard_key": "_id",
 					"hash_method": "cast",
-					"shard_method": "mod"
-				}
-			}]
-		},
-		"thread": {
-			"name": "thread",
-			"fields": [{
-				"name": "data",
-				"type": "document",
-				"subfields": {
-				    "title": {
-                        "name": "title",
-                        "type": "string",
-                        "type_args": {"size": 255},
-                        "not_null": true
-				    },
-				    "created_by": {
-                        "name": "created_by",
-                        "type": "string",
-                        "type_args": {"size": 255},
-                        "not_null": true
-				    },
-				    "created": {
-                        "name": "created",
-                        "type": "int",
-                        "not_null": true
-				    }
-				}
-			}],
-			"indexes": {
-				"created": {
-					"name": "created",
-					"fields": ["data.created"]
+					"shard_method": "mod",
+					"shard_key": "_id"
 				},
-				"title": {
-					"name": "title",
-					"fields": ["data.title"],
-					"unique": true
+				"_id": 1,
+				"start_id": 1
+			}],
+			"indexes": {
+				"created": {
+					"fields": ["data.created"],
+					"name": "created"
 				}
-			},
-			"partitions": [{
-				"_id": 3,
-				"start_id": 1,
-				"shard_config": {
-					"shard_key": "_id",
-					"hash_method": "cast",
-					"shard_method": "mod"
-				}
-			}]
+			}
 		},
 		"user": {
 			"name": "user",
-			"fields": [{
-				"name": "username",
-				"type": "string",
-				"type_args": {
-					"size": 128
-				},
-				"not_null": true
-			}],
-			"indexes": {
+			"fields": {
 				"username": {
+					"not_null": true,
+					"type": "string",
 					"name": "username",
-					"fields": ["username"],
-					"unique": true
+					"type_args": {
+						"size": 128
+					}
 				}
 			},
 			"partitions": [{
-				"start_id": 1,
 				"shard_config": {
-					"shard_key": "username",
 					"hash_method": "sha256",
-					"shard_method": "mod"
+					"shard_method": "mod",
+					"shard_key": "username"
+				},
+				"start_id": 1
+			}],
+			"indexes": {
+				"username": {
+					"fields": ["username"],
+					"unique": true,
+					"name": "username"
 				}
-			}]
+			}
+		},
+		"thread": {
+			"name": "thread",
+			"fields": {
+				"data": {
+					"subfields": {
+						"created": {
+							"not_null": true,
+							"type": "int",
+							"name": "created"
+						},
+						"created_by": {
+							"not_null": true,
+							"type": "string",
+							"name": "created_by",
+							"type_args": {
+								"size": 255
+							}
+						},
+						"title": {
+							"not_null": true,
+							"type": "string",
+							"name": "title",
+							"type_args": {
+								"size": 255
+							}
+						}
+					},
+					"type": "document",
+					"name": "data"
+				}
+			},
+			"partitions": [{
+				"shard_config": {
+					"hash_method": "cast",
+					"shard_method": "mod",
+					"shard_key": "_id"
+				},
+				"_id": 3,
+				"start_id": 1
+			}],
+			"indexes": {
+				"title": {
+					"fields": ["data.title"],
+					"unique": true,
+					"name": "title"
+				},
+				"created": {
+					"fields": ["data.created"],
+					"name": "created"
+				}
+			}
 		}
 	},
-
-	"datastores": [{
+    "datastores": [{
 		"read": true,
 		"write": true,
-		"required": true,
 		"datastore": {
-		  "_id": 2
-		}
+			"_id": 2
+		},
+		"required": true
 	}],
 	"database_vshard": {
 		"shard_count": 10
