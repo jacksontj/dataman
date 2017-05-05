@@ -145,9 +145,9 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	fieldValues := make([]string, 0, len(recordData))
 
 	for fieldName, fieldValue := range recordData {
-		field, ok := collection.FieldMap[fieldName]
+		field, ok := collection.Fields[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.FieldMap)
+			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)
 			return result
 		}
 
@@ -203,7 +203,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	fieldValues := make([]string, 0, len(recordData))
 
 	for fieldName, fieldValue := range recordData {
-		field, ok := collection.FieldMap[fieldName]
+		field, ok := collection.Fields[fieldName]
 		if !ok {
 			result.Error = fmt.Sprintf("Fuekd %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
 			return result
@@ -246,7 +246,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
 			continue
 		}
-		field, ok := collection.FieldMap[filterName]
+		field, ok := collection.Fields[filterName]
 		if !ok {
 			result.Error = fmt.Sprintf("Field2 %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
 			return result
@@ -320,7 +320,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 				filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
 				continue
 			}
-			field, ok := collection.FieldMap[filterName]
+			field, ok := collection.Fields[filterName]
 			if !ok {
 				result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
 				return result
@@ -394,7 +394,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
 				continue
 			}
-			field, ok := collection.FieldMap[fieldName]
+			field, ok := collection.Fields[fieldName]
 			if !ok {
 				result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
 				return result
@@ -442,7 +442,7 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 	}
 	for _, row := range result.Return {
 		for k, v := range row {
-			if field, ok := collection.FieldMap[k]; ok && v != nil {
+			if field, ok := collection.Fields[k]; ok && v != nil {
 				switch field.Type {
 				case metadata.Document:
 					var tmp map[string]interface{}

@@ -110,8 +110,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				tmpFields := make(map[int64]*metadata.Field)
 
 				// TODO: remove
-				collection.Fields = make([]*metadata.Field, 0, len(collectionFieldResult.Return))
-				collection.FieldMap = make(map[string]*metadata.Field)
+				collection.Fields = make(map[string]*metadata.Field)
 
 				for _, collectionFieldRecord := range collectionFieldResult.Return {
 					field := &metadata.Field{
@@ -130,8 +129,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					if collectionFieldRecord["parent_collection_field_id"] != nil {
 						field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
 					} else {
-						collection.Fields = append(collection.Fields, field)
-						collection.FieldMap[field.Name] = field
+						collection.Fields[field.Name] = field
 					}
 					tmpFields[field.ID] = field
 				}

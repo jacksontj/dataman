@@ -216,7 +216,7 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, tableName, err)
 		}
 
-		collection.Fields = make([]*metadata.Field, 0, len(fields))
+		collection.Fields = make(map[string]*metadata.Field)
 		for _, fieldEntry := range fields {
 			// TODO: have "_" be a constant somewhere
 			if strings.HasPrefix(fieldEntry["column_name"].(string), "_") {
@@ -259,7 +259,7 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 			for _, index := range indexes {
 				collection.Indexes[index.Name] = index
 			}
-			collection.Fields = append(collection.Fields, field)
+			collection.Fields[field.Name] = field
 		}
 
 		collections = append(collections, collection)
@@ -289,14 +289,6 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 	// Make sure at least one field is defined
 	if collection.Fields == nil || len(collection.Fields) == 0 {
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
-	}
-
-	// TODO: this should be done elsewhere
-	if collection.FieldMap == nil {
-		collection.FieldMap = make(map[string]*metadata.Field)
-		for _, field := range collection.Fields {
-			collection.FieldMap[field.Name] = field
-		}
 	}
 
 	fieldQuery := ""
@@ -560,7 +552,7 @@ func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Co
 		fieldParts := strings.Split(fieldName, ".")
 		// If more than one, then it is a json doc field
 		if len(fieldParts) > 1 {
-			field, ok := collection.FieldMap[fieldParts[0]]
+			field, ok := collection.Fields[fieldParts[0]]
 			if !ok {
 				return fmt.Errorf("Index %s on unknown field %s", index.Name, fieldName)
 			}

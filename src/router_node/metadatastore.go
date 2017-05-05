@@ -231,6 +231,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 		for _, collectionRecord := range collectionResult.Return {
 			collection := metadata.NewCollection(collectionRecord["name"].(string))
+			collection.ID = collectionRecord["_id"].(int64)
 
 			// TODO: load the rest of the collection
 
@@ -284,8 +285,12 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
 			}
 
-			collection.Fields = make([]*storagenodemetadata.Field, len(collectionFieldResult.Return))
-			for i, collectionFieldRecord := range collectionFieldResult.Return {
+			// A temporary place to put all the fields as we find them, we
+			// need this so we can assemble subfields etc.
+			tmpFields := make(map[int64]*storagenodemetadata.Field)
+
+			collection.Fields = make(map[string]*storagenodemetadata.Field)
+			for _, collectionFieldRecord := range collectionFieldResult.Return {
 				field := &storagenodemetadata.Field{
 					ID:   collectionFieldRecord["_id"].(int64),
 					Name: collectionFieldRecord["name"].(string),
@@ -297,7 +302,24 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
 					field.NotNull = true
 				}
-				collection.Fields[i] = field
+
+				// If we have a parent, mark it down for now
+				if collectionFieldRecord["parent_collection_field_id"] != nil {
+					field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
+				} else {
+					collection.Fields[field.Name] = field
+				}
+				tmpFields[field.ID] = field
+			}
+
+			// Link all the children where they should go
+			for _, field := range tmpFields {
+				if field.ParentFieldID != 0 {
+					if tmpFields[field.ParentFieldID].SubFields == nil {
+						tmpFields[field.ParentFieldID].SubFields = make(map[string]*storagenodemetadata.Field)
+					}
+					tmpFields[field.ParentFieldID].SubFields[field.Name] = field
+				}
 			}
 
 			// Now load all the indexes for the collection
@@ -625,6 +647,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			return fmt.Errorf(collectionResult.Error)
 		}
 		collectionRecord := collectionResult.Return[0]
+		collection.ID = collectionRecord["_id"].(int64)
 
 		// Insert partition
 		collectionPartitionResult := m.Store.Insert(map[string]interface{}{
@@ -647,24 +670,8 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 
 		// Insert fields
 		for _, field := range collection.Fields {
-			fieldResult := m.Store.Insert(map[string]interface{}{
-				"db":             "dataman_router",
-				"shard_instance": "public",
-				"collection":     "collection_field",
-				"record": map[string]interface{}{
-					"name":            field.Name,
-					"collection_id":   collectionRecord["_id"],
-					"field_type":      field.Type,
-					"field_type_args": field.TypeArgs,
-					// TODO
-					//"schema_id": field.Schema.ID,
-					"not_null": field.NotNull,
-				},
-			})
-
-			// TODO: better error handle
-			if fieldResult.Error != "" {
-				return fmt.Errorf(fieldResult.Error)
+			if err := m.AddField(collection, field, nil); err != nil {
+				return err
 			}
 		}
 
@@ -787,4 +794,37 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	}
 
 	return nil
+}
+
+func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentField *storagenodemetadata.Field) error {
+	fieldRecord := map[string]interface{}{
+		"name":            field.Name,
+		"collection_id":   collection.ID,
+		"field_type":      field.Type,
+		"field_type_args": field.TypeArgs,
+	}
+	if parentField != nil {
+		fieldRecord["parent_collection_field_id"] = parentField.ID
+	}
+
+	collectionFieldResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "collection_field",
+		"record":         fieldRecord,
+	})
+	if collectionFieldResult.Error != "" {
+		return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+	}
+	field.ID = collectionFieldResult.Return[0]["_id"].(int64)
+
+	if field.SubFields != nil {
+		for _, subField := range field.SubFields {
+			if err := m.AddField(collection, subField, field); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+
 }

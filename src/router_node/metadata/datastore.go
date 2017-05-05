@@ -18,8 +18,10 @@ func (d *DatastoreSet) ToSlice() []*DatabaseDatastore {
 	ids := make(map[int64]struct{})
 
 	datastores := make([]*DatabaseDatastore, 0, len(d.Read))
-	datastores = append(datastores, d.Write)
-	ids[d.Write.Datastore.ID] = struct{}{}
+	if d.Write != nil {
+		datastores = append(datastores, d.Write)
+		ids[d.Write.Datastore.ID] = struct{}{}
+	}
 
 	for _, readStore := range d.Read {
 		if _, ok := ids[readStore.Datastore.ID]; !ok {

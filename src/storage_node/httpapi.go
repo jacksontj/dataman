@@ -124,6 +124,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 	var database metadata.Database
 	if err := json.Unmarshal(bytes, &database); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		if err := h.storageNode.Datasources[ps.ByName("datasource")].AddDatabase(&database); err != nil {
@@ -189,6 +190,7 @@ func (h *HTTPApi) addShardInstance(w http.ResponseWriter, r *http.Request, ps ht
 	var shardInstance metadata.ShardInstance
 	if err := json.Unmarshal(bytes, &shardInstance); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		if err := h.storageNode.Datasources[ps.ByName("datasource")].AddShardInstance(ps.ByName("dbname"), &shardInstance); err != nil {
@@ -361,6 +363,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	if err := json.Unmarshal(bytes, &queries); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		results := h.storageNode.Datasources[ps.ByName("datasource")].HandleQueries(queries)

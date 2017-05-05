@@ -11,6 +11,7 @@ func NewCollection(name string) *Collection {
 }
 
 type Collection struct {
+	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 
 	// Collection VShards (if defined)
@@ -19,7 +20,7 @@ type Collection struct {
 	// TODO: use, we don't need these for inital working product, but we will
 	// if we plan on doing more sophisticated sharding or schema validation
 	// TODO: switch to a map
-	Fields  []*storagenodemetadata.Field                    `json:"fields"`
+	Fields  map[string]*storagenodemetadata.Field           `json:"fields"`
 	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile

@@ -15,9 +15,7 @@ type Collection struct {
 
 	// NOTE: we reserve the "_" namespace for fields for our own data (created, etc.)
 	// All the columns in this table
-	Fields []*Field `json:"fields"`
-	// TODO: have a map as well-- for easier lookups
-	FieldMap map[string]*Field `json:"-"`
+	Fields map[string]*Field `json:"fields"`
 
 	// map of name -> index
 	Indexes map[string]*CollectionIndex `json:"indexes,omitempty"`
@@ -33,7 +31,7 @@ func (c *Collection) ListIndexes() []string {
 
 func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 	// TODO: We need to check that we where given no more than the Fields we know about
-	for fieldName, field := range c.FieldMap {
+	for fieldName, field := range c.Fields {
 		if v, ok := record[fieldName]; ok {
 			if err := field.Validate(v); err != nil {
 				return err

@@ -14,19 +14,19 @@ const schemaJson string = `
           "collections": {
             "collection": {
               "name": "collection",
-              "fields": [
-                {
+              "fields": {
+                "name": {
                   "name": "name",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
                 },
-                {
+                "shard_instance_id": {
                   "name": "shard_instance_id",
                   "type": "int"
                 }
-              ],
+              },
               "indexes": {
                 "collection_pkey": {
                   "name": "collection_pkey",
@@ -39,38 +39,38 @@ const schemaJson string = `
             },
             "collection_field": {
               "name": "collection_field",
-              "fields": [
-                {
-                  "name": "name",
-                  "type": "string",
-                  "type_args": {
-                    "size": 255
-                  }
-                },
-                {
+              "fields": {
+                "collection_id": {
                   "name": "collection_id",
                   "type": "int"
                 },
-                {
+                "field_type": {
                   "name": "field_type",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
                 },
-                {
-                  "name": "not_null",
-                  "type": "int"
-                },
-                {
+                "field_type_args": {
                   "name": "field_type_args",
                   "type": "document"
                 },
-                {
+                "name": {
+                  "name": "name",
+                  "type": "string",
+                  "type_args": {
+                    "size": 255
+                  }
+                },
+                "not_null": {
+                  "name": "not_null",
+                  "type": "int"
+                },
+                "parent_collection_field_id": {
                   "name": "parent_collection_field_id",
                   "type": "int"
                 }
-              ],
+              },
               "indexes": {
                 "collection_field_pkey": {
                   "name": "collection_field_pkey",
@@ -97,27 +97,27 @@ const schemaJson string = `
             },
             "collection_index": {
               "name": "collection_index",
-              "fields": [
-                {
+              "fields": {
+                "collection_id": {
+                  "name": "collection_id",
+                  "type": "int"
+                },
+                "data_json": {
+                  "name": "data_json",
+                  "type": "text"
+                },
+                "name": {
                   "name": "name",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
                 },
-                {
-                  "name": "collection_id",
-                  "type": "int"
-                },
-                {
-                  "name": "data_json",
-                  "type": "text"
-                },
-                {
+                "unique": {
                   "name": "unique",
                   "type": "bool"
                 }
-              ],
+              },
               "indexes": {
                 "collection_index_name": {
                   "name": "collection_index_name",
@@ -138,15 +138,15 @@ const schemaJson string = `
             },
             "database": {
               "name": "database",
-              "fields": [
-                {
+              "fields": {
+                "name": {
                   "name": "name",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
                 }
-              ],
+              },
               "indexes": {
                 "database_name_idx": {
                   "name": "database_name_idx",
@@ -166,27 +166,27 @@ const schemaJson string = `
             },
             "schema": {
               "name": "schema",
-              "fields": [
-                {
+              "fields": {
+                "backwards_compatible": {
+                  "name": "backwards_compatible",
+                  "type": "bool"
+                },
+                "data_json": {
+                  "name": "data_json",
+                  "type": "document"
+                },
+                "name": {
                   "name": "name",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
                 },
-                {
+                "version": {
                   "name": "version",
                   "type": "int"
-                },
-                {
-                  "name": "data_json",
-                  "type": "document"
-                },
-                {
-                  "name": "backwards_compatible",
-                  "type": "bool"
                 }
-              ],
+              },
               "indexes": {
                 "schema_pkey": {
                   "name": "schema_pkey",
@@ -199,35 +199,35 @@ const schemaJson string = `
             },
             "shard_instance": {
               "name": "shard_instance",
-              "fields": [
-                {
+              "fields": {
+                "collection_shard": {
+                  "name": "collection_shard",
+                  "type": "bool"
+                },
+                "count": {
+                  "name": "count",
+                  "type": "int"
+                },
+                "database_id": {
+                  "name": "database_id",
+                  "type": "int"
+                },
+                "database_shard": {
+                  "name": "database_shard",
+                  "type": "bool"
+                },
+                "instance": {
+                  "name": "instance",
+                  "type": "int"
+                },
+                "name": {
                   "name": "name",
                   "type": "string",
                   "type_args": {
                     "size": 255
                   }
-                },
-                {
-                  "name": "database_id",
-                  "type": "int"
-                },
-                {
-                  "name": "count",
-                  "type": "int"
-                },
-                {
-                  "name": "instance",
-                  "type": "int"
-                },
-                {
-                  "name": "database_shard",
-                  "type": "bool"
-                },
-                {
-                  "name": "collection_shard",
-                  "type": "bool"
                 }
-              ],
+              },
               "indexes": {
                 "shard_instance_database_id_count_instance_database_shard_co_idx": {
                   "name": "shard_instance_database_id_count_instance_database_shard_co_idx",

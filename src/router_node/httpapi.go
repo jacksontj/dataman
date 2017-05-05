@@ -107,6 +107,7 @@ func (h *HTTPApi) addStorageNode(w http.ResponseWriter, r *http.Request, ps http
 
 	if err := json.Unmarshal(bytes, &storageNode); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		if err := h.routerNode.MetaStore.AddStorageNode(&storageNode); err != nil {
@@ -123,6 +124,7 @@ func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps htt
 	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 	meta := h.routerNode.GetMeta()
@@ -144,6 +146,7 @@ func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps h
 	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 
@@ -179,6 +182,7 @@ func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprou
 
 	if err := json.Unmarshal(bytes, &db); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		if err := h.routerNode.AddDatabase(db); err != nil {
@@ -255,6 +259,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	if err := json.Unmarshal(bytes, &queries); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	} else {
 		results := h.routerNode.HandleQueries(queries)
