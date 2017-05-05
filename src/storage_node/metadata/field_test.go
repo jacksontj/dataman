@@ -32,7 +32,7 @@ func TestFieldValidation_Document(t *testing.T) {
 				"name": &Field{
 					Name:     "name",
 					Type:     String,
-					TypeArgs: map[string]interface{}{"size": 10},
+					TypeArgs: map[string]interface{}{"size": float64(10)},
 					NotNull:  true,
 				},
 				"number": &Field{
@@ -45,7 +45,7 @@ func TestFieldValidation_Document(t *testing.T) {
 						"name": &Field{
 							Name:     "name",
 							Type:     String,
-							TypeArgs: map[string]interface{}{"size": 10},
+							TypeArgs: map[string]interface{}{"size": float64(10)},
 							NotNull:  true,
 						},
 					},
@@ -61,7 +61,9 @@ func TestFieldValidation_Document(t *testing.T) {
 				"name":   "someone",
 				"number": 10,
 				"subDoc": map[string]interface{}{
-					"name": "subname",
+					"name":              "subname",
+					"somethingelse":     10,
+					"somethingelsemore": "yea",
 				},
 			},
 		},
@@ -70,10 +72,6 @@ func TestFieldValidation_Document(t *testing.T) {
 			1,         // a number
 			nil,       // nil
 			map[int]interface{}{1: "foo"}, // wrong map type
-			map[string]interface{}{
-				"name":   "someone",
-				"number": "notANumber",
-			},
 			map[string]interface{}{
 				"number": 10,
 			},
@@ -91,10 +89,8 @@ func TestFieldValidation_Document(t *testing.T) {
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &Field{
-			Type: String,
-			TypeArgs: map[string]interface{}{
-				"size": 10,
-			},
+			Type:     String,
+			TypeArgs: map[string]interface{}{"size": float64(10)},
 		},
 		goodValues: []interface{}{
 			"foo",
@@ -138,11 +134,11 @@ func TestFieldValidation_Int(t *testing.T) {
 			0,
 			-10,
 			100,
+			0.0, // float
 		},
 		badValues: []interface{}{
 			"string", // string
 			nil,      // nil
-			0.0,      // float
 		},
 	}
 	testCase.Test(t)

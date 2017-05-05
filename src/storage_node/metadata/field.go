@@ -42,9 +42,6 @@ func (f *Field) Validate(val interface{}) error {
 		if !ok {
 			return fmt.Errorf("Not a document")
 		}
-		if len(valTyped) > len(f.SubFields) {
-			return fmt.Errorf("Too many fields defined")
-		}
 
 		// TODO: We need to check that we where given no more than the subFields we know about
 		// TODO: add "strict" arg to typeArgs
@@ -82,7 +79,7 @@ func (f *Field) Validate(val interface{}) error {
 		case float64:
 			return nil
 		}
-		return nil
+		return fmt.Errorf("Unknown type %v", val)
 	case Bool:
 		if _, ok := val.(bool); !ok {
 			return fmt.Errorf("Not a bool")
