@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-04 09:37:22
+Date: 2017-05-05 10:23:00
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 315
+ START 423
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 315, true);
+SELECT setval('"public"."collection__id_seq"', 423, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 339
+ START 587
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 339, true);
+SELECT setval('"public"."collection_field__id_seq"', 587, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 186
+ START 332
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 186, true);
+SELECT setval('"public"."collection_index__id_seq"', 332, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 118
+ START 127
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 118, true);
+SELECT setval('"public"."database__id_seq"', 127, true);
 
 -- ----------------------------
 -- Sequence structure for schema__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 75
+ START 112
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 75, true);
+SELECT setval('"public"."shard_instance__id_seq"', 112, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -111,7 +111,7 @@ CREATE TABLE "public"."collection_field" (
 "field_type" varchar(255) COLLATE "default",
 "not_null" int4,
 "field_type_args" jsonb,
-"schema_id" int4
+"parent_collection_field_id" int4
 )
 WITH (OIDS=FALSE)
 
@@ -246,8 +246,8 @@ ALTER TABLE "public"."collection" ADD FOREIGN KEY ("shard_instance_id") REFERENC
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field"
 -- ----------------------------
-ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("schema_id") REFERENCES "public"."schema" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("parent_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index"
