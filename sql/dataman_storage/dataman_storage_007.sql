@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-05 10:32:25
+Date: 2017-05-05 11:28:50
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 453
+ START 469
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 453, true);
+SELECT setval('"public"."collection__id_seq"', 469, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 687
+ START 742
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 687, true);
+SELECT setval('"public"."collection_field__id_seq"', 742, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +47,21 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 372
+ START 392
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 372, true);
+SELECT setval('"public"."collection_index__id_seq"', 392, true);
+
+-- ----------------------------
+-- Sequence structure for collection_index_item__id_seq
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "public"."collection_index_item__id_seq";
+CREATE SEQUENCE "public"."collection_index_item__id_seq"
+ INCREMENT 1
+ MINVALUE 1
+ MAXVALUE 9223372036854775807
+ START 20
+ CACHE 1;
+SELECT setval('"public"."collection_index_item__id_seq"', 20, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -59,9 +71,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 129
+ START 131
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 129, true);
+SELECT setval('"public"."database__id_seq"', 131, true);
 
 -- ----------------------------
 -- Sequence structure for shard_instance__id_seq
@@ -71,9 +83,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 122
+ START 128
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 122, true);
+SELECT setval('"public"."shard_instance__id_seq"', 128, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -113,8 +125,20 @@ CREATE TABLE "public"."collection_index" (
 "_id" int4 DEFAULT nextval('collection_index__id_seq'::regclass) NOT NULL,
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
-"data_json" text COLLATE "default",
 "unique" bool
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
+-- Table structure for collection_index_item
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."collection_index_item";
+CREATE TABLE "public"."collection_index_item" (
+"_id" int4 DEFAULT nextval('collection_index_item__id_seq'::regclass) NOT NULL,
+"collection_index_id" int4 NOT NULL,
+"collection_field_id" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -155,6 +179,7 @@ WITH (OIDS=FALSE)
 ALTER SEQUENCE "public"."collection__id_seq" OWNED BY "collection"."_id";
 ALTER SEQUENCE "public"."collection_field__id_seq" OWNED BY "collection_field"."_id";
 ALTER SEQUENCE "public"."collection_index__id_seq" OWNED BY "collection_index"."_id";
+ALTER SEQUENCE "public"."collection_index_item__id_seq" OWNED BY "collection_index_item"."_id";
 ALTER SEQUENCE "public"."database__id_seq" OWNED BY "database"."_id";
 ALTER SEQUENCE "public"."shard_instance__id_seq" OWNED BY "shard_instance"."_id";
 
@@ -183,6 +208,11 @@ CREATE UNIQUE INDEX "collection_index_name" ON "public"."collection_index" USING
 -- Primary Key structure for table collection_index
 -- ----------------------------
 ALTER TABLE "public"."collection_index" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Primary Key structure for table collection_index_item
+-- ----------------------------
+ALTER TABLE "public"."collection_index_item" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
 -- Indexes structure for table database
@@ -220,6 +250,12 @@ ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("parent_collection_fiel
 -- Foreign Key structure for table "public"."collection_index"
 -- ----------------------------
 ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+-- ----------------------------
+-- Foreign Key structure for table "public"."collection_index_item"
+-- ----------------------------
+ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_index_id") REFERENCES "public"."collection_index" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."shard_instance"
