@@ -102,10 +102,6 @@ const schemaJson string = `
                   "name": "collection_id",
                   "type": "int"
                 },
-                "data_json": {
-                  "name": "data_json",
-                  "type": "text"
-                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -136,6 +132,28 @@ const schemaJson string = `
                 }
               }
             },
+            "collection_index_item": {
+              "name": "collection_index_item",
+              "fields": {
+                "collection_field_id": {
+                  "name": "collection_field_id",
+                  "type": "int"
+                },
+                "collection_index_id": {
+                  "name": "collection_index_id",
+                  "type": "int"
+                }
+              },
+              "indexes": {
+                "collection_index_item_pkey": {
+                  "name": "collection_index_item_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true
+                }
+              }
+            },
             "database": {
               "name": "database",
               "fields": {
@@ -157,39 +175,6 @@ const schemaJson string = `
                 },
                 "database_pkey": {
                   "name": "database_pkey",
-                  "fields": [
-                    "_id"
-                  ],
-                  "unique": true
-                }
-              }
-            },
-            "schema": {
-              "name": "schema",
-              "fields": {
-                "backwards_compatible": {
-                  "name": "backwards_compatible",
-                  "type": "bool"
-                },
-                "data_json": {
-                  "name": "data_json",
-                  "type": "document"
-                },
-                "name": {
-                  "name": "name",
-                  "type": "string",
-                  "type_args": {
-                    "size": 255
-                  }
-                },
-                "version": {
-                  "name": "version",
-                  "type": "int"
-                }
-              },
-              "indexes": {
-                "schema_pkey": {
-                  "name": "schema_pkey",
                   "fields": [
                     "_id"
                   ],

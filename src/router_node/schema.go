@@ -167,6 +167,15 @@ const schemaJson string = `
                   "name": "collection_index_id",
                   "type": "int"
                 }
+              },
+              "indexes": {
+                "collection_index_item_pkey": {
+                  "name": "collection_index_item_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true
+                }
               }
             },
             "collection_partition": {
@@ -320,10 +329,6 @@ const schemaJson string = `
             "datasource": {
               "name": "datasource",
               "fields": {
-                "config_json_schema_id": {
-                  "name": "config_json_schema_id",
-                  "type": "int"
-                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -427,39 +432,6 @@ const schemaJson string = `
                 "master": {
                   "name": "master",
                   "type": "bool"
-                }
-              }
-            },
-            "schema": {
-              "name": "schema",
-              "fields": {
-                "backwards_compatible": {
-                  "name": "backwards_compatible",
-                  "type": "bool"
-                },
-                "data_json": {
-                  "name": "data_json",
-                  "type": "document"
-                },
-                "name": {
-                  "name": "name",
-                  "type": "string",
-                  "type_args": {
-                    "size": 255
-                  }
-                },
-                "version": {
-                  "name": "version",
-                  "type": "int"
-                }
-              },
-              "indexes": {
-                "schema_pkey": {
-                  "name": "schema_pkey",
-                  "fields": [
-                    "_id"
-                  ],
-                  "unique": true
                 }
               }
             },

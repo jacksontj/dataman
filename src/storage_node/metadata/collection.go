@@ -47,7 +47,6 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 	return nil
 }
 
-// TODO: flag for "is primary" ?
 type CollectionIndex struct {
 	ID   int64  `json:"_id,omitempty"`
 	Name string `json:"name"`

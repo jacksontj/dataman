@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -336,8 +337,34 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			}
 
 			for _, collectionIndexRecord := range collectionIndexResult.Return {
-				var indexFields []string
-				json.Unmarshal([]byte(collectionIndexRecord["data_json"].(string)), &indexFields)
+				// Load the index fields
+				collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+					"db":             "dataman_router",
+					"shard_instance": "public",
+					"collection":     "collection_index_item",
+					"filter": map[string]interface{}{
+						"collection_index_id": collectionIndexRecord["_id"],
+					},
+				})
+				if collectionIndexItemResult.Error != "" {
+					logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+				}
+
+				indexFields := make([]string, len(collectionIndexItemResult.Return))
+				for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
+					indexField := tmpFields[collectionIndexItemRecord["collection_field_id"].(int64)]
+					nameChain := make([]string, 0)
+					for {
+						nameChain = append([]string{indexField.Name}, nameChain...)
+						if indexField.ParentFieldID == 0 {
+							break
+						} else {
+							indexField = tmpFields[indexField.ParentFieldID]
+						}
+					}
+					indexFields[i] = strings.Join(nameChain, ".")
+				}
+
 				index := &storagenodemetadata.CollectionIndex{
 					ID:     collectionIndexRecord["_id"].(int64),
 					Name:   collectionIndexRecord["name"].(string),
@@ -677,7 +704,26 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 
 		// Insert indexes
 		for _, index := range collection.Indexes {
-			bytes, _ := json.Marshal(index.Fields)
+			// check that all the fields exist
+			fieldIds := make([]int64, len(index.Fields))
+			for i, fieldName := range index.Fields {
+				fieldParts := strings.Split(fieldName, ".")
+
+				if field, ok := collection.Fields[fieldParts[0]]; !ok {
+					return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
+				} else {
+					if len(fieldParts) > 1 {
+						for _, fieldPart := range fieldParts[1:] {
+							if subField, ok := field.SubFields[fieldPart]; ok {
+								field = subField
+							} else {
+								return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
+							}
+						}
+					}
+					fieldIds[i] = field.ID
+				}
+			}
 			indexResult := m.Store.Insert(map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
@@ -685,7 +731,6 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 				"record": map[string]interface{}{
 					"name":          index.Name,
 					"collection_id": collectionRecord["_id"],
-					"data_json":     string(bytes),
 					"unique":        index.Unique,
 				},
 			})
@@ -693,6 +738,22 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			// TODO: better error handle
 			if indexResult.Error != "" {
 				return fmt.Errorf(indexResult.Error)
+			}
+			index.ID = indexResult.Return[0]["_id"].(int64)
+
+			for _, fieldID := range fieldIds {
+				collectionIndexItemResult := m.Store.Insert(map[string]interface{}{
+					"db":             "dataman_router",
+					"shard_instance": "public",
+					"collection":     "collection_index_item",
+					"record": map[string]interface{}{
+						"collection_index_id": index.ID,
+						"collection_field_id": fieldID,
+					},
+				})
+				if collectionIndexItemResult.Error != "" {
+					return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+				}
 			}
 		}
 

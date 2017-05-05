@@ -158,8 +158,37 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				}
 
 				for _, collectionIndexRecord := range collectionIndexResult.Return {
-					var indexFields []string
-					json.Unmarshal([]byte(collectionIndexRecord["data_json"].(string)), &indexFields)
+					// Load the index fields
+					collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+						"db":             "dataman_storage",
+						"shard_instance": "public",
+						"collection":     "collection_index_item",
+						"filter": map[string]interface{}{
+							"collection_index_id": collectionIndexRecord["_id"],
+						},
+					})
+					if collectionIndexItemResult.Error != "" {
+						logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+					}
+
+					// TODO: better? Right now we need a way to nicely define what the index points to 
+					// for humans (strings) but we support indexes on nested things. This
+					// works for now, but we'll need to come up with a better method later
+					indexFields := make([]string, len(collectionIndexItemResult.Return))
+					for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
+						indexField := tmpFields[collectionIndexItemRecord["collection_field_id"].(int64)]
+						nameChain := make([]string, 0)
+						for {
+							nameChain = append([]string{indexField.Name}, nameChain...)
+							if indexField.ParentFieldID == 0 {
+								break
+							} else {
+								indexField = tmpFields[indexField.ParentFieldID]
+							}
+						}
+						indexFields[i] = strings.Join(nameChain, ".")
+					}
+
 					index := &metadata.CollectionIndex{
 						ID:     collectionIndexRecord["_id"].(int64),
 						Name:   collectionIndexRecord["name"].(string),
@@ -485,26 +514,40 @@ func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname s
 	meta := metadata.NewMeta()
 	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]
 
-	// Delete collection_index
-	collectionIndexResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_index",
-		"filter": map[string]interface{}{
-			"collection_id": collection.ID,
-		},
-	})
-	if collectionIndexResult.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
-	}
+	// Delete collection_index_items
+	for _, index := range collection.Indexes {
 
-	for _, collectionIndexRecord := range collectionIndexResult.Return {
+		collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_index",
+			"filter": map[string]interface{}{
+				"collection_index_id": index.ID,
+			},
+		})
+		if collectionIndexItemResult.Error != "" {
+			return fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+		}
+
+		for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
+			collectionIndexItemDelete := m.Store.Delete(map[string]interface{}{
+				"db":             "dataman_storage",
+				"shard_instance": "public",
+				"collection":     "collection_index_item",
+				// TODO: add internal columns to schemaman stuff
+				"_id": collectionIndexItemRecord["_id"],
+			})
+			if collectionIndexItemDelete.Error != "" {
+				return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
+			}
+		}
+
 		collectionIndexDelete := m.Store.Delete(map[string]interface{}{
 			"db":             "dataman_storage",
 			"shard_instance": "public",
 			"collection":     "collection_index",
 			// TODO: add internal columns to schemaman stuff
-			"_id": collectionIndexRecord["_id"],
+			"_id": index.ID,
 		})
 		if collectionIndexDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
@@ -554,7 +597,27 @@ func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname s
 // TODO: Implement
 // Index changes
 func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
-	bytes, _ := json.Marshal(index.Fields)
+
+	// check that all the fields exist
+	fieldIds := make([]int64, len(index.Fields))
+	for i, fieldName := range index.Fields {
+		fieldParts := strings.Split(fieldName, ".")
+
+		if field, ok := collection.Fields[fieldParts[0]]; !ok {
+			return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
+		} else {
+			if len(fieldParts) > 1 {
+				for _, fieldPart := range fieldParts[1:] {
+					if subField, ok := field.SubFields[fieldPart]; ok {
+						field = subField
+					} else {
+						return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
+					}
+				}
+			}
+			fieldIds[i] = field.ID
+		}
+	}
 
 	collectionIndexResult := m.Store.Insert(map[string]interface{}{
 		"db":             "dataman_storage",
@@ -563,12 +626,29 @@ func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.
 		"record": map[string]interface{}{
 			"name":          index.Name,
 			"collection_id": collection.ID,
-			"data_json":     string(bytes),
 			"unique":        index.Unique,
 		},
 	})
 	if collectionIndexResult.Error != "" {
 		return fmt.Errorf("Error inserting collectionIndexResult: %v", collectionIndexResult.Error)
+	}
+	index.ID = collectionIndexResult.Return[0]["_id"].(int64)
+
+	// insert all of the field links
+
+	for _, fieldID := range fieldIds {
+		collectionIndexItemResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_index_item",
+			"record": map[string]interface{}{
+				"collection_index_id": index.ID,
+				"collection_field_id": fieldID,
+			},
+		})
+		if collectionIndexItemResult.Error != "" {
+			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+		}
 	}
 
 	return nil
