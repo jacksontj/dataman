@@ -6,7 +6,6 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstance, error) {
@@ -90,25 +89,12 @@ QUERYLOOP:
 					fallthrough
 				case query.Update:
 					// On set, if there is a schema on the table-- enforce the schema
-					for name, data := range queryArgs["record"].(map[string]interface{}) {
-						// TODO: some datastores can actually do the enforcement on their own. We
-						// probably want to leave this up to lower layers, and provide some wrapper
-						// that they can call if they can't do it in the datastore itself
-						if field, ok := collection.FieldMap[name]; ok && field.Schema != nil {
-							result, err := field.Schema.Gschema.Validate(gojsonschema.NewGoLoader(data))
-							if err != nil {
-								results[i] = &query.Result{Error: err.Error()}
-								continue QUERYLOOP
-							}
-							if !result.Valid() {
-								var validationErrors string
-								for _, e := range result.Errors() {
-									validationErrors += "\n" + e.String()
-								}
-								results[i] = &query.Result{Error: "data doesn't match table schema" + validationErrors}
-								continue QUERYLOOP
-							}
-						}
+					// TODO: some datastores can actually do the enforcement on their own. We
+					// probably want to leave this up to lower layers, and provide some wrapper
+					// that they can call if they can't do it in the datastore itself
+					if err := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); err != nil {
+						results[i] = &query.Result{Error: err.Error()}
+						continue QUERYLOOP
 					}
 				}
 

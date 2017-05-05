@@ -67,7 +67,7 @@ const schemaJson string = `
                   "type": "document"
                 },
                 {
-                  "name": "schema_id",
+                  "name": "parent_collection_field_id",
                   "type": "int"
                 }
               ],
@@ -111,7 +111,7 @@ const schemaJson string = `
                 },
                 {
                   "name": "data_json",
-                  "type": "string"
+                  "type": "text"
                 },
                 {
                   "name": "unique",

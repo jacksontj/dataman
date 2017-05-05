@@ -6,28 +6,29 @@
 			"fields": [{
 				"name": "data",
 				"type": "document",
-				"schema": {
-					"name": "message",
-					"version": 1,
-					"schema": {
-						"title": "message",
-						"type": "object",
-						"properties": {
-							"content": {
-								"type": "string"
-							},
-							"thread_id": {
-								"type": "string"
-							},
-							"created": {
-								"type": "integer"
-							},
-							"created_by": {
-								"type": "string"
-							}
-						},
-						"required": ["content", "thread_id", "created", "created_by"]
-					}
+				"subfields": {
+				    "content": {
+				        "name": "content",
+				        "type": "string",
+				        "type_args": {"size": 255},
+				        "not_null": true
+				    },
+				    "thread_id": {
+				        "name": "thread_id",
+				        "type": "int",
+				        "not_null": true
+				    },
+				    "created": {
+				        "name": "created",
+				        "type": "int",
+				        "not_null": true
+				    },
+				    "created_by": {
+				        "name": "created_by",
+				        "type": "string",
+				        "type_args": {"size": 255},
+				        "not_null": true
+				    }
 				}
 			}],
 			"indexes": {
@@ -51,25 +52,24 @@
 			"fields": [{
 				"name": "data",
 				"type": "document",
-				"schema": {
-					"name": "thread",
-					"version": 1,
-					"schema": {
-						"title": "Thread",
-						"type": "object",
-						"properties": {
-							"title": {
-								"type": "string"
-							},
-							"created": {
-								"type": "integer"
-							},
-							"created_by": {
-								"type": "string"
-							}
-						},
-						"required": ["title", "created_by", "created"]
-					}
+				"subfields": {
+				    "title": {
+                        "name": "title",
+                        "type": "string",
+                        "type_args": {"size": 255},
+                        "not_null": true
+				    },
+				    "created_by": {
+                        "name": "created_by",
+                        "type": "string",
+                        "type_args": {"size": 255},
+                        "not_null": true
+				    },
+				    "created": {
+                        "name": "created",
+                        "type": "int",
+                        "not_null": true
+				    }
 				}
 			}],
 			"indexes": {

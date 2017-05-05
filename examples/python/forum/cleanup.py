@@ -12,6 +12,7 @@ if True:
 
     queries = [
         "DELETE FROM collection_partition",
+        "DELETE FROM collection_index_item",
         "DELETE FROM collection_index",
         "DELETE FROM collection_field",
         "DELETE FROM collection",

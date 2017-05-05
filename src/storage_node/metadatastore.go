@@ -8,7 +8,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
-	"github.com/xeipuuv/gojsonschema"
 )
 
 func NewMetadataStore(config *DatasourceInstanceConfig) (*MetadataStore, error) {
@@ -106,9 +105,15 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
 				}
 
-				collection.Fields = make([]*metadata.Field, len(collectionFieldResult.Return))
+				// A temporary place to put all the fields as we find them, we
+				// need this so we can assemble subfields etc.
+				tmpFields := make(map[int64]*metadata.Field)
+
+				// TODO: remove
+				collection.Fields = make([]*metadata.Field, 0, len(collectionFieldResult.Return))
 				collection.FieldMap = make(map[string]*metadata.Field)
-				for i, collectionFieldRecord := range collectionFieldResult.Return {
+
+				for _, collectionFieldRecord := range collectionFieldResult.Return {
 					field := &metadata.Field{
 						ID:   collectionFieldRecord["_id"].(int64),
 						Name: collectionFieldRecord["name"].(string),
@@ -117,15 +122,28 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 					if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
 						field.TypeArgs = fieldTypeArgs.(map[string]interface{})
 					}
-					if schemaId, ok := collectionFieldRecord["schema_id"]; ok && schemaId != nil {
-						field.Schema = m.GetSchemaById(collectionFieldRecord["schema_id"].(int64))
-						field.Schema.Gschema, _ = gojsonschema.NewSchema(gojsonschema.NewGoLoader(field.Schema.Schema))
-					}
 					if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
 						field.NotNull = true
 					}
-					collection.Fields[i] = field
-					collection.FieldMap[field.Name] = field
+
+					// If we have a parent, mark it down for now
+					if collectionFieldRecord["parent_collection_field_id"] != nil {
+						field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
+					} else {
+						collection.Fields = append(collection.Fields, field)
+						collection.FieldMap[field.Name] = field
+					}
+					tmpFields[field.ID] = field
+				}
+
+				// Link all the children where they should go
+				for _, field := range tmpFields {
+					if field.ParentFieldID != 0 {
+						if tmpFields[field.ParentFieldID].SubFields == nil {
+							tmpFields[field.ParentFieldID].SubFields = make(map[string]*metadata.Field)
+						}
+						tmpFields[field.ParentFieldID].SubFields[field.Name] = field
+					}
 				}
 
 				// Now load all the indexes for the collection
@@ -166,28 +184,6 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	}
 
 	return meta
-}
-
-func (m *MetadataStore) GetSchemaById(id int64) *metadata.Schema {
-	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"filter": map[string]interface{}{
-			"_id": id,
-		},
-	})
-	if schemaResult.Error != "" {
-		logrus.Fatalf("Error getting schemaResult: %v", schemaResult.Error)
-	}
-	schema := schemaResult.Return[0]["data_json"].(map[string]interface{})
-	schemaValidator, _ := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema))
-	return &metadata.Schema{
-		Name:    schemaResult.Return[0]["name"].(string),
-		Version: schemaResult.Return[0]["version"].(int64),
-		Schema:  schema,
-		Gschema: schemaValidator,
-	}
 }
 
 func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
@@ -340,66 +336,9 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 		if strings.HasPrefix(field.Name, "_") {
 			return fmt.Errorf("The `_` namespace for collection fields is reserved: %v", field)
 		}
-
-		// Add to internal metadata store
-		// If we have a schema, lets add that
-		if field.Schema != nil {
-			if schema := m.GetSchema(field.Schema.Name, field.Schema.Version); schema == nil {
-				if err := m.AddSchema(field.Schema); err != nil {
-					return err
-				}
-			}
-			// TODO: embed the "_id" in each of the metadata objects (as a private only attribute)
-			// Get the database record
-			schemaResult := m.Store.Filter(map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "schema",
-				"filter": map[string]interface{}{
-					"name":    field.Schema.Name,
-					"version": field.Schema.Version,
-				},
-			})
-			// TODO: better error handle
-			if schemaResult.Error != "" {
-				return fmt.Errorf("Error getting schemaResult: %v", schemaResult.Error)
-			}
-			schemaRecord := schemaResult.Return[0]
-
-			collectionFieldResult := m.Store.Insert(map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection_field",
-				"record": map[string]interface{}{
-					"name":            field.Name,
-					"collection_id":   collectionRecord["_id"],
-					"field_type":      field.Type,
-					"field_type_args": field.TypeArgs,
-					"schema_id":       schemaRecord["_id"],
-				},
-			})
-			if collectionFieldResult.Error != "" {
-				return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
-			}
-
-		} else {
-			// Add to internal metadata store
-			collectionFieldResult := m.Store.Insert(map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection_field",
-				"record": map[string]interface{}{
-					"name":            field.Name,
-					"collection_id":   collectionRecord["_id"],
-					"field_type":      field.Type,
-					"field_type_args": field.TypeArgs,
-				},
-			})
-			if collectionFieldResult.Error != "" {
-				return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
-			}
+		if err := m.AddField(collection, field, nil); err != nil {
+			return err
 		}
-
 	}
 
 	// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have
@@ -655,116 +594,6 @@ func (m *MetadataStore) RemoveIndex(dbname, shardinstance, collectionname, index
 	return nil
 }
 
-// TODO: check for previous version, and set the "backwards_compatible" flag
-func (m *MetadataStore) AddSchema(schema *metadata.Schema) error {
-	if schema.Schema == nil {
-		return fmt.Errorf("Cannot add empty schema")
-	}
-	// TODO: pull this up a level?
-	// Validate the schema
-	if _, err := gojsonschema.NewSchema(gojsonschema.NewGoLoader(schema.Schema)); err != nil {
-		return fmt.Errorf("Invalid schema defined: %v", err)
-	}
-	schemaResult := m.Store.Insert(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"record": map[string]interface{}{
-			"name":      schema.Name,
-			"version":   schema.Version,
-			"data_json": schema.Schema,
-		},
-	})
-	if schemaResult.Error != "" {
-		return fmt.Errorf("Error getting schemaResult: %v", schemaResult.Error)
-	}
-	return nil
-}
-
-func (m *MetadataStore) ListSchema() []*metadata.Schema {
-	// Get the schema records
-	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"filter":         map[string]interface{}{},
-	})
-	// TODO: better error handle
-	if schemaResult.Error != "" {
-		logrus.Fatalf("Error getting schemaResult: %v", schemaResult.Error)
-	}
-
-	schemas := make([]*metadata.Schema, len(schemaResult.Return))
-	for i, record := range schemaResult.Return {
-		schemas[i] = &metadata.Schema{
-			Name:    record["name"].(string),
-			Version: record["version"].(int64),
-			Schema:  record["data_json"].(map[string]interface{}),
-		}
-	}
-
-	return schemas
-}
-
-func (m *MetadataStore) GetSchema(name string, version int64) *metadata.Schema {
-	// Get the schema record
-	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"filter": map[string]interface{}{
-			"name":    name,
-			"version": version,
-		},
-	})
-	// TODO: better error handle
-	if schemaResult.Error != "" {
-		logrus.Fatalf("Error getting schemaResult: %v", schemaResult.Error)
-	}
-	if len(schemaResult.Return) != 1 {
-		return nil
-	}
-	schemaRecord := schemaResult.Return[0]
-
-	return &metadata.Schema{
-		Name:    schemaRecord["name"].(string),
-		Version: schemaRecord["version"].(int64),
-		Schema:  schemaRecord["data_json"].(map[string]interface{}),
-	}
-}
-
-func (m *MetadataStore) RemoveSchema(name string, version int64) error {
-	// Get the database record
-	schemaResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"filter": map[string]interface{}{
-			"name":    name,
-			"version": version,
-		},
-	})
-	// TODO: better error handle
-	if schemaResult.Error != "" {
-		return fmt.Errorf("Error getting schemaResult: %v", schemaResult.Error)
-	}
-	if len(schemaResult.Return) != 1 {
-		return fmt.Errorf("unable to delete missing record")
-	}
-	schemaRecord := schemaResult.Return[0]
-
-	schemaDelete := m.Store.Delete(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "schema",
-		"_id":            schemaRecord["_id"],
-	})
-	if schemaDelete.Error != "" {
-		return fmt.Errorf("Error getting schemaDelete: %v", schemaDelete.Error)
-	}
-	return nil
-}
-
 func structToRecord(item interface{}) map[string]interface{} {
 	// TODO: better -- just don't want to spend all the time/space to do the conversions for now
 	var record map[string]interface{}
@@ -774,4 +603,37 @@ func structToRecord(item interface{}) map[string]interface{} {
 		delete(record, "_id")
 	}
 	return record
+}
+
+func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentField *metadata.Field) error {
+	fieldRecord := map[string]interface{}{
+		"name":            field.Name,
+		"collection_id":   collection.ID,
+		"field_type":      field.Type,
+		"field_type_args": field.TypeArgs,
+	}
+	if parentField != nil {
+		fieldRecord["parent_collection_field_id"] = parentField.ID
+	}
+
+	collectionFieldResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_storage",
+		"shard_instance": "public",
+		"collection":     "collection_field",
+		"record":         fieldRecord,
+	})
+	if collectionFieldResult.Error != "" {
+		return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+	}
+	field.ID = collectionFieldResult.Return[0]["_id"].(int64)
+
+	if field.SubFields != nil {
+		for _, subField := range field.SubFields {
+			if err := m.AddField(collection, subField, field); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+
 }
