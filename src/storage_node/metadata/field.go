@@ -65,7 +65,7 @@ func (f *Field) Validate(val interface{}) error {
 		if !ok {
 			return fmt.Errorf("Not a string")
 		}
-		if len(s) > f.TypeArgs["size"].(int) {
+		if float64(len(s)) > f.TypeArgs["size"].(float64) {
 			return fmt.Errorf("String too long")
 		}
 		return nil
@@ -76,8 +76,11 @@ func (f *Field) Validate(val interface{}) error {
 		}
 		return nil
 	case Int:
-		if _, ok := val.(int); !ok {
-			return fmt.Errorf("Not an int")
+		switch val.(type) {
+		case int:
+			return nil
+		case float64:
+			return nil
 		}
 		return nil
 	case Bool:

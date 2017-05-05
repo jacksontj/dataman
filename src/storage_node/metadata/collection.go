@@ -29,6 +29,8 @@ func (c *Collection) ListIndexes() []string {
 	return indexes
 }
 
+// TODO: underlying datasources should know how to do this-- us doing it shouldn't
+// be necessary
 func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
