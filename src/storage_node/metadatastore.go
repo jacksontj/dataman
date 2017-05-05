@@ -171,7 +171,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 						logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
 					}
 
-					// TODO: better? Right now we need a way to nicely define what the index points to 
+					// TODO: better? Right now we need a way to nicely define what the index points to
 					// for humans (strings) but we support indexes on nested things. This
 					// works for now, but we'll need to come up with a better method later
 					indexFields := make([]string, len(collectionIndexItemResult.Return))
