@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-05 10:23:00
+Date: 2017-05-05 10:32:25
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 423
+ START 453
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 423, true);
+SELECT setval('"public"."collection__id_seq"', 453, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 587
+ START 687
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 587, true);
+SELECT setval('"public"."collection_field__id_seq"', 687, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 332
+ START 372
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 332, true);
+SELECT setval('"public"."collection_index__id_seq"', 372, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -59,21 +59,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 127
+ START 129
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 127, true);
-
--- ----------------------------
--- Sequence structure for schema__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."schema__id_seq";
-CREATE SEQUENCE "public"."schema__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 2
- CACHE 1;
-SELECT setval('"public"."schema__id_seq"', 2, true);
+SELECT setval('"public"."database__id_seq"', 129, true);
 
 -- ----------------------------
 -- Sequence structure for shard_instance__id_seq
@@ -83,9 +71,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 112
+ START 122
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 112, true);
+SELECT setval('"public"."shard_instance__id_seq"', 122, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -145,21 +133,6 @@ WITH (OIDS=FALSE)
 ;
 
 -- ----------------------------
--- Table structure for schema
--- ----------------------------
-DROP TABLE IF EXISTS "public"."schema";
-CREATE TABLE "public"."schema" (
-"_id" int4 DEFAULT nextval('schema__id_seq'::regclass) NOT NULL,
-"name" varchar(255) COLLATE "default" NOT NULL,
-"version" int4,
-"data_json" jsonb,
-"backwards_compatible" bool
-)
-WITH (OIDS=FALSE)
-
-;
-
--- ----------------------------
 -- Table structure for shard_instance
 -- ----------------------------
 DROP TABLE IF EXISTS "public"."shard_instance";
@@ -183,7 +156,6 @@ ALTER SEQUENCE "public"."collection__id_seq" OWNED BY "collection"."_id";
 ALTER SEQUENCE "public"."collection_field__id_seq" OWNED BY "collection_field"."_id";
 ALTER SEQUENCE "public"."collection_index__id_seq" OWNED BY "collection_index"."_id";
 ALTER SEQUENCE "public"."database__id_seq" OWNED BY "database"."_id";
-ALTER SEQUENCE "public"."schema__id_seq" OWNED BY "schema"."_id";
 ALTER SEQUENCE "public"."shard_instance__id_seq" OWNED BY "shard_instance"."_id";
 
 -- ----------------------------
@@ -221,11 +193,6 @@ CREATE UNIQUE INDEX "database_name_idx" ON "public"."database" USING btree ("nam
 -- Primary Key structure for table database
 -- ----------------------------
 ALTER TABLE "public"."database" ADD PRIMARY KEY ("_id");
-
--- ----------------------------
--- Primary Key structure for table schema
--- ----------------------------
-ALTER TABLE "public"."schema" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
 -- Indexes structure for table shard_instance
