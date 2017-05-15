@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-05 11:28:50
+Date: 2017-05-15 11:38:05
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 469
+ START 502
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 469, true);
+SELECT setval('"public"."collection__id_seq"', 502, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,21 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 742
+ START 870
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 742, true);
+SELECT setval('"public"."collection_field__id_seq"', 870, true);
+
+-- ----------------------------
+-- Sequence structure for collection_field_relation__id_seq
+-- ----------------------------
+DROP SEQUENCE IF EXISTS "public"."collection_field_relation__id_seq";
+CREATE SEQUENCE "public"."collection_field_relation__id_seq"
+ INCREMENT 1
+ MINVALUE 1
+ MAXVALUE 9223372036854775807
+ START 1
+ CACHE 1;
+SELECT setval('"public"."collection_field_relation__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -47,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 392
+ START 436
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 392, true);
+SELECT setval('"public"."collection_index__id_seq"', 436, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -59,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 20
+ START 64
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 20, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 64, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -71,9 +83,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 131
+ START 134
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 131, true);
+SELECT setval('"public"."database__id_seq"', 134, true);
 
 -- ----------------------------
 -- Sequence structure for shard_instance__id_seq
@@ -83,9 +95,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 128
+ START 139
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 128, true);
+SELECT setval('"public"."shard_instance__id_seq"', 139, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -112,6 +124,20 @@ CREATE TABLE "public"."collection_field" (
 "not_null" int4,
 "field_type_args" jsonb,
 "parent_collection_field_id" int4
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
+-- Table structure for collection_field_relation
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."collection_field_relation";
+CREATE TABLE "public"."collection_field_relation" (
+"_id" int4 DEFAULT nextval('collection_field_relation__id_seq'::regclass) NOT NULL,
+"collection_field_id" int4 NOT NULL,
+"relation_collection_field_id" int4 NOT NULL,
+"cascade_on_delete" bool NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -178,6 +204,7 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 ALTER SEQUENCE "public"."collection__id_seq" OWNED BY "collection"."_id";
 ALTER SEQUENCE "public"."collection_field__id_seq" OWNED BY "collection_field"."_id";
+ALTER SEQUENCE "public"."collection_field_relation__id_seq" OWNED BY "collection_field_relation"."_id";
 ALTER SEQUENCE "public"."collection_index__id_seq" OWNED BY "collection_index"."_id";
 ALTER SEQUENCE "public"."collection_index_item__id_seq" OWNED BY "collection_index_item"."_id";
 ALTER SEQUENCE "public"."database__id_seq" OWNED BY "database"."_id";
@@ -198,6 +225,11 @@ CREATE UNIQUE INDEX "index_collection_field_collection_field_name" ON "public"."
 -- Primary Key structure for table collection_field
 -- ----------------------------
 ALTER TABLE "public"."collection_field" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Primary Key structure for table collection_field_relation
+-- ----------------------------
+ALTER TABLE "public"."collection_field_relation" ADD PRIMARY KEY ("_id");
 
 -- ----------------------------
 -- Indexes structure for table collection_index
