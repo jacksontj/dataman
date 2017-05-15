@@ -28,7 +28,11 @@ const schemaJson string = `
                 },
                 "shard_instance_id": {
                   "name": "shard_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "shard_instance",
+                    "field": "_id"
+                  }
                 }
               },
               "indexes": {
@@ -50,7 +54,11 @@ const schemaJson string = `
                 },
                 "collection_id": {
                   "name": "collection_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection",
+                    "field": "_id"
+                  }
                 },
                 "field_type": {
                   "name": "field_type",
@@ -76,7 +84,11 @@ const schemaJson string = `
                 },
                 "parent_collection_field_id": {
                   "name": "parent_collection_field_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_field",
+                    "field": "_id"
+                  }
                 }
               },
               "indexes": {
@@ -103,6 +115,36 @@ const schemaJson string = `
                 }
               }
             },
+            "collection_field_relation": {
+              "name": "collection_field_relation",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
+                "cascade_on_delete": {
+                  "name": "cascade_on_delete",
+                  "type": "bool"
+                },
+                "collection_field_id": {
+                  "name": "collection_field_id",
+                  "type": "int"
+                },
+                "relation_collection_field_id": {
+                  "name": "relation_collection_field_id",
+                  "type": "int"
+                }
+              },
+              "indexes": {
+                "collection_field_relation_pkey": {
+                  "name": "collection_field_relation_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true
+                }
+              }
+            },
             "collection_index": {
               "name": "collection_index",
               "fields": {
@@ -112,7 +154,11 @@ const schemaJson string = `
                 },
                 "collection_id": {
                   "name": "collection_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection",
+                    "field": "_id"
+                  }
                 },
                 "name": {
                   "name": "name",
@@ -153,11 +199,19 @@ const schemaJson string = `
                 },
                 "collection_field_id": {
                   "name": "collection_field_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_field",
+                    "field": "_id"
+                  }
                 },
                 "collection_index_id": {
                   "name": "collection_index_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_index",
+                    "field": "_id"
+                  }
                 }
               },
               "indexes": {
@@ -219,7 +273,11 @@ const schemaJson string = `
                 },
                 "database_id": {
                   "name": "database_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "database",
+                    "field": "_id"
+                  }
                 },
                 "database_shard": {
                   "name": "database_shard",

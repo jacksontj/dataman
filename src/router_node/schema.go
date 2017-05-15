@@ -14,9 +14,17 @@ const schemaJson string = `
             "collection": {
               "name": "collection",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_vshard_id": {
                   "name": "collection_vshard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_vshard",
+                    "field": "_id"
+                  }
                 },
                 "database_id": {
                   "name": "database_id",
@@ -43,6 +51,10 @@ const schemaJson string = `
             "collection_field": {
               "name": "collection_field",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_id": {
                   "name": "collection_id",
                   "type": "int"
@@ -101,6 +113,10 @@ const schemaJson string = `
             "collection_field_relation": {
               "name": "collection_field_relation",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "cascade_on_delete": {
                   "name": "cascade_on_delete",
                   "type": "bool"
@@ -113,11 +129,24 @@ const schemaJson string = `
                   "name": "relation_collection_field_id",
                   "type": "int"
                 }
+              },
+              "indexes": {
+                "collection_field_relation_pkey": {
+                  "name": "collection_field_relation_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true
+                }
               }
             },
             "collection_index": {
               "name": "collection_index",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_id": {
                   "name": "collection_id",
                   "type": "int"
@@ -159,13 +188,21 @@ const schemaJson string = `
             "collection_index_item": {
               "name": "collection_index_item",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_field_id": {
                   "name": "collection_field_id",
                   "type": "int"
                 },
                 "collection_index_id": {
                   "name": "collection_index_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_index",
+                    "field": "_id"
+                  }
                 }
               },
               "indexes": {
@@ -181,6 +218,10 @@ const schemaJson string = `
             "collection_partition": {
               "name": "collection_partition",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_id": {
                   "name": "collection_id",
                   "type": "int"
@@ -202,6 +243,10 @@ const schemaJson string = `
             "collection_vshard": {
               "name": "collection_vshard",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "shard_count": {
                   "name": "shard_count",
                   "type": "int"
@@ -211,9 +256,17 @@ const schemaJson string = `
             "collection_vshard_instance": {
               "name": "collection_vshard_instance",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_vshard_id": {
                   "name": "collection_vshard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_vshard",
+                    "field": "_id"
+                  }
                 },
                 "shard_instance": {
                   "name": "shard_instance",
@@ -224,19 +277,35 @@ const schemaJson string = `
             "collection_vshard_instance_datastore_shard": {
               "name": "collection_vshard_instance_datastore_shard",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_vshard_instance_id": {
                   "name": "collection_vshard_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_vshard_instance",
+                    "field": "_id"
+                  }
                 },
                 "datastore_shard_id": {
                   "name": "datastore_shard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datastore_shard",
+                    "field": "_id"
+                  }
                 }
               }
             },
             "database": {
               "name": "database",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -265,13 +334,21 @@ const schemaJson string = `
             "database_datastore": {
               "name": "database_datastore",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "database_id": {
                   "name": "database_id",
                   "type": "int"
                 },
                 "datastore_id": {
                   "name": "datastore_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datastore",
+                    "field": "_id"
+                  }
                 },
                 "read": {
                   "name": "read",
@@ -290,6 +367,10 @@ const schemaJson string = `
             "database_vshard": {
               "name": "database_vshard",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "database_id": {
                   "name": "database_id",
                   "type": "int"
@@ -303,9 +384,17 @@ const schemaJson string = `
             "database_vshard_instance": {
               "name": "database_vshard_instance",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "database_vshard_id": {
                   "name": "database_vshard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "database_vshard",
+                    "field": "_id"
+                  }
                 },
                 "shard_instance": {
                   "name": "shard_instance",
@@ -316,19 +405,35 @@ const schemaJson string = `
             "database_vshard_instance_datastore_shard": {
               "name": "database_vshard_instance_datastore_shard",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "database_vshard_instance_id": {
                   "name": "database_vshard_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "database_vshard_instance",
+                    "field": "_id"
+                  }
                 },
                 "datastore_shard_id": {
                   "name": "datastore_shard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datastore_shard",
+                    "field": "_id"
+                  }
                 }
               }
             },
             "datasource": {
               "name": "datasource",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -341,13 +446,21 @@ const schemaJson string = `
             "datasource_instance": {
               "name": "datasource_instance",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "config_json": {
                   "name": "config_json",
                   "type": "document"
                 },
                 "datasource_id": {
                   "name": "datasource_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datasource",
+                    "field": "_id"
+                  }
                 },
                 "name": {
                   "name": "name",
@@ -358,24 +471,44 @@ const schemaJson string = `
                 },
                 "storage_node_id": {
                   "name": "storage_node_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "storage_node",
+                    "field": "_id"
+                  }
                 }
               }
             },
             "datasource_instance_shard_instance": {
               "name": "datasource_instance_shard_instance",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_vshard_instance_id": {
                   "name": "collection_vshard_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "collection_vshard_instance",
+                    "field": "_id"
+                  }
                 },
                 "database_vshard_instance_id": {
                   "name": "database_vshard_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "database_vshard_instance",
+                    "field": "_id"
+                  }
                 },
                 "datasource_instance_id": {
                   "name": "datasource_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datasource_instance",
+                    "field": "_id"
+                  }
                 },
                 "name": {
                   "name": "name",
@@ -389,6 +522,10 @@ const schemaJson string = `
             "datastore": {
               "name": "datastore",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -401,9 +538,17 @@ const schemaJson string = `
             "datastore_shard": {
               "name": "datastore_shard",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "datastore_id": {
                   "name": "datastore_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datastore",
+                    "field": "_id"
+                  }
                 },
                 "name": {
                   "name": "name",
@@ -421,13 +566,25 @@ const schemaJson string = `
             "datastore_shard_replica": {
               "name": "datastore_shard_replica",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "datasource_instance_id": {
                   "name": "datasource_instance_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datasource_instance",
+                    "field": "_id"
+                  }
                 },
                 "datastore_shard_id": {
                   "name": "datastore_shard_id",
-                  "type": "int"
+                  "type": "int",
+                  "relation": {
+                    "collection": "datastore_shard",
+                    "field": "_id"
+                  }
                 },
                 "master": {
                   "name": "master",
@@ -438,6 +595,10 @@ const schemaJson string = `
             "storage_node": {
               "name": "storage_node",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "ip": {
                   "name": "ip",
                   "type": "string",

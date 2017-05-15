@@ -3,13 +3,21 @@ package metadata
 import "fmt"
 
 func NewMeta() *Meta {
-	return &Meta{make(map[string]*Database)}
+	return &Meta{
+		Databases: make(map[string]*Database),
+
+		Fields:      make(map[int64]*Field),
+		Collections: make(map[int64]*Collection),
+	}
 }
 
 // This is a struct to encapsulate all of the metadata and provide some
 // common query patterns
 type Meta struct {
 	Databases map[string]*Database `json:"databases"`
+
+	Fields      map[int64]*Field      `json:"-"`
+	Collections map[int64]*Collection `json:"-"`
 }
 
 // TODO: more than just names?

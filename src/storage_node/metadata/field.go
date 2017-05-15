@@ -22,7 +22,9 @@ const (
 )
 
 type Field struct {
-	ID            int64     `json:"_id,omitempty"`
+	ID int64 `json:"_id,omitempty"`
+	// TODO: remove? Need a method to link them
+	CollectionID  int64     `json:"-"`
 	ParentFieldID int64     `json:"-"`
 	Name          string    `json:"name"`
 	Type          FieldType `json:"type"`
@@ -34,6 +36,9 @@ type Field struct {
 
 	// Optional subfields
 	SubFields map[string]*Field `json:"subfields,omitempty"`
+
+	// Optional relation
+	Relation *FieldRelation `json:"relation,omitempty"`
 }
 
 func (f *Field) Equal(o *Field) bool {
@@ -101,4 +106,12 @@ func (f *Field) Validate(val interface{}) error {
 	}
 
 	return fmt.Errorf("Unknown type \"%s\" defined", f.Type)
+}
+
+type FieldRelation struct {
+	ID      int64 `json:"_id,omitempty"`
+	FieldID int64 `json:"field_id,omitempty"`
+
+	Collection string `json:"collection"`
+	Field      string `json:"field"`
 }

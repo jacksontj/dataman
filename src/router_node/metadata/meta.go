@@ -1,11 +1,15 @@
 package metadata
 
+import storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+
 func NewMeta() *Meta {
 	return &Meta{
 		Nodes:              make(map[int64]*StorageNode),
 		DatasourceInstance: make(map[int64]*DatasourceInstance),
 		Datastore:          make(map[int64]*Datastore),
 		DatastoreShards:    make(map[int64]*DatastoreShard),
+		Fields:             make(map[int64]*storagenodemetadata.Field),
+		Collections:        make(map[int64]*Collection),
 
 		Databases: make(map[string]*Database),
 	}
@@ -21,10 +25,9 @@ type Meta struct {
 	Datastore          map[int64]*Datastore          `json:"datastores"`
 
 	// TODO: remove? or make private?
-	DatastoreShards map[int64]*DatastoreShard `json:"-"`
-
-	// TODO
-	//Schema map[int64]*Schema `json:"schema"`
+	DatastoreShards map[int64]*DatastoreShard            `json:"-"`
+	Fields          map[int64]*storagenodemetadata.Field `json:"-"`
+	Collections     map[int64]*Collection                `json:"-"`
 
 	Databases map[string]*Database `json:"databases"`
 }

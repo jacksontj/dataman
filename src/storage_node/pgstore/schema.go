@@ -195,6 +195,24 @@ func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *m
 	return nil
 }
 
+// TODO: find foreign key constraints
+var listRelationQuery = `
+select c.constraint_name
+    , x.table_schema as schema_name
+    , x.table_name
+    , x.column_name
+    , y.table_schema as foreign_schema_name
+    , y.table_name as foreign_table_name
+    , y.column_name as foreign_column_name
+from information_schema.referential_constraints c
+join information_schema.key_column_usage x
+    on x.constraint_name = c.constraint_name
+join information_schema.key_column_usage y
+    on y.ordinal_position = x.position_in_unique_constraint
+    and y.constraint_name = c.unique_constraint_name
+WHERE x.table_schema = '%s' AND x.table_name = '%s'
+`
+
 // TODO: nicer, this works but is way more work than necessary
 func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Collection {
 	collections := make([]*metadata.Collection, 0)
@@ -250,6 +268,21 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 				Type:     fieldType,
 				TypeArgs: fieldTypeArgs,
 			}
+
+			queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
+
+			relationEntries, err := DoQuery(s.getDB(dbname), fmt.Sprintf(queryTemplate, shardinstance, collection.Name, field.Name))
+			if err != nil {
+				logrus.Fatalf("Unable to get relation %s from %s: %v", field.Name, dbname, err)
+			}
+			if len(relationEntries) > 0 {
+				relationEntry := relationEntries[0]
+				field.Relation = &metadata.FieldRelation{
+					Collection: relationEntry["foreign_table_name"].(string),
+					Field:      relationEntry["foreign_column_name"].(string),
+				}
+			}
+
 			indexes := s.ListIndex(dbname, shardinstance, tableName)
 			collection.Indexes = make(map[string]*metadata.CollectionIndex)
 			for _, index := range indexes {
@@ -288,7 +321,7 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 	fieldQuery := ""
 	for _, field := range collection.Fields {
 		// TODO: better?
-		// We need to do some special magic for the "_id" field (to make it autoincrement etc). 
+		// We need to do some special magic for the "_id" field (to make it autoincrement etc).
 		// so we're going to do it ourselves
 		// TODO: check that it exists? otherwise its not really "valid"
 		if field.Name == "_id" {

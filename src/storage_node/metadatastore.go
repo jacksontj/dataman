@@ -89,116 +89,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 			// Now loop over all collections in the database to load them
 			for _, collectionRecord := range collectionResult.Return {
-				collection := metadata.NewCollection(collectionRecord["name"].(string))
-				collection.ID = collectionRecord["_id"].(int64)
-
-				// Load fields
-				collectionFieldResult := m.Store.Filter(map[string]interface{}{
-					"db":             "dataman_storage",
-					"shard_instance": "public",
-					"collection":     "collection_field",
-					"filter": map[string]interface{}{
-						"collection_id": collectionRecord["_id"],
-					},
-				})
-				if collectionFieldResult.Error != "" {
-					logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
-				}
-
-				// A temporary place to put all the fields as we find them, we
-				// need this so we can assemble subfields etc.
-				tmpFields := make(map[int64]*metadata.Field)
-
-				// TODO: remove
-				collection.Fields = make(map[string]*metadata.Field)
-
-				for _, collectionFieldRecord := range collectionFieldResult.Return {
-					field := &metadata.Field{
-						ID:   collectionFieldRecord["_id"].(int64),
-						Name: collectionFieldRecord["name"].(string),
-						Type: metadata.FieldType(collectionFieldRecord["field_type"].(string)),
-					}
-					if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
-						field.TypeArgs = fieldTypeArgs.(map[string]interface{})
-					}
-					if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
-						field.NotNull = true
-					}
-
-					// If we have a parent, mark it down for now
-					if collectionFieldRecord["parent_collection_field_id"] != nil {
-						field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
-					} else {
-						collection.Fields[field.Name] = field
-					}
-					tmpFields[field.ID] = field
-				}
-
-				// Link all the children where they should go
-				for _, field := range tmpFields {
-					if field.ParentFieldID != 0 {
-						if tmpFields[field.ParentFieldID].SubFields == nil {
-							tmpFields[field.ParentFieldID].SubFields = make(map[string]*metadata.Field)
-						}
-						tmpFields[field.ParentFieldID].SubFields[field.Name] = field
-					}
-				}
-
-				// Now load all the indexes for the collection
-				collectionIndexResult := m.Store.Filter(map[string]interface{}{
-					"db":             "dataman_storage",
-					"shard_instance": "public",
-					"collection":     "collection_index",
-					"filter": map[string]interface{}{
-						"collection_id": collectionRecord["_id"],
-					},
-				})
-				if collectionIndexResult.Error != "" {
-					logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
-				}
-
-				for _, collectionIndexRecord := range collectionIndexResult.Return {
-					// Load the index fields
-					collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
-						"db":             "dataman_storage",
-						"shard_instance": "public",
-						"collection":     "collection_index_item",
-						"filter": map[string]interface{}{
-							"collection_index_id": collectionIndexRecord["_id"],
-						},
-					})
-					if collectionIndexItemResult.Error != "" {
-						logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
-					}
-
-					// TODO: better? Right now we need a way to nicely define what the index points to
-					// for humans (strings) but we support indexes on nested things. This
-					// works for now, but we'll need to come up with a better method later
-					indexFields := make([]string, len(collectionIndexItemResult.Return))
-					for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-						indexField := tmpFields[collectionIndexItemRecord["collection_field_id"].(int64)]
-						nameChain := make([]string, 0)
-						for {
-							nameChain = append([]string{indexField.Name}, nameChain...)
-							if indexField.ParentFieldID == 0 {
-								break
-							} else {
-								indexField = tmpFields[indexField.ParentFieldID]
-							}
-						}
-						indexFields[i] = strings.Join(nameChain, ".")
-					}
-
-					index := &metadata.CollectionIndex{
-						ID:     collectionIndexRecord["_id"].(int64),
-						Name:   collectionIndexRecord["name"].(string),
-						Fields: indexFields,
-					}
-					if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
-						index.Unique = unique.(bool)
-					}
-					collection.Indexes[index.Name] = index
-				}
+				collection := m.getCollectionByID(meta, collectionRecord["_id"].(int64))
 
 				shardInstance.Collections[collection.Name] = collection
 
@@ -711,4 +602,179 @@ func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentF
 	}
 	return nil
 
+}
+
+func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Field {
+	field, ok := meta.Fields[id]
+	if !ok {
+		// Load field
+		collectionFieldResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_field",
+			"filter": map[string]interface{}{
+				"_id": id,
+			},
+		})
+		if collectionFieldResult.Error != "" {
+			logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		}
+
+		collectionFieldRecord := collectionFieldResult.Return[0]
+		field = &metadata.Field{
+			ID:           collectionFieldRecord["_id"].(int64),
+			CollectionID: collectionFieldRecord["collection_id"].(int64),
+			Name:         collectionFieldRecord["name"].(string),
+			Type:         metadata.FieldType(collectionFieldRecord["field_type"].(string)),
+		}
+		if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
+			field.TypeArgs = fieldTypeArgs.(map[string]interface{})
+		}
+		if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
+			field.NotNull = true
+		}
+
+		// If we have a parent, mark it down for now
+		if collectionFieldRecord["parent_collection_field_id"] != nil {
+			field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
+			parentField := m.getFieldByID(meta, field.ParentFieldID)
+
+			if parentField.SubFields == nil {
+				parentField.SubFields = make(map[string]*metadata.Field)
+			}
+			parentField.SubFields[field.Name] = field
+		}
+
+		// If we have a relation, get it
+		collectionFieldRelationResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_field_relation",
+			"filter": map[string]interface{}{
+				"collection_field_id": id,
+			},
+		})
+		if collectionFieldRelationResult.Error != "" {
+			logrus.Fatalf("Error getting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+		}
+		if len(collectionFieldRelationResult.Return) == 1 {
+			collectionFieldRelationRecord := collectionFieldRelationResult.Return[0]
+
+			relatedField := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
+			relatedCollection := m.getCollectionByID(meta, relatedField.CollectionID)
+			field.Relation = &metadata.FieldRelation{
+				ID:         collectionFieldRelationRecord["_id"].(int64),
+				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
+				Collection: relatedCollection.Name,
+				Field:      relatedField.Name,
+			}
+		}
+
+		meta.Fields[id] = field
+	}
+
+	return field
+}
+
+func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metadata.Collection {
+	collection, ok := meta.Collections[id]
+	if !ok {
+		collectionResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection",
+			"filter": map[string]interface{}{
+				"_id": id,
+			},
+		})
+		if collectionResult.Error != "" {
+			logrus.Fatalf("Error getting collectionResult: %v", collectionResult.Error)
+		}
+
+		collectionRecord := collectionResult.Return[0]
+
+		collection = metadata.NewCollection(collectionRecord["name"].(string))
+		collection.ID = collectionRecord["_id"].(int64)
+
+		// Load fields
+		collectionFieldResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_field",
+			"filter": map[string]interface{}{
+				"collection_id": collectionRecord["_id"],
+			},
+		})
+		if collectionFieldResult.Error != "" {
+			logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		}
+
+		// TODO: remove
+		collection.Fields = make(map[string]*metadata.Field)
+
+		for _, collectionFieldRecord := range collectionFieldResult.Return {
+			field := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))
+			if field.ParentFieldID == 0 {
+				collection.Fields[field.Name] = field
+			}
+		}
+
+		// Now load all the indexes for the collection
+		collectionIndexResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_index",
+			"filter": map[string]interface{}{
+				"collection_id": collectionRecord["_id"],
+			},
+		})
+		if collectionIndexResult.Error != "" {
+			logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+		}
+
+		for _, collectionIndexRecord := range collectionIndexResult.Return {
+			// Load the index fields
+			collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+				"db":             "dataman_storage",
+				"shard_instance": "public",
+				"collection":     "collection_index_item",
+				"filter": map[string]interface{}{
+					"collection_index_id": collectionIndexRecord["_id"],
+				},
+			})
+			if collectionIndexItemResult.Error != "" {
+				logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+			}
+
+			// TODO: better? Right now we need a way to nicely define what the index points to
+			// for humans (strings) but we support indexes on nested things. This
+			// works for now, but we'll need to come up with a better method later
+			indexFields := make([]string, len(collectionIndexItemResult.Return))
+			for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
+				indexField := m.getFieldByID(meta, collectionIndexItemRecord["collection_field_id"].(int64))
+				nameChain := make([]string, 0)
+				for {
+					nameChain = append([]string{indexField.Name}, nameChain...)
+					if indexField.ParentFieldID == 0 {
+						break
+					} else {
+						indexField = m.getFieldByID(meta, indexField.ParentFieldID)
+					}
+				}
+				indexFields[i] = strings.Join(nameChain, ".")
+			}
+
+			index := &metadata.CollectionIndex{
+				ID:     collectionIndexRecord["_id"].(int64),
+				Name:   collectionIndexRecord["name"].(string),
+				Fields: indexFields,
+			}
+			if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
+				index.Unique = unique.(bool)
+			}
+			collection.Indexes[index.Name] = index
+		}
+		meta.Collections[collection.ID] = collection
+	}
+	return collection
 }
