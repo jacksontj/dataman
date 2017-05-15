@@ -360,9 +360,6 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 
 	// Add all the fields in the collection
 	for _, field := range collection.Fields {
-		if strings.HasPrefix(field.Name, "_") {
-			return fmt.Errorf("The `_` namespace for collection fields is reserved: %v", field)
-		}
 		if err := m.AddField(collection, field, nil); err != nil {
 			return err
 		}

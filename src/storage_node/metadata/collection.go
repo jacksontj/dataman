@@ -21,6 +21,25 @@ type Collection struct {
 	Indexes map[string]*CollectionIndex `json:"indexes,omitempty"`
 }
 
+// TODO: elsewhere?
+// We need to ensure that collections have all of the internal fields that we define
+// TODO: error here if one that isn't compatible is defined
+func (c *Collection) EnsureInternalFields() error {
+	for name, internalField := range InternalFields {
+		if field, ok := c.Fields[name]; !ok {
+			// TODO: make a copy?
+			c.Fields[name] = internalField
+		} else {
+			// If it exists, it must match -- if not error
+			if !internalField.Equal(field) {
+				return fmt.Errorf("The `%s` namespace for collection fields is reserved: %v", InternalFieldPrefix, field)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *Collection) ListIndexes() []string {
 	indexes := make([]string, 0, len(c.Indexes))
 	for name, _ := range c.Indexes {

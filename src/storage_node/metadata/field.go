@@ -36,6 +36,11 @@ type Field struct {
 	SubFields map[string]*Field `json:"subfields,omitempty"`
 }
 
+func (f *Field) Equal(o *Field) bool {
+	// TODO: better?
+	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull
+}
+
 // Validate a field
 func (f *Field) Validate(val interface{}) error {
 	switch f.Type {

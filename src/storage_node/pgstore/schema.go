@@ -218,10 +218,6 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 
 		collection.Fields = make(map[string]*metadata.Field)
 		for _, fieldEntry := range fields {
-			// TODO: have "_" be a constant somewhere
-			if strings.HasPrefix(fieldEntry["column_name"].(string), "_") {
-				continue
-			}
 			var fieldType metadata.FieldType
 			fieldTypeArgs := make(map[string]interface{})
 			switch fieldEntry["data_type"] {
@@ -277,8 +273,6 @@ const addSequenceTemplate = `CREATE SEQUENCE "%s" INCREMENT BY %d RESTART WITH %
 const addTableTemplate = `CREATE TABLE "%s".%s
 (
   _id int4 NOT NULL DEFAULT nextval('"%s"'),
-  _created timestamp,
-  _updated timestamp,
   %s
   CONSTRAINT %s_id PRIMARY KEY (_id)
 )
@@ -293,8 +287,12 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 
 	fieldQuery := ""
 	for _, field := range collection.Fields {
-		if strings.HasPrefix(field.Name, "_") {
-			return fmt.Errorf("The `_` namespace for collection fields is reserved: %v", field)
+		// TODO: better?
+		// We need to do some special magic for the "_id" field (to make it autoincrement etc). 
+		// so we're going to do it ourselves
+		// TODO: check that it exists? otherwise its not really "valid"
+		if field.Name == "_id" {
+			continue
 		}
 		if fieldStr, err := fieldToSchema(field); err == nil {
 			fieldQuery += fieldStr + ", "

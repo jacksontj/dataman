@@ -514,6 +514,13 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 // serial synchronous provisioning-- which is definitely not what we want long-term
 // Add a database
 func (s *RouterNode) AddDatabase(db *metadata.Database) error {
+	// Validate the schemas passed in
+	for _, collection := range db.Collections {
+		if err := collection.EnsureInternalFields(); err != nil {
+			return err
+		}
+	}
+
 	meta := s.GetMeta()
 
 	// TODO: move the validation to the metadata store?

@@ -131,6 +131,15 @@ QUERYLOOP:
 
 // TODO: schema management changes here
 func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
+	// Validate the schemas passed in
+	for _, shardInstance := range db.ShardInstances {
+		for _, collection := range shardInstance.Collections {
+			if err := collection.EnsureInternalFields(); err != nil {
+				return err
+			}
+		}
+	}
+
 	if s.storeSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}

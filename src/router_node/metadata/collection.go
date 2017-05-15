@@ -1,7 +1,11 @@
 package metadata
 
-import "github.com/jacksontj/dataman/src/router_node/sharding"
-import storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+import (
+	"fmt"
+
+	"github.com/jacksontj/dataman/src/router_node/sharding"
+	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+)
 
 func NewCollection(name string) *Collection {
 	return &Collection{
@@ -26,6 +30,25 @@ type Collection struct {
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
 	Partitions []*CollectionPartition `json:"partitions"`
+}
+
+// TODO: elsewhere?
+// We need to ensure that collections have all of the internal fields that we define
+// TODO: error here if one that isn't compatible is defined
+func (c *Collection) EnsureInternalFields() error {
+	for name, internalField := range storagenodemetadata.InternalFields {
+		if field, ok := c.Fields[name]; !ok {
+			// TODO: make a copy?
+			c.Fields[name] = internalField
+		} else {
+			// If it exists, it must match -- if not error
+			if !internalField.Equal(field) {
+				return fmt.Errorf("The `%s` namespace for collection fields is reserved: %v", storagenodemetadata.InternalFieldPrefix, field)
+			}
+		}
+	}
+
+	return nil
 }
 
 type CollectionVShard struct {

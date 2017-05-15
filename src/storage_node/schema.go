@@ -15,6 +15,10 @@ const schemaJson string = `
             "collection": {
               "name": "collection",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -40,6 +44,10 @@ const schemaJson string = `
             "collection_field": {
               "name": "collection_field",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_id": {
                   "name": "collection_id",
                   "type": "int"
@@ -98,6 +106,10 @@ const schemaJson string = `
             "collection_index": {
               "name": "collection_index",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_id": {
                   "name": "collection_id",
                   "type": "int"
@@ -135,6 +147,10 @@ const schemaJson string = `
             "collection_index_item": {
               "name": "collection_index_item",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_field_id": {
                   "name": "collection_field_id",
                   "type": "int"
@@ -157,6 +173,10 @@ const schemaJson string = `
             "database": {
               "name": "database",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "name": {
                   "name": "name",
                   "type": "string",
@@ -185,6 +205,10 @@ const schemaJson string = `
             "shard_instance": {
               "name": "shard_instance",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int"
+                },
                 "collection_shard": {
                   "name": "collection_shard",
                   "type": "bool"
