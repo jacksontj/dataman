@@ -17,7 +17,11 @@
 						"thread_id": {
 							"not_null": true,
 							"type": "int",
-							"name": "thread_id"
+							"name": "thread_id",
+							"relation": {
+							    "collection": "thread",
+							    "field": "_id"
+							}
 						},
 						"created_by": {
 							"not_null": true,
@@ -143,6 +147,6 @@
 		"required": true
 	}],
 	"database_vshard": {
-		"shard_count": 10
+		"shard_count": 2
 	}
 }
