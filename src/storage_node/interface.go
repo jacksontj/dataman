@@ -29,6 +29,10 @@ type StorageSchemaInterface interface {
 	ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field
 	GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Collection
 	AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error
+	// TODO: implement? So we can do changes like uniqueness etc.
+	// for now we'll just remove and add (if the name matches) -- which is not
+	// what we want for real-world usage
+	//UpdateCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error
 	RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error
 
 	ListCollectionIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex

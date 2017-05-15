@@ -129,6 +129,7 @@ QUERYLOOP:
 	return results
 }
 
+// TODO: lock for schema changes (should use whatever our internal locking mechanism is which is TODO)
 // TODO: schema management changes here
 func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 	// Validate the schemas passed in
