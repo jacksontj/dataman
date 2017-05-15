@@ -46,6 +46,12 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	return fieldStr, nil
 }
 
+// TODO: actually implement
+func (s *Storage) ListDatabase() []*metadata.Database {
+	return nil
+}
+
+// TODO: actually implement
 func (s *Storage) GetDatabase(dbname string) *metadata.Database {
 	// SELECT datname FROM pg_database WHERE datistemplate = false;
 	database := metadata.NewDatabase(dbname)
@@ -110,21 +116,6 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	return nil
 }
 
-func (s *Storage) GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance {
-	// TODO: better
-	shardInstances := s.ListShardInstance(dbname)
-	if shardInstances == nil {
-		return nil
-	}
-	for _, shardInstance := range shardInstances {
-		if shardInstance.Name == shardinstance {
-			return shardInstance
-		}
-	}
-
-	return nil
-}
-
 func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 	schemas, err := DoQuery(s.getDB(dbname), "SELECT * from information_schema.schemata")
 	if err != nil {
@@ -159,6 +150,21 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 	return shardInstances
 }
 
+func (s *Storage) GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance {
+	// TODO: better
+	shardInstances := s.ListShardInstance(dbname)
+	if shardInstances == nil {
+		return nil
+	}
+	for _, shardInstance := range shardInstances {
+		if shardInstance.Name == shardinstance {
+			return shardInstance
+		}
+	}
+
+	return nil
+}
+
 func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	// Create the database
 	// TODO: error if exists already?
@@ -178,21 +184,6 @@ func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadat
 // TODO: implement
 func (s *Storage) RemoveShardInstance(dbname, shardInstance string) error {
 	return fmt.Errorf("TO IMPLEMENT")
-}
-
-func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection {
-
-	// TODO: better
-	collections := s.ListCollection(dbname, shardinstance)
-	if collections == nil {
-		return nil
-	}
-	for _, collection := range collections {
-		if collection.Name == collectionname {
-			return collection
-		}
-	}
-	return nil
 }
 
 // TODO: find foreign key constraints
@@ -283,7 +274,7 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 				}
 			}
 
-			indexes := s.ListIndex(dbname, shardinstance, tableName)
+			indexes := s.ListCollectionIndex(dbname, shardinstance, tableName)
 			collection.Indexes = make(map[string]*metadata.CollectionIndex)
 			for _, index := range indexes {
 				collection.Indexes[index.Name] = index
@@ -295,6 +286,21 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 	}
 
 	return collections
+}
+
+func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection {
+
+	// TODO: better
+	collections := s.ListCollection(dbname, shardinstance)
+	if collections == nil {
+		return nil
+	}
+	for _, collection := range collections {
+		if collection.Name == collectionname {
+			return collection
+		}
+	}
+	return nil
 }
 
 // TODO: also delete this
@@ -351,84 +357,13 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 	// If a table has indexes defined, lets take care of that
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := s.AddIndex(db.Name, shardInstance.Name, collection, index); err != nil {
+			if err := s.AddCollectionIndex(db.Name, shardInstance.Name, collection, index); err != nil {
 				return err
 			}
 		}
 	}
 
 	return nil
-}
-
-// TODO: re-implement, this is now ONLY datastore focused
-func (s *Storage) UpdateCollection(dbname, shardinstance string, collection *metadata.Collection) error {
-	// TODO: implement
-	return fmt.Errorf("Unable to update collection")
-
-	/*
-		currentCollection := s.GetCollection(dbname, collection.Name)
-
-		if currentCollection == nil {
-			return fmt.Errorf("Unable to find collection %s.%s", dbname, collection.Name)
-		}
-
-		// TODO: this should be done elsewhere
-		if collection.FieldMap == nil {
-			collection.FieldMap = make(map[string]*metadata.Field)
-			for _, field := range collection.Fields {
-				collection.FieldMap[field.Name] = field
-			}
-		}
-
-		// fields we need to remove
-		for name, _ := range currentCollection.FieldMap {
-			if _, ok := collection.FieldMap[name]; !ok {
-				if err := s.RemoveField(dbname, collection.Name, name); err != nil {
-					return fmt.Errorf("Unable to remove field: %v", err)
-				}
-			}
-		}
-		// Fields we need to add
-		for name, field := range collection.FieldMap {
-			if _, ok := currentCollection.FieldMap[name]; !ok {
-				if err := s.AddField(dbname, collection.Name, field); err != nil {
-					return fmt.Errorf("Unable to add field: %v", err)
-				}
-			}
-		}
-
-		// TODO: compare order and schema
-		// TODO: Fields we need to change
-
-		// If the new def has no indexes, remove them all
-		if collection.Indexes == nil {
-			for _, collectionIndex := range currentCollection.Indexes {
-				if err := s.RemoveIndex(dbname, collection.Name, collectionIndex.Name); err != nil {
-					return fmt.Errorf("Unable to remove collection_index: %v", err)
-				}
-			}
-		} else {
-			// compare old and new-- make them what they need to be
-			// What should be removed?
-			for name, _ := range currentCollection.Indexes {
-				if _, ok := collection.Indexes[name]; !ok {
-					if err := s.RemoveIndex(dbname, collection.Name, name); err != nil {
-						return err
-					}
-				}
-			}
-			// What should be added
-			for name, index := range collection.Indexes {
-				if _, ok := currentCollection.Indexes[name]; !ok {
-					if err := s.AddIndex(dbname, collection, index); err != nil {
-						return err
-					}
-				}
-			}
-		}
-
-		return nil
-	*/
 }
 
 const removeTableTemplate = `DROP TABLE %s.%s`
@@ -442,7 +377,7 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 	}
 
 	for name, _ := range collection.Indexes {
-		if err := s.RemoveIndex(dbname, shardinstance, collectionname, name); err != nil {
+		if err := s.RemoveCollectionIndex(dbname, shardinstance, collectionname, name); err != nil {
 			return fmt.Errorf("Unable to remove table_index: %v", err)
 		}
 	}
@@ -455,11 +390,20 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 	return nil
 }
 
-// TODO: add to interface?
-func (s *Storage) AddField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
+// TODO: implement
+func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field {
+	return nil
+}
+
+// TODO: implement
+func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Collection {
+	return nil
+}
+
+func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
-		if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance, collectionname, fieldStr)); err != nil {
+		if _, err := DoQuery(s.dbMap[db.Name], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance.Name, collection.Name, fieldStr)); err != nil {
 			return err
 		}
 	} else {
@@ -469,8 +413,7 @@ func (s *Storage) AddField(dbname, shardinstance, collectionname string, field *
 	return nil
 }
 
-// TODO: add to interface?
-func (s *Storage) RemoveField(dbname, shardinstance, collectionname, fieldName string) error {
+func (s *Storage) RemoveCollectionField(dbname, shardinstance, collectionname, fieldName string) error {
 	if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s DROP \"%s\"", shardinstance, collectionname, fieldName)); err != nil {
 		return fmt.Errorf("Unable to remove old field: %v", err)
 	}
@@ -507,30 +450,7 @@ FROM pg_index AS idx
 WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
 `
 
-func (s *Storage) GetIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
-	indexEntries, err := DoQuery(s.db, listIndexQuery)
-	if err != nil {
-		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
-	}
-
-	for _, indexEntry := range indexEntries {
-		schemaName := string(indexEntry["schema_name"].([]byte))
-		pgIndexName := string(indexEntry["index_name"].([]byte))
-		tableName := string(indexEntry["table_name"].([]byte))
-		if schemaName == shardinstance && pgIndexName == indexname && tableName == collectionname {
-			var indexFields []string
-			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
-			return &metadata.CollectionIndex{
-				Name:   string(indexEntry["index_name"].([]byte)),
-				Fields: indexFields,
-				Unique: indexEntry["is_unique"].(bool),
-			}
-		}
-	}
-	return nil
-}
-
-func (s *Storage) ListIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
+func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
 	indexEntries, err := DoQuery(s.db, listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to list indexes for %s.%s: %v", dbname, collectionname, err)
@@ -561,8 +481,31 @@ func (s *Storage) ListIndex(dbname, shardInstance, collectionname string) []*met
 
 }
 
+func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
+	indexEntries, err := DoQuery(s.db, listIndexQuery)
+	if err != nil {
+		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
+	}
+
+	for _, indexEntry := range indexEntries {
+		schemaName := string(indexEntry["schema_name"].([]byte))
+		pgIndexName := string(indexEntry["index_name"].([]byte))
+		tableName := string(indexEntry["table_name"].([]byte))
+		if schemaName == shardinstance && pgIndexName == indexname && tableName == collectionname {
+			var indexFields []string
+			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			return &metadata.CollectionIndex{
+				Name:   string(indexEntry["index_name"].([]byte)),
+				Fields: indexFields,
+				Unique: indexEntry["is_unique"].(bool),
+			}
+		}
+	}
+	return nil
+}
+
 // Index changes
-func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *Storage) AddCollectionIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	if index.Fields == nil || len(index.Fields) == 0 {
 		return fmt.Errorf("Indexes must have fields defined")
 	}
@@ -611,7 +554,7 @@ func (s *Storage) AddIndex(dbname, shardinstance string, collection *metadata.Co
 const removeTableIndexTemplate = `DROP INDEX "%s.idx_%s_%s"`
 
 // TODO: index names have to be unique across the whole DB?
-func (s *Storage) RemoveIndex(dbname, shardinstance, collectionname, indexname string) error {
+func (s *Storage) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
 	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, shardinstance, collectionname, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)

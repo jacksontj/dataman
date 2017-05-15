@@ -5,34 +5,42 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-// TODO: consolidate the storageSchema interfaces?
-
-// Schema read interface to the underlying datastore
+// TODO: add flags for "remove" etc. so we can make schema changes without removing
+// anything (meaning the underlying datasource_instance_shard_instance would be a superset
+// of the schema passed in-- useful for schema migrations)
+// Schema interface to the underlying datastore
 type StorageSchemaInterface interface {
+	ListDatabase() []*metadata.Database
 	GetDatabase(dname string) *metadata.Database
-	//ListDatabase() []*metadata.Database
 	AddDatabase(db *metadata.Database) error
 	RemoveDatabase(dbname string) error
 
-	GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance
 	ListShardInstance(dbname string) []*metadata.ShardInstance
+	GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance
 	AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error
 	RemoveShardInstance(dbname, shardInstance string) error
 
 	// TODO: everything below needs to include the shardInstance dimension
-
-	GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection
 	ListCollection(dbname, shardinstance string) []*metadata.Collection
+	GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection
 	AddCollection(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection) error
-	UpdateCollection(dbname, shardinstance string, collection *metadata.Collection) error
 	RemoveCollection(dbname, shardinstance, collectionname string) error
 
-	GetIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex
-	ListIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex
+	ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field
+	GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Collection
+	AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error
+	RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error
+
+	ListCollectionIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex
+	GetCollectionIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex
 	// TODO: pass the actual objects (not just names)
-	AddIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error
-	RemoveIndex(dbname, shardinstance, collectionname, indexname string) error
+	AddCollectionIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error
+	RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error
 }
+
+// TODO: advanced StorageSchemaInterface which has `Ensure` methods all over
+// The intention is that in some datasources it is more efficient to do it as
+// a batch or something similar
 
 // Storage data interface for handling all the queries etc
 type StorageDataInterface interface {
