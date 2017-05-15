@@ -43,7 +43,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// DB instance
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
-	// TODO: update db instance
+	// TODO: ensure db instance
 	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname", h.updateDatabase)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
 
@@ -52,7 +52,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.addShardInstance)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.viewShardInstance)
-	// TODO: update shard_instance
+	// TODO: ensure shard_instance
 	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.addCollection)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.removeShardInstance)
 
@@ -61,9 +61,11 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.addCollection)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
-	// TODO: update collection
+	// TODO: ensure collection
 	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.addCollection)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.removeCollection)
+
+	// TODO: endpoints for index and fields
 
 	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
 }
@@ -311,6 +313,7 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 }
 
 // Add database that we have in the metadata store
+/*
 func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
@@ -334,6 +337,7 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 		return
 	}
 }
+*/
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

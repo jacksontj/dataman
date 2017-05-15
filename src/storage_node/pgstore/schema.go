@@ -46,18 +46,31 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 	return fieldStr, nil
 }
 
-// TODO: actually implement
 func (s *Storage) ListDatabase() []*metadata.Database {
+	if dbRecords, err := DoQuery(s.db, "SELECT datname FROM pg_database WHERE datistemplate = false"); err == nil {
+		dbs := make([]*metadata.Database, len(dbRecords))
+		for i, dbRecord := range dbRecords {
+			dbs[i] = s.GetDatabase(dbRecord["datname"].(string))
+		}
+		return dbs
+	}
 	return nil
 }
 
-// TODO: actually implement
 func (s *Storage) GetDatabase(dbname string) *metadata.Database {
-	// SELECT datname FROM pg_database WHERE datistemplate = false;
+	dbQuery := fmt.Sprintf("SELECT datname FROM pg_database WHERE datistemplate = false AND datname='%s'", dbname)
+	dbRecords, err := DoQuery(s.db, dbQuery)
+	// TODO: log fatal? or return an actual error
+	if err != nil || len(dbRecords) != 1 {
+		return nil
+	}
 	database := metadata.NewDatabase(dbname)
 	shardInstances := s.ListShardInstance(dbname)
-	for _, shardInstance := range shardInstances {
-		database.ShardInstances[shardInstance.Name] = shardInstance
+
+	if shardInstances != nil {
+		for _, shardInstance := range shardInstances {
+			database.ShardInstances[shardInstance.Name] = shardInstance
+		}
 	}
 
 	return database
@@ -76,13 +89,6 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 		return fmt.Errorf("Unable to open db connection: %v", err)
 	}
 	s.dbMap[db.Name] = dbConn
-
-	// Add any shards defined
-	for _, shardInstance := range db.ShardInstances {
-		if err := s.AddShardInstance(db, shardInstance); err != nil {
-			return fmt.Errorf("Error adding shardInstance %s: %v", shardInstance.Name, err)
-		}
-	}
 
 	return nil
 }
@@ -172,21 +178,17 @@ func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadat
 		return fmt.Errorf("Unable to create schema: %v", err)
 	}
 
-	for _, collection := range shardInstance.Collections {
-		if err := s.AddCollection(db, shardInstance, collection); err != nil {
-			return fmt.Errorf("Error adding collection to shardInstance: %v", err)
-		}
-	}
-
 	return nil
 }
 
-// TODO: implement
 func (s *Storage) RemoveShardInstance(dbname, shardInstance string) error {
-	return fmt.Errorf("TO IMPLEMENT")
+	if _, err := DoQuery(s.getDB(dbname), fmt.Sprintf("DROP SCHEMA IF NOT EXISTS \"%s\"", shardInstance)); err != nil {
+		return fmt.Errorf("Unable to drop schema: %v", err)
+	}
+	return nil
 }
 
-// TODO: find foreign key constraints
+// find foreign key constraints
 var listRelationQuery = `
 select c.constraint_name
     , x.table_schema as schema_name
@@ -206,83 +208,24 @@ WHERE x.table_schema = '%s' AND x.table_name = '%s'
 
 // TODO: nicer, this works but is way more work than necessary
 func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Collection {
-	collections := make([]*metadata.Collection, 0)
-
 	query := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_schema='%s' ORDER BY table_schema,table_name;", shardinstance)
 
 	tables, err := DoQuery(s.getDB(dbname), query)
 	if err != nil {
 		logrus.Fatalf("Unable to get table list for db %s: %v", dbname, err)
 	}
+	collections := make([]*metadata.Collection, len(tables))
 
-	for _, tableEntry := range tables {
+	for i, tableEntry := range tables {
 		tableName := tableEntry["table_name"].(string)
 		collection := metadata.NewCollection(tableName)
 
-		// Get the fields for the collection
-		fields, err := DoQuery(s.getDB(dbname), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", tableName)
-		if err != nil {
-			logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, tableName, err)
-		}
-
 		collection.Fields = make(map[string]*metadata.Field)
-		for _, fieldEntry := range fields {
-			var fieldType metadata.FieldType
-			fieldTypeArgs := make(map[string]interface{})
-			switch fieldEntry["data_type"] {
-			case "integer":
-				fieldType = metadata.Int
-			case "character varying":
-				fieldType = metadata.String
-			// TODO: do we want to do this based on size?
-			case "smallint":
-				fieldType = metadata.Int
-				// TODO: this isn't actually 100% accurate, since it might be a list or something :/
-			case "jsonb":
-				fieldType = metadata.Document
-			case "boolean":
-				fieldType = metadata.Bool
-			case "text":
-				fieldType = metadata.Text
-			case "timestamp without time zone":
-				fieldType = metadata.DateTime
-			default:
-				logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, tableName, fieldEntry)
-			}
-
-			if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
-				fieldTypeArgs["size"] = maxSize
-			}
-
-			field := &metadata.Field{
-				Name:     fieldEntry["column_name"].(string),
-				Type:     fieldType,
-				TypeArgs: fieldTypeArgs,
-			}
-
-			queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
-
-			relationEntries, err := DoQuery(s.getDB(dbname), fmt.Sprintf(queryTemplate, shardinstance, collection.Name, field.Name))
-			if err != nil {
-				logrus.Fatalf("Unable to get relation %s from %s: %v", field.Name, dbname, err)
-			}
-			if len(relationEntries) > 0 {
-				relationEntry := relationEntries[0]
-				field.Relation = &metadata.FieldRelation{
-					Collection: relationEntry["foreign_table_name"].(string),
-					Field:      relationEntry["foreign_column_name"].(string),
-				}
-			}
-
-			indexes := s.ListCollectionIndex(dbname, shardinstance, tableName)
-			collection.Indexes = make(map[string]*metadata.CollectionIndex)
-			for _, index := range indexes {
-				collection.Indexes[index.Name] = index
-			}
+		for _, field := range s.ListCollectionField(dbname, shardinstance, collection.Name) {
 			collection.Fields[field.Name] = field
 		}
 
-		collections = append(collections, collection)
+		collections[i] = collection
 	}
 
 	return collections
@@ -303,44 +246,19 @@ func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *m
 	return nil
 }
 
-// TODO: also delete this
 const addSequenceTemplate = `CREATE SEQUENCE "%s" INCREMENT BY %d RESTART WITH %d`
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
-// TODO: internal indexes on _id, _created, _updated -- these'll be needed for tombstone stuff
 const addTableTemplate = `CREATE TABLE "%s".%s
 (
-  _id int4 NOT NULL DEFAULT nextval('"%s"'),
-  %s
+  _id int4 NOT NULL DEFAULT nextval('"%s"')
   CONSTRAINT %s_id PRIMARY KEY (_id)
 )
 `
 
 // Collection Changes
 func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
-	// Make sure at least one field is defined
-	if collection.Fields == nil || len(collection.Fields) == 0 {
-		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
-	}
-
-	fieldQuery := ""
-	for _, field := range collection.Fields {
-		// TODO: better?
-		// We need to do some special magic for the "_id" field (to make it autoincrement etc).
-		// so we're going to do it ourselves
-		// TODO: check that it exists? otherwise its not really "valid"
-		if field.Name == "_id" {
-			continue
-		}
-		if fieldStr, err := fieldToSchema(field); err == nil {
-			fieldQuery += fieldStr + ", "
-		} else {
-			return err
-		}
-
-	}
-
 	// Create the sequence
 	// TODO: method for this
 	sequenceName := fmt.Sprintf("%s_%s_seq", shardInstance.Name, collection.Name)
@@ -349,18 +267,9 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
-	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName, fieldQuery, collection.Name)
+	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName, collection.Name)
 	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
-	}
-
-	// If a table has indexes defined, lets take care of that
-	if collection.Indexes != nil {
-		for _, index := range collection.Indexes {
-			if err := s.AddCollectionIndex(db.Name, shardInstance.Name, collection, index); err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil
@@ -371,17 +280,6 @@ const removeTableTemplate = `DROP TABLE %s.%s`
 // TODO: use db listing to remove things
 // TODO: remove indexes on removal
 func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string) error {
-	collection := s.GetCollection(dbname, shardinstance, collectionname)
-	if collection == nil {
-		return fmt.Errorf("Unable to find collection %s.%s", dbname, collectionname)
-	}
-
-	for name, _ := range collection.Indexes {
-		if err := s.RemoveCollectionIndex(dbname, shardinstance, collectionname, name); err != nil {
-			return fmt.Errorf("Unable to remove table_index: %v", err)
-		}
-	}
-
 	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, shardinstance, collectionname)
 	if _, err := s.dbMap[dbname].Query(tableRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", collectionname, err)
@@ -392,11 +290,74 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 
 // TODO: implement
 func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field {
-	return nil
+	// TODO: use shardinstance
+	// Get the fields for the collection
+	fieldRecords, err := DoQuery(s.getDB(dbname), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", collectionname)
+	if err != nil {
+		logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, collectionname, err)
+	}
+
+	fields := make([]*metadata.Field, len(fieldRecords))
+	for i, fieldEntry := range fieldRecords {
+		var fieldType metadata.FieldType
+		fieldTypeArgs := make(map[string]interface{})
+		switch fieldEntry["data_type"] {
+		case "integer":
+			fieldType = metadata.Int
+		case "character varying":
+			fieldType = metadata.String
+		// TODO: do we want to do this based on size?
+		case "smallint":
+			fieldType = metadata.Int
+			// TODO: this isn't actually 100% accurate, since it might be a list or something :/
+		case "jsonb":
+			fieldType = metadata.Document
+		case "boolean":
+			fieldType = metadata.Bool
+		case "text":
+			fieldType = metadata.Text
+		case "timestamp without time zone":
+			fieldType = metadata.DateTime
+		default:
+			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
+		}
+
+		if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
+			fieldTypeArgs["size"] = maxSize
+		}
+
+		field := &metadata.Field{
+			Name:     fieldEntry["column_name"].(string),
+			Type:     fieldType,
+			TypeArgs: fieldTypeArgs,
+		}
+
+		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
+
+		relationEntries, err := DoQuery(s.getDB(dbname), fmt.Sprintf(queryTemplate, shardinstance, collectionname, field.Name))
+		if err != nil {
+			logrus.Fatalf("Unable to get relation %s from %s: %v", field.Name, dbname, err)
+		}
+		if len(relationEntries) > 0 {
+			relationEntry := relationEntries[0]
+			field.Relation = &metadata.FieldRelation{
+				Collection: relationEntry["foreign_table_name"].(string),
+				Field:      relationEntry["foreign_column_name"].(string),
+			}
+		}
+		fields[i] = field
+	}
+	return fields
 }
 
-// TODO: implement
-func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Collection {
+// TODO: better
+func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Field {
+	fields := s.ListCollectionField(dbname, shardinstance, collectionname)
+	for _, field := range fields {
+		if field.Name == fieldname {
+			return field
+		}
+	}
 	return nil
 }
 

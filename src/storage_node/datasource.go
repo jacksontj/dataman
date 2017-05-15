@@ -183,19 +183,44 @@ func (s *DatasourceInstance) AddShardInstance(dbname string, shardInstance *meta
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddShardInstance")
 }
 
+func (s *DatasourceInstance) EnsureShardInstance(dbname string, shardInstance *metadata.ShardInstance) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddShardInstance")
+}
+
 func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance string) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveShardInstance")
 }
 
 // TODO: to-implement
-func (s *DatasourceInstance) AddCollection(dbname string, shardinstance string, collection *metadata.Collection) error {
+func (s *DatasourceInstance) AddCollection(dbname, shardinstance string, collection *metadata.Collection) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollection")
 }
-func (s *DatasourceInstance) UpdateCollection(dbname string, collection *metadata.Collection) error {
+func (s *DatasourceInstance) EnsureCollection(dbname string, collection *metadata.Collection) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.UpdateCollection")
 }
 func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollection")
+}
+
+func (s *DatasourceInstance) AddCollectionField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionField")
+}
+func (s *DatasourceInstance) EnsureCollectionField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionField")
+}
+func (s *DatasourceInstance) RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionField")
+}
+
+func (s *DatasourceInstance) AddCollectionIndex(dbname, shardinstance, collection string, index *metadata.CollectionIndex) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionIndex")
+}
+
+func (s *DatasourceInstance) EnsureCollectionIndex(dbname, shardinstance, collection string, index *metadata.CollectionIndex) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionIndex")
+}
+func (s *DatasourceInstance) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionIndex")
 }
 
 // TODO: move add/get/set schema stuff here (to allow for config contol
