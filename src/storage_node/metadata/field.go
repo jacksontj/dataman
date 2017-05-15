@@ -2,6 +2,8 @@ package metadata
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
 )
 
 type FieldType string
@@ -73,13 +75,17 @@ func (f *Field) Validate(val interface{}) error {
 		}
 		return nil
 	case Int:
-		switch val.(type) {
+		switch typedVal := val.(type) {
 		case int:
 			return nil
 		case float64:
 			return nil
+		case string:
+			_, err := strconv.ParseInt(typedVal, 10, 64)
+			return err
+		default:
+			return fmt.Errorf("Unknown Int type %s -- %v", reflect.TypeOf(val), val)
 		}
-		return fmt.Errorf("Unknown type %v", val)
 	case Bool:
 		if _, ok := val.(bool); !ok {
 			return fmt.Errorf("Not a bool")
