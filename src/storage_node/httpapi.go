@@ -44,7 +44,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// DB instance
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
 	// TODO: ensure db instance
-	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname", h.updateDatabase)
+	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname", h.ensureDatabase)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
 
 	// Shard Instances

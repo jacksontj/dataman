@@ -252,8 +252,7 @@ const addSequenceTemplate = `CREATE SEQUENCE "%s" INCREMENT BY %d RESTART WITH %
 // Template for creating tables
 const addTableTemplate = `CREATE TABLE "%s".%s
 (
-  _id int4 NOT NULL DEFAULT nextval('"%s"')
-  CONSTRAINT %s_id PRIMARY KEY (_id)
+  _id int4 NOT NULL DEFAULT nextval('"%s"') PRIMARY KEY
 )
 `
 
@@ -267,7 +266,7 @@ func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.S
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
-	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName, collection.Name)
+	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName)
 	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
@@ -361,6 +360,17 @@ func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fiel
 	return nil
 }
 
+const addForeignKeyTemplate = `
+ALTER TABLE "%s".%s ADD CONSTRAINT %s FOREIGN KEY (%s)
+  REFERENCES "%s".%s (%s) MATCH SIMPLE
+  ON UPDATE NO ACTION ON DELETE NO ACTION
+`
+
+/*
+  CONSTRAINT collection_field_parent_collection_field_id_fkey FOREIGN KEY (parent_collection_field_id)
+      REFERENCES public.collection_field (_id) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE NO ACTION
+*/
 func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
@@ -369,6 +379,23 @@ func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metad
 		}
 	} else {
 		return err
+	}
+
+	// If it has a relation, add that constraint
+	if field.Relation != nil {
+		query := fmt.Sprintf(
+			addForeignKeyTemplate,
+			shardinstance.Name,
+			collection.Name,
+			fmt.Sprintf("%s_%s_fkey", collection.Name, field.Name),
+			field.Name,
+			shardinstance.Name,
+			field.Relation.Collection,
+			field.Relation.Field,
+		)
+		if _, err := DoQuery(s.dbMap[db.Name], query); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -412,7 +439,7 @@ WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
 `
 
 func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
-	indexEntries, err := DoQuery(s.db, listIndexQuery)
+	indexEntries, err := DoQuery(s.dbMap[dbname], listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to list indexes for %s.%s: %v", dbname, collectionname, err)
 	}
@@ -443,7 +470,7 @@ func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname stri
 }
 
 func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
-	indexEntries, err := DoQuery(s.db, listIndexQuery)
+	indexEntries, err := DoQuery(s.dbMap[dbname], listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
 	}
@@ -452,7 +479,7 @@ func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, inde
 		schemaName := string(indexEntry["schema_name"].([]byte))
 		pgIndexName := string(indexEntry["index_name"].([]byte))
 		tableName := string(indexEntry["table_name"].([]byte))
-		if schemaName == shardinstance && pgIndexName == indexname && tableName == collectionname {
+		if schemaName == shardinstance && (tableName == shardinstance+"."+collectionname) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			return &metadata.CollectionIndex{
@@ -466,7 +493,7 @@ func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, inde
 }
 
 // Index changes
-func (s *Storage) AddCollectionIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	if index.Fields == nil || len(index.Fields) == 0 {
 		return fmt.Errorf("Indexes must have fields defined")
 	}
@@ -478,7 +505,7 @@ func (s *Storage) AddCollectionIndex(dbname, shardinstance string, collection *m
 	} else {
 		indexAddQuery = "CREATE"
 	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".\"%s\" (", shardinstance, collection.Name, index.Name, shardinstance, collection.Name)
+	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".\"%s\" (", shardInstance.Name, collection.Name, index.Name, shardInstance.Name, collection.Name)
 	for i, fieldName := range index.Fields {
 		if i > 0 {
 			indexAddQuery += ","
@@ -505,8 +532,8 @@ func (s *Storage) AddCollectionIndex(dbname, shardinstance string, collection *m
 		}
 	}
 	indexAddQuery += ")"
-	if _, err := DoQuery(s.dbMap[dbname], indexAddQuery); err != nil {
-		return fmt.Errorf("Unable to add collection index %s to %s.%s: %v", index.Name, dbname, collection.Name, err)
+	if _, err := DoQuery(s.dbMap[db.Name], indexAddQuery); err != nil {
+		return fmt.Errorf("Unable to add collection index %s to %s.%s: %v", index.Name, db.Name, collection.Name, err)
 	}
 
 	return nil

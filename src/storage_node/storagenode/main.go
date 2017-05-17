@@ -39,5 +39,8 @@ func main() {
 	}
 
 	// initialize the http api (since at this point we are ready to go!
-	storageNode.Start()
+	if err := storageNode.Start(); err != nil {
+		logrus.Fatalf("Err: %v", err)
+	}
+
 }

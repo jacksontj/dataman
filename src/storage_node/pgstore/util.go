@@ -1,10 +1,15 @@
 package pgstorage
 
-import "database/sql"
+import (
+	"database/sql"
+
+	"github.com/Sirupsen/logrus"
+)
 
 func DoQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
 	rows, err := db.Query(query, args...)
 	if err != nil {
+		logrus.Errorf("Error running query=%s Err=%v", query, err)
 		return nil, err
 	}
 

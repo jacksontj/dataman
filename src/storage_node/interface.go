@@ -37,8 +37,9 @@ type StorageSchemaInterface interface {
 
 	ListCollectionIndex(dbname, shardinstance, collectionname string) []*metadata.CollectionIndex
 	GetCollectionIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex
-	// TODO: pass the actual objects (not just names)
-	AddCollectionIndex(dbname, shardinstance string, collection *metadata.Collection, index *metadata.CollectionIndex) error
+	AddCollectionIndex(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error
+	// TODO
+	//UpdateCollectionIndex(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error
 	RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error
 }
 

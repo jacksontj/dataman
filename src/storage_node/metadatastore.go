@@ -589,7 +589,7 @@ func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentF
 		"record":         fieldRecord,
 	})
 	if collectionFieldResult.Error != "" {
-		return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		return fmt.Errorf("Error inserting collectionFieldResult: %v", collectionFieldResult.Error)
 	}
 	field.ID = collectionFieldResult.Return[0]["_id"].(int64)
 

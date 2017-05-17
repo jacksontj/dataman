@@ -129,6 +129,7 @@ QUERYLOOP:
 	return results
 }
 
+// TODO: add an "ensureDatabase" option
 // TODO: lock for schema changes (should use whatever our internal locking mechanism is which is TODO)
 // TODO: schema management changes here
 func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
@@ -145,10 +146,30 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
+	// TODO: handle adding things that already exist (for RO usage)-- which would
+	// just require comparing the given schema to what exists in the datasource_instance
+
+	// Do required schema manipulations
 	// Add the database in the store
 	if err := s.storeSchema.AddDatabase(db); err != nil {
 		return err
 	}
+	// TODO: call other exists methods
+	for _, shardInstance := range db.ShardInstances {
+		// ensure the shardInstance exists
+		if existingShardInstance := s.storeSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
+			if err := s.storeSchema.AddShardInstance(db, shardInstance); err != nil {
+				return err
+			}
+		}
+
+		for _, collection := range shardInstance.Collections {
+			if err := s.ensureCollection(db, shardInstance, collection); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Add it in the meta
 	if err := s.MetaStore.AddDatabase(db); err != nil {
 		return err
@@ -184,7 +205,7 @@ func (s *DatasourceInstance) AddShardInstance(dbname string, shardInstance *meta
 }
 
 func (s *DatasourceInstance) EnsureShardInstance(dbname string, shardInstance *metadata.ShardInstance) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddShardInstance")
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureShardInstance")
 }
 
 func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance string) error {
@@ -195,8 +216,45 @@ func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance st
 func (s *DatasourceInstance) AddCollection(dbname, shardinstance string, collection *metadata.Collection) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollection")
 }
-func (s *DatasourceInstance) EnsureCollection(dbname string, collection *metadata.Collection) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.UpdateCollection")
+func (s *DatasourceInstance) EnsureCollection(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollection")
+}
+func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	// Check for dependant collections (relations)
+	for _, field := range collection.Fields {
+		// if there is one, ensure that the field exists
+		if field.Relation != nil {
+			// TODO: better? We don't need to make the whole collection-- just the field
+			// But we'll do it for now
+			if relationCollection, ok := shardInstance.Collections[field.Relation.Collection]; ok {
+				if err := s.ensureCollection(db, shardInstance, relationCollection); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Ensure that the collection exists
+	if existingCollection := s.storeSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection == nil {
+		if err := s.storeSchema.AddCollection(db, shardInstance, collection); err != nil {
+			return err
+		}
+	}
+
+	// Ensure all the fields
+	for _, field := range collection.Fields {
+		if err := s.ensureCollectionField(db, shardInstance, collection, field); err != nil {
+			return err
+		}
+	}
+
+	// Ensure all the indexes
+	for _, index := range collection.Indexes {
+		if err := s.ensureCollectionIndex(db, shardInstance, collection, index); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollection")
@@ -205,22 +263,39 @@ func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) err
 func (s *DatasourceInstance) AddCollectionField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionField")
 }
-func (s *DatasourceInstance) EnsureCollectionField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
+func (s *DatasourceInstance) EnsureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionField")
+}
+
+// TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
+func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
+	if existingField := s.storeSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
+		if err := s.storeSchema.AddCollectionField(db, shardInstance, collection, field); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (s *DatasourceInstance) RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionField")
 }
 
-func (s *DatasourceInstance) AddCollectionIndex(dbname, shardinstance, collection string, index *metadata.CollectionIndex) error {
+func (s *DatasourceInstance) AddCollectionIndex(dbname, shardInstance, collection string, index *metadata.CollectionIndex) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionIndex")
 }
-
-func (s *DatasourceInstance) EnsureCollectionIndex(dbname, shardinstance, collection string, index *metadata.CollectionIndex) error {
+func (s *DatasourceInstance) EnsureCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionIndex")
+}
+
+// TODO: this needs to check for it not matching, and if so call UpdateCollectionIndex() on it
+func (s *DatasourceInstance) ensureCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+	if existingIndex := s.storeSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
+		if err := s.storeSchema.AddCollectionIndex(db, shardInstance, collection, index); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (s *DatasourceInstance) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionIndex")
 }
-
-// TODO: move add/get/set schema stuff here (to allow for config contol
