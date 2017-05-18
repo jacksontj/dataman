@@ -23,6 +23,8 @@ func NewMetadataStore(config *DatasourceInstanceConfig) (*MetadataStore, error) 
 		return nil, err
 	}
 
+	// TODO: we need to enforce that our schema exists
+
 	metaStore := &MetadataStore{
 		Store: store,
 	}
@@ -337,103 +339,6 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 	return nil
 }
 
-// TODO: to-implement
-/*
-func (s *Storage) UpdateCollection(dbname string, collection *metadata.Collection) error {
-	// make sure the db exists in the metadata store
-	dbRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.database WHERE name='%s'", dbname))
-	if err != nil {
-		return fmt.Errorf("Unable to find db %s: %v", dbname, err)
-	}
-
-	collectionRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection WHERE database_id=%v AND name='%s'", dbRows[0]["id"], collection.Name))
-	if err != nil {
-		return fmt.Errorf("Unable to get collection meta entry: %v", err)
-	}
-	if len(collectionRows) == 0 {
-		return fmt.Errorf("Unable to find collection %s.%s", dbname, collection.Name)
-	}
-
-	// TODO: this seems generic enough-- we should move this up a level (with some changes)
-	// Compare fields
-	collectionFieldRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_field WHERE collection_id=%v ORDER BY \"order\"", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to get collection_field meta entry: %v", err)
-	}
-
-	oldFields := make(map[string]map[string]interface{}, len(collectionFieldRows))
-	for _, fieldEntry := range collectionFieldRows {
-		oldFields[fieldEntry["name"].(string)] = fieldEntry
-	}
-	newFields := make(map[string]*metadata.Field, len(collection.Fields))
-	for _, field := range collection.Fields {
-		newFields[field.Name] = field
-	}
-
-	// fields we need to remove
-	for name, _ := range oldFields {
-		if _, ok := newFields[name]; !ok {
-			if err := s.RemoveField(dbname, collection.Name, name); err != nil {
-				return fmt.Errorf("Unable to remove field: %v", err)
-			}
-		}
-	}
-	// Fields we need to add
-	for name, field := range newFields {
-		if _, ok := oldFields[name]; !ok {
-			if err := s.AddField(dbname, collection.Name, field); err != nil {
-				return fmt.Errorf("Unable to add field: %v", err)
-			}
-		}
-	}
-
-	// TODO: compare order and schema
-	// Fields we need to change
-
-	// Indexes
-	collectionIndexRows, err := DoQuery(s.db, fmt.Sprintf("SELECT * FROM public.collection_index WHERE collection_id=%v", collectionRows[0]["id"]))
-	if err != nil {
-		return fmt.Errorf("Unable to query for existing collection_indexes: %v", err)
-	}
-
-	// If the new def has no indexes, remove them all
-	if collection.Indexes == nil {
-		for _, collectionIndexEntry := range collectionIndexRows {
-			if err := s.RemoveIndex(dbname, collection.Name, collectionIndexEntry["name"].(string)); err != nil {
-				return fmt.Errorf("Unable to remove collection_index: %v", err)
-			}
-		}
-	} else {
-		// TODO: generic version?
-		currentIndexNames := make(map[string]map[string]interface{})
-		for _, currentIndex := range collectionIndexRows {
-			currentIndexNames[currentIndex["name"].(string)] = currentIndex
-		}
-
-		// compare old and new-- make them what they need to be
-		// What should be removed?
-		for name, _ := range currentIndexNames {
-			if _, ok := collection.Indexes[name]; !ok {
-				if err := s.RemoveIndex(dbname, collection.Name, name); err != nil {
-					return err
-				}
-			}
-		}
-		// What should be added
-		for name, index := range collection.Indexes {
-			if _, ok := currentIndexNames[name]; !ok {
-				if err := s.AddIndex(dbname, collection.Name, index); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
-	return nil
-}
-*/
-
-// TODO: Implement
 func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname string) error {
 	meta := metadata.NewMeta()
 	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]

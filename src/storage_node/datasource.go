@@ -129,10 +129,13 @@ QUERYLOOP:
 	return results
 }
 
-// TODO: add an "ensureDatabase" option
 // TODO: lock for schema changes (should use whatever our internal locking mechanism is which is TODO)
 // TODO: schema management changes here
 func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
 	// Validate the schemas passed in
 	for _, shardInstance := range db.ShardInstances {
 		for _, collection := range shardInstance.Collections {
@@ -140,10 +143,6 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 				return err
 			}
 		}
-	}
-
-	if s.StoreSchema == nil {
-		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	// TODO: handle adding things that already exist (for RO usage)-- which would
@@ -154,19 +153,9 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 	if err := s.StoreSchema.AddDatabase(db); err != nil {
 		return err
 	}
-	// TODO: call other exists methods
 	for _, shardInstance := range db.ShardInstances {
-		// ensure the shardInstance exists
-		if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
-			if err := s.StoreSchema.AddShardInstance(db, shardInstance); err != nil {
-				return err
-			}
-		}
-
-		for _, collection := range shardInstance.Collections {
-			if err := s.ensureCollection(db, shardInstance, collection); err != nil {
-				return err
-			}
+		if err := s.ensureShardInstance(db, shardInstance); err != nil {
+			return err
 		}
 	}
 
@@ -178,6 +167,32 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 	// Refresh the metadata
 	s.RefreshMeta()
 
+	return nil
+}
+
+func (s *DatasourceInstance) EnsureDatabase(db *metadata.Database) error {
+	if err := s.ensureDatabase(db); err != nil {
+		return err
+	}
+
+	s.RefreshMeta()
+
+	return nil
+}
+
+func (s *DatasourceInstance) ensureDatabase(db *metadata.Database) error {
+	if existingDB := s.StoreSchema.GetDatabase(db.Name); existingDB == nil {
+		if err := s.StoreSchema.AddDatabase(db); err != nil {
+			return err
+		}
+	}
+
+	// If the database exists, we need to diff the things inside of it
+	for _, shardInstance := range db.ShardInstances {
+		if err := s.ensureShardInstance(db, shardInstance); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -204,8 +219,28 @@ func (s *DatasourceInstance) AddShardInstance(dbname string, shardInstance *meta
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddShardInstance")
 }
 
-func (s *DatasourceInstance) EnsureShardInstance(dbname string, shardInstance *metadata.ShardInstance) error {
+func (s *DatasourceInstance) EnsureShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureShardInstance")
+}
+
+func (s *DatasourceInstance) ensureShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+	fmt.Println("checking existance of shard instance")
+	// ensure the shardInstance exists
+	if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
+		fmt.Println("doesn't")
+		if err := s.StoreSchema.AddShardInstance(db, shardInstance); err != nil {
+			return err
+		}
+	} else {
+		fmt.Printf("does %v\n", existingShardInstance)
+	}
+
+	for _, collection := range shardInstance.Collections {
+		if err := s.ensureCollection(db, shardInstance, collection); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance string) error {
