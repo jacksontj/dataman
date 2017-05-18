@@ -225,6 +225,11 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 			collection.Fields[field.Name] = field
 		}
 
+		collection.Indexes = make(map[string]*metadata.CollectionIndex)
+		for _, index := range s.ListCollectionIndex(dbname, shardinstance, collection.Name) {
+			collection.Indexes[index.Name] = index
+		}
+
 		collections[i] = collection
 	}
 
@@ -417,7 +422,6 @@ SELECT
   idx.indrelid :: REGCLASS AS table_name,
   i.relname                AS index_name,
   idx.indisunique          AS is_unique,
-  idx.indisprimary         AS is_primary,
   am.amname                AS index_type,
   idx.indkey,
         array_to_json(ARRAY(
@@ -435,7 +439,7 @@ FROM pg_index AS idx
     ON i.relam = am.oid
   JOIN pg_namespace AS NS ON i.relnamespace = NS.OID
   JOIN pg_user AS U ON i.relowner = U.usesysid
-WHERE NOT nspname LIKE 'pg%' ; -- Excluding system tables
+WHERE NOT nspname LIKE 'pg%' AND idx.indisprimary=false ; -- Excluding system tables
 `
 
 func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
