@@ -23,7 +23,14 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 
 		// TODO: have options to set limits? Or always use text fields?
 		if size, ok := field.TypeArgs["size"]; ok {
-			maxSize = int(size.(float64))
+			switch typedSize := size.(type) {
+			case float64:
+				maxSize = int(typedSize)
+			case int64:
+				maxSize = int(typedSize)
+			default:
+				return "", fmt.Errorf("Unsupported type %s for string size", typedSize)
+			}
 		}
 
 		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
