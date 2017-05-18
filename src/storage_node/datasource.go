@@ -27,8 +27,8 @@ func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstanc
 		return nil, err
 	}
 
-	if storeSchema, ok := datasource.Store.(StorageSchemaInterface); ok {
-		datasource.storeSchema = storeSchema
+	if StoreSchema, ok := datasource.Store.(StorageSchemaInterface); ok {
+		datasource.StoreSchema = StoreSchema
 	}
 
 	return datasource, nil
@@ -38,7 +38,7 @@ type DatasourceInstance struct {
 	Config    *DatasourceInstanceConfig
 	MetaStore *MetadataStore
 
-	storeSchema StorageSchemaInterface
+	StoreSchema StorageSchemaInterface
 	Store       StorageDataInterface
 
 	meta atomic.Value
@@ -142,7 +142,7 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 		}
 	}
 
-	if s.storeSchema == nil {
+	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
@@ -151,14 +151,14 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 
 	// Do required schema manipulations
 	// Add the database in the store
-	if err := s.storeSchema.AddDatabase(db); err != nil {
+	if err := s.StoreSchema.AddDatabase(db); err != nil {
 		return err
 	}
 	// TODO: call other exists methods
 	for _, shardInstance := range db.ShardInstances {
 		// ensure the shardInstance exists
-		if existingShardInstance := s.storeSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
-			if err := s.storeSchema.AddShardInstance(db, shardInstance); err != nil {
+		if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
+			if err := s.StoreSchema.AddShardInstance(db, shardInstance); err != nil {
 				return err
 			}
 		}
@@ -182,7 +182,7 @@ func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
 }
 
 func (s *DatasourceInstance) RemoveDatabase(dbname string) error {
-	if s.storeSchema == nil {
+	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
@@ -193,7 +193,7 @@ func (s *DatasourceInstance) RemoveDatabase(dbname string) error {
 	// Refresh the metadata
 	s.RefreshMeta()
 	// Remove from the datastore
-	if err := s.storeSchema.RemoveDatabase(dbname); err != nil {
+	if err := s.StoreSchema.RemoveDatabase(dbname); err != nil {
 		return err
 	}
 
@@ -235,8 +235,8 @@ func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstan
 	}
 
 	// Ensure that the collection exists
-	if existingCollection := s.storeSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection == nil {
-		if err := s.storeSchema.AddCollection(db, shardInstance, collection); err != nil {
+	if existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection == nil {
+		if err := s.StoreSchema.AddCollection(db, shardInstance, collection); err != nil {
 			return err
 		}
 	}
@@ -269,8 +269,8 @@ func (s *DatasourceInstance) EnsureCollectionField(db *metadata.Database, shardI
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
 func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
-	if existingField := s.storeSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
-		if err := s.storeSchema.AddCollectionField(db, shardInstance, collection, field); err != nil {
+	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
+		if err := s.StoreSchema.AddCollectionField(db, shardInstance, collection, field); err != nil {
 			return err
 		}
 	}
@@ -289,8 +289,8 @@ func (s *DatasourceInstance) EnsureCollectionIndex(db *metadata.Database, shardI
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionIndex() on it
 func (s *DatasourceInstance) ensureCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
-	if existingIndex := s.storeSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
-		if err := s.storeSchema.AddCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if existingIndex := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
+		if err := s.StoreSchema.AddCollectionIndex(db, shardInstance, collection, index); err != nil {
 			return err
 		}
 	}
