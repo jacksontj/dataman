@@ -1,4 +1,4 @@
-# Dataman
+# DataMan
 A data service-- which has:
     - schema enforcement
     - replication
