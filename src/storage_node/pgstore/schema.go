@@ -292,11 +292,16 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 	return nil
 }
 
+const listColumnTemplate = `
+SELECT column_name, data_type, character_maximum_length
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE table_schema = ($1) AND table_name = ($2)
+`
+
 // TODO: implement
 func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field {
-	// TODO: use shardinstance
 	// Get the fields for the collection
-	fieldRecords, err := DoQuery(s.getDB(dbname), "SELECT column_name, data_type, character_maximum_length FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = ($1)", collectionname)
+	fieldRecords, err := DoQuery(s.getDB(dbname), listColumnTemplate, shardinstance, collectionname)
 	if err != nil {
 		logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, collectionname, err)
 	}
