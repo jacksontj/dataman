@@ -114,4 +114,7 @@ type FieldRelation struct {
 
 	Collection string `json:"collection"`
 	Field      string `json:"field"`
+
+	// TODO: update and delete
+	//CascadeDelete bool `json:"cascade_on_delete"`
 }

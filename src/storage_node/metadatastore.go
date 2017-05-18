@@ -227,9 +227,45 @@ func (m *MetadataStore) RemoveShardInstance(dbname, shardname string) error {
 
 // Collection Changes
 func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	// TODO: better-- really need an "ensure" method
+	if collection.ID != 0 {
+		return nil
+	}
+
 	// Make sure at least one field is defined
 	if collection.Fields == nil || len(collection.Fields) == 0 {
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
+	}
+
+	var relationDepCheck func(*metadata.Field) error
+	relationDepCheck = func(field *metadata.Field) error {
+		// if there is one, ensure that the field exists
+		if field.Relation != nil {
+			// TODO: better? We don't need to make the whole collection-- just the field
+			// But we'll do it for now
+			if relationCollection, ok := shardInstance.Collections[field.Relation.Collection]; ok {
+				if err := m.AddCollection(db, shardInstance, relationCollection); err != nil {
+					return err
+				}
+			}
+		}
+
+		if field.SubFields != nil {
+			for _, subField := range field.SubFields {
+				if err := relationDepCheck(subField); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// Check for dependant collections (relations)
+	for _, field := range collection.Fields {
+		// if there is one, ensure that the field exists
+		if err := relationDepCheck(field); err != nil {
+			return err
+		}
 	}
 
 	// Add the collection
@@ -251,7 +287,7 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 
 	// Add all the fields in the collection
 	for _, field := range collection.Fields {
-		if err := m.AddField(collection, field, nil); err != nil {
+		if err := m.AddField(shardInstance, collection, field, nil); err != nil {
 			return err
 		}
 	}
@@ -571,7 +607,7 @@ func structToRecord(item interface{}) map[string]interface{} {
 	return record
 }
 
-func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentField *metadata.Field) error {
+func (m *MetadataStore) AddField(shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.Field) error {
 	fieldRecord := map[string]interface{}{
 		"name":            field.Name,
 		"collection_id":   collection.ID,
@@ -595,11 +631,31 @@ func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentF
 
 	if field.SubFields != nil {
 		for _, subField := range field.SubFields {
-			if err := m.AddField(collection, subField, field); err != nil {
+			if err := m.AddField(shardInstance, collection, subField, field); err != nil {
 				return err
 			}
 		}
 	}
+
+	// TODO: change, this assumes the relation is in the shardInstance that is passed in -- which might not be the case
+	// Add any relations
+	if field.Relation != nil {
+		field.Relation.FieldID = shardInstance.Collections[field.Relation.Collection].Fields[field.Relation.Field].ID
+		collectionFieldRelationResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_field_relation",
+			"record": map[string]interface{}{
+				"collection_field_id":          field.ID,
+				"relation_collection_field_id": field.Relation.FieldID,
+				"cascade_on_delete":            false,
+			},
+		})
+		if collectionFieldRelationResult.Error != "" {
+			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldResult.Error)
+		}
+	}
+
 	return nil
 
 }

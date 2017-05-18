@@ -651,7 +651,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	if databaseResult.Error != "" {
 		return fmt.Errorf(databaseResult.Error)
 	}
-	databaseRecord := databaseResult.Return[0]
+	db.ID = databaseResult.Return[0]["_id"].(int64)
 	// TODO: support collection_vshards as well
 	// Add database_vshard
 	databaseVShardResult := m.Store.Insert(map[string]interface{}{
@@ -660,7 +660,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 		"collection":     "database_vshard",
 		"record": map[string]interface{}{
 			"shard_count": db.VShard.ShardCount,
-			"database_id": databaseRecord["_id"],
+			"database_id": db.ID,
 		},
 	})
 
@@ -714,7 +714,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 			"shard_instance": "public",
 			"collection":     "database_datastore",
 			"record": map[string]interface{}{
-				"database_id":  databaseRecord["_id"],
+				"database_id":  db.ID,
 				"datastore_id": databaseDatastore.Datastore.ID,
 				"read":         databaseDatastore.Read,
 				"write":        databaseDatastore.Write,
@@ -730,102 +730,8 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 
 	// Add collections
 	for _, collection := range db.Collections {
-		collectionResult := m.Store.Insert(map[string]interface{}{
-			"db":             "dataman_router",
-			"shard_instance": "public",
-			"collection":     "collection",
-			"record": map[string]interface{}{
-				"name":        collection.Name,
-				"database_id": databaseRecord["_id"],
-			},
-		})
-
-		// TODO: better error handle
-		if collectionResult.Error != "" {
-			return fmt.Errorf(collectionResult.Error)
-		}
-		collectionRecord := collectionResult.Return[0]
-		collection.ID = collectionRecord["_id"].(int64)
-
-		// Insert partition
-		collectionPartitionResult := m.Store.Insert(map[string]interface{}{
-			"db":             "dataman_router",
-			"shard_instance": "public",
-			"collection":     "collection_partition",
-			"record": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
-				"start_id":      1,
-				// TODO: eventually we'll want to be more dynamic, but for now we
-				// exactly one
-				"shard_config_json": collection.Partitions[0].ShardConfig,
-			},
-		})
-
-		// TODO: better error handle
-		if collectionPartitionResult.Error != "" {
-			return fmt.Errorf(collectionPartitionResult.Error)
-		}
-
-		// Insert fields
-		for _, field := range collection.Fields {
-			if err := m.AddField(collection, field, nil); err != nil {
-				return err
-			}
-		}
-
-		// Insert indexes
-		for _, index := range collection.Indexes {
-			// check that all the fields exist
-			fieldIds := make([]int64, len(index.Fields))
-			for i, fieldName := range index.Fields {
-				fieldParts := strings.Split(fieldName, ".")
-
-				if field, ok := collection.Fields[fieldParts[0]]; !ok {
-					return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
-				} else {
-					if len(fieldParts) > 1 {
-						for _, fieldPart := range fieldParts[1:] {
-							if subField, ok := field.SubFields[fieldPart]; ok {
-								field = subField
-							} else {
-								return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
-							}
-						}
-					}
-					fieldIds[i] = field.ID
-				}
-			}
-			indexResult := m.Store.Insert(map[string]interface{}{
-				"db":             "dataman_router",
-				"shard_instance": "public",
-				"collection":     "collection_index",
-				"record": map[string]interface{}{
-					"name":          index.Name,
-					"collection_id": collectionRecord["_id"],
-					"unique":        index.Unique,
-				},
-			})
-
-			// TODO: better error handle
-			if indexResult.Error != "" {
-				return fmt.Errorf(indexResult.Error)
-			}
-			index.ID = indexResult.Return[0]["_id"].(int64)
-
-			for _, fieldID := range fieldIds {
-				collectionIndexItemResult := m.Store.Insert(map[string]interface{}{
-					"db":             "dataman_router",
-					"shard_instance": "public",
-					"collection":     "collection_index_item",
-					"record": map[string]interface{}{
-						"collection_index_id": index.ID,
-						"collection_field_id": fieldID,
-					},
-				})
-				if collectionIndexItemResult.Error != "" {
-					return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
-				}
-			}
+		if err := m.AddCollection(db, collection); err != nil {
+			return err
 		}
 
 	}
@@ -879,6 +785,13 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
 					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
 					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+					// Zero out the IDs
+					for _, field := range datasourceInstanceShardInstanceCollection.Fields {
+						field.ID = 0
+					}
+					for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
+						index.ID = 0
+					}
 
 					datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
 				}
@@ -928,7 +841,143 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	return nil
 }
 
-func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentField *storagenodemetadata.Field) error {
+func (m *MetadataStore) AddCollection(db *metadata.Database, collection *metadata.Collection) error {
+	// TODO: better-- really need an "ensure" method
+	if collection.ID != 0 {
+		return nil
+	}
+
+	var relationDepCheck func(*storagenodemetadata.Field) error
+	relationDepCheck = func(field *storagenodemetadata.Field) error {
+		// if there is one, ensure that the field exists
+		if field.Relation != nil {
+			// TODO: better? We don't need to make the whole collection-- just the field
+			// But we'll do it for now
+			if relationCollection, ok := db.Collections[field.Relation.Collection]; ok {
+				if err := m.AddCollection(db, relationCollection); err != nil {
+					return err
+				}
+			}
+		}
+
+		if field.SubFields != nil {
+			for _, subField := range field.SubFields {
+				if err := relationDepCheck(subField); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// Check for dependant collections (relations)
+	for _, field := range collection.Fields {
+		if err := relationDepCheck(field); err != nil {
+			return err
+		}
+	}
+
+	collectionResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "collection",
+		"record": map[string]interface{}{
+			"name":        collection.Name,
+			"database_id": db.ID,
+		},
+	})
+
+	// TODO: better error handle
+	if collectionResult.Error != "" {
+		return fmt.Errorf(collectionResult.Error)
+	}
+	collectionRecord := collectionResult.Return[0]
+	collection.ID = collectionRecord["_id"].(int64)
+
+	// Insert partition
+	collectionPartitionResult := m.Store.Insert(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "collection_partition",
+		"record": map[string]interface{}{
+			"collection_id": collectionRecord["_id"],
+			"start_id":      1,
+			// TODO: eventually we'll want to be more dynamic, but for now we
+			// exactly one
+			"shard_config_json": collection.Partitions[0].ShardConfig,
+		},
+	})
+
+	// TODO: better error handle
+	if collectionPartitionResult.Error != "" {
+		return fmt.Errorf(collectionPartitionResult.Error)
+	}
+
+	// Insert fields
+	for _, field := range collection.Fields {
+		if err := m.AddField(db, collection, field, nil); err != nil {
+			return err
+		}
+	}
+
+	// Insert indexes
+	for _, index := range collection.Indexes {
+		// check that all the fields exist
+		fieldIds := make([]int64, len(index.Fields))
+		for i, fieldName := range index.Fields {
+			fieldParts := strings.Split(fieldName, ".")
+
+			if field, ok := collection.Fields[fieldParts[0]]; !ok {
+				return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
+			} else {
+				if len(fieldParts) > 1 {
+					for _, fieldPart := range fieldParts[1:] {
+						if subField, ok := field.SubFields[fieldPart]; ok {
+							field = subField
+						} else {
+							return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
+						}
+					}
+				}
+				fieldIds[i] = field.ID
+			}
+		}
+		indexResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection_index",
+			"record": map[string]interface{}{
+				"name":          index.Name,
+				"collection_id": collectionRecord["_id"],
+				"unique":        index.Unique,
+			},
+		})
+
+		// TODO: better error handle
+		if indexResult.Error != "" {
+			return fmt.Errorf(indexResult.Error)
+		}
+		index.ID = indexResult.Return[0]["_id"].(int64)
+
+		for _, fieldID := range fieldIds {
+			collectionIndexItemResult := m.Store.Insert(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "collection_index_item",
+				"record": map[string]interface{}{
+					"collection_index_id": index.ID,
+					"collection_field_id": fieldID,
+				},
+			})
+			if collectionIndexItemResult.Error != "" {
+				return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+			}
+		}
+	}
+	return nil
+}
+
+func (m *MetadataStore) AddField(db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.Field) error {
 	fieldRecord := map[string]interface{}{
 		"name":            field.Name,
 		"collection_id":   collection.ID,
@@ -952,9 +1001,28 @@ func (m *MetadataStore) AddField(collection *metadata.Collection, field, parentF
 
 	if field.SubFields != nil {
 		for _, subField := range field.SubFields {
-			if err := m.AddField(collection, subField, field); err != nil {
+			if err := m.AddField(db, collection, subField, field); err != nil {
 				return err
 			}
+		}
+	}
+
+	// TODO: change, this assumes the relation is in the shardInstance that is passed in -- which might not be the case
+	// Add any relations
+	if field.Relation != nil {
+		field.Relation.FieldID = db.Collections[field.Relation.Collection].Fields[field.Relation.Field].ID
+		collectionFieldRelationResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection_field_relation",
+			"record": map[string]interface{}{
+				"collection_field_id":          field.ID,
+				"relation_collection_field_id": field.Relation.FieldID,
+				"cascade_on_delete":            false,
+			},
+		})
+		if collectionFieldRelationResult.Error != "" {
+			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldResult.Error)
 		}
 	}
 	return nil

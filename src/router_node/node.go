@@ -519,6 +519,11 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 		if err := collection.EnsureInternalFields(); err != nil {
 			return err
 		}
+		for _, field := range collection.Fields {
+			if field.Relation != nil && db.VShard.ShardCount != 1 {
+				return fmt.Errorf("relations are currently only supported on collections with a shardcount of 1")
+			}
+		}
 	}
 
 	meta := s.GetMeta()
