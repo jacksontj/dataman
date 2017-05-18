@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-17 09:51:07
+Date: 2017-05-18 09:46:02
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 458
+ START 517
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 458, true);
+SELECT setval('"public"."collection__id_seq"', 517, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1281
+ START 1531
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 1281, true);
+SELECT setval('"public"."collection_field__id_seq"', 1531, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3
+ START 22
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 3, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 22, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 490
+ START 560
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 490, true);
+SELECT setval('"public"."collection_index__id_seq"', 560, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 298
+ START 368
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 298, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 368, true);
 
 -- ----------------------------
 -- Sequence structure for collection_partition_id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."collection_partition_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 454
+ START 512
  CACHE 1;
-SELECT setval('"public"."collection_partition_id_seq"', 454, true);
+SELECT setval('"public"."collection_partition_id_seq"', 512, true);
 
 -- ----------------------------
 -- Sequence structure for collection_vshard__id_seq
@@ -128,9 +128,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 179
+ START 203
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 179, true);
+SELECT setval('"public"."database__id_seq"', 203, true);
 
 -- ----------------------------
 -- Sequence structure for database_datastore__id_seq
@@ -140,9 +140,9 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 155
+ START 178
  CACHE 1;
-SELECT setval('"public"."database_datastore__id_seq"', 155, true);
+SELECT setval('"public"."database_datastore__id_seq"', 178, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard__id_seq
@@ -152,9 +152,9 @@ CREATE SEQUENCE "public"."database_vshard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 161
+ START 184
  CACHE 1;
-SELECT setval('"public"."database_vshard__id_seq"', 161, true);
+SELECT setval('"public"."database_vshard__id_seq"', 184, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard_instance__id_seq
@@ -164,9 +164,9 @@ CREATE SEQUENCE "public"."database_vshard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 749
+ START 795
  CACHE 1;
-SELECT setval('"public"."database_vshard_instance__id_seq"', 749, true);
+SELECT setval('"public"."database_vshard_instance__id_seq"', 795, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard_instance_datastore_shard__id_seq
@@ -176,9 +176,9 @@ CREATE SEQUENCE "public"."database_vshard_instance_datastore_shard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 746
+ START 792
  CACHE 1;
-SELECT setval('"public"."database_vshard_instance_datastore_shard__id_seq"', 746, true);
+SELECT setval('"public"."database_vshard_instance_datastore_shard__id_seq"', 792, true);
 
 -- ----------------------------
 -- Sequence structure for datasource__id_seq
@@ -212,9 +212,9 @@ CREATE SEQUENCE "public"."datasource_instance_shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 628
+ START 660
  CACHE 1;
-SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 628, true);
+SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 660, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -582,7 +582,6 @@ ALTER SEQUENCE "public"."storage_node_type__id_seq" OWNED BY "storage_node"."_id
 -- Indexes structure for table collection
 -- ----------------------------
 CREATE UNIQUE INDEX "index_index_collection_collection_name" ON "public"."collection" USING btree ("name", "database_id");
-CREATE UNIQUE INDEX "index_collection_pkey" ON "public"."collection" USING btree ("_id");
 
 -- ----------------------------
 -- Primary Key structure for table collection
@@ -592,14 +591,17 @@ ALTER TABLE "public"."collection" ADD PRIMARY KEY ("_id");
 -- ----------------------------
 -- Indexes structure for table collection_field
 -- ----------------------------
-CREATE INDEX "index_index_collection_field_collection_field_table" ON "public"."collection_field" USING btree ("collection_id");
-CREATE UNIQUE INDEX "index_collection_field_pkey" ON "public"."collection_field" USING btree ("_id");
-CREATE UNIQUE INDEX "index_index_collection_field_collection_field_name" ON "public"."collection_field" USING btree ("collection_id", "name", "parent_collection_field_id");
+CREATE UNIQUE INDEX "collection_field_name_collection_id_parent_collection_field_idx" ON "public"."collection_field" USING btree ("name", "collection_id", "parent_collection_field_id");
 
 -- ----------------------------
 -- Primary Key structure for table collection_field
 -- ----------------------------
 ALTER TABLE "public"."collection_field" ADD PRIMARY KEY ("_id");
+
+-- ----------------------------
+-- Indexes structure for table collection_field_relation
+-- ----------------------------
+CREATE UNIQUE INDEX "collection_field_relation_collection_field_id_idx" ON "public"."collection_field_relation" USING btree ("collection_field_id");
 
 -- ----------------------------
 -- Primary Key structure for table collection_field_relation
@@ -661,7 +663,6 @@ ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD PRIMARY KE
 -- Indexes structure for table database
 -- ----------------------------
 CREATE UNIQUE INDEX "index_index_database_name" ON "public"."database" USING btree ("name");
-CREATE UNIQUE INDEX "index_database_pkey" ON "public"."database" USING btree ("_id");
 
 -- ----------------------------
 -- Primary Key structure for table database
@@ -792,8 +793,8 @@ ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERE
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field_relation"
 -- ----------------------------
-ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("relation_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("relation_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index"
@@ -803,8 +804,8 @@ ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERE
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index_item"
 -- ----------------------------
-ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_index_id") REFERENCES "public"."collection_index" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_partition"
@@ -825,8 +826,8 @@ ALTER TABLE "public"."collection_vshard_instance_datastore_shard" ADD FOREIGN KE
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_datastore"
 -- ----------------------------
-ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("database_id") REFERENCES "public"."database" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."database_datastore" ADD FOREIGN KEY ("datastore_id") REFERENCES "public"."datastore" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_vshard"
@@ -841,14 +842,14 @@ ALTER TABLE "public"."database_vshard_instance" ADD FOREIGN KEY ("database_vshar
 -- ----------------------------
 -- Foreign Key structure for table "public"."database_vshard_instance_datastore_shard"
 -- ----------------------------
-ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("database_vshard_instance_id") REFERENCES "public"."database_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("datastore_shard_id") REFERENCES "public"."datastore_shard" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."database_vshard_instance_datastore_shard" ADD FOREIGN KEY ("database_vshard_instance_id") REFERENCES "public"."database_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance"
 -- ----------------------------
-ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REFERENCES "public"."datasource" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("storage_node_id") REFERENCES "public"."storage_node" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance_shard_instance"
