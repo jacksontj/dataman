@@ -389,7 +389,6 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 
 		collection = metadata.NewCollection(collectionRecord["name"].(string))
 		collection.ID = collectionRecord["_id"].(int64)
-		// TODO: load the rest of the collection
 
 		// Load the partitions
 		collectionPartitionResult := m.Store.Filter(map[string]interface{}{
