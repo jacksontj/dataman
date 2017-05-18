@@ -49,8 +49,9 @@ func main() {
 		break
 	}
 
-	// TODO: better
-	store, err := datasourceInstanceConfig.GetStore(func() *metadata.Meta { return nil })
+	// Note: since we are soely doing schema *export* we don't define a meta func
+	// this means that all writes will fail as there is no schema to compare to
+	store, err := datasourceInstanceConfig.GetStore(nil)
 	storeSchema := store.(storagenode.StorageSchemaInterface)
 
 	for _, databasename := range opts.Databases {
