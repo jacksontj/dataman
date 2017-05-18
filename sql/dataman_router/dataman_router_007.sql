@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-15 11:38:18
+Date: 2017-05-17 09:51:07
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 276
+ START 458
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 276, true);
+SELECT setval('"public"."collection__id_seq"', 458, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 447
+ START 1281
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 447, true);
+SELECT setval('"public"."collection_field__id_seq"', 1281, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 250
+ START 490
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 250, true);
+SELECT setval('"public"."collection_index__id_seq"', 490, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 58
+ START 298
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 58, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 298, true);
 
 -- ----------------------------
 -- Sequence structure for collection_partition_id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."collection_partition_id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 272
+ START 454
  CACHE 1;
-SELECT setval('"public"."collection_partition_id_seq"', 272, true);
+SELECT setval('"public"."collection_partition_id_seq"', 454, true);
 
 -- ----------------------------
 -- Sequence structure for collection_vshard__id_seq
@@ -128,9 +128,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 111
+ START 179
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 111, true);
+SELECT setval('"public"."database__id_seq"', 179, true);
 
 -- ----------------------------
 -- Sequence structure for database_datastore__id_seq
@@ -140,9 +140,9 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 93
+ START 155
  CACHE 1;
-SELECT setval('"public"."database_datastore__id_seq"', 93, true);
+SELECT setval('"public"."database_datastore__id_seq"', 155, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard__id_seq
@@ -152,9 +152,9 @@ CREATE SEQUENCE "public"."database_vshard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 99
+ START 161
  CACHE 1;
-SELECT setval('"public"."database_vshard__id_seq"', 99, true);
+SELECT setval('"public"."database_vshard__id_seq"', 161, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard_instance__id_seq
@@ -164,9 +164,9 @@ CREATE SEQUENCE "public"."database_vshard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 625
+ START 749
  CACHE 1;
-SELECT setval('"public"."database_vshard_instance__id_seq"', 625, true);
+SELECT setval('"public"."database_vshard_instance__id_seq"', 749, true);
 
 -- ----------------------------
 -- Sequence structure for database_vshard_instance_datastore_shard__id_seq
@@ -176,9 +176,9 @@ CREATE SEQUENCE "public"."database_vshard_instance_datastore_shard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 622
+ START 746
  CACHE 1;
-SELECT setval('"public"."database_vshard_instance_datastore_shard__id_seq"', 622, true);
+SELECT setval('"public"."database_vshard_instance_datastore_shard__id_seq"', 746, true);
 
 -- ----------------------------
 -- Sequence structure for datasource__id_seq
@@ -212,9 +212,9 @@ CREATE SEQUENCE "public"."datasource_instance_shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 508
+ START 628
  CACHE 1;
-SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 508, true);
+SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 628, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -593,8 +593,8 @@ ALTER TABLE "public"."collection" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table collection_field
 -- ----------------------------
 CREATE INDEX "index_index_collection_field_collection_field_table" ON "public"."collection_field" USING btree ("collection_id");
-CREATE UNIQUE INDEX "index_index_collection_field_collection_field_name" ON "public"."collection_field" USING btree ("collection_id", "name");
 CREATE UNIQUE INDEX "index_collection_field_pkey" ON "public"."collection_field" USING btree ("_id");
+CREATE UNIQUE INDEX "index_index_collection_field_collection_field_name" ON "public"."collection_field" USING btree ("collection_id", "name", "parent_collection_field_id");
 
 -- ----------------------------
 -- Primary Key structure for table collection_field
