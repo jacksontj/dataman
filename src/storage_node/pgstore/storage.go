@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync/atomic"
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -40,7 +39,6 @@ type Storage struct {
 	dbMap map[string]*sql.DB
 
 	metaFunc metadata.MetaFunc
-	meta     atomic.Value
 }
 
 func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) error {
@@ -277,7 +275,8 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			whereClause += ", "
 		}
 	}
-	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET _updated='now',%s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
+	//updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET _updated='now',%s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 
 	result.Return, err = DoQuery(s.getDB(args["db"].(string)), updateQuery)
 	if err != nil {

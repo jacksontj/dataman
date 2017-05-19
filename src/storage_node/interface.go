@@ -5,6 +5,17 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
+func DirectMetaFunc(schema StorageSchemaInterface) metadata.MetaFunc {
+	return func() *metadata.Meta {
+		m := &metadata.Meta{}
+
+		for _, database := range schema.ListDatabase() {
+			m.Databases[database.Name] = database
+		}
+		return m
+	}
+}
+
 // TODO: add flags for "remove" etc. so we can make schema changes without removing
 // anything (meaning the underlying datasource_instance_shard_instance would be a superset
 // of the schema passed in-- useful for schema migrations)

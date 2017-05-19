@@ -3,7 +3,7 @@ package storagenode
 // A collection of tests to test the storagenode
 // This includes:
 //		- schema validation
-
+/*
 import (
 	"encoding/json"
 	"fmt"
@@ -263,3 +263,4 @@ func TestNodeDocumentDatabase(t *testing.T) {
 	}
 
 }
+*/

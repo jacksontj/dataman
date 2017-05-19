@@ -1,12 +1,10 @@
 package storagenode
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -56,6 +54,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	for _, databaseRecord := range databaseResult.Return {
 		database := metadata.NewDatabase(databaseRecord["name"].(string))
 		database.ID = databaseRecord["_id"].(int64)
+		database.ProvisionState = metadata.ProvisionState(databaseRecord["provision_state"].(int64))
 
 		shardInstanceResult := m.Store.Filter(map[string]interface{}{
 			"db":             "dataman_storage",
@@ -66,7 +65,6 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			},
 		})
 		if shardInstanceResult.Error != "" {
-			panic("foo")
 			logrus.Fatalf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 		}
 
@@ -76,6 +74,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			shardInstance.ID = shardInstanceRecord["_id"].(int64)
 			shardInstance.Count = shardInstanceRecord["count"].(int64)
 			shardInstance.Instance = shardInstanceRecord["instance"].(int64)
+			shardInstance.ProvisionState = metadata.ProvisionState(shardInstanceRecord["provision_state"].(int64))
 
 			collectionResult := m.Store.Filter(map[string]interface{}{
 				"db":             "dataman_storage",
@@ -106,15 +105,28 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	return meta
 }
 
-func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
-	var databaseResult *query.Result
-	databaseResult = m.Store.Insert(map[string]interface{}{
+func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
+	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
+	}
+
+	databaseRecord := map[string]interface{}{
+		"name":            db.Name,
+		"provision_state": db.ProvisionState,
+	}
+
+	if db.ID != 0 {
+		databaseRecord["_id"] = db.ID
+	}
+	fmt.Println(databaseRecord)
+
+	databaseResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "database",
-		"record": map[string]interface{}{
-			"name": db.Name,
-		},
+		"record":         databaseRecord,
 	})
 
 	if databaseResult.Error != "" {
@@ -124,7 +136,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 	db.ID = databaseResult.Return[0]["_id"].(int64)
 
 	for _, shardInstance := range db.ShardInstances {
-		if err := m.AddShardInstance(db, shardInstance); err != nil {
+		if err := m.EnsureExistsShardInstance(db, shardInstance); err != nil {
 			return err
 		}
 	}
@@ -133,16 +145,16 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 }
 
 // TODO:
-func (m *MetadataStore) RemoveDatabase(dbname string) error {
+func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 	meta := m.GetMeta()
 
 	database, ok := meta.Databases[dbname]
 	if !ok {
-		return fmt.Errorf("Unknown database %s", dbname)
+		return nil
 	}
 
 	for _, shardInstance := range database.ShardInstances {
-		if err := m.RemoveShardInstance(dbname, shardInstance.Name); err != nil {
+		if err := m.EnsureDoesntExistShardInstance(dbname, shardInstance.Name); err != nil {
 			return err
 		}
 
@@ -162,64 +174,89 @@ func (m *MetadataStore) RemoveDatabase(dbname string) error {
 	return nil
 }
 
-func (m *MetadataStore) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+func (m *MetadataStore) EnsureExistsShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			shardInstance.ID = existingShardInstance.ID
+		}
+	}
 
-	shardInstanceResult := m.Store.Insert(map[string]interface{}{
+	shardInstanceRecord := map[string]interface{}{
+		"database_id": db.ID,
+
+		"name":     shardInstance.Name,
+		"count":    shardInstance.Count,
+		"instance": shardInstance.Instance,
+		// TODO: not hardcode!
+		"database_shard":   true,
+		"collection_shard": false,
+		"provision_state":  shardInstance.ProvisionState,
+	}
+
+	if shardInstance.ID != 0 {
+		shardInstanceRecord["_id"] = shardInstance.ID
+	}
+
+	shardInstanceResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "shard_instance",
-		"record": map[string]interface{}{
-			"database_id": db.ID,
-
-			"name":     shardInstance.Name,
-			"count":    shardInstance.Count,
-			"instance": shardInstance.Instance,
-			// TODO: not hardcode!
-			"database_shard":   true,
-			"collection_shard": false,
-		},
+		"record":         shardInstanceRecord,
 	})
 
 	if shardInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting databaseResult: %v", shardInstanceResult.Error)
+		return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 	}
 
 	shardInstance.ID = shardInstanceResult.Return[0]["_id"].(int64)
 
 	for _, collection := range shardInstance.Collections {
-		if err := m.AddCollection(db, shardInstance, collection); err != nil {
+		if err := m.EnsureExistsCollection(db, shardInstance, collection); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (m *MetadataStore) RemoveShardInstance(dbname, shardname string) error {
-	meta := metadata.NewMeta()
+func (m *MetadataStore) EnsureDoesntExistShardInstance(dbname, shardname string) error {
+	meta := m.GetMeta()
 	database, ok := meta.Databases[dbname]
 	if !ok {
-		return fmt.Errorf("RemoveShardInstance: no database named %s", dbname)
+		return nil
 	}
 	shardInstance, ok := database.ShardInstances[shardname]
 	if !ok {
-		return fmt.Errorf("RemoveShardInstance: no shard_instance named %s", shardname)
+		return nil
 	}
 
-	// remove the associated collections
-	for _, collection := range shardInstance.Collections {
-		if err := m.RemoveCollection(dbname, shardname, collection.Name); err != nil {
-			return err
+	// TODO: we need real dep checking -- this is a terrible hack
+	// TODO: should do actual dep checking for this, for now we'll brute force it ;)
+	var successCount int
+	for i := 0; i < 5; i++ {
+		successCount = 0
+		// remove the associated collections
+		for _, collection := range shardInstance.Collections {
+			if err := m.EnsureDoesntExistCollection(dbname, shardname, collection.Name); err == nil {
+				successCount++
+			}
+		}
+		if successCount == len(shardInstance.Collections) {
+			break
 		}
 	}
 
+	if successCount != len(shardInstance.Collections) {
+		return fmt.Errorf("Unable to remove collections, dep problem?")
+	}
+
 	// Remove shard instance
-	shardInstanceResult := m.Store.Filter(map[string]interface{}{
+	shardInstanceResult := m.Store.Delete(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "shard_instance",
-		"filter": map[string]interface{}{
-			"_id": shardInstance.ID,
-		},
+		"_id":            shardInstance.ID,
 	})
 	if shardInstanceResult.Error != "" {
 		return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
@@ -228,10 +265,15 @@ func (m *MetadataStore) RemoveShardInstance(dbname, shardname string) error {
 }
 
 // Collection Changes
-func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
-	// TODO: better-- really need an "ensure" method
-	if collection.ID != 0 {
-		return nil
+func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				collection.ID = existingCollection.ID
+			}
+		}
 	}
 
 	// Make sure at least one field is defined
@@ -246,7 +288,7 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 			// TODO: better? We don't need to make the whole collection-- just the field
 			// But we'll do it for now
 			if relationCollection, ok := shardInstance.Collections[field.Relation.Collection]; ok {
-				if err := m.AddCollection(db, shardInstance, relationCollection); err != nil {
+				if err := m.EnsureExistsCollection(db, shardInstance, relationCollection); err != nil {
 					return err
 				}
 			}
@@ -270,26 +312,31 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 		}
 	}
 
+	collectionRecord := map[string]interface{}{
+		"name":              collection.Name,
+		"shard_instance_id": shardInstance.ID,
+		"provision_state":   collection.ProvisionState,
+	}
+	if collection.ID != 0 {
+		collectionRecord["_id"] = collection.ID
+	}
+
 	// Add the collection
-	collectionResult := m.Store.Insert(map[string]interface{}{
+	collectionResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection",
-		"record": map[string]interface{}{
-			"name":              collection.Name,
-			"shard_instance_id": shardInstance.ID,
-		},
+		"record":         collectionRecord,
 	})
 	if collectionResult.Error != "" {
 		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
 	}
 
-	collectionRecord := collectionResult.Return[0]
-	collection.ID = collectionRecord["_id"].(int64)
+	collection.ID = collectionResult.Return[0]["_id"].(int64)
 
-	// Add all the fields in the collection
+	// Ensure all the fields in the collection
 	for _, field := range collection.Fields {
-		if err := m.AddField(shardInstance, collection, field, nil); err != nil {
+		if err := m.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 			return err
 		}
 	}
@@ -298,40 +345,9 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 	// add be a thin wrapper around it
 	// If a collection has indexes defined, lets take care of that
 	if collection.Indexes != nil {
-
-		collectionIndexResult := m.Store.Filter(map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index",
-			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
-			},
-		})
-		if collectionIndexResult.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
-		}
-
-		// TODO: generic version?
-		currentIndexNames := make(map[string]map[string]interface{})
-		for _, currentIndex := range collectionIndexResult.Return {
-			currentIndexNames[currentIndex["name"].(string)] = currentIndex
-		}
-
-		// compare old and new-- make them what they need to be
-		// What should be removed?
-		for name, _ := range currentIndexNames {
-			if _, ok := collection.Indexes[name]; !ok {
-				if err := m.RemoveIndex(db.Name, shardInstance.Name, collection.Name, name); err != nil {
-					return err
-				}
-			}
-		}
-		// What should be added
-		for name, index := range collection.Indexes {
-			if _, ok := currentIndexNames[name]; !ok {
-				if err := m.AddIndex(db, shardInstance, collection, index); err != nil {
-					return err
-				}
+		for _, index := range collection.Indexes {
+			if err := m.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+				return err
 			}
 		}
 	}
@@ -339,73 +355,38 @@ func (m *MetadataStore) AddCollection(db *metadata.Database, shardInstance *meta
 	return nil
 }
 
-func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname string) error {
-	meta := metadata.NewMeta()
+func (m *MetadataStore) EnsureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
+	meta := m.GetMeta()
 	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]
+	if collection == nil {
+		return nil
+	}
 
 	// Delete collection_index_items
-	for _, index := range collection.Indexes {
-
-		collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index",
-			"filter": map[string]interface{}{
-				"collection_index_id": index.ID,
-			},
-		})
-		if collectionIndexItemResult.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
-		}
-
-		for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-			collectionIndexItemDelete := m.Store.Delete(map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection_index_item",
-				// TODO: add internal columns to schemaman stuff
-				"_id": collectionIndexItemRecord["_id"],
-			})
-			if collectionIndexItemDelete.Error != "" {
-				return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
+	if collection.Indexes != nil {
+		for _, index := range collection.Indexes {
+			if err := m.EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, index.Name); err != nil {
+				return err
 			}
 		}
+	}
 
-		collectionIndexDelete := m.Store.Delete(map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index",
-			// TODO: add internal columns to schemaman stuff
-			"_id": index.ID,
-		})
-		if collectionIndexDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
+	// TODO: should do actual dep checking for this, for now we'll brute force it ;)
+	var successCount int
+	for i := 0; i < 5; i++ {
+		successCount = 0
+		for _, field := range collection.Fields {
+			if err := m.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, field.Name); err == nil {
+				successCount++
+			}
+		}
+		if successCount == len(collection.Fields) {
+			break
 		}
 	}
 
-	// Delete collection_field
-	collectionFieldResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_field",
-		"filter": map[string]interface{}{
-			"collection_id": collection.ID,
-		},
-	})
-	if collectionFieldResult.Error != "" {
-		return fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
-	}
-	for _, collectionFieldRecord := range collectionFieldResult.Return {
-		collectionIndexDelete := m.Store.Delete(map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field",
-			// TODO: add internal columns to schemaman stuff
-			"_id": collectionFieldRecord["_id"],
-		})
-		if collectionIndexDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
-		}
+	if successCount != len(collection.Fields) {
+		return fmt.Errorf("Unable to remove fields, dep problem?")
 	}
 
 	// Delete collection
@@ -425,7 +406,7 @@ func (m *MetadataStore) RemoveCollection(dbname, shardinstance, collectionname s
 
 // TODO: Implement
 // Index changes
-func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 
 	// check that all the fields exist
 	fieldIds := make([]int64, len(index.Fields))
@@ -448,15 +429,21 @@ func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.
 		}
 	}
 
-	collectionIndexResult := m.Store.Insert(map[string]interface{}{
+	collectionIndexRecord := map[string]interface{}{
+		"name":            index.Name,
+		"collection_id":   collection.ID,
+		"unique":          index.Unique,
+		"provision_state": index.ProvisionState,
+	}
+	if index.ID != 0 {
+		collectionIndexRecord["_id"] = index.ID
+	}
+
+	collectionIndexResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection_index",
-		"record": map[string]interface{}{
-			"name":          index.Name,
-			"collection_id": collection.ID,
-			"unique":        index.Unique,
-		},
+		"record":         collectionIndexRecord,
 	})
 	if collectionIndexResult.Error != "" {
 		return fmt.Errorf("Error inserting collectionIndexResult: %v", collectionIndexResult.Error)
@@ -475,7 +462,8 @@ func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.
 				"collection_field_id": fieldID,
 			},
 		})
-		if collectionIndexItemResult.Error != "" {
+		// TODO: use CollectionIndexItem
+		if collectionIndexItemResult.Error != "" && false {
 			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
 		}
 	}
@@ -484,9 +472,35 @@ func (m *MetadataStore) AddIndex(db *metadata.Database, shardInstance *metadata.
 }
 
 // TODO: Implement
-func (m *MetadataStore) RemoveIndex(dbname, shardinstance, collectionname, indexname string) error {
-	meta := metadata.NewMeta()
+func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+	meta := m.GetMeta()
 	collectionIndex := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname].Indexes[indexname]
+
+	// Remove the index items
+	collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_storage",
+		"shard_instance": "public",
+		"collection":     "collection_index_item",
+		"filter": map[string]interface{}{
+			"collection_index_id": collectionIndex.ID,
+		},
+	})
+	if collectionIndexItemResult.Error != "" {
+		return fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+	}
+
+	for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
+		collectionIndexItemDelete := m.Store.Delete(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_index_item",
+			"_id":            collectionIndexItemRecord["_id"],
+		})
+		if collectionIndexItemDelete.Error != "" {
+			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
+		}
+
+	}
 
 	collectionIndexDelete := m.Store.Delete(map[string]interface{}{
 		"db":             "dataman_storage",
@@ -501,29 +515,34 @@ func (m *MetadataStore) RemoveIndex(dbname, shardinstance, collectionname, index
 	return nil
 }
 
-func structToRecord(item interface{}) map[string]interface{} {
-	// TODO: better -- just don't want to spend all the time/space to do the conversions for now
-	var record map[string]interface{}
-	buf, _ := json.Marshal(item)
-	json.Unmarshal(buf, &record)
-	if _, ok := record["_id"]; ok {
-		delete(record, "_id")
+func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.Field) error {
+	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				if existingCollectionField, ok := existingCollection.Fields[field.Name]; ok {
+					field.ID = existingCollectionField.ID
+				}
+			}
+		}
 	}
-	return record
-}
 
-func (m *MetadataStore) AddField(shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.Field) error {
 	fieldRecord := map[string]interface{}{
 		"name":            field.Name,
 		"collection_id":   collection.ID,
 		"field_type":      field.Type,
 		"field_type_args": field.TypeArgs,
+		"provision_state": field.ProvisionState,
 	}
 	if parentField != nil {
 		fieldRecord["parent_collection_field_id"] = parentField.ID
 	}
+	if field.ID != 0 {
+		fieldRecord["_id"] = field.ID
+	}
 
-	collectionFieldResult := m.Store.Insert(map[string]interface{}{
+	collectionFieldResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection_field",
@@ -536,7 +555,7 @@ func (m *MetadataStore) AddField(shardInstance *metadata.ShardInstance, collecti
 
 	if field.SubFields != nil {
 		for _, subField := range field.SubFields {
-			if err := m.AddField(shardInstance, collection, subField, field); err != nil {
+			if err := m.EnsureExistsCollectionField(db, shardInstance, collection, subField, field); err != nil {
 				return err
 			}
 		}
@@ -546,23 +565,82 @@ func (m *MetadataStore) AddField(shardInstance *metadata.ShardInstance, collecti
 	// Add any relations
 	if field.Relation != nil {
 		field.Relation.FieldID = shardInstance.Collections[field.Relation.Collection].Fields[field.Relation.Field].ID
-		collectionFieldRelationResult := m.Store.Insert(map[string]interface{}{
+		fieldRelationRecord := map[string]interface{}{
+			"collection_field_id":          field.ID,
+			"relation_collection_field_id": field.Relation.FieldID,
+			"cascade_on_delete":            false,
+			"provision_state":              field.Relation.ProvisionState,
+		}
+		if field.Relation.ID != 0 {
+			fieldRelationRecord["_id"] = field.Relation.ID
+		}
+		collectionFieldRelationResult := m.Store.Set(map[string]interface{}{
 			"db":             "dataman_storage",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
-			"record": map[string]interface{}{
-				"collection_field_id":          field.ID,
-				"relation_collection_field_id": field.Relation.FieldID,
-				"cascade_on_delete":            false,
-			},
+			"record":         fieldRelationRecord,
 		})
 		if collectionFieldRelationResult.Error != "" {
 			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldResult.Error)
 		}
+		field.Relation.ID = collectionFieldRelationResult.Return[0]["_id"].(int64)
 	}
 
 	return nil
+}
 
+func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+	meta := m.GetMeta()
+	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]
+
+	fieldParts := strings.Split(fieldname, ".")
+
+	field, ok := collection.Fields[fieldParts[0]]
+	if !ok {
+		return nil
+	}
+
+	if len(fieldParts) > 1 {
+		for _, fieldPart := range fieldParts[1:] {
+			field, ok = field.SubFields[fieldPart]
+			if !ok {
+				return nil
+			}
+		}
+	}
+
+	// Run this for any subfields
+	if field.SubFields != nil {
+		for _, subField := range field.SubFields {
+			if err := m.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname+"."+subField.Name); err != nil {
+				return err
+			}
+		}
+	}
+
+	// If we have a relation, remove it
+	if field.Relation != nil {
+		collectionFieldRelationDelete := m.Store.Delete(map[string]interface{}{
+			"db":             "dataman_storage",
+			"shard_instance": "public",
+			"collection":     "collection_field_relation",
+			"_id":            field.Relation.ID,
+		})
+		if collectionFieldRelationDelete.Error != "" {
+			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", collectionFieldRelationDelete.Error)
+		}
+	}
+
+	collectionFieldDelete := m.Store.Delete(map[string]interface{}{
+		"db":             "dataman_storage",
+		"shard_instance": "public",
+		"collection":     "collection_field",
+		"_id":            field.ID,
+	})
+	if collectionFieldDelete.Error != "" {
+		return fmt.Errorf("Error getting collectionFieldDelete: %v", collectionFieldDelete.Error)
+	}
+	return nil
 }
 
 func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Field {
@@ -583,10 +661,11 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
 		field = &metadata.Field{
-			ID:           collectionFieldRecord["_id"].(int64),
-			CollectionID: collectionFieldRecord["collection_id"].(int64),
-			Name:         collectionFieldRecord["name"].(string),
-			Type:         metadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			ID:             collectionFieldRecord["_id"].(int64),
+			CollectionID:   collectionFieldRecord["collection_id"].(int64),
+			Name:           collectionFieldRecord["name"].(string),
+			Type:           metadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			ProvisionState: metadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
 		}
 		if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
 			field.TypeArgs = fieldTypeArgs.(map[string]interface{})
@@ -624,10 +703,11 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 			relatedField := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
 			relatedCollection := m.getCollectionByID(meta, relatedField.CollectionID)
 			field.Relation = &metadata.FieldRelation{
-				ID:         collectionFieldRelationRecord["_id"].(int64),
-				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
-				Collection: relatedCollection.Name,
-				Field:      relatedField.Name,
+				ID:             collectionFieldRelationRecord["_id"].(int64),
+				FieldID:        collectionFieldRelationRecord["relation_collection_field_id"].(int64),
+				Collection:     relatedCollection.Name,
+				Field:          relatedField.Name,
+				ProvisionState: metadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
 			}
 		}
 
@@ -656,6 +736,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 
 		collection = metadata.NewCollection(collectionRecord["name"].(string))
 		collection.ID = collectionRecord["_id"].(int64)
+		collection.ProvisionState = metadata.ProvisionState(collectionRecord["provision_state"].(int64))
 
 		// Load fields
 		collectionFieldResult := m.Store.Filter(map[string]interface{}{
@@ -726,9 +807,10 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			}
 
 			index := &metadata.CollectionIndex{
-				ID:     collectionIndexRecord["_id"].(int64),
-				Name:   collectionIndexRecord["name"].(string),
-				Fields: indexFields,
+				ID:             collectionIndexRecord["_id"].(int64),
+				Name:           collectionIndexRecord["name"].(string),
+				Fields:         indexFields,
+				ProvisionState: metadata.ProvisionState(collectionIndexRecord["provision_state"].(int64)),
 			}
 			if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
 				index.Unique = unique.(bool)

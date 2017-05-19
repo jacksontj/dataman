@@ -2,6 +2,7 @@ package storagenode
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	"github.com/jacksontj/dataman/src/query"
@@ -42,6 +43,9 @@ type DatasourceInstance struct {
 	Store       StorageDataInterface
 
 	meta atomic.Value
+
+	// TODO: this should be pluggable, presumably in the datasource
+	schemaLock sync.Mutex
 }
 
 func (s *DatasourceInstance) GetMeta() *metadata.Meta {
@@ -50,6 +54,12 @@ func (s *DatasourceInstance) GetMeta() *metadata.Meta {
 
 // TODO: handle errors?
 func (s *DatasourceInstance) RefreshMeta() {
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	s.refreshMeta()
+}
+
+func (s *DatasourceInstance) refreshMeta() {
 	s.meta.Store(s.MetaStore.GetMeta())
 }
 
@@ -129,80 +139,82 @@ QUERYLOOP:
 	return results
 }
 
-// TODO: lock for schema changes (should use whatever our internal locking mechanism is which is TODO)
-// TODO: schema management changes here
-func (s *DatasourceInstance) AddDatabase(db *metadata.Database) error {
+func (s *DatasourceInstance) EnsureDatabase(db *metadata.Database) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// Validate the schemas passed in
-	for _, shardInstance := range db.ShardInstances {
-		for _, collection := range shardInstance.Collections {
-			if err := collection.EnsureInternalFields(); err != nil {
-				return err
-			}
-		}
-	}
-
-	// TODO: handle adding things that already exist (for RO usage)-- which would
-	// just require comparing the given schema to what exists in the datasource_instance
-
-	// Do required schema manipulations
-	// Add the database in the store
-	if err := s.StoreSchema.AddDatabase(db); err != nil {
-		return err
-	}
-	for _, shardInstance := range db.ShardInstances {
-		if err := s.ensureShardInstance(db, shardInstance); err != nil {
-			return err
-		}
-	}
-
-	// Add it in the meta
-	if err := s.MetaStore.AddDatabase(db); err != nil {
-		return err
-	}
-
-	// Refresh the metadata
-	s.RefreshMeta()
-
-	return nil
-}
-
-func (s *DatasourceInstance) EnsureDatabase(db *metadata.Database) error {
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
 	if err := s.ensureDatabase(db); err != nil {
 		return err
 	}
 
-	s.RefreshMeta()
+	s.refreshMeta()
 
 	return nil
 }
 
 func (s *DatasourceInstance) ensureDatabase(db *metadata.Database) error {
+	// If the actual database exists we need to see if we know about it -- if not
+	// then its not for us to mess with
+	if existingDB := s.StoreSchema.GetDatabase(db.Name); existingDB != nil {
+		if _, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureDatabase as it exists in the underlying datasource_instance but not in the metadata")
+		}
+	}
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
+
+	// Add it to the metadata so we know we where working on it
+	db.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Change the actual datasource_instance
 	if existingDB := s.StoreSchema.GetDatabase(db.Name); existingDB == nil {
 		if err := s.StoreSchema.AddDatabase(db); err != nil {
 			return err
 		}
 	}
 
-	// If the database exists, we need to diff the things inside of it
+	// Since we made the database, lets update the metadata about it
+	db.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Now lets follow the tree down
 	for _, shardInstance := range db.ShardInstances {
 		if err := s.ensureShardInstance(db, shardInstance); err != nil {
 			return err
 		}
 	}
+
+	// Test the db -- if its good lets mark it as active
+	existingDB := s.StoreSchema.GetDatabase(db.Name)
+	if !db.Equal(existingDB) {
+		return fmt.Errorf("Unable to apply database change to datasource_instance")
+	}
+
+	// Since we made the database, lets update the metadata about it
+	db.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (s *DatasourceInstance) RemoveDatabase(dbname string) error {
+func (s *DatasourceInstance) EnsureDoesntExistDatabase(dbname string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.RemoveDatabase(dbname); err != nil {
+	if err := s.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
 		return err
 	}
 	// Refresh the metadata
@@ -224,21 +236,53 @@ func (s *DatasourceInstance) EnsureShardInstance(db *metadata.Database, shardIns
 }
 
 func (s *DatasourceInstance) ensureShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
-	fmt.Println("checking existance of shard instance")
-	// ensure the shardInstance exists
+	// If the actual shardInstance exists we need to see if we know about it -- if not
+	// then its not for us to mess with
+	if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance != nil {
+		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureShardInstance as it exists in the underlying datasource_instance but not in the metadata")
+		} else {
+			if _, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+				return fmt.Errorf("Unable to ensureShardInstance as it exists in the underlying datasource_instance but not in the metadata")
+			}
+		}
+	}
+
+	// Add it to the metadata so we know we where working on it
+	shardInstance.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		return err
+	}
+
+	// Change the actual datasource_instance
 	if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
-		fmt.Println("doesn't")
 		if err := s.StoreSchema.AddShardInstance(db, shardInstance); err != nil {
 			return err
 		}
-	} else {
-		fmt.Printf("does %v\n", existingShardInstance)
 	}
 
+	// Since we made the database, lets update the metadata about it
+	shardInstance.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		return err
+	}
+
+	// Now lets follow the tree down
 	for _, collection := range shardInstance.Collections {
 		if err := s.ensureCollection(db, shardInstance, collection); err != nil {
 			return err
 		}
+	}
+
+	// Test the db -- if its good lets mark it as active
+	existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name)
+	if !shardInstance.Equal(existingShardInstance) {
+		return fmt.Errorf("Unable to apply shardInstance change to datasource_instance")
+	}
+
+	shardInstance.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		return err
 	}
 	return nil
 }
@@ -255,6 +299,29 @@ func (s *DatasourceInstance) EnsureCollection(db *metadata.Database, shardinstan
 	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollection")
 }
 func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	// If the actual collection exists we need to see if we know about it -- if not
+	// then its not for us to mess with
+	if existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection != nil {
+		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureCollection as it exists in the underlying datasource_instance but not in the metadata")
+		} else {
+			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+				return fmt.Errorf("Unable to ensureCollection as it exists in the underlying datasource_instance but not in the metadata")
+			} else {
+				if _, ok := existingShardInstance.Collections[collection.Name]; !ok {
+					return fmt.Errorf("Unable to ensureCollection as it exists in the underlying datasource_instance but not in the metadata")
+				}
+			}
+		}
+	}
+
+	// Add it to the metadata so we know we where working on it
+	collection.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+		return err
+	}
+
+	// Change the actual datasource_instance
 	// Check for dependant collections (relations)
 	for _, field := range collection.Fields {
 		// if there is one, ensure that the field exists
@@ -276,6 +343,14 @@ func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstan
 		}
 	}
 
+	// Since we made the database, lets update the metadata about it
+	collection.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+		return err
+	}
+
+	// Now lets follow the tree down
+
 	// Ensure all the fields
 	for _, field := range collection.Fields {
 		if err := s.ensureCollectionField(db, shardInstance, collection, field); err != nil {
@@ -288,6 +363,16 @@ func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstan
 		if err := s.ensureCollectionIndex(db, shardInstance, collection, index); err != nil {
 			return err
 		}
+	}
+	// Test the db -- if its good lets mark it as active
+	existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name)
+	if !collection.Equal(existingCollection) {
+		return fmt.Errorf("Unable to apply collection change to datasource_instance")
+	}
+
+	collection.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+		return err
 	}
 	return nil
 }
@@ -304,11 +389,56 @@ func (s *DatasourceInstance) EnsureCollectionField(db *metadata.Database, shardI
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
 func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
+	// If the actual collection exists we need to see if we know about it -- if not
+	// then its not for us to mess with
+	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
+		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+		} else {
+			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+				return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+			} else {
+				if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
+					return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+				} else {
+					if _, ok := existingCollection.Fields[field.Name]; !ok {
+						return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+					}
+				}
+			}
+		}
+	}
+
+	// Add it to the metadata so we know we where working on it
+	field.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+		return err
+	}
+
+	// Change the actual datasource_instance
 	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
 		if err := s.StoreSchema.AddCollectionField(db, shardInstance, collection, field); err != nil {
 			return err
 		}
 	}
+
+	field.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+		return err
+	}
+
+	// Test the db -- if its good lets mark it as active
+	existingCollectionField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name)
+	if !field.Equal(existingCollectionField) {
+		return fmt.Errorf("Unable to apply collectionField change to datasource_instance")
+	}
+
+	// Since we made the database, lets update the metadata about it
+	field.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+		return err
+	}
+
 	return nil
 }
 func (s *DatasourceInstance) RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
@@ -324,11 +454,56 @@ func (s *DatasourceInstance) EnsureCollectionIndex(db *metadata.Database, shardI
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionIndex() on it
 func (s *DatasourceInstance) ensureCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+	// If the actual collection exists we need to see if we know about it -- if not
+	// then its not for us to mess with
+	if existingField := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingField != nil {
+		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureCollectionIndex as it exists in the underlying datasource_instance but not in the metadata")
+		} else {
+			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+				return fmt.Errorf("Unable to ensureCollectionIndex as it exists in the underlying datasource_instance but not in the metadata")
+			} else {
+				if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
+					return fmt.Errorf("Unable to ensureCollectionIndex as it exists in the underlying datasource_instance but not in the metadata")
+				} else {
+					if _, ok := existingCollection.Indexes[index.Name]; !ok {
+						return fmt.Errorf("Unable to ensureCollectionIndex as it exists in the underlying datasource_instance but not in the metadata")
+					}
+				}
+			}
+		}
+	}
+
+	// Add it to the metadata so we know we where working on it
+	index.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+		return err
+	}
+
+	// Change the actual datasource_instance
 	if existingIndex := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
 		if err := s.StoreSchema.AddCollectionIndex(db, shardInstance, collection, index); err != nil {
 			return err
 		}
 	}
+
+	index.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+		return err
+	}
+
+	// Test the db -- if its good lets mark it as active
+	existingIndex := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name)
+	if !index.Equal(existingIndex) {
+		return fmt.Errorf("Unable to apply collectionIndex change to datasource_instance")
+	}
+
+	// Since we made the database, lets update the metadata about it
+	index.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+		return err
+	}
+
 	return nil
 }
 func (s *DatasourceInstance) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {

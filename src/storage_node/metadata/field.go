@@ -39,6 +39,8 @@ type Field struct {
 
 	// Optional relation
 	Relation *FieldRelation `json:"relation,omitempty"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 func (f *Field) Equal(o *Field) bool {
@@ -117,4 +119,6 @@ type FieldRelation struct {
 
 	// TODO: update and delete
 	//CascadeDelete bool `json:"cascade_on_delete"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }

@@ -3,10 +3,12 @@ package storagenode
 import (
 	"encoding/json"
 	"io/ioutil"
-	"reflect"
 	"testing"
 
+	"github.com/Sirupsen/logrus"
+
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -21,226 +23,156 @@ func getMetaStore() (*MetadataStore, error) {
 		return nil, err
 	}
 
-	return NewMetadataStore(config)
+	var datasourceInstanceConfig *DatasourceInstanceConfig
+	for _, c := range config.Datasources {
+		datasourceInstanceConfig = c
+		break
+	}
+
+	return NewMetadataStore(datasourceInstanceConfig)
 }
 
 func resetMetaStore(metaStore *MetadataStore) error {
 	meta := metaStore.GetMeta()
 
 	for dbname, _ := range meta.Databases {
-		if err := metaStore.RemoveDatabase(dbname); err != nil {
+		if err := metaStore.EnsureDoesntExistDatabase(dbname); err != nil {
 			return err
 		}
 	}
 
-	// Clear out schemas
-	for _, schema := range metaStore.ListSchema() {
-		if err := metaStore.RemoveSchema(schema.Name, schema.Version); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-// TODO: need additional tests that cover all the methods, this is just enough to know
-// that it won't immediately explode
-func TestMetaStore(t *testing.T) {
+// We have a variety of smaller internal fields which we don't care about for
+// the use of comparison. So we'll just json dump and compare
+func metaEqual(a, b interface{}) bool {
+	aBytes, _ := json.MarshalIndent(a, "", "  ")
+	bBytes, _ := json.MarshalIndent(b, "", "  ")
+
+	ioutil.WriteFile("/home/jacksontj/Desktop/tmp/a", aBytes, 0644)
+	ioutil.WriteFile("/home/jacksontj/Desktop/tmp/b", bBytes, 0644)
+
+	if len(aBytes) != len(bBytes) {
+		return false
+	}
+
+	for i, b := range aBytes {
+		if b != bBytes[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func getTestMeta() (*metadata.Meta, error) {
+	testMeta := &metadata.Meta{}
+	metaString, err := ioutil.ReadFile("test_metadata.json")
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(metaString), &testMeta); err != nil {
+		return nil, err
+	}
+	return testMeta, nil
+}
+
+func TestMetaStore_Database(t *testing.T) {
 	metaStore, err := getMetaStore()
 	if err != nil {
 		t.Fatalf("Unable to get metaStore: %v", err)
 	}
 
-	// reset the meta store
 	if err := resetMetaStore(metaStore); err != nil {
-		t.Fatalf("Error resetting metaStore: %v", err)
+		t.Fatalf("Unable to reset meta store: %v", err)
 	}
 
-	var test StoreTestFixture
-	bytes, err := ioutil.ReadFile("test.json")
+	testMeta, err := getTestMeta()
 	if err != nil {
-		t.Fatalf("Err reading json: %v", err)
-	}
-	err = json.Unmarshal(bytes, &test)
-	if err != nil {
-		t.Fatalf("Err loading json: %v", err)
+		logrus.Fatalf("Error loading test meta: %v", err)
 	}
 
-	if err = metaStore.AddDatabase(test.Schema); err != nil {
-		t.Fatalf("Unable to add database: %v", err)
+	// Insert the meta -- here the provision state is all 0
+	if err := metaStore.EnsureExistsDatabase(testMeta.Databases["example_forum"]); err != nil {
+		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
-	// reset the meta store
-	if err := resetMetaStore(metaStore); err != nil {
-		t.Fatalf("Error resetting metaStore: %v", err)
+	// Ensure that the one we had and the one stored are the same
+	if !metaEqual(testMeta, metaStore.GetMeta()) {
+		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
 	}
+
+	// Now lets update the provision state for stuff
+	db := metaStore.GetMeta().Databases["example_forum"]
+	db.ProvisionState = metadata.Provision
+	if err := metaStore.EnsureExistsDatabase(db); err != nil {
+		t.Fatalf("Error ensuring DB 2: %v", err)
+	}
+
+	// Make sure it changed
+	if !metaEqual(db, metaStore.GetMeta().Databases["example_forum"]) {
+		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
+	}
+
+	// Remove it all
+	if err := metaStore.EnsureDoesntExistDatabase("example_forum"); err != nil {
+		t.Fatalf("Error EnsureDoesntExistDatabase: %v", err)
+	}
+
+	// TODO: check
 }
 
-func TestMetaStore_Schema(t *testing.T) {
+func TestMetaStore_ShardInstance(t *testing.T) {
 	metaStore, err := getMetaStore()
 	if err != nil {
 		t.Fatalf("Unable to get metaStore: %v", err)
 	}
 
-	// reset the meta store
 	if err := resetMetaStore(metaStore); err != nil {
-		t.Fatalf("Error resetting metaStore: %v", err)
+		t.Fatalf("Unable to reset meta store: %v", err)
 	}
 
-	schema := &metadata.Schema{
-		Name:    "person",
-		Version: 1,
-		Schema: map[string]interface{}{
-			"title": "Person",
-			"type":  "object",
-			"properties": map[string]interface{}{
-				"firstName": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"required": []string{"firstName"},
-		},
-	}
-
-	if err := metaStore.AddSchema(schema); err != nil {
-		t.Fatalf("Unable to add Schema: %v", err)
-	}
-
-	storedSchema := metaStore.GetSchema(schema.Name, schema.Version)
-
-	if !reflect.DeepEqual(schema.Schema, storedSchema.Schema) {
-		// TODO: fix, this seems to be always triggering, although the map looks correct. Probably a typing problem
-		//t.Fatalf("Schema not stored properly expected:\n%v \nactual\n%v", schema.Schema, storedSchema.Schema)
-	}
-}
-
-func TestMetaStore_Schema2(t *testing.T) {
-	metaStore, err := getMetaStore()
+	testMeta, err := getTestMeta()
 	if err != nil {
-		t.Fatalf("Unable to create test storagenode")
-	}
-	// reset the meta store
-	if err := resetMetaStore(metaStore); err != nil {
-		t.Fatalf("Error resetting metaStore: %v", err)
+		logrus.Fatalf("Error loading test meta: %v", err)
 	}
 
-	schema1 := metadata.Schema{
-		Name:    "person",
-		Version: 1,
-		Schema: map[string]interface{}{
-			"title": "Person",
-			"type":  "object",
-			"properties": map[string]interface{}{
-				"firstName": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"required": []string{"firstName"},
-		},
+	db := &metadata.Database{Name: "example_forum"}
+	// Insert the db
+	if err := metaStore.EnsureExistsDatabase(db); err != nil {
+		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
-	schema2 := metadata.Schema{
-		Name:    "person",
-		Version: 2,
-		Schema: map[string]interface{}{
-			"title": "Person",
-			"type":  "object",
-			"properties": map[string]interface{}{
-				"firstName": map[string]interface{}{
-					"type": "string",
-				},
-				"lastName": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"required": []string{"firstName", "lastName"},
-		},
+	// set the DB id -- so the compare works
+	testMeta.Databases["example_forum"].ID = db.ID
+
+	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_2"]
+
+	// Ensure the shardInstance
+	if err := metaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
-	// Add a schema
-	if err := metaStore.AddSchema(&schema1); err != nil {
-		t.Fatalf("Unable to add schema: %v", err)
+	// Check
+	if !metaEqual(testMeta, metaStore.GetMeta()) {
+		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
 	}
 
-	// Add it again (ensure we can't overwrite)
-	if err := metaStore.AddSchema(&schema1); err == nil {
-		t.Fatalf("Able to re-add the same schema?: %v", err)
+	// Update the shardInstance
+	shardInstance.ProvisionState = metadata.Provision
+	if err := metaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
-	// Add another one (same id, different version)
-	if err := metaStore.AddSchema(&schema2); err != nil {
-		t.Fatalf("Unable to add schema: %v", err)
+	// Check
+	if !metaEqual(testMeta, metaStore.GetMeta()) {
+		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
 	}
 
-	// Remove one that doesn't exist
-	if err := metaStore.RemoveSchema("foo", 5); err == nil {
-		t.Fatalf("No error removing a schema which doesn't exist")
+	// Remove the shardInstance
+	if err := metaStore.EnsureDoesntExistShardInstance(db.Name, shardInstance.Name); err != nil {
+		t.Fatalf("Error EnsureDoesntExistShardInstance: %v", err)
 	}
 
-	// Remove one
-	if err := metaStore.RemoveSchema(schema1.Name, schema1.Version); err != nil {
-		t.Fatalf("Error removing schema1: %v", err)
-	}
-
-	// Remove another
-	if err := metaStore.RemoveSchema(schema2.Name, schema2.Version); err != nil {
-		t.Fatalf("Error removing schema2: %v", err)
-	}
-
-	// Attempt to add an invalid schema
-	invalidSchema := metadata.Schema{
-		Name:    "person",
-		Version: 1,
-		Schema: map[string]interface{}{
-			"title": "Person",
-			"type":  "objsect",
-			"properties": map[string]interface{}{
-				"firstName": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"required": []string{"firstName"},
-		},
-	}
-	if err := metaStore.AddSchema(&invalidSchema); err == nil {
-		t.Fatalf("No error when adding invalid schema!")
-	}
-
+	// TODO: check
 }
-
-/*
-
-   Tests TODO
-
-   - AddDatabase
-       - add invalid one
-       - add valid one
-       - add one that exists
-   - RemoveDatabase
-       - remove one that doesn't exist
-       - remove one that does exist
-   - AddCollection
-       - add invalid one
-       - add valid one
-       - add one that exists
-   - UpdateCollection (LATER)
-   - RemoveCollection
-       - remove one that doesn't exist
-       - remove one that does exist
-   - AddIndex
-       - add invalid one
-       - add valid one
-       - add one that exists
-   - RemoveIndex
-       - remove one that doesn't exist
-       - remove one that does exist
-   - AddSchema
-       - add invalid one
-       - add valid one
-       - add one that exists
-   - ListSchema
-   - GetSchema
-   - RemoveIndex
-       - remove one that doesn't exist
-       - remove one that does exist
-
-*/

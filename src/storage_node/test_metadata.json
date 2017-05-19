@@ -1,0 +1,139 @@
+{
+	"databases": {
+		"example_forum": {
+			"name": "example_forum",
+			"shard_instances": {
+				"dbshard_example_forum_2": {
+					"name": "dbshard_example_forum_2",
+					"count": 2,
+					"instance": 2,
+					"collections": {
+						"message": {
+							"name": "message",
+							"fields": {
+								"_id": {
+									"name": "_id",
+									"type": "int"
+								},
+								"data": {
+									"name": "data",
+									"type": "document",
+									"subfields": {
+										"content": {
+											"name": "content",
+											"type": "string",
+											"type_args": {
+												"size": 255
+											}
+										},
+										"created": {
+											"name": "created",
+											"type": "int"
+										},
+										"created_by": {
+											"name": "created_by",
+											"type": "string",
+											"type_args": {
+												"size": 255
+											}
+										},
+										"thread_id": {
+											"name": "thread_id",
+											"type": "int",
+											"relation": {
+												"collection": "thread",
+												"field": "_id"
+											}
+										}
+									}
+								}
+							},
+							"indexes": {
+								"created": {
+									"name": "created",
+									"fields": [
+										"data.created"
+									]
+								}
+							}
+						},
+						"thread": {
+							"name": "thread",
+							"fields": {
+								"_id": {
+									"name": "_id",
+									"type": "int"
+								},
+								"data": {
+									"name": "data",
+									"type": "document",
+									"subfields": {
+										"created": {
+											"name": "created",
+											"type": "int"
+										},
+										"created_by": {
+											"name": "created_by",
+											"type": "string",
+											"type_args": {
+												"size": 255
+											}
+										},
+										"title": {
+											"name": "title",
+											"type": "string",
+											"type_args": {
+												"size": 255
+											}
+										}
+									}
+								}
+							},
+							"indexes": {
+								"created": {
+									"name": "created",
+									"fields": [
+										"data.created"
+									]
+								},
+								"title": {
+									"name": "title",
+									"fields": [
+										"data.title"
+									],
+									"unique": true
+								}
+							}
+						},
+						"user": {
+							"name": "user",
+							"fields": {
+								"_id": {
+									"name": "_id",
+									"type": "int"
+								},
+								"username": {
+									"name": "username",
+									"type": "string",
+									"type_args": {
+										"size": 128
+									}
+								}
+							},
+							"indexes": {
+								"username": {
+									"name": "username",
+									"fields": [
+										"username"
+									],
+									"unique": true
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+}

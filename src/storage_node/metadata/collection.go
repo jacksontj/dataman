@@ -19,6 +19,16 @@ type Collection struct {
 
 	// map of name -> index
 	Indexes map[string]*CollectionIndex `json:"indexes,omitempty"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (c *Collection) Equal(o *Collection) bool {
+	if c.Name != o.Name {
+		return false
+	}
+
+	return true
 }
 
 // TODO: elsewhere?
@@ -69,7 +79,40 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 type CollectionIndex struct {
 	ID   int64  `json:"_id,omitempty"`
 	Name string `json:"name"`
-	// TODO: better schema-- this will be the data_json in the DB
+	// TODO: use CollectionIndexItem
 	Fields []string `json:"fields"`
 	Unique bool     `json:"unique,omitempty"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (c *CollectionIndex) Equal(o *CollectionIndex) bool {
+	if c.Name != o.Name {
+		return false
+	}
+
+	if len(c.Fields) != len(o.Fields) {
+		return false
+	}
+	for i, k := range c.Fields {
+		if o.Fields[i] != k {
+			return false
+		}
+	}
+
+	if c.Unique != o.Unique {
+		return false
+	}
+
+	return true
+}
+
+type CollectionIndexItem struct {
+	ID                int64 `json:"_id,omitempty"`
+	CollectionIndexID int64 `json:"collection_index_id"`
+	CollectionFieldID int64 `json:"collection_field_id"`
+
+	Field *Field `json:"-"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }

@@ -13,4 +13,10 @@ type Database struct {
 
 	// TODO: switch from string, if anything we should use the "_id"
 	ShardInstances map[string]*ShardInstance `json:"shard_instances"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (d *Database) Equal(o *Database) bool {
+	return d.Name == o.Name
 }

@@ -16,6 +16,24 @@ type ShardInstance struct {
 	Instance int64  `json:"instance"`
 
 	Collections map[string]*Collection `json:"collections"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (s *ShardInstance) Equal(o *ShardInstance) bool {
+	if s.Name != o.Name {
+		return false
+	}
+
+	if s.Count != o.Count {
+		return false
+	}
+
+	if s.Instance != o.Instance {
+		return false
+	}
+
+	return true
 }
 
 func (s *ShardInstance) GetNamespaceName() string {
