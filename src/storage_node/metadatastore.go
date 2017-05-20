@@ -120,7 +120,6 @@ func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 	if db.ID != 0 {
 		databaseRecord["_id"] = db.ID
 	}
-	fmt.Println(databaseRecord)
 
 	databaseResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_storage",
