@@ -42,10 +42,17 @@ type DatasourceInstance struct {
 	StoreSchema StorageSchemaInterface
 	Store       StorageDataInterface
 
+	// All metadata
 	meta atomic.Value
+	// Only active objects in metadata
+	activeMeta atomic.Value
 
 	// TODO: this should be pluggable, presumably in the datasource
 	schemaLock sync.Mutex
+}
+
+func (s *DatasourceInstance) GetActiveMeta() *metadata.Meta {
+	return s.activeMeta.Load().(*metadata.Meta)
 }
 
 func (s *DatasourceInstance) GetMeta() *metadata.Meta {
@@ -61,6 +68,58 @@ func (s *DatasourceInstance) RefreshMeta() {
 
 func (s *DatasourceInstance) refreshMeta() {
 	s.meta.Store(s.MetaStore.GetMeta())
+
+	// TODO: filter only active things
+	meta := s.MetaStore.GetMeta()
+	// TODO separate function?
+	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
+	// to just get the ones they expect
+	// TODO: maybe have a "trim" method on these?
+	for key, database := range meta.Databases {
+		if database.ProvisionState != metadata.Active {
+			delete(meta.Databases, key)
+		} else {
+			for key, shardInstance := range database.ShardInstances {
+				if shardInstance.ProvisionState != metadata.Active {
+					delete(database.ShardInstances, key)
+				} else {
+					for key, collection := range shardInstance.Collections {
+						if collection.ProvisionState != metadata.Active {
+							delete(shardInstance.Collections, key)
+						} else {
+							for key, field := range collection.Fields {
+								// TODO: need to recurse
+								if field.ProvisionState != metadata.Active {
+									delete(collection.Fields, key)
+								}
+							}
+
+							for key, index := range collection.Indexes {
+								if index.ProvisionState != metadata.Active {
+									delete(collection.Indexes, key)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for key, field := range meta.Fields {
+		if field.ProvisionState != metadata.Active {
+			delete(meta.Fields, key)
+		}
+	}
+
+	for key, collection := range meta.Collections {
+		if collection.ProvisionState != metadata.Active {
+			delete(meta.Collections, key)
+		}
+	}
+
+	s.activeMeta.Store(meta)
+
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
@@ -75,7 +134,7 @@ func (s *DatasourceInstance) HandleQueries(queries []map[query.QueryType]query.Q
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.GetMeta()
+	meta := s.GetActiveMeta()
 
 QUERYLOOP:
 	for i, queryMap := range queries {
