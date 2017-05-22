@@ -50,8 +50,8 @@ func metaEqual(a, b interface{}) bool {
 	aBytes, _ := json.MarshalIndent(a, "", "  ")
 	bBytes, _ := json.MarshalIndent(b, "", "  ")
 
-	ioutil.WriteFile("/home/jacksontj/Desktop/tmp/a", aBytes, 0644)
-	ioutil.WriteFile("/home/jacksontj/Desktop/tmp/b", bBytes, 0644)
+	ioutil.WriteFile("a", aBytes, 0644)
+	ioutil.WriteFile("b", bBytes, 0644)
 
 	if len(aBytes) != len(bBytes) {
 		return false
