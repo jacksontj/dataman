@@ -229,6 +229,15 @@ func (s *DatasourceInstance) ensureDatabase(db *metadata.Database) error {
 		}
 	}
 
+	// If something is provisioned with that name already -- don't provision again!
+	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
+		if db.Equal(existingDB) {
+			return nil
+		} else {
+			return fmt.Errorf("Conflicting DB already exists which doesn't match")
+		}
+	}
+
 	// TODO: validate that the provision states are all empty (we don't want people setting them)
 
 	// Add it to the metadata so we know we where working on it
@@ -312,6 +321,19 @@ func (s *DatasourceInstance) ensureShardInstance(db *metadata.Database, shardIns
 		}
 	}
 
+	// If something is provisioned with that name already -- don't provision again!
+	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if shardInstance.Equal(existingShardInstance) {
+				return nil
+			} else {
+				return fmt.Errorf("Conflicting shardInstance already exists which doesn't match")
+			}
+		}
+	}
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
+
 	// Add it to the metadata so we know we where working on it
 	shardInstance.ProvisionState = metadata.Provision
 	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
@@ -378,6 +400,21 @@ func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstan
 			}
 		}
 	}
+
+	// If something is provisioned with that name already -- don't provision again!
+	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				if collection.Equal(existingCollection) {
+					return nil
+				} else {
+					return fmt.Errorf("Conflicting collection already exists which doesn't match")
+				}
+			}
+		}
+	}
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
 
 	// Add it to the metadata so we know we where working on it
 	collection.ProvisionState = metadata.Provision
@@ -477,6 +514,23 @@ func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardI
 		}
 	}
 
+	// If something is provisioned with that name already -- don't provision again!
+	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				if existingCollectionField, ok := existingCollection.Fields[field.Name]; ok {
+					if field.Equal(existingCollectionField) {
+						return nil
+					} else {
+						return fmt.Errorf("Conflicting collectionField already exists which doesn't match")
+					}
+				}
+			}
+		}
+	}
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
+
 	// Add it to the metadata so we know we where working on it
 	field.ProvisionState = metadata.Provision
 	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
@@ -541,6 +595,23 @@ func (s *DatasourceInstance) ensureCollectionIndex(db *metadata.Database, shardI
 			}
 		}
 	}
+
+	// If something is provisioned with that name already -- don't provision again!
+	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				if existingCollectionIndex, ok := existingCollection.Indexes[index.Name]; !ok {
+					if index.Equal(existingCollectionIndex) {
+						return nil
+					} else {
+						return fmt.Errorf("Conflicting collectionIndex already exists which doesn't match")
+					}
+				}
+			}
+		}
+	}
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
 
 	// Add it to the metadata so we know we where working on it
 	index.ProvisionState = metadata.Provision
