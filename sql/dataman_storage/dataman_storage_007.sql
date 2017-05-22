@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90602
 File Encoding         : 65001
 
-Date: 2017-05-18 09:46:23
+Date: 2017-05-22 09:11:27
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 599
+ START 661
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 599, true);
+SELECT setval('"public"."collection__id_seq"', 661, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1299
+ START 1563
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 1299, true);
+SELECT setval('"public"."collection_field__id_seq"', 1563, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 17
+ START 37
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 17, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 37, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 559
+ START 639
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 559, true);
+SELECT setval('"public"."collection_index__id_seq"', 639, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 187
+ START 267
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 187, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 267, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 168
+ START 178
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 168, true);
+SELECT setval('"public"."database__id_seq"', 178, true);
 
 -- ----------------------------
 -- Sequence structure for shard_instance__id_seq
@@ -95,9 +95,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 173
+ START 195
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 173, true);
+SELECT setval('"public"."shard_instance__id_seq"', 195, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -106,7 +106,8 @@ DROP TABLE IF EXISTS "public"."collection";
 CREATE TABLE "public"."collection" (
 "_id" int4 DEFAULT nextval('collection__id_seq'::regclass) NOT NULL,
 "name" varchar(255) COLLATE "default",
-"shard_instance_id" int4 NOT NULL
+"shard_instance_id" int4 NOT NULL,
+"provision_state" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -123,7 +124,8 @@ CREATE TABLE "public"."collection_field" (
 "field_type" varchar(255) COLLATE "default",
 "not_null" int4,
 "field_type_args" jsonb,
-"parent_collection_field_id" int4
+"parent_collection_field_id" int4,
+"provision_state" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -151,7 +153,8 @@ CREATE TABLE "public"."collection_index" (
 "_id" int4 DEFAULT nextval('collection_index__id_seq'::regclass) NOT NULL,
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
-"unique" bool
+"unique" bool,
+"provision_state" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -176,7 +179,8 @@ WITH (OIDS=FALSE)
 DROP TABLE IF EXISTS "public"."database";
 CREATE TABLE "public"."database" (
 "_id" int4 DEFAULT nextval('database__id_seq'::regclass) NOT NULL,
-"name" varchar(255) COLLATE "default"
+"name" varchar(255) COLLATE "default",
+"provision_state" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
@@ -193,7 +197,8 @@ CREATE TABLE "public"."shard_instance" (
 "count" int4,
 "instance" int4,
 "database_shard" bool NOT NULL,
-"collection_shard" bool NOT NULL
+"collection_shard" bool NOT NULL,
+"provision_state" int4 NOT NULL
 )
 WITH (OIDS=FALSE)
 
