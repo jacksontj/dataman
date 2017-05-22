@@ -300,7 +300,7 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 }
 
 const listColumnTemplate = `
-SELECT column_name, data_type, character_maximum_length
+SELECT column_name, data_type, character_maximum_length, is_nullable
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = ($1) AND table_name = ($2)
 `
@@ -346,6 +346,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 			Name:     fieldEntry["column_name"].(string),
 			Type:     fieldType,
 			TypeArgs: fieldTypeArgs,
+			NotNull:  fieldEntry["is_nullable"].(string) == "NO",
 		}
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
@@ -495,11 +496,19 @@ func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, inde
 		schemaName := string(indexEntry["schema_name"].([]byte))
 		pgIndexName := string(indexEntry["index_name"].([]byte))
 		tableName := string(indexEntry["table_name"].([]byte))
-		if schemaName == shardinstance && (tableName == shardinstance+"."+collectionname) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
+
+		if tableName[0] == '"' && tableName[len(tableName)-1] == '"' {
+			tableName = tableName[1 : len(tableName)-1]
+		}
+
+		if schemaName == shardinstance && ((tableName == shardinstance+"."+collectionname) || (tableName == shardinstance+".\""+collectionname+"\"")) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			for i, indexField := range indexFields {
+				indexFields[i] = normalizeFieldName(indexField)
+			}
 			return &metadata.CollectionIndex{
-				Name:   string(indexEntry["index_name"].([]byte)),
+				Name:   strings.Replace(string(indexEntry["index_name"].([]byte)), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
 				Fields: indexFields,
 				Unique: indexEntry["is_unique"].(bool),
 			}

@@ -455,18 +455,22 @@ func (s *DatasourceInstance) EnsureCollectionField(db *metadata.Database, shardI
 func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
-		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
-			return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
-		} else {
-			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
-				return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+	// TODO: remove this restriction? _id is a magical field which we add at the creation, only
+	// because a table must have fields
+	if field.Name != "_id" {
+		if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
+			if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+				return fmt.Errorf("Unable to ensureCollectionField as DB exists in the underlying datasource_instance but not in the metadata")
 			} else {
-				if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
-					return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+				if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+					return fmt.Errorf("Unable to ensureCollectionField as ShardInstance exists in the underlying datasource_instance but not in the metadata")
 				} else {
-					if _, ok := existingCollection.Fields[field.Name]; !ok {
-						return fmt.Errorf("Unable to ensureCollectionField as it exists in the underlying datasource_instance but not in the metadata")
+					if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
+						return fmt.Errorf("Unable to ensureCollectionField as Collection exists in the underlying datasource_instance but not in the metadata")
+					} else {
+						if _, ok := existingCollection.Fields[field.Name]; !ok {
+							return fmt.Errorf("Unable to ensureCollectionField as Field exists in the underlying datasource_instance but not in the metadata")
+						}
 					}
 				}
 			}

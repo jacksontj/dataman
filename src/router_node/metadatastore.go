@@ -784,9 +784,21 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
 					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
 					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+
+					// TODO: better!
+					var clearFieldID func(*storagenodemetadata.Field)
+					clearFieldID = func(field *storagenodemetadata.Field) {
+						field.ID = 0
+						if field.SubFields != nil {
+							for _, subfield := range field.SubFields {
+								clearFieldID(subfield)
+							}
+						}
+					}
+
 					// Zero out the IDs
 					for _, field := range datasourceInstanceShardInstanceCollection.Fields {
-						field.ID = 0
+						clearFieldID(field)
 					}
 					for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
 						index.ID = 0
@@ -811,7 +823,7 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 		// send task to node
 		req, err := http.NewRequest(
 			"POST",
-			datasourceInstance.GetBaseURL()+"database",
+			datasourceInstance.GetBaseURL()+"database/"+db.Name,
 			bodyReader,
 		)
 		if err != nil {

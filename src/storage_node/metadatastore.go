@@ -580,7 +580,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 			"record":         fieldRelationRecord,
 		})
 		if collectionFieldRelationResult.Error != "" {
-			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldResult.Error)
+			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
 		}
 		field.Relation.ID = collectionFieldRelationResult.Return[0]["_id"].(int64)
 	}

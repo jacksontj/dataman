@@ -3,6 +3,7 @@ package pgstorage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 )
 
 func DoQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -39,4 +40,28 @@ func DoQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interf
 		results = append(results, data)
 	}
 	return results, nil
+}
+
+// Normalize field names. This takes a string such as "(data ->> 'created'::text)"
+// and converts it to "data.created"
+func normalizeFieldName(in string) string {
+	if in[0] != '(' || in[len(in)-1] != ')' {
+		return in
+	}
+	in = in[1 : len(in)-1]
+
+	var output string
+
+	for _, part := range strings.Split(in, " ") {
+		if sepIdx := strings.Index(part, "'::"); sepIdx > -1 {
+			part = part[1:sepIdx]
+		}
+		if part == "->>" {
+			output += "."
+		} else {
+			output += part
+		}
+	}
+
+	return output
 }

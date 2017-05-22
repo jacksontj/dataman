@@ -25,11 +25,13 @@ func (s *ShardInstance) Equal(o *ShardInstance) bool {
 		return false
 	}
 
-	if s.Count != o.Count {
+	// TODO: enforce after we embed and parse from name
+	if s.Count != o.Count && false {
 		return false
 	}
 
-	if s.Instance != o.Instance {
+	// TODO: enforce after we embed and parse from name
+	if s.Instance != o.Instance && false {
 		return false
 	}
 
