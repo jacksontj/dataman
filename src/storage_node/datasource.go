@@ -286,26 +286,61 @@ func (s *DatasourceInstance) EnsureDoesntExistDatabase(dbname string) error {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistDatabase(dbname); err != nil {
 		return err
 	}
-	// Refresh the metadata
-	s.RefreshMeta()
+
+	s.refreshMeta()
+
+	return nil
+
+}
+
+func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
+	db, ok := s.GetMeta().Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	// Set the state as deallocate
+	db.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Refresh the meta (so new incoming queries won't get this DB while we remove it)
+	s.refreshMeta()
+
 	// Remove from the datastore
 	if err := s.StoreSchema.RemoveDatabase(dbname); err != nil {
+		return err
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) AddShardInstance(dbname string, shardInstance *metadata.ShardInstance) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddShardInstance")
-}
-
 func (s *DatasourceInstance) EnsureShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureShardInstance")
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureShardInstance(db, shardInstance); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
 func (s *DatasourceInstance) ensureShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
@@ -373,17 +408,72 @@ func (s *DatasourceInstance) ensureShardInstance(db *metadata.Database, shardIns
 	return nil
 }
 
-func (s *DatasourceInstance) RemoveShardInstance(dbname string, shardInstance string) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveShardInstance")
+func (s *DatasourceInstance) EnsureDoesntExistShardInstance(dbname string, shardinstance string) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
-// TODO: to-implement
-func (s *DatasourceInstance) AddCollection(dbname, shardinstance string, collection *metadata.Collection) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollection")
+func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shardinstance string) error {
+	db, ok := s.GetMeta().Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := db.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	// Set the state as deallocate
+	shardInstance.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+		return err
+	}
+
+	// Refresh the meta (so new incoming queries won't get this while we remove it)
+	s.refreshMeta()
+
+	// Remove from the datastore
+	if err := s.StoreSchema.RemoveShardInstance(dbname, shardinstance); err != nil {
+		return err
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+		return err
+	}
+
+	return nil
 }
-func (s *DatasourceInstance) EnsureCollection(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollection")
+
+func (s *DatasourceInstance) EnsureCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureCollection(db, shardInstance, collection); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
+
 func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
@@ -477,15 +567,75 @@ func (s *DatasourceInstance) ensureCollection(db *metadata.Database, shardInstan
 	}
 	return nil
 }
-func (s *DatasourceInstance) RemoveCollection(dbname, collectionname string) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollection")
+func (s *DatasourceInstance) EnsureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
-func (s *DatasourceInstance) AddCollectionField(dbname, shardinstance, collectionname string, field *metadata.Field) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionField")
+func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
+	db, ok := s.GetMeta().Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := db.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
+		return nil
+	}
+
+	// Set the state as deallocate
+	collection.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+		return err
+	}
+
+	// Refresh the meta (so new incoming queries won't get this while we remove it)
+	s.refreshMeta()
+
+	// Remove from the datastore
+	if err := s.StoreSchema.RemoveCollection(dbname, shardinstance, collectionname); err != nil {
+		return err
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.EnsureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
+		return err
+	}
+
+	return nil
 }
+
 func (s *DatasourceInstance) EnsureCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionField")
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureCollectionField(db, shardInstance, collection, field); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
@@ -563,15 +713,80 @@ func (s *DatasourceInstance) ensureCollectionField(db *metadata.Database, shardI
 
 	return nil
 }
-func (s *DatasourceInstance) RemoveCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionField")
+func (s *DatasourceInstance) EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
-func (s *DatasourceInstance) AddCollectionIndex(dbname, shardInstance, collection string, index *metadata.CollectionIndex) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.AddCollectionIndex")
+func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+	db, ok := s.GetMeta().Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := db.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
+		return nil
+	}
+
+	field, ok := collection.Fields[fieldname]
+	if !ok {
+		return nil
+	}
+
+	// Set the state as deallocate
+	field.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+		return err
+	}
+
+	// Refresh the meta (so new incoming queries won't get this DB while we remove it)
+	s.refreshMeta()
+
+	// Remove from the datastore
+	if err := s.StoreSchema.RemoveCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+		return err
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+		return err
+	}
+
+	return nil
 }
+
 func (s *DatasourceInstance) EnsureCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.EnsureCollectionIndex")
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureCollectionIndex(db, shardInstance, collection, index); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
 }
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionIndex() on it
@@ -645,6 +860,62 @@ func (s *DatasourceInstance) ensureCollectionIndex(db *metadata.Database, shardI
 
 	return nil
 }
-func (s *DatasourceInstance) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
-	return fmt.Errorf("TOIMPLEMENT DatasourceInstance.RemoveCollectionIndex")
+
+func (s *DatasourceInstance) EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+	if s.StoreSchema == nil {
+		return fmt.Errorf("store doesn't support schema modification")
+	}
+
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+		return err
+	}
+
+	s.refreshMeta()
+
+	return nil
+}
+
+func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+	db, ok := s.GetMeta().Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := db.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
+		return nil
+	}
+
+	index, ok := collection.Indexes[indexname]
+	if !ok {
+		return nil
+	}
+
+	// Set the state as deallocate
+	index.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+		return err
+	}
+
+	// Refresh the meta (so new incoming queries won't get this DB while we remove it)
+	s.refreshMeta()
+
+	// Remove from the datastore
+	if err := s.StoreSchema.RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+		return err
+	}
+
+	// Remove from meta
+	if err := s.MetaStore.EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+		return err
+	}
+
+	return nil
 }

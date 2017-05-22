@@ -48,20 +48,16 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// Shard Instances
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.listShardInstance)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.addShardInstance)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.viewShardInstance)
-	// TODO: ensure shard_instance
-	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.addCollection)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.ensureShardInstance)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.removeShardInstance)
 
 	// Collections
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.listCollection)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.addCollection)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
-	// TODO: ensure collection
-	//router.PUT("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.addCollection)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.ensureCollection)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.removeCollection)
 
 	// TODO: endpoints for index and fields
@@ -184,7 +180,7 @@ func (h *HTTPApi) listShardInstance(w http.ResponseWriter, r *http.Request, ps h
 }
 
 // Add database that we have in the metadata store
-func (h *HTTPApi) addShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *HTTPApi) ensureShardInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -194,8 +190,16 @@ func (h *HTTPApi) addShardInstance(w http.ResponseWriter, r *http.Request, ps ht
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.storageNode.Datasources[ps.ByName("datasource")].AddShardInstance(ps.ByName("dbname"), &shardInstance); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureShardInstance(db, &shardInstance); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			}
+		} else {
+			// DB requested doesn't exist
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(err.Error()))
 			return
 		}
@@ -234,7 +238,7 @@ func (h *HTTPApi) removeShardInstance(w http.ResponseWriter, r *http.Request, ps
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.Datasources[ps.ByName("datasource")].RemoveShardInstance(dbname, shardinstance); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -258,26 +262,35 @@ func (h *HTTPApi) listCollection(w http.ResponseWriter, r *http.Request, ps http
 }
 
 // Add database that we have in the metadata store
-func (h *HTTPApi) addCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
-	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
-		defer r.Body.Close()
-		bytes, _ := ioutil.ReadAll(r.Body)
+func (h *HTTPApi) ensureCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 
-		var collection metadata.Collection
-		if err := json.Unmarshal(bytes, &collection); err == nil {
-			if err := h.storageNode.Datasources[ps.ByName("datasource")].AddCollection(db.Name, ps.ByName("shardinstance"), &collection); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(err.Error()))
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var collection metadata.Collection
+	if err := json.Unmarshal(bytes, &collection); err == nil {
+		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+			if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
+				if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureCollection(db, shardInstance, &collection); err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					w.Write([]byte(err.Error()))
+					return
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			} else {
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(err.Error()))
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
 		return
 	}
 }
@@ -347,7 +360,7 @@ func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps ht
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
 	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Datasources[ps.ByName("datasource")].RemoveCollection(dbname, ps.ByName("collectionname")); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollection(dbname, ps.ByName("shardinstance"), ps.ByName("collectionname")); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
