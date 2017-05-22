@@ -258,7 +258,7 @@ func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *m
 	return nil
 }
 
-const addSequenceTemplate = `CREATE SEQUENCE "%s" INCREMENT BY %d RESTART WITH %d`
+const addSequenceTemplate = `CREATE SEQUENCE IF NOT EXISTS "%s" INCREMENT BY %d RESTART WITH %d`
 
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
