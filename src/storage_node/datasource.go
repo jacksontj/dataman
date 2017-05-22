@@ -23,7 +23,7 @@ func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstanc
 	}
 	datasource.RefreshMeta()
 
-	datasource.Store, err = config.GetStore(datasource.GetMeta)
+	datasource.Store, err = config.GetStore(datasource.GetActiveMeta)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +120,11 @@ func (s *DatasourceInstance) refreshMeta() {
 
 	s.activeMeta.Store(meta)
 
+}
+
+// TODO: remove? need some mechanism to override the meta func for schema migrations, imports, etc.
+func (s *DatasourceInstance) SetActiveMeta(meta *metadata.Meta) {
+	s.activeMeta.Store(meta)
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
