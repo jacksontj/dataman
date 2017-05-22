@@ -1,0 +1,19 @@
+datasource_instances:
+    local:
+      storage_type: postgres
+      storage_config:
+        pg_string: user=postgres password=password sslmode=disable
+
+    remote:
+      storage_type: postgres
+      storage_config:
+        pg_string: user=postgres password=password sslmode=disable host=10.0.1.132
+
+actions:
+    - src: remote
+      dst: local
+      action: copy
+      args:
+        copy_data: false
+        # TODO: support nested dicts of filters (so we can limit what all we copy)
+        database: example_forum
