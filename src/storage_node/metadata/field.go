@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 )
 
@@ -96,7 +95,7 @@ func (f *Field) Validate(val interface{}) error {
 			_, err := strconv.ParseInt(typedVal, 10, 64)
 			return err
 		default:
-			return fmt.Errorf("Unknown Int type %s -- %v", reflect.TypeOf(val), val)
+			return fmt.Errorf("Unknown Int type")
 		}
 	case Bool:
 		if _, ok := val.(bool); !ok {
