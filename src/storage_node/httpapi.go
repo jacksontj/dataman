@@ -143,7 +143,7 @@ func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps http
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDatabase(&database); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsDatabase(&database); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -192,7 +192,7 @@ func (h *HTTPApi) ensureShardInstance(w http.ResponseWriter, r *http.Request, ps
 	} else {
 		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
-			if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureShardInstance(db, &shardInstance); err != nil {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsShardInstance(db, &shardInstance); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -272,7 +272,7 @@ func (h *HTTPApi) ensureCollection(w http.ResponseWriter, r *http.Request, ps ht
 		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 			if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
-				if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureCollection(db, shardInstance, &collection); err != nil {
+				if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollection(db, shardInstance, &collection); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(err.Error()))
 					return

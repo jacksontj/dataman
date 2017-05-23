@@ -568,7 +568,6 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 			"collection_field_id":          field.ID,
 			"relation_collection_field_id": field.Relation.FieldID,
 			"cascade_on_delete":            false,
-			"provision_state":              field.Relation.ProvisionState,
 		}
 		if field.Relation.ID != 0 {
 			fieldRelationRecord["_id"] = field.Relation.ID
@@ -702,11 +701,10 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 			relatedField := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
 			relatedCollection := m.getCollectionByID(meta, relatedField.CollectionID)
 			field.Relation = &metadata.FieldRelation{
-				ID:             collectionFieldRelationRecord["_id"].(int64),
-				FieldID:        collectionFieldRelationRecord["relation_collection_field_id"].(int64),
-				Collection:     relatedCollection.Name,
-				Field:          relatedField.Name,
-				ProvisionState: metadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
+				ID:         collectionFieldRelationRecord["_id"].(int64),
+				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
+				Collection: relatedCollection.Name,
+				Field:      relatedField.Name,
 			}
 		}
 

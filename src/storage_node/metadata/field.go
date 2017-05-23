@@ -119,6 +119,4 @@ type FieldRelation struct {
 
 	// TODO: update and delete
 	//CascadeDelete bool `json:"cascade_on_delete"`
-
-	ProvisionState ProvisionState `json:"provision_state"`
 }
