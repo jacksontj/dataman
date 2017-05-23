@@ -104,6 +104,7 @@ func (f *Field) Validate(val interface{}) error {
 		return nil
 	// TODO: implement
 	case DateTime:
+		return fmt.Errorf("DateTime currently unimplemented")
 	}
 
 	return fmt.Errorf("Unknown type \"%s\" defined", f.Type)
