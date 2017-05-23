@@ -403,7 +403,6 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, shardinstance, colle
 	return nil
 }
 
-// TODO: Implement
 // Index changes
 func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 
@@ -470,7 +469,6 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shard
 	return nil
 }
 
-// TODO: Implement
 func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
 	meta := m.GetMeta()
 	collectionIndex := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname].Indexes[indexname]

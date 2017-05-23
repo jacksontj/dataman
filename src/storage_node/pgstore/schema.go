@@ -305,7 +305,6 @@ FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = ($1) AND table_name = ($2)
 `
 
-// TODO: implement
 func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field {
 	// Get the fields for the collection
 	fieldRecords, err := DoQuery(s.getDB(dbname), listColumnTemplate, shardinstance, collectionname)
