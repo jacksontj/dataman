@@ -1,6 +1,8 @@
 import psycopg2
 import psycopg2.extras
 
+import requests
+
 from schema import DBNAME
 
 # Router node
@@ -35,8 +37,9 @@ if True:
 
     conn.commit()
     cur.close()
-        
-if True:
+
+# Storage node
+if False:
     for addr in ('127.0.0.1', '10.42.17.93'):
         conn = psycopg2.connect("dbname=%s user='postgres' host='%s' password='password'" % ("dataman_storage", addr))
         conn.autocommit = True
@@ -75,5 +78,8 @@ if True:
         for task in tasks:
                 cur.execute(task)
 
+if True:
+    for addr in ('127.0.0.1', '10.42.17.93'):
+        requests.delete('http://'+addr+':8081/v1/datasource_instance/postgres1/database/example_forum')
 
             
