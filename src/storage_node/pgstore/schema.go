@@ -324,7 +324,6 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		// TODO: do we want to do this based on size?
 		case "smallint":
 			fieldType = metadata.Int
-			// TODO: this isn't actually 100% accurate, since it might be a list or something :/
 		case "jsonb":
 			fieldType = metadata.Document
 		case "boolean":
