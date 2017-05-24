@@ -836,8 +836,6 @@ func (m *MetadataStore) AddDatabase(db *metadata.Database) error {
 		// TODO: do at the end of the loop-- defer will only do it at the end of the function
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
-			fmt.Printf("sent request to %s\n%s\n", datasourceInstance.GetBaseURL(), dbShard)
-			fmt.Println(resp)
 			body, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
 				return err
