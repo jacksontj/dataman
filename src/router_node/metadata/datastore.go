@@ -15,6 +15,9 @@ type DatastoreSet struct {
 }
 
 func (d *DatastoreSet) ToSlice() []*DatabaseDatastore {
+	if d == nil {
+		return nil
+	}
 	ids := make(map[int64]struct{})
 
 	datastores := make([]*DatabaseDatastore, 0, len(d.Read))
@@ -36,6 +39,8 @@ func (d *DatastoreSet) ToSlice() []*DatabaseDatastore {
 // We need to have linking from database -> datastore, and some of the metadata
 // is associated to just that link
 type DatabaseDatastore struct {
+	ID int64 `json:"_id"`
+
 	// TODO: elsewhere? This data is pulled in from a linking table-- but is associated
 	Read  bool `json:"read"`
 	Write bool `json:"write"`
@@ -43,6 +48,8 @@ type DatabaseDatastore struct {
 	Required bool `json:"required"`
 
 	Datastore *Datastore `json:"datastore"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 func NewDatastore(name string) *Datastore {
@@ -61,7 +68,10 @@ type Datastore struct {
 	// TODO: better type
 	//ShardConfig map[string]interface{} `json:"shard_config"`
 
+	// TODO: change to map of int64 -> shard
 	Shards []*DatastoreShard `json:"shards"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 type DatastoreShard struct {
@@ -73,12 +83,15 @@ type DatastoreShard struct {
 
 	// Internal fields
 	DatastoreID int64 `json:"-"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 func NewDatastoreShardReplicaSet() *DatastoreShardReplicaSet {
 	return &DatastoreShardReplicaSet{
-		Masters: make([]*DatastoreShardReplica, 0),
-		Slaves:  make([]*DatastoreShardReplica, 0),
+		Masters:  make([]*DatastoreShardReplica, 0),
+		Slaves:   make([]*DatastoreShardReplica, 0),
+		Replicas: make(map[int64]*DatastoreShardReplica),
 	}
 }
 
@@ -87,9 +100,13 @@ type DatastoreShardReplicaSet struct {
 	masterCount int64
 	Slaves      []*DatastoreShardReplica `json:"slaves"`
 	slaveCount  int64
+
+	// TODO: have this be the only JSON one?
+	Replicas map[int64]*DatastoreShardReplica `json:"-"`
 }
 
 func (d *DatastoreShardReplicaSet) AddReplica(r *DatastoreShardReplica) {
+	d.Replicas[r.ID] = r
 	if r.Master {
 		d.Masters = append(d.Masters, r)
 	} else {
@@ -113,4 +130,6 @@ type DatastoreShardReplica struct {
 	ID         int64               `json:"_id"`
 	Datasource *DatasourceInstance `json:"datasource_instance"`
 	Master     bool                `json:"master"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }

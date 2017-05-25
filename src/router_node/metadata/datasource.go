@@ -6,7 +6,7 @@ import "fmt"
 type Datasource struct {
 	ID   int64  `json:"_id"`
 	Name string `json:"name"`
-	// Config schema
+	// TODO: Config schema
 }
 
 func NewDatasourceInstance(name string) *DatasourceInstance {
@@ -34,6 +34,8 @@ type DatasourceInstance struct {
 	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"database_shard_instance,omitempty"`
 	// collection_vshard.ID -> DatasourceInstanceShardInstance
 	CollectionShards map[int64]*DatasourceInstanceShardInstance `json:"collection_shard_instance,omitempty"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 func (d *DatasourceInstance) GetBaseURL() string {
@@ -50,4 +52,6 @@ type DatasourceInstanceShardInstance struct {
 	Name string `json:"name,omitempty"`
 	// TODO: either support both in this struct, or have 2 structs
 	DatabaseVshardInstanceId int64 `json:"database_vshard_instance_id"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }

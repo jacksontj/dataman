@@ -530,6 +530,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 		"collection_id":   collection.ID,
 		"field_type":      field.Type,
 		"field_type_args": field.TypeArgs,
+		"not_null":        field.NotNull,
 		"provision_state": field.ProvisionState,
 	}
 	if parentField != nil {
@@ -667,7 +668,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 			field.TypeArgs = fieldTypeArgs.(map[string]interface{})
 		}
 		if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
-			field.NotNull = true
+			field.NotNull = collectionFieldRecord["not_null"].(bool)
 		}
 
 		// If we have a parent, mark it down for now

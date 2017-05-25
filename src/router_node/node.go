@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -26,6 +27,9 @@ type RouterNode struct {
 	// background sync stuff
 	stop     chan struct{}
 	syncChan chan chan error
+
+	// TODO: this should be pluggable, presumably in the datasource
+	schemaLock sync.Mutex
 }
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
@@ -508,17 +512,31 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	return nil
 }
 
+func (s *RouterNode) EnsureExistsDatabase(db *metadata.Database) error {
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	s.Sync()
+
+	return nil
+}
+
 // TODO: this will eventually actually use a long-running task system for
 // provisioning, since we'll need to tell the various storage_nodes involved
 // what shards they need to add etc. For a POC I'm going to implement it all as
 // serial synchronous provisioning-- which is definitely not what we want long-term
 // Add a database
-func (s *RouterNode) AddDatabase(db *metadata.Database) error {
+func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 	// Validate the schemas passed in
 	for _, collection := range db.Collections {
 		if err := collection.EnsureInternalFields(); err != nil {
 			return err
 		}
+		// TODO: we need to recurse!
 		for _, field := range collection.Fields {
 			if field.Relation != nil && db.VShard.ShardCount != 1 {
 				return fmt.Errorf("relations are currently only supported on collections with a shardcount of 1")
@@ -603,5 +621,47 @@ func (s *RouterNode) AddDatabase(db *metadata.Database) error {
 		}
 	}
 
-	return s.MetaStore.AddDatabase(db)
+	// At this point we've cleaned up what the user gave us, lets check if we already have this
+	// If something exists with that name and is equal, we are done
+	// TODO:
+	/*
+			if existingDB, ok := meta.Databases[db.Name]; ok {
+			    if db.Equal(existingDB) {
+			        return nil
+			    } else {
+			        return fmt.Errorf("Conflicting DB already exists which doesn't match")
+			    }
+		    }
+	*/
+
+	// TODO: validate that the provision states are all empty (we don't want people setting them)
+
+	// Add it to the metadata so we know we where working on it
+	db.ProvisionState = metadata.Provision
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Provision on the various storage nodes that need to know about it
+	// TODO:
+
+	// Since we made the database, lets update the metadata about it
+	db.ProvisionState = metadata.Validate
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Now lets follow the tree down
+	// TODO
+
+	// Test the storage nodes in this grouping
+	// TODO:
+
+	// Since we made the database, lets update the metadata about it
+	db.ProvisionState = metadata.Active
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	return nil
 }

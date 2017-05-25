@@ -9,6 +9,7 @@ type StorageNode struct {
 	IP   net.IP `json:"ip"`
 	Port int    `json:"port"`
 
-	// TODO populate?
-	//Datasources []*DatasourceInstance `json:"datasources"`
+	DatasourceInstances map[string]*DatasourceInstance `json:"datasource_instances"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }

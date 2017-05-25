@@ -29,21 +29,32 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/metadata", h.showMetadata)
 
 	// Storage node APIs
-	router.GET("/v1/metadata/storage_node", h.listStorageNodes)
-	router.POST("/v1/metadata/storage_node", h.addStorageNode)
+	router.GET("/v1/storage_node", h.listStorageNodes)
 
-	router.GET("/v1/metadata/storage_node/:id", h.viewStorageNode)
-	//router.PUT("/v1/metadata/storage_node/:id", h.updateStorageNode)
-	router.DELETE("/v1/metadata/storage_node/:id", h.deleteStorageNode)
+	router.GET("/v1/storage_node/:id", h.viewStorageNode)
+	router.POST("/v1/storage_node/:id", h.ensureStorageNode)
+	router.DELETE("/v1/storage_node/:id", h.deleteStorageNode)
+
+	// datasource_instance
+	//router.GET("/v1/storage_node/:id/:dsi_id", h.viewDatasourceInstance)
+	//router.PUT("/v1/storage_node/:id/:dsi_id", h.ensureDatasourceInstance)
+	//router.DELETE("/v1/storage_node/:id/:dsi_id", h.deleteDatasourceInstance)
+
+	// datasource_instance_shard_instance
+
+	// Datastore APIs
+
+	//datastore
+	//datastore_shard
+	//datastore_shard_replica
 
 	// DB Management
 	// DB collection
 	router.GET("/v1/database", h.listDatabase)
-	router.POST("/v1/database", h.addDatabase)
 
 	// DB instance
 	router.GET("/v1/database/:dbname", h.viewDatabase)
-	//router.PUT("/v1/database/:dbname", h.updateDatabase)
+	router.POST("/v1/database/:dbname", h.ensureDatabase)
 	//router.DELETE("/v1/database/:dbname", h.removeDatabase)
 
 	// Collections
@@ -54,13 +65,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	//router.PUT("/v1/database/:dbname/collections/:collectionname", h.updateCollection)
 	//router.DELETE("/v1/database/:dbname/collections/:collectionname", h.removeCollection)
 
-	// Schema
-	//router.GET("/v1/schema", h.listSchema)
-	// TODO: add generic jsonSchema endpoint  (to show just the jsonSchema content)
-	//router.GET("/v1/schema/:name/:version", h.viewSchema)
-	//router.POST("/v1/schema/:name/:version", h.addSchema)
-	//router.DELETE("/v1/schema/:name/:version", h.removeSchema)
-
+	// Data access APIs
 	router.POST("/v1/data/raw", h.rawQueryHandler)
 }
 
@@ -97,28 +102,6 @@ func (h *HTTPApi) listStorageNodes(w http.ResponseWriter, r *http.Request, ps ht
 	}
 }
 
-// TODO: return should be the loaded storage_node (so we can get the id)
-// Add a storage_node
-func (h *HTTPApi) addStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	defer r.Body.Close()
-	bytes, _ := ioutil.ReadAll(r.Body)
-
-	var storageNode metadata.StorageNode
-
-	if err := json.Unmarshal(bytes, &storageNode); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	} else {
-		if err := h.routerNode.MetaStore.AddStorageNode(&storageNode); err != nil {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-	}
-}
-
 // View a specific storage node
 func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
@@ -141,6 +124,28 @@ func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps htt
 	}
 }
 
+// TODO: return should be the loaded storage_node (so we can get the id)
+// Add a storage_node
+func (h *HTTPApi) ensureStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var storageNode metadata.StorageNode
+
+	if err := json.Unmarshal(bytes, &storageNode); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	} else {
+		if err := h.routerNode.MetaStore.EnsureExistsStorageNode(&storageNode); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	}
+}
+
 // Delete a specific storage node
 func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
@@ -150,7 +155,7 @@ func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps h
 		return
 	}
 
-	if err := h.routerNode.MetaStore.RemoveStorageNode(storageNodeId); err != nil {
+	if err := h.routerNode.MetaStore.EnsureDoesntExistStorageNode(storageNodeId); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -173,27 +178,6 @@ func (h *HTTPApi) listDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 	}
 }
 
-// Add a single Database
-func (h *HTTPApi) addDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	defer r.Body.Close()
-	bytes, _ := ioutil.ReadAll(r.Body)
-
-	var db *metadata.Database
-
-	if err := json.Unmarshal(bytes, &db); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
-		return
-	} else {
-		if err := h.routerNode.AddDatabase(db); err != nil {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		}
-	}
-}
-
 // Show a single DB
 func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	meta := h.routerNode.GetMeta()
@@ -211,6 +195,26 @@ func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+}
+
+func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var db *metadata.Database
+
+	if err := json.Unmarshal(bytes, &db); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	} else {
+		if err := h.routerNode.EnsureExistsDatabase(db); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
 	}
 }
 

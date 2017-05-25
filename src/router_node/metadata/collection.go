@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jacksontj/dataman/src/router_node/sharding"
@@ -21,15 +22,14 @@ type Collection struct {
 	// Collection VShards (if defined)
 	VShard *CollectionVShard `json:"collection_vshard,omitempty"`
 
-	// TODO: use, we don't need these for inital working product, but we will
-	// if we plan on doing more sophisticated sharding or schema validation
-	// TODO: switch to a map
 	Fields  map[string]*storagenodemetadata.Field           `json:"fields"`
 	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
 	Partitions []*CollectionPartition `json:"partitions"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 // TODO: elsewhere?
@@ -39,7 +39,11 @@ func (c *Collection) EnsureInternalFields() error {
 	for name, internalField := range storagenodemetadata.InternalFields {
 		if field, ok := c.Fields[name]; !ok {
 			// TODO: make a copy?
-			c.Fields[name] = internalField
+			// TODO: better copy
+			newField := &storagenodemetadata.Field{}
+			buf, _ := json.Marshal(internalField)
+			json.Unmarshal(buf, newField)
+			c.Fields[name] = newField
 		} else {
 			// If it exists, it must match -- if not error
 			if !internalField.Equal(field) {

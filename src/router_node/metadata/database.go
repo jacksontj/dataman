@@ -21,6 +21,8 @@ type Database struct {
 	Collections map[string]*Collection `json:"collections"`
 
 	VShard *DatabaseVShard `json:"database_vshard"`
+
+	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 func NewDatabaseVShard() *DatabaseVShard {
