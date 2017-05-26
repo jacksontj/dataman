@@ -39,7 +39,7 @@ if True:
     cur.close()
 
 # Storage node
-if False:
+if True:
     for addr in ('127.0.0.1', '10.42.17.93'):
         conn = psycopg2.connect("dbname=%s user='postgres' host='%s' password='password'" % ("dataman_storage", addr))
         conn.autocommit = True
