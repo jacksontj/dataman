@@ -232,7 +232,9 @@ func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
 	// If something is provisioned with that name already -- don't provision again!
 	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
 		if db.Equal(existingDB) {
-			return nil
+			if existingDB.ProvisionState == metadata.Active {
+				return nil
+			}
 		} else {
 			return fmt.Errorf("Conflicting DB already exists which doesn't match")
 		}
@@ -360,7 +362,9 @@ func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, sh
 	if existingDB, ok := s.GetMeta().Databases[db.Name]; ok {
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
 			if shardInstance.Equal(existingShardInstance) {
-				return nil
+				if shardInstance.ProvisionState == metadata.Active {
+					return nil
+				}
 			} else {
 				return fmt.Errorf("Conflicting shardInstance already exists which doesn't match")
 			}
@@ -496,7 +500,9 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
 			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
 				if collection.Equal(existingCollection) {
-					return nil
+					if collection.ProvisionState == metadata.Active {
+						return nil
+					}
 				} else {
 					return fmt.Errorf("Conflicting collection already exists which doesn't match")
 				}
@@ -670,7 +676,9 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
 				if existingCollectionField, ok := existingCollection.Fields[field.Name]; ok {
 					if field.Equal(existingCollectionField) {
-						return nil
+						if field.ProvisionState == metadata.Active {
+							return nil
+						}
 					} else {
 						return fmt.Errorf("Conflicting collectionField already exists which doesn't match")
 					}
@@ -830,7 +838,9 @@ func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, 
 			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
 				if existingCollectionIndex, ok := existingCollection.Indexes[index.Name]; !ok {
 					if index.Equal(existingCollectionIndex) {
-						return nil
+						if index.ProvisionState == metadata.Active {
+							return nil
+						}
 					} else {
 						return fmt.Errorf("Conflicting collectionIndex already exists which doesn't match")
 					}

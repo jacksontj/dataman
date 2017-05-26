@@ -1335,7 +1335,7 @@ func (m *MetadataStore) EnsureExistsDatabaseVShardInstance(db *metadata.Database
 		db.ID = existingDB.ID
 		dbVShard.ID = db.VShard.ID
 
-		for _, dbVShard := range db.VShard.Instances {
+		for _, dbVShard := range existingDB.VShard.Instances {
 			if dbVShard.ShardInstance == databaseVShardInstance.ShardInstance {
 				databaseVShardInstance.ID = dbVShard.ID
 				break
@@ -1344,7 +1344,8 @@ func (m *MetadataStore) EnsureExistsDatabaseVShardInstance(db *metadata.Database
 	}
 
 	databaseVShardInstanceRecord := map[string]interface{}{
-		"shard_instance": databaseVShardInstance.ShardInstance,
+		"database_vshard_id": dbVShard.ID,
+		"shard_instance":     databaseVShardInstance.ShardInstance,
 	}
 
 	if databaseVShardInstance.ID != 0 {

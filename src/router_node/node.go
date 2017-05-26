@@ -1,7 +1,10 @@
 package routernode
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -14,6 +17,8 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node"
+
+	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // This node is responsible for routing requests to the appropriate storage node
@@ -591,7 +596,7 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 	}
 
 	// If the user didn't define instances, lets do it for them
-	if db.VShard.Instances == nil {
+	if db.VShard.Instances == nil || len(db.VShard.Instances) == 0 {
 		// We need a counter (to balance) for each datastore
 		shardMapState := make(map[int64]int64)
 
@@ -623,7 +628,6 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// At this point we've cleaned up what the user gave us, lets check if we already have this
 	// If something exists with that name and is equal, we are done
-	// TODO:
 	/*
 			if existingDB, ok := meta.Databases[db.Name]; ok {
 			    if db.Equal(existingDB) {
@@ -643,121 +647,113 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 	}
 
 	// Provision on the various storage nodes that need to know about it
-	// TODO:
-	/*
-		// Tell storagenodes about their new datasource_instance_shard_instances
-		// Notify the add by putting it in the datasource_instance_shard_instance table
-		client := &http.Client{}
+	// Tell storagenodes about their new datasource_instance_shard_instances
+	// Notify the add by putting it in the datasource_instance_shard_instance table
+	client := &http.Client{}
 
-		provisionRequests := make(map[*metadata.DatasourceInstance]*storagenodemetadata.Database)
+	provisionRequests := make(map[*metadata.DatasourceInstance]*storagenodemetadata.Database)
 
-		for _, vshardInstance := range db.VShard.Instances {
-			for _, datastoreShard := range vshardInstance.DatastoreShard {
-				// TODO: slaves as well
-				for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
-					datasourceInstance := datastoreShardReplica.Datasource
-					// If we need to define the database, lets do so
-					if _, ok := provisionRequests[datasourceInstance]; !ok {
-						// TODO: better DB conversion
-						provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
-					}
-
-					shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
-
-					// Add entry to datasource_instance_shard_instance
-					// load all of the replicas
-					datasourceInstanceShardInstanceResult := m.Store.Insert(map[string]interface{}{
-						"db":             "dataman_router",
-						"shard_instance": "public",
-						"collection":     "datasource_instance_shard_instance",
-						"record": map[string]interface{}{
-							"datasource_instance_id":      datasourceInstance.ID,
-							"database_vshard_instance_id": vshardInstance.ID,
-							"name": shardInstanceName,
-						},
-					})
-
-					// TODO: better error handle
-					if datasourceInstanceShardInstanceResult.Error != "" {
-						return fmt.Errorf(datasourceInstanceShardInstanceResult.Error)
-					}
-
-					// Add this shard_instance to the database for the datasource_instance
-					datasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
-					// Create the ShardInstance for the DatasourceInstance
-					provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = datasourceInstanceShardInstance
-					datasourceInstanceShardInstance.Count = db.VShard.ShardCount
-					datasourceInstanceShardInstance.Instance = vshardInstance.ShardInstance
-
-					// TODO: convert from collections -> collections
-					for name, collection := range db.Collections {
-						datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
-						datasourceInstanceShardInstanceCollection.Fields = collection.Fields
-						datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
-
-						// TODO: better!
-						var clearFieldID func(*storagenodemetadata.Field)
-						clearFieldID = func(field *storagenodemetadata.Field) {
-							field.ID = 0
-							if field.SubFields != nil {
-								for _, subfield := range field.SubFields {
-									clearFieldID(subfield)
-								}
-							}
-						}
-
-						// Zero out the IDs
-						for _, field := range datasourceInstanceShardInstanceCollection.Fields {
-							clearFieldID(field)
-						}
-						for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
-							index.ID = 0
-						}
-
-						datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
-					}
-
+	for _, vshardInstance := range db.VShard.Instances {
+		for _, datastoreShard := range vshardInstance.DatastoreShard {
+			// TODO: slaves as well
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				datasourceInstance := datastoreShardReplica.Datasource
+				// If we need to define the database, lets do so
+				if _, ok := provisionRequests[datasourceInstance]; !ok {
+					// TODO: better DB conversion
+					provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
 				}
-			}
-		}
 
-		for datasourceInstance, storageNodeDatabase := range provisionRequests {
-			// Send the actual request!
-			// TODO: the right thing, definitely wrong right now ;)
-			dbShard, err := json.Marshal(storageNodeDatabase)
-			if err != nil {
-				return err
-			}
-			bodyReader := bytes.NewReader(dbShard)
+				shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
 
-			// send task to node
-			req, err := http.NewRequest(
-				"POST",
-				datasourceInstance.GetBaseURL()+"database/"+db.Name,
-				bodyReader,
-			)
-			if err != nil {
-				return err
-			}
-			resp, err := client.Do(req)
-			if err != nil {
-				return err
-			}
-			// TODO: do at the end of the loop-- defer will only do it at the end of the function
-			defer resp.Body.Close()
-			if resp.StatusCode != 200 {
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
+				datasourceInstanceShardInstance := &metadata.DatasourceInstanceShardInstance{
+					Name: shardInstanceName,
+					DatabaseVshardInstanceId: vshardInstance.ID,
+				}
+
+				// Add entry to datasource_instance_shard_instance
+				if err := s.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 					return err
 				}
-				return fmt.Errorf(string(body))
+
+				// Add this shard_instance to the database for the datasource_instance
+				remoteDatasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
+				// Create the ShardInstance for the DatasourceInstance
+				provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = remoteDatasourceInstanceShardInstance
+				remoteDatasourceInstanceShardInstance.Count = db.VShard.ShardCount
+				remoteDatasourceInstanceShardInstance.Instance = vshardInstance.ShardInstance
+
+				// TODO: convert from collections -> collections
+				for name, collection := range db.Collections {
+					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
+					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
+					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+
+					// TODO: better!
+					var clearFieldID func(*storagenodemetadata.Field)
+					clearFieldID = func(field *storagenodemetadata.Field) {
+						field.ID = 0
+						if field.Relation != nil {
+							field.Relation.FieldID = 0
+							field.Relation.ID = 0
+						}
+						if field.SubFields != nil {
+							for _, subfield := range field.SubFields {
+								clearFieldID(subfield)
+							}
+						}
+					}
+
+					// Zero out the IDs
+					for _, field := range datasourceInstanceShardInstanceCollection.Fields {
+						clearFieldID(field)
+					}
+					for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
+						index.ID = 0
+					}
+
+					remoteDatasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
+				}
+
 			}
+		}
+	}
 
-			// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+	for datasourceInstance, storageNodeDatabase := range provisionRequests {
+		// Send the actual request!
+		// TODO: the right thing, definitely wrong right now ;)
+		dbShard, err := json.Marshal(storageNodeDatabase)
+		if err != nil {
+			return err
+		}
+		bodyReader := bytes.NewReader(dbShard)
 
+		// send task to node
+		req, err := http.NewRequest(
+			"POST",
+			datasourceInstance.GetBaseURL()+"database/"+db.Name,
+			bodyReader,
+		)
+		if err != nil {
+			return err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		// TODO: do at the end of the loop-- defer will only do it at the end of the function
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf(string(body))
 		}
 
-	*/
+		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+
+	}
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate

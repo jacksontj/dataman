@@ -87,7 +87,7 @@ const schemaJson string = `
                 },
                 "not_null": {
                   "name": "not_null",
-                  "type": "int",
+                  "type": "bool",
                   "provision_state": 0
                 },
                 "parent_collection_field_id": {

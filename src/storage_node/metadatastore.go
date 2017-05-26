@@ -405,6 +405,21 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, shardinstance, colle
 
 // Index changes
 func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
+		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				collection.ID = existingCollection.ID
+				for _, existingIndex := range existingCollection.Indexes {
+					if existingIndex.Name == index.Name {
+						index.ID = existingIndex.ID
+						break
+					}
+				}
+			}
+		}
+	}
 
 	// check that all the fields exist
 	fieldIds := make([]int64, len(index.Fields))
@@ -513,11 +528,47 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardinstance, 
 }
 
 func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.Field) error {
+	// Recursively search to see if a field exists that matches
+	var findField func(*metadata.Field, *metadata.Field)
+	findField = func(field, existingField *metadata.Field) {
+		if existingField.Equal(field) {
+			field.ID = existingField.ID
+			if existingField.Relation != nil {
+				field.Relation.ID = existingField.Relation.ID
+			}
+		} else {
+			if existingField.SubFields != nil {
+				for _, existingSubField := range existingField.SubFields {
+					findField(field, existingSubField)
+					if field.ID != 0 {
+						return
+					}
+				}
+			}
+		}
+	}
+
+	findCollectionField := func(collection *metadata.Collection, field *metadata.Field) {
+		for _, existingField := range collection.Fields {
+			if field.ID != 0 {
+				return
+			}
+			findField(field, existingField)
+		}
+	}
+
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
 	meta := m.GetMeta()
 	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
+			shardInstance.ID = existingShardInstance.ID
 			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
+				if parentField != nil {
+					findCollectionField(existingCollection, parentField)
+					field.ParentFieldID = parentField.ID
+				}
+				findCollectionField(existingCollection, field)
 				if existingCollectionField, ok := existingCollection.Fields[field.Name]; ok {
 					field.ID = existingCollectionField.ID
 				}
