@@ -13,6 +13,16 @@ if True:
 
 
     queries = [
+        "DELETE FROM datastore_shard_replica",
+        "DELETE FROM datastore_shard",
+        "DELETE FROM datastore",
+
+        "DELETE FROM datasource_instance_shard_instance",
+        "DELETE FROM datasource_instance",
+        
+        "DELETE FROM storage_node",
+
+        
         "DELETE FROM collection_partition",
         "DELETE FROM collection_index_item",
         "DELETE FROM collection_index",
