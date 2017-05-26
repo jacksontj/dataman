@@ -1,0 +1,13 @@
+{
+    "name": "NUC",
+    "ip": "10.42.17.93",
+    "port": 8081,
+    "provision_state": 3,
+    "datasource_instances": {
+        "postgres1": {
+            "name": "postgres1",
+            "datasource_id": 1,
+            "storage_node_id": 0
+        }
+    }
+}
