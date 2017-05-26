@@ -63,13 +63,17 @@ func (c *Collection) ListIndexes() []string {
 func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
-		if v, ok := record[fieldName]; ok {
-			if err := field.Validate(v); err != nil {
-				return err
-			}
-		} else {
-			if field.NotNull {
-				return fmt.Errorf("Missing required field %s", fieldName)
+		// TODO: some flag on the field on whether it is internal or not would be good!!!
+		if _, ok := InternalFields[fieldName]; !ok {
+			// We don't want to enforce internal fields
+			if v, ok := record[fieldName]; ok {
+				if err := field.Validate(v); err != nil {
+					return err
+				}
+			} else {
+				if field.NotNull {
+					return fmt.Errorf("Missing required field %s", fieldName)
+				}
 			}
 		}
 	}
