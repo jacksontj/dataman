@@ -47,7 +47,6 @@
 					"shard_method": "mod",
 					"shard_key": "_id"
 				},
-				"_id": 1,
 				"start_id": 1
 			}],
 			"indexes": {
@@ -122,7 +121,6 @@
 					"shard_method": "mod",
 					"shard_key": "_id"
 				},
-				"_id": 3,
 				"start_id": 1
 			}],
 			"indexes": {

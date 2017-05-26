@@ -14,7 +14,7 @@ def create_db(urlbase):
     schema_json['name'] = DBNAME
 
     ret = requests.post(
-        urlbase+"/v1/database",
+        urlbase+"/v1/database/"+DBNAME,
         json=schema_json,
     )
     print 'add database (', ret.request.method, ret.request.url, ')'
