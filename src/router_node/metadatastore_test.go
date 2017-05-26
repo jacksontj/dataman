@@ -40,6 +40,12 @@ func resetMetaStore(metaStore *MetadataStore) error {
 	meta := metaStore.GetMeta()
 
 	// TODO MORE!
+	for _, database := range meta.Databases {
+		if err := metaStore.EnsureDoesntExistDatabase(database.Name); err != nil {
+			return err
+		}
+	}
+
 	for _, datastore := range meta.Datastore {
 		if err := metaStore.EnsureDoesntExistDatastore(datastore.Name); err != nil {
 			return err
@@ -48,12 +54,6 @@ func resetMetaStore(metaStore *MetadataStore) error {
 
 	for _, storageNode := range meta.Nodes {
 		if err := metaStore.EnsureDoesntExistStorageNode(storageNode.ID); err != nil {
-			return err
-		}
-	}
-
-	for _, database := range meta.Databases {
-		if err := metaStore.EnsureDoesntExistDatabase(database.Name); err != nil {
 			return err
 		}
 	}
@@ -251,8 +251,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Ensure that the one we had and the one stored are the same
-			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.Replicas[datastoreShardReplica.ID]) {
-				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.Replicas[datastoreShardReplica.ID])
+			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
+				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
 			}
 
 			// Now lets update the provision state for stuff
@@ -262,8 +262,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Make sure it changed
-			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.Replicas[datastoreShardReplica.ID]) {
-				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.Replicas[datastoreShardReplica.ID])
+			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
+				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
 			}
 
 			// Remove it all

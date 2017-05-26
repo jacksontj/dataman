@@ -276,6 +276,7 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 		datastore := m.getDatastoreById(meta, databaseDatastoreRecord["datastore_id"].(int64))
 
 		databaseDatastore := &metadata.DatabaseDatastore{
+			ID:        databaseDatastoreRecord["_id"].(int64),
 			Read:      databaseDatastoreRecord["read"].(bool),
 			Write:     databaseDatastoreRecord["write"].(bool),
 			Required:  databaseDatastoreRecord["required"].(bool),
@@ -1259,8 +1260,8 @@ func (m *MetadataStore) EnsureExistsDatabaseVShard(db *metadata.Database, dbVSha
 	meta := m.GetMeta()
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		db.ID = existingDB.ID
-		if db.VShard != nil {
-			dbVShard.ID = db.VShard.ID
+		if existingDB.VShard != nil {
+			dbVShard.ID = existingDB.VShard.ID
 		}
 	}
 
@@ -1441,14 +1442,20 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseVShardInstance(dbname string, d
 
 func (m *MetadataStore) EnsureExistsDatabaseDatastore(db *metadata.Database, databaseDatastore *metadata.DatabaseDatastore) error {
 	meta := m.GetMeta()
-	if existingDB, ok := meta.Databases[db.Name]; ok {
-		db.ID = existingDB.ID
-	}
 
 	for _, existingDatastore := range meta.Datastore {
 		if databaseDatastore.Datastore.Name == existingDatastore.Name {
 			databaseDatastore.Datastore.ID = existingDatastore.ID
 			break
+		}
+	}
+
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
+		for _, existingDatabaseDatastore := range existingDB.Datastores {
+			if existingDatabaseDatastore.Datastore.ID == databaseDatastore.Datastore.ID {
+				databaseDatastore.ID = existingDatabaseDatastore.ID
+			}
 		}
 	}
 
@@ -1673,6 +1680,10 @@ func (m *MetadataStore) EnsureExistsCollectionPartition(db *metadata.Database, c
 			// TODO: change once we support more than one parition
 			collection.Partitions = existingCollection.Partitions
 
+			if collection.Partitions != nil && len(collection.Partitions) > 0 {
+				collectionPartition.ID = collection.Partitions[0].ID
+			}
+
 		}
 	}
 
@@ -1739,6 +1750,19 @@ func (m *MetadataStore) EnsureDoesntExistCollectionPartition(dbname, collectionn
 
 // Index changes
 func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, collection *metadata.Collection, index *storagenodemetadata.CollectionIndex) error {
+	meta := m.GetMeta()
+	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
+		if existingCollection, ok := existingDB.Collections[collection.Name]; ok {
+			collection.ID = existingCollection.ID
+			for _, existingIndex := range existingCollection.Indexes {
+				if existingIndex.Name == index.Name {
+					index.ID = existingIndex.ID
+					break
+				}
+			}
+		}
+	}
 
 	// check that all the fields exist
 	fieldIds := make([]int64, len(index.Fields))
@@ -1847,15 +1871,57 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 }
 
 func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.Field) error {
+
+	// Recursively search to see if a field exists that matches
+	var findField func(*storagenodemetadata.Field, *storagenodemetadata.Field)
+	findField = func(field, existingField *storagenodemetadata.Field) {
+		if existingField.Equal(field) {
+			field.ID = existingField.ID
+			if existingField.Relation != nil {
+				field.Relation.ID = existingField.Relation.ID
+			}
+		} else {
+			if existingField.SubFields != nil {
+				for _, existingSubField := range existingField.SubFields {
+					findField(field, existingSubField)
+					if field.ID != 0 {
+						return
+					}
+				}
+			}
+		}
+	}
+
+	findCollectionField := func(collection *metadata.Collection, field *storagenodemetadata.Field) {
+		for _, existingField := range collection.Fields {
+			if field.ID != 0 {
+				return
+			}
+			findField(field, existingField)
+		}
+	}
+
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
 	meta := m.GetMeta()
 	if existingDB, ok := meta.Databases[db.Name]; ok {
+		db.ID = existingDB.ID
 		if existingCollection, ok := existingDB.Collections[collection.Name]; ok {
+
+			if parentField != nil {
+				findCollectionField(existingCollection, parentField)
+				field.ParentFieldID = parentField.ID
+			}
+			findCollectionField(existingCollection, field)
+
+			collection.ID = existingCollection.ID
 			if existingCollectionField, ok := existingCollection.Fields[field.Name]; ok {
 				field.ID = existingCollectionField.ID
 			}
 		}
 	}
+
+	// TODO: better finding?
+	// Since we allow for subfields its a bit complicated to find the field ID
 
 	fieldRecord := map[string]interface{}{
 		"name":            field.Name,

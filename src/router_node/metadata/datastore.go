@@ -101,6 +101,20 @@ type DatastoreShardReplicaSet struct {
 	slaveCount  int64
 }
 
+func (d *DatastoreShardReplicaSet) GetByID(id int64) *DatastoreShardReplica {
+	for _, m := range d.Masters {
+		if m.ID == id {
+			return m
+		}
+	}
+	for _, s := range d.Slaves {
+		if s.ID == id {
+			return s
+		}
+	}
+	return nil
+}
+
 // Iterate over all replicas in the set
 func (d *DatastoreShardReplicaSet) IterReplica() chan *DatastoreShardReplica {
 	c := make(chan *DatastoreShardReplica, len(d.Masters)+len(d.Slaves))

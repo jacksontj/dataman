@@ -44,7 +44,7 @@ type Field struct {
 
 func (f *Field) Equal(o *Field) bool {
 	// TODO: better?
-	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull
+	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull && f.ParentFieldID == o.ParentFieldID
 }
 
 // Validate a field
