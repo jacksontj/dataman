@@ -644,6 +644,120 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Provision on the various storage nodes that need to know about it
 	// TODO:
+	/*
+		// Tell storagenodes about their new datasource_instance_shard_instances
+		// Notify the add by putting it in the datasource_instance_shard_instance table
+		client := &http.Client{}
+
+		provisionRequests := make(map[*metadata.DatasourceInstance]*storagenodemetadata.Database)
+
+		for _, vshardInstance := range db.VShard.Instances {
+			for _, datastoreShard := range vshardInstance.DatastoreShard {
+				// TODO: slaves as well
+				for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+					datasourceInstance := datastoreShardReplica.Datasource
+					// If we need to define the database, lets do so
+					if _, ok := provisionRequests[datasourceInstance]; !ok {
+						// TODO: better DB conversion
+						provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
+					}
+
+					shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
+
+					// Add entry to datasource_instance_shard_instance
+					// load all of the replicas
+					datasourceInstanceShardInstanceResult := m.Store.Insert(map[string]interface{}{
+						"db":             "dataman_router",
+						"shard_instance": "public",
+						"collection":     "datasource_instance_shard_instance",
+						"record": map[string]interface{}{
+							"datasource_instance_id":      datasourceInstance.ID,
+							"database_vshard_instance_id": vshardInstance.ID,
+							"name": shardInstanceName,
+						},
+					})
+
+					// TODO: better error handle
+					if datasourceInstanceShardInstanceResult.Error != "" {
+						return fmt.Errorf(datasourceInstanceShardInstanceResult.Error)
+					}
+
+					// Add this shard_instance to the database for the datasource_instance
+					datasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
+					// Create the ShardInstance for the DatasourceInstance
+					provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = datasourceInstanceShardInstance
+					datasourceInstanceShardInstance.Count = db.VShard.ShardCount
+					datasourceInstanceShardInstance.Instance = vshardInstance.ShardInstance
+
+					// TODO: convert from collections -> collections
+					for name, collection := range db.Collections {
+						datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
+						datasourceInstanceShardInstanceCollection.Fields = collection.Fields
+						datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+
+						// TODO: better!
+						var clearFieldID func(*storagenodemetadata.Field)
+						clearFieldID = func(field *storagenodemetadata.Field) {
+							field.ID = 0
+							if field.SubFields != nil {
+								for _, subfield := range field.SubFields {
+									clearFieldID(subfield)
+								}
+							}
+						}
+
+						// Zero out the IDs
+						for _, field := range datasourceInstanceShardInstanceCollection.Fields {
+							clearFieldID(field)
+						}
+						for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
+							index.ID = 0
+						}
+
+						datasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
+					}
+
+				}
+			}
+		}
+
+		for datasourceInstance, storageNodeDatabase := range provisionRequests {
+			// Send the actual request!
+			// TODO: the right thing, definitely wrong right now ;)
+			dbShard, err := json.Marshal(storageNodeDatabase)
+			if err != nil {
+				return err
+			}
+			bodyReader := bytes.NewReader(dbShard)
+
+			// send task to node
+			req, err := http.NewRequest(
+				"POST",
+				datasourceInstance.GetBaseURL()+"database/"+db.Name,
+				bodyReader,
+			)
+			if err != nil {
+				return err
+			}
+			resp, err := client.Do(req)
+			if err != nil {
+				return err
+			}
+			// TODO: do at the end of the loop-- defer will only do it at the end of the function
+			defer resp.Body.Close()
+			if resp.StatusCode != 200 {
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return err
+				}
+				return fmt.Errorf(string(body))
+			}
+
+			// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+
+		}
+
+	*/
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate

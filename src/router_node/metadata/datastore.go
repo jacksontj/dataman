@@ -89,9 +89,8 @@ type DatastoreShard struct {
 
 func NewDatastoreShardReplicaSet() *DatastoreShardReplicaSet {
 	return &DatastoreShardReplicaSet{
-		Masters:  make([]*DatastoreShardReplica, 0),
-		Slaves:   make([]*DatastoreShardReplica, 0),
-		Replicas: make(map[int64]*DatastoreShardReplica),
+		Masters: make([]*DatastoreShardReplica, 0),
+		Slaves:  make([]*DatastoreShardReplica, 0),
 	}
 }
 
@@ -100,13 +99,33 @@ type DatastoreShardReplicaSet struct {
 	masterCount int64
 	Slaves      []*DatastoreShardReplica `json:"slaves"`
 	slaveCount  int64
+}
 
-	// TODO: have this be the only JSON one?
-	Replicas map[int64]*DatastoreShardReplica `json:"-"`
+// Iterate over all replicas in the set
+func (d *DatastoreShardReplicaSet) IterReplica() chan *DatastoreShardReplica {
+	c := make(chan *DatastoreShardReplica, len(d.Masters)+len(d.Slaves))
+
+	go func() {
+		defer close(c)
+		emittedIDs := make(map[int64]struct{})
+		for _, master := range d.Masters {
+			if _, ok := emittedIDs[master.ID]; !ok {
+				c <- master
+				emittedIDs[master.ID] = struct{}{}
+			}
+		}
+		for _, slave := range d.Slaves {
+			if _, ok := emittedIDs[slave.ID]; !ok {
+				c <- slave
+				emittedIDs[slave.ID] = struct{}{}
+			}
+		}
+
+	}()
+	return c
 }
 
 func (d *DatastoreShardReplicaSet) AddReplica(r *DatastoreShardReplica) {
-	d.Replicas[r.ID] = r
 	if r.Master {
 		d.Masters = append(d.Masters, r)
 	} else {

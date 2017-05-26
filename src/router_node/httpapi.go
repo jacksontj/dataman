@@ -45,6 +45,11 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Datastore APIs
 
 	//datastore
+	router.GET("/v1/datastore", h.listDatastore)
+
+	router.GET("/v1/datastore/:name", h.viewDatastore)
+	router.POST("/v1/datastore/:name", h.ensureDatastore)
+	router.DELETE("/v1/datastore/:name", h.deleteDatastore)
 	//datastore_shard
 	//datastore_shard_replica
 
@@ -142,6 +147,17 @@ func (h *HTTPApi) ensureStorageNode(w http.ResponseWriter, r *http.Request, ps h
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
+		} else {
+			// Now we need to return the results
+			if bytes, err := json.Marshal(storageNode); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+			}
 		}
 	}
 }
@@ -156,6 +172,90 @@ func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps h
 	}
 
 	if err := h.routerNode.MetaStore.EnsureDoesntExistStorageNode(storageNodeId); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+}
+
+// TODO: change to a list? JSON doesn't do number keys which is a little weird here
+// List all of the storage nodes that the router knows about
+func (h *HTTPApi) listDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.routerNode.GetMeta()
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(meta.Datastore); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+// View a specific storage node
+func (h *HTTPApi) viewDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.routerNode.GetMeta()
+
+	requestedName := ps.ByName("name")
+	for _, datastore := range meta.Datastore {
+		if datastore.Name == requestedName {
+			// Now we need to return the results
+			if bytes, err := json.Marshal(datastore); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+				return
+			}
+		}
+
+	}
+	w.WriteHeader(http.StatusNotFound)
+	return
+}
+
+// TODO: return should be the loaded storage_node (so we can get the id)
+// Add a storage_node
+func (h *HTTPApi) ensureDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var datastore metadata.Datastore
+
+	if err := json.Unmarshal(bytes, &datastore); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	} else {
+		if err := h.routerNode.MetaStore.EnsureExistsDatastore(&datastore); err != nil {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		} else {
+			// Now we need to return the results
+			if bytes, err := json.Marshal(datastore); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(err.Error()))
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+			}
+		}
+	}
+}
+
+// Delete a specific storage node
+func (h *HTTPApi) deleteDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if err := h.routerNode.MetaStore.EnsureDoesntExistDatastore(ps.ByName("name")); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))

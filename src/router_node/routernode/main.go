@@ -2,6 +2,8 @@ package main
 
 import (
 	"io/ioutil"
+	"net/http"
+	_ "net/http/pprof"
 
 	"gopkg.in/yaml.v2"
 
@@ -37,6 +39,12 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Unable to create RouterNode: %v", err)
 	}
+
+	// TODO: add flag to enable/disable
+	go func() {
+		err := http.ListenAndServe("localhost:6060", nil)
+		logrus.Errorf("Error with pprof: %v", err)
+	}()
 
 	// initialize the http api (since at this point we are ready to go!
 	routerNode.Start()
