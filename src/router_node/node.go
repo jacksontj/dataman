@@ -66,6 +66,7 @@ func NewRouterNode(config *Config) (*RouterNode, error) {
 	return node, nil
 }
 
+// TODO: remove? since we need to do this while holding the lock it seems useless
 func (s *RouterNode) Sync() error {
 	errChan := make(chan error, 1)
 	s.syncChan <- errChan
@@ -109,6 +110,14 @@ func (s *RouterNode) background() {
 
 // This method will create a new `Databases` map and swap it in
 func (s *RouterNode) FetchMeta() error {
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+
+	return s.fetchMeta()
+
+}
+
+func (s *RouterNode) fetchMeta() error {
 	// First we need to determine all the databases that we are responsible for
 	// TODO: lots of error handling required
 
@@ -602,7 +611,7 @@ func (s *RouterNode) EnsureExistsDatabase(db *metadata.Database) error {
 		return err
 	}
 
-	s.Sync()
+	s.fetchMeta()
 
 	return nil
 }
@@ -895,7 +904,7 @@ func (s *RouterNode) EnsureDoesntExistDatabase(dbname string) error {
 		return err
 	}
 
-	s.Sync()
+	s.fetchMeta()
 
 	return nil
 }
