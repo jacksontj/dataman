@@ -687,23 +687,10 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 		}
 	}
 
-	var setFieldTreeState func(*metadata.Field, metadata.ProvisionState)
-
-	setFieldTreeState = func(field *metadata.Field, state metadata.ProvisionState) {
-		if field.ProvisionState != metadata.Active {
-			field.ProvisionState = state
-		}
-		if field.SubFields != nil {
-			for _, subField := range field.SubFields {
-				setFieldTreeState(subField, state)
-			}
-		}
-	}
-
 	// TODO: validate that the provision states are all empty (we don't want people setting them)
 
 	// Add it to the metadata so we know we where working on it
-	setFieldTreeState(field, metadata.Provision)
+	metadata.SetFieldTreeState(field, metadata.Provision)
 	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
@@ -715,7 +702,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 		}
 	}
 
-	setFieldTreeState(field, metadata.Validate)
+	metadata.SetFieldTreeState(field, metadata.Validate)
 	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
@@ -727,7 +714,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 	}
 
 	// Since we made the database, lets update the metadata about it
-	setFieldTreeState(field, metadata.Active)
+	metadata.SetFieldTreeState(field, metadata.Active)
 	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}

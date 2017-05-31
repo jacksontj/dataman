@@ -5,6 +5,17 @@ import (
 	"strconv"
 )
 
+func SetFieldTreeState(field *Field, state ProvisionState) {
+	if field.ProvisionState != Active {
+		field.ProvisionState = state
+	}
+	if field.SubFields != nil {
+		for _, subField := range field.SubFields {
+			SetFieldTreeState(subField, state)
+		}
+	}
+}
+
 type FieldType string
 
 // TODO: re-work to have multiple mappings

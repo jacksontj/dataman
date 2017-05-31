@@ -276,11 +276,12 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 		datastore := m.getDatastoreById(meta, databaseDatastoreRecord["datastore_id"].(int64))
 
 		databaseDatastore := &metadata.DatabaseDatastore{
-			ID:        databaseDatastoreRecord["_id"].(int64),
-			Read:      databaseDatastoreRecord["read"].(bool),
-			Write:     databaseDatastoreRecord["write"].(bool),
-			Required:  databaseDatastoreRecord["required"].(bool),
-			Datastore: datastore,
+			ID:             databaseDatastoreRecord["_id"].(int64),
+			Read:           databaseDatastoreRecord["read"].(bool),
+			Write:          databaseDatastoreRecord["write"].(bool),
+			Required:       databaseDatastoreRecord["required"].(bool),
+			Datastore:      datastore,
+			ProvisionState: metadata.ProvisionState(databaseDatastoreRecord["provision_state"].(int64)),
 		}
 
 		// Set attributes associated with the linking table
@@ -405,6 +406,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 
 		collection = metadata.NewCollection(collectionRecord["name"].(string))
 		collection.ID = collectionRecord["_id"].(int64)
+		collection.ProvisionState = metadata.ProvisionState(collectionRecord["provision_state"].(int64))
 
 		// Load the partitions
 		collectionPartitionResult := m.Store.Filter(map[string]interface{}{
@@ -514,9 +516,10 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			}
 
 			index := &storagenodemetadata.CollectionIndex{
-				ID:     collectionIndexRecord["_id"].(int64),
-				Name:   collectionIndexRecord["name"].(string),
-				Fields: indexFields,
+				ID:             collectionIndexRecord["_id"].(int64),
+				Name:           collectionIndexRecord["name"].(string),
+				Fields:         indexFields,
+				ProvisionState: storagenodemetadata.ProvisionState(collectionIndexRecord["provision_state"].(int64)),
 			}
 			if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
 				index.Unique = unique.(bool)
@@ -547,10 +550,11 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *storagenode
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
 		field = &storagenodemetadata.Field{
-			ID:           collectionFieldRecord["_id"].(int64),
-			CollectionID: collectionFieldRecord["collection_id"].(int64),
-			Name:         collectionFieldRecord["name"].(string),
-			Type:         storagenodemetadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			ID:             collectionFieldRecord["_id"].(int64),
+			CollectionID:   collectionFieldRecord["collection_id"].(int64),
+			Name:           collectionFieldRecord["name"].(string),
+			Type:           storagenodemetadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			ProvisionState: storagenodemetadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
 		}
 		if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
 			field.TypeArgs = fieldTypeArgs.(map[string]interface{})

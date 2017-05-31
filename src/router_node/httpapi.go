@@ -51,7 +51,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.POST("/v1/datastore/:name", h.ensureDatastore)
 	router.DELETE("/v1/datastore/:name", h.deleteDatastore)
 	//datastore_shard
-	//datastore_shard_replica
+	//datastore_shard_replica -- When adding a replica we need to provision all of the vshards that should be on it
 
 	// DB Management
 	// DB collection

@@ -773,14 +773,27 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 		return err
 	}
 
-	// Now lets follow the tree down
-	// TODO
-
+	// TODO: do we need it? Since we ensure we are more or less set
 	// Test the storage nodes in this grouping
-	// TODO:
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Active
+	// TODO: roll down the whole tree setting things active
+	for _, collection := range db.Collections {
+		collection.ProvisionState = metadata.Active
+		for _, field := range collection.Fields {
+			storagenodemetadata.SetFieldTreeState(field, storagenodemetadata.Active)
+		}
+		for _, index := range collection.Indexes {
+			index.ProvisionState = storagenodemetadata.Active
+		}
+	}
+
+	// Set the database datastore stuff
+	for _, databaseDatastore := range db.Datastores {
+		databaseDatastore.ProvisionState = metadata.Active
+	}
+
 	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
 		return err
 	}
