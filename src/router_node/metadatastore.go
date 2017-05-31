@@ -1235,10 +1235,24 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		}
 	}
 	// collections
-	for _, collection := range database.Collections {
-		if err := m.EnsureDoesntExistCollection(database.Name, collection.Name); err != nil {
-			return err
+	// TODO: we need real dep checking -- this is a terrible hack
+	// TODO: should do actual dep checking for this, for now we'll brute force it ;)
+	var successCount int
+	for i := 0; i < 5; i++ {
+		successCount = 0
+		// remove the associated collections
+		for _, collection := range database.Collections {
+			if err := m.EnsureDoesntExistCollection(dbname, collection.Name); err == nil {
+				successCount++
+			}
 		}
+		if successCount == len(database.Collections) {
+			break
+		}
+	}
+
+	if successCount != len(database.Collections) {
+		return fmt.Errorf("Unable to remove collections, dep problem?")
 	}
 
 	// TODO: optional, we are going to support collection and/or database vshards
@@ -1640,7 +1654,7 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 
 	// TODO: should do actual dep checking for this, for now we'll brute force it ;)
 	var successCount int
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 10; i++ {
 		successCount = 0
 		for _, field := range collection.Fields {
 			if err := m.EnsureDoesntExistCollectionField(dbname, collectionname, field.Name); err == nil {

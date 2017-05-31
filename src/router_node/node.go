@@ -763,9 +763,11 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 			return fmt.Errorf(string(body))
 		}
 
+		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
 		// remove entry from datasource_instance_shard_instance
 		for _, datasourceInstanceShardInstance := range datasourceInstance.DatabaseShards {
-			if err := s.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
+			datasourceInstanceShardInstance.ProvisionState = metadata.Active
+			if err := s.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 				return err
 			}
 		}
@@ -889,6 +891,12 @@ func (s *RouterNode) ensureDoesntExistDatabase(dbname string) error {
 		}
 
 		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+		// remove entry from datasource_instance_shard_instance
+		for _, datasourceInstanceShardInstance := range datasourceInstance.DatabaseShards {
+			if err := s.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
+				return err
+			}
+		}
 
 	}
 
