@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/pprof"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -21,6 +22,12 @@ func NewHTTPApi(storageNode *StorageNode) *HTTPApi {
 	}
 
 	return api
+}
+
+func wrapHandler(h http.Handler) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		h.ServeHTTP(w, r)
+	}
 }
 
 // REST API methods:
@@ -68,6 +75,13 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.removeIndex)
 
 	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
+
+	// TODO: options to enable/disable (or scope to just localhost)
+	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
+	router.GET("/v1/debug/pprof/cmdline", wrapHandler(http.HandlerFunc(pprof.Cmdline)))
+	router.GET("/v1/debug/pprof/profile", wrapHandler(http.HandlerFunc(pprof.Profile)))
+	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
+	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 }
 
 // List all of the datasource_instances on the storage node

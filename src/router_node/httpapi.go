@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/pprof"
 	"strconv"
 
 	"github.com/jacksontj/dataman/src/query"
@@ -21,6 +22,12 @@ func NewHTTPApi(routerNode *RouterNode) *HTTPApi {
 	}
 
 	return api
+}
+
+func wrapHandler(h http.Handler) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		h.ServeHTTP(w, r)
+	}
 }
 
 // Register any endpoints to the router
@@ -72,6 +79,13 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// Data access APIs
 	router.POST("/v1/data/raw", h.rawQueryHandler)
+
+	// TODO: options to enable/disable (or scope to just localhost)
+	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
+	router.GET("/v1/debug/pprof/cmdline", wrapHandler(http.HandlerFunc(pprof.Cmdline)))
+	router.GET("/v1/debug/pprof/profile", wrapHandler(http.HandlerFunc(pprof.Profile)))
+	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
+	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 }
 
 // List all databases that we have in the metadata store
