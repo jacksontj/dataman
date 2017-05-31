@@ -27,7 +27,10 @@ type RouterNode struct {
 	Config    *Config
 	MetaStore *MetadataStore
 
+	// All metadata
 	meta atomic.Value
+	// Only active objects in metadata
+	activeMeta atomic.Value
 
 	// background sync stuff
 	stop     chan struct{}
@@ -79,6 +82,10 @@ func (s *RouterNode) Start() error {
 	return http.ListenAndServe(s.Config.HTTP.Addr, router)
 }
 
+func (s *RouterNode) GetActiveMeta() *metadata.Meta {
+	return s.activeMeta.Load().(*metadata.Meta)
+}
+
 func (s *RouterNode) GetMeta() *metadata.Meta {
 	return s.meta.Load().(*metadata.Meta)
 }
@@ -111,6 +118,76 @@ func (s *RouterNode) FetchMeta() error {
 		s.meta.Store(meta)
 	}
 	logrus.Debugf("Loaded meta: %v", meta)
+
+	// Get filter meta
+	meta = s.MetaStore.GetMeta()
+	// TODO separate function?
+	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
+	// to just get the ones they expect
+	// TODO: maybe have a "trim" method on these?
+	for key, database := range meta.Databases {
+		if database.ProvisionState != metadata.Active {
+			delete(meta.Databases, key)
+		} else {
+			for key, collection := range database.Collections {
+				if collection.ProvisionState != metadata.Active {
+					delete(database.Collections, key)
+				} else {
+					for key, field := range collection.Fields {
+						// TODO: need to recurse
+						if field.ProvisionState != storagenodemetadata.Active {
+							delete(collection.Fields, key)
+						}
+					}
+
+					for key, index := range collection.Indexes {
+						if index.ProvisionState != storagenodemetadata.Active {
+							delete(collection.Indexes, key)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for key, val := range meta.Nodes {
+		if val.ProvisionState != metadata.Active {
+			delete(meta.Nodes, key)
+		}
+	}
+
+	for key, val := range meta.DatasourceInstance {
+		if val.ProvisionState != metadata.Active {
+			delete(meta.DatasourceInstance, key)
+		}
+	}
+
+	for key, val := range meta.Datastore {
+		if val.ProvisionState != metadata.Active {
+			delete(meta.Datastore, key)
+		}
+	}
+
+	for key, val := range meta.DatastoreShards {
+		if val.ProvisionState != metadata.Active {
+			delete(meta.DatastoreShards, key)
+		}
+	}
+
+	for key, val := range meta.Fields {
+		if val.ProvisionState != storagenodemetadata.Active {
+			delete(meta.Fields, key)
+		}
+	}
+
+	for key, val := range meta.Collections {
+		if val.ProvisionState != metadata.Active {
+			delete(meta.Collections, key)
+		}
+	}
+
+	s.activeMeta.Store(meta)
+
 	return nil
 }
 
@@ -121,7 +198,7 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.GetMeta()
+	meta := s.GetActiveMeta()
 
 	for i, queryMap := range queries {
 		// We only allow a single method to be defined per item
