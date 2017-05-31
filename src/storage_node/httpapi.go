@@ -42,7 +42,6 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 
 	// DB instance
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
-	// TODO: ensure db instance
 	router.POST("/v1/datasource_instance/:datasource/database/:dbname", h.ensureDatabase)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
 
@@ -57,10 +56,16 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.listCollection)
 
 	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.ensureCollection)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.ensureCollection)
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.removeCollection)
 
 	// TODO: endpoints for index and fields
+	// Index
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes", h.listIndex)
+
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.viewIndex)
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.ensureIndex)
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.removeIndex)
 
 	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
 }
@@ -244,9 +249,6 @@ func (h *HTTPApi) removeShardInstance(w http.ResponseWriter, r *http.Request, ps
 	}
 }
 
-// TODO: here
-
-// List all databases that we have in the metadata store
 func (h *HTTPApi) listCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	shardInstance := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta().Databases[ps.ByName("dbname")].ShardInstances[ps.ByName("shardinstance")]
 
@@ -353,20 +355,107 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	dbname := ps.ByName("dbname")
-	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollection(ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname")); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
 
-	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
-	// we'll leave this in place for now, until we have some more specific errors that we can type
-	// switch around to give meaningful error messages
-	if _, ok := meta.Databases[dbname]; ok {
-		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollection(dbname, ps.ByName("shardinstance"), ps.ByName("collectionname")); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
+}
+
+// List all indexes that we have in the metadata store
+func (h *HTTPApi) listIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	collections := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta().Databases[ps.ByName("dbname")].ShardInstances[ps.ByName("shardinstance")].Collections[ps.ByName("collectionname")]
+
+	// Now we need to return the results
+	if bytes, err := json.Marshal(collections.Indexes); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(bytes)
+	}
+}
+
+func (h *HTTPApi) viewIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+	if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+		if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
+			if collection, ok := shardInstance.Collections[ps.ByName("collectionname")]; ok {
+
+				if index, ok := collection.Indexes[ps.ByName("indexname")]; ok {
+					// Now we need to return the results
+					if bytes, err := json.Marshal(index); err == nil {
+						w.Header().Set("Content-Type", "application/json")
+						w.Write(bytes)
+					} else {
+						// TODO: log this better?
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+			return
 		}
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+}
+
+func (h *HTTPApi) ensureIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+
+	defer r.Body.Close()
+	bytes, _ := ioutil.ReadAll(r.Body)
+
+	var index metadata.CollectionIndex
+	if err := json.Unmarshal(bytes, &index); err == nil {
+		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
+		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
+			if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
+				if collection, ok := shardInstance.Collections[ps.ByName("collectionname")]; ok {
+					if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollectionIndex(db, shardInstance, collection, &index); err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						w.Write([]byte(err.Error()))
+						return
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
+
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+}
+
+// Add database that we have in the metadata store
+func (h *HTTPApi) removeIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollectionIndex(ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname"), ps.ByName("indexname")); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 }
 
