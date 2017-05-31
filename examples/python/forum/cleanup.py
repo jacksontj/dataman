@@ -93,7 +93,7 @@ if False:
         for task in tasks:
                 cur.execute(task)
 
-if True:
+if False:
     for addr in ('127.0.0.1', '10.42.17.93'):
         requests.delete('http://'+addr+':8081/v1/datasource_instance/postgres1/database/example_forum')
 
