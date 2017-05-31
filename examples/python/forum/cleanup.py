@@ -49,7 +49,9 @@ if False:
     cur.close()
 
 if True:
-    requests.delete('http://127.0.0.1:8080/v1/database/example_forum')
+    ret = requests.delete('http://127.0.0.1:8080/v1/database/example_forum')
+    print ret
+    print ret.content
 
 # Storage node
 if False:
