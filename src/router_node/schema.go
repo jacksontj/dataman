@@ -108,6 +108,7 @@ const schemaJson string = `
                 "not_null": {
                   "name": "not_null",
                   "type": "bool",
+                  "not_null": true,
                   "provision_state": 0
                 },
                 "parent_collection_field_id": {
@@ -271,6 +272,17 @@ const schemaJson string = `
                     "collection": "collection_index",
                     "field": "_id"
                   },
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "collection_index_item_collection_index_id_collection_field__idx": {
+                  "name": "collection_index_item_collection_index_id_collection_field__idx",
+                  "fields": [
+                    "collection_index_id",
+                    "collection_field_id"
+                  ],
+                  "unique": true,
                   "provision_state": 0
                 }
               },
@@ -579,6 +591,7 @@ const schemaJson string = `
                 "database_vshard_id": {
                   "name": "database_vshard_id",
                   "type": "int",
+                  "not_null": true,
                   "relation": {
                     "collection": "database_vshard",
                     "field": "_id"
@@ -945,6 +958,17 @@ const schemaJson string = `
                   "name": "provision_state",
                   "type": "int",
                   "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "datastore_shard_replica_datastore_shard_id_datasource_insta_idx": {
+                  "name": "datastore_shard_replica_datastore_shard_id_datasource_insta_idx",
+                  "fields": [
+                    "datastore_shard_id",
+                    "datasource_instance_id"
+                  ],
+                  "unique": true,
                   "provision_state": 0
                 }
               },
