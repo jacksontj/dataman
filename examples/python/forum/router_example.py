@@ -32,24 +32,29 @@ def ensure_storagenode(urlbase):
 def ensure_datastore(urlbase):
     data = {
 	    "name": "test_datastore",
+	    "provision_state": 3,
 	    "shards": [{
 			    "name": "datastore_test-shard1",
 			    "shard_instance": 1,
+			    "provision_state": 3,
 			    "replicas": {
 				    "masters": [{
 					    "datasource_instance": {},
-					    "master": True
+					    "master": True,
+    				    "provision_state": 3
 				    }],
-				    "slaves": []
+				    "slaves": [],
 			    }
 		    },
 		    {
 			    "name": "test-shard2",
 			    "shard_instance": 2,
+			    "provision_state": 3,
 			    "replicas": {
 				    "masters": [{
 					    "datasource_instance": {},
-					    "master": True
+					    "master": True,
+    				    "provision_state": 3
 				    }],
 				    "slaves": []
 			    }

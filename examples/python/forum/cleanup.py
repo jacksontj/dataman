@@ -6,7 +6,7 @@ import requests
 from schema import DBNAME
 
 # Router node
-if True:
+if False:
     conn = psycopg2.connect("dbname=%s user='postgres' host='localhost' password='password'" % "dataman_router")
 
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
@@ -14,13 +14,6 @@ if True:
 
     queries = [
         "DELETE FROM datastore_shard_replica",
-        "DELETE FROM datastore_shard",
-        "DELETE FROM datastore",
-
-        "DELETE FROM datasource_instance_shard_instance",
-        "DELETE FROM datasource_instance",
-        
-        "DELETE FROM storage_node",
 
         
         "DELETE FROM collection_partition",
@@ -35,7 +28,14 @@ if True:
         "DELETE FROM database_vshard",
         "DELETE FROM database_datastore",
         "DELETE FROM database",
-        "DELETE FROM datasource_instance_shard_instance"
+        "DELETE FROM datasource_instance_shard_instance",
+        "DELETE FROM datastore_shard",
+        "DELETE FROM datastore",
+
+        "DELETE FROM datasource_instance_shard_instance",
+        "DELETE FROM datasource_instance",
+        
+        "DELETE FROM storage_node",
     ]
 
     for q in queries:
@@ -48,8 +48,11 @@ if True:
     conn.commit()
     cur.close()
 
-# Storage node
 if True:
+    requests.delete('http://127.0.0.1:8080/v1/database/example_forum')
+
+# Storage node
+if False:
     for addr in ('127.0.0.1', '10.42.17.93'):
         conn = psycopg2.connect("dbname=%s user='postgres' host='%s' password='password'" % ("dataman_storage", addr))
         conn.autocommit = True
