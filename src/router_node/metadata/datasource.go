@@ -31,7 +31,7 @@ type DatasourceInstance struct {
 
 	// All of the shard instances it has
 	// database_vshard.ID -> DatasourceInstanceShardInstance
-	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"database_shard_instance,omitempty"`
+	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"datasource_instance_shard_instance,omitempty"`
 	// collection_vshard.ID -> DatasourceInstanceShardInstance
 	CollectionShards map[int64]*DatasourceInstanceShardInstance `json:"collection_shard_instance,omitempty"`
 
