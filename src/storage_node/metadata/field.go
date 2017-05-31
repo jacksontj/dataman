@@ -58,13 +58,18 @@ func (f *Field) Equal(o *Field) bool {
 	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull && f.ParentFieldID == o.ParentFieldID
 }
 
-// Validate a field
 func (f *Field) Validate(val interface{}) error {
+	_, err := f.Normalize(val)
+	return err
+}
+
+// Validate a field
+func (f *Field) Normalize(val interface{}) (interface{}, error) {
 	switch f.Type {
 	case Document:
 		valTyped, ok := val.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("Not a document")
+			return nil, fmt.Errorf("Not a document")
 		}
 
 		// TODO: We need to check that we where given no more than the subFields we know about
@@ -72,53 +77,53 @@ func (f *Field) Validate(val interface{}) error {
 		for k, subField := range f.SubFields {
 			if v, ok := valTyped[k]; ok {
 				if err := subField.Validate(v); err != nil {
-					return err
+					return nil, err
 				}
 			} else {
 				if subField.NotNull {
-					return fmt.Errorf("Missing required subfield %s", k)
+					return nil, fmt.Errorf("Missing required subfield %s", k)
 				}
 			}
 		}
-		return nil
+		return valTyped, nil
 	case String:
 		s, ok := val.(string)
 		if !ok {
-			return fmt.Errorf("Not a string")
+			return nil, fmt.Errorf("Not a string")
 		}
 		if float64(len(s)) > f.TypeArgs["size"].(float64) {
-			return fmt.Errorf("String too long")
+			return nil, fmt.Errorf("String too long")
 		}
-		return nil
+		return s, nil
 	case Text:
-		_, ok := val.(string)
+		s, ok := val.(string)
 		if !ok {
-			return fmt.Errorf("Not a string")
+			return nil, fmt.Errorf("Not a string")
 		}
-		return nil
+		return s, nil
 	case Int:
 		switch typedVal := val.(type) {
 		case int:
-			return nil
+			return typedVal, nil
 		case float64:
-			return nil
+			return int(typedVal), nil
 		case string:
-			_, err := strconv.ParseInt(typedVal, 10, 64)
-			return err
+			return strconv.ParseInt(typedVal, 10, 64)
 		default:
-			return fmt.Errorf("Unknown Int type")
+			return nil, fmt.Errorf("Unknown Int type")
 		}
 	case Bool:
-		if _, ok := val.(bool); !ok {
-			return fmt.Errorf("Not a bool")
+		if b, ok := val.(bool); !ok {
+			return nil, fmt.Errorf("Not a bool")
+		} else {
+			return b, nil
 		}
-		return nil
 	// TODO: implement
 	case DateTime:
-		return fmt.Errorf("DateTime currently unimplemented")
+		return nil, fmt.Errorf("DateTime currently unimplemented")
 	}
 
-	return fmt.Errorf("Unknown type \"%s\" defined", f.Type)
+	return nil, fmt.Errorf("Unknown type \"%s\" defined", f.Type)
 }
 
 type FieldRelation struct {

@@ -67,7 +67,8 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) error {
 		if _, ok := InternalFields[fieldName]; !ok {
 			// We don't want to enforce internal fields
 			if v, ok := record[fieldName]; ok {
-				if err := field.Validate(v); err != nil {
+				var err error
+				if record[fieldName], err = field.Normalize(v); err != nil {
 					return err
 				}
 			} else {
