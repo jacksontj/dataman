@@ -60,7 +60,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// DB instance
 	router.GET("/v1/database/:dbname", h.viewDatabase)
 	router.POST("/v1/database/:dbname", h.ensureDatabase)
-	//router.DELETE("/v1/database/:dbname", h.removeDatabase)
+	router.DELETE("/v1/database/:dbname", h.removeDatabase)
 
 	// Collections
 	//router.GET("/v1/database/:dbname/collections/", h.listCollections)
@@ -315,6 +315,15 @@ func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps http
 			w.Write([]byte(err.Error()))
 			return
 		}
+	}
+}
+
+func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if err := h.routerNode.EnsureDoesntExistDatabase(ps.ByName("dbname")); err != nil {
+		// TODO: log this better?
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 }
 

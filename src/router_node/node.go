@@ -763,9 +763,16 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 			return fmt.Errorf(string(body))
 		}
 
-		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+		// remove entry from datasource_instance_shard_instance
+		for _, datasourceInstanceShardInstance := range datasourceInstance.DatabaseShards {
+			if err := s.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
+				return err
+			}
+		}
 
 	}
+
+	// TODO: Follow the tree down
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate
@@ -798,5 +805,98 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *RouterNode) EnsureDoesntExistDatabase(dbname string) error {
+	// TODO: restructure so the lock isn't so weird :/
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	if err := s.ensureDoesntExistDatabase(dbname); err != nil {
+		return err
+	}
+
+	s.Sync()
+
+	return nil
+}
+
+func (s *RouterNode) ensureDoesntExistDatabase(dbname string) error {
+	meta := s.GetMeta()
+
+	db, ok := meta.Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	// Add it to the metadata so we know we where working on it
+	db.ProvisionState = metadata.Deallocate
+	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+		return err
+	}
+
+	// Provision on the various storage nodes that need to know about it
+	// Tell storagenodes about their new datasource_instance_shard_instances
+	// Notify the add by putting it in the datasource_instance_shard_instance table
+	client := &http.Client{}
+
+	datasourceInstances := make(map[*metadata.DatasourceInstance]struct{})
+
+	for _, vshardInstance := range db.VShard.Instances {
+		for _, datastoreShard := range vshardInstance.DatastoreShard {
+			// Update state
+			datastoreShard.ProvisionState = metadata.Provision
+			// TODO: slaves as well
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				// Update state
+				datastoreShardReplica.ProvisionState = metadata.Provision
+
+				datasourceInstance := datastoreShardReplica.Datasource
+				// If we need to define the database, lets do so
+				if _, ok := datasourceInstances[datasourceInstance]; !ok {
+					// TODO: better DB conversion
+					datasourceInstances[datasourceInstance] = struct{}{}
+				}
+			}
+		}
+	}
+
+	// TODO: do this in parallel!
+	for datasourceInstance, _ := range datasourceInstances {
+		// Send the actual request!
+
+		// send task to node
+		req, err := http.NewRequest(
+			"DELETE",
+			datasourceInstance.GetBaseURL()+"database/"+db.Name,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		// TODO: do at the end of the loop-- defer will only do it at the end of the function
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			return fmt.Errorf(string(body))
+		}
+
+		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
+
+	}
+
+	// TODO: Follow the tree down
+
+	// Since we made the database, lets update the metadata about it
+	if err := s.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+		return err
+	}
 	return nil
 }
