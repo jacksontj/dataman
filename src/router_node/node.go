@@ -655,8 +655,13 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	for _, vshardInstance := range db.VShard.Instances {
 		for _, datastoreShard := range vshardInstance.DatastoreShard {
+			// Update state
+			datastoreShard.ProvisionState = metadata.Provision
 			// TODO: slaves as well
 			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				// Update state
+				datastoreShardReplica.ProvisionState = metadata.Provision
+
 				datasourceInstance := datastoreShardReplica.Datasource
 				// If we need to define the database, lets do so
 				if _, ok := provisionRequests[datasourceInstance]; !ok {
@@ -666,9 +671,12 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 				shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
 
+				// TODO: check if this already defined, if so we need to check it -- this works for now since we just clobber always
+				// but we'll need to check the state of the currently out there one
 				datasourceInstanceShardInstance := &metadata.DatasourceInstanceShardInstance{
 					Name: shardInstanceName,
 					DatabaseVshardInstanceId: vshardInstance.ID,
+					ProvisionState:           metadata.Provision,
 				}
 
 				// Add entry to datasource_instance_shard_instance
@@ -685,6 +693,9 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 				// TODO: convert from collections -> collections
 				for name, collection := range db.Collections {
+					// TODO: recurse and set the state for all layers below?
+					collection.ProvisionState = metadata.Provision
+
 					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
 					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
 					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
@@ -719,6 +730,7 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 		}
 	}
 
+	// TODO: do this in parallel!
 	for datasourceInstance, storageNodeDatabase := range provisionRequests {
 		// Send the actual request!
 		// TODO: the right thing, definitely wrong right now ;)
