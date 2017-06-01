@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -20,8 +21,13 @@ func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstanc
 	datasource := &DatasourceInstance{
 		Config:    config,
 		MetaStore: metaStore,
+		syncChan:  make(chan chan error),
 	}
-	datasource.RefreshMeta()
+	go datasource.background()
+
+	if err := datasource.Sync(); err != nil {
+		return nil, err
+	}
 
 	datasource.Store, err = config.GetStore(datasource.GetActiveMeta)
 	if err != nil {
@@ -47,8 +53,19 @@ type DatasourceInstance struct {
 	// Only active objects in metadata
 	activeMeta atomic.Value
 
+	// TODO: stop mechanism
+	// background sync stuff
+	syncChan chan chan error
+
 	// TODO: this should be pluggable, presumably in the datasource
 	schemaLock sync.Mutex
+}
+
+// TODO: remove? since we need to do this while holding the lock it seems useless
+func (s *DatasourceInstance) Sync() error {
+	errChan := make(chan error, 1)
+	s.syncChan <- errChan
+	return <-errChan
 }
 
 func (s *DatasourceInstance) GetActiveMeta() *metadata.Meta {
@@ -59,23 +76,41 @@ func (s *DatasourceInstance) GetMeta() *metadata.Meta {
 	return s.meta.Load().(*metadata.Meta)
 }
 
-// TODO: handle errors?
-func (s *DatasourceInstance) RefreshMeta() {
-	s.schemaLock.Lock()
-	defer s.schemaLock.Unlock()
-	s.refreshMeta()
+func (s *DatasourceInstance) background() {
+	interval := time.Second // TODO: configurable interval
+	ticker := time.NewTicker(interval)
+
+	for {
+		select {
+		case <-ticker.C: // time based trigger, in case of error etc.
+			s.RefreshMeta()
+		case retChan := <-s.syncChan: // event based trigger, so we can get stuff to disk ASAP
+			err := s.RefreshMeta()
+			retChan <- err
+			// since we where just triggered, lets reset the interval
+			ticker = time.NewTicker(interval)
+		}
+	}
 }
 
-func (s *DatasourceInstance) refreshMeta() {
+func (s *DatasourceInstance) RefreshMeta() error {
+	s.schemaLock.Lock()
+	defer s.schemaLock.Unlock()
+	return s.refreshMeta()
+}
+
+func (s *DatasourceInstance) refreshMeta() error {
 	if meta, err := s.MetaStore.GetMeta(); err == nil {
 		s.meta.Store(meta)
+	} else {
+		return err
 	}
 
 	// TODO: filter only active things
 	meta, err := s.MetaStore.GetMeta()
 	// TODO: propogate the error
 	if err != nil {
-		return
+		return err
 	}
 	// TODO separate function?
 	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
@@ -125,7 +160,7 @@ func (s *DatasourceInstance) refreshMeta() {
 	}
 
 	s.activeMeta.Store(meta)
-
+	return nil
 }
 
 // TODO: remove? need some mechanism to override the meta func for schema migrations, imports, etc.

@@ -32,8 +32,8 @@ type RouterNode struct {
 	// Only active objects in metadata
 	activeMeta atomic.Value
 
+	// TODO: stop mechanism
 	// background sync stuff
-	stop     chan struct{}
 	syncChan chan chan error
 
 	// TODO: this should be pluggable, presumably in the datasource
