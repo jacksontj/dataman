@@ -8,7 +8,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// TODO: move to some http util place
 // TODO: async logging to disk? (stdout is relatively slow)
 func LoggingHandler(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
