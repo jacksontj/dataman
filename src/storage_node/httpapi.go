@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"github.com/jacksontj/dataman/src/httputil"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -38,43 +39,43 @@ func wrapHandler(h http.Handler) httprouter.Handle {
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
 	// List of datasource_instances on the storage node
-	router.GET("/v1/datasource_instance", h.listDatasourceInstance)
+	router.GET("/v1/datasource_instance", httputil.LoggingHandler(h.listDatasourceInstance))
 
 	// Just dump the current meta we have
-	router.GET("/v1/datasource_instance/:datasource/metadata", h.showMetadata)
+	router.GET("/v1/datasource_instance/:datasource/metadata", httputil.LoggingHandler(h.showMetadata))
 
 	// DB Management
 	// DB sets
-	router.GET("/v1/datasource_instance/:datasource/database", h.listDatabase)
+	router.GET("/v1/datasource_instance/:datasource/database", httputil.LoggingHandler(h.listDatabase))
 
 	// DB instance
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname", h.viewDatabase)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname", h.ensureDatabase)
-	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", h.removeDatabase)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname", httputil.LoggingHandler(h.viewDatabase))
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname", httputil.LoggingHandler(h.ensureDatabase))
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname", httputil.LoggingHandler(h.removeDatabase))
 
 	// Shard Instances
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", h.listShardInstance)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance", httputil.LoggingHandler(h.listShardInstance))
 
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.viewShardInstance)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.ensureShardInstance)
-	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", h.removeShardInstance)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", httputil.LoggingHandler(h.viewShardInstance))
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", httputil.LoggingHandler(h.ensureShardInstance))
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance", httputil.LoggingHandler(h.removeShardInstance))
 
 	// Collections
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", h.listCollection)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection", httputil.LoggingHandler(h.listCollection))
 
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.viewCollection)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.ensureCollection)
-	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", h.removeCollection)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", httputil.LoggingHandler(h.viewCollection))
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", httputil.LoggingHandler(h.ensureCollection))
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname", httputil.LoggingHandler(h.removeCollection))
 
 	// TODO: endpoints for index and fields
 	// Index
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes", h.listIndex)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes", httputil.LoggingHandler(h.listIndex))
 
-	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.viewIndex)
-	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.ensureIndex)
-	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", h.removeIndex)
+	router.GET("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", httputil.LoggingHandler(h.viewIndex))
+	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", httputil.LoggingHandler(h.ensureIndex))
+	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", httputil.LoggingHandler(h.removeIndex))
 
-	router.POST("/v1/datasource_instance/:datasource/data/raw", h.rawQueryHandler)
+	router.POST("/v1/datasource_instance/:datasource/data/raw", httputil.LoggingHandler(h.rawQueryHandler))
 
 	// TODO: options to enable/disable (or scope to just localhost)
 	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))

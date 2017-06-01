@@ -7,9 +7,11 @@ import (
 	"net/http/pprof"
 	"strconv"
 
+	"github.com/julienschmidt/httprouter"
+
+	"github.com/jacksontj/dataman/src/httputil"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
-	"github.com/julienschmidt/httprouter"
 )
 
 type HTTPApi struct {
@@ -33,14 +35,14 @@ func wrapHandler(h http.Handler) httprouter.Handle {
 // Register any endpoints to the router
 func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Just dump the current meta we have
-	router.GET("/v1/metadata", h.showMetadata)
+	router.GET("/v1/metadata", httputil.LoggingHandler(h.showMetadata))
 
 	// Storage node APIs
-	router.GET("/v1/storage_node", h.listStorageNodes)
+	router.GET("/v1/storage_node", httputil.LoggingHandler(h.listStorageNodes))
 
-	router.GET("/v1/storage_node/:id", h.viewStorageNode)
-	router.POST("/v1/storage_node/:id", h.ensureStorageNode)
-	router.DELETE("/v1/storage_node/:id", h.deleteStorageNode)
+	router.GET("/v1/storage_node/:id", httputil.LoggingHandler(h.viewStorageNode))
+	router.POST("/v1/storage_node/:id", httputil.LoggingHandler(h.ensureStorageNode))
+	router.DELETE("/v1/storage_node/:id", httputil.LoggingHandler(h.deleteStorageNode))
 
 	// datasource_instance
 	//router.GET("/v1/storage_node/:id/:dsi_id", h.viewDatasourceInstance)
@@ -52,33 +54,33 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Datastore APIs
 
 	//datastore
-	router.GET("/v1/datastore", h.listDatastore)
+	router.GET("/v1/datastore", httputil.LoggingHandler(h.listDatastore))
 
-	router.GET("/v1/datastore/:name", h.viewDatastore)
-	router.POST("/v1/datastore/:name", h.ensureDatastore)
-	router.DELETE("/v1/datastore/:name", h.deleteDatastore)
+	router.GET("/v1/datastore/:name", httputil.LoggingHandler(h.viewDatastore))
+	router.POST("/v1/datastore/:name", httputil.LoggingHandler(h.ensureDatastore))
+	router.DELETE("/v1/datastore/:name", httputil.LoggingHandler(h.deleteDatastore))
 	//datastore_shard
 	//datastore_shard_replica -- When adding a replica we need to provision all of the vshards that should be on it
 
 	// DB Management
 	// DB collection
-	router.GET("/v1/database", h.listDatabase)
+	router.GET("/v1/database", httputil.LoggingHandler(h.listDatabase))
 
 	// DB instance
-	router.GET("/v1/database/:dbname", h.viewDatabase)
-	router.POST("/v1/database/:dbname", h.ensureDatabase)
-	router.DELETE("/v1/database/:dbname", h.removeDatabase)
+	router.GET("/v1/database/:dbname", httputil.LoggingHandler(h.viewDatabase))
+	router.POST("/v1/database/:dbname", httputil.LoggingHandler(h.ensureDatabase))
+	router.DELETE("/v1/database/:dbname", httputil.LoggingHandler(h.removeDatabase))
 
 	// Collections
 	//router.GET("/v1/database/:dbname/collections/", h.listCollections)
 	//router.POST("/v1/database/:dbname/collections/", h.addCollection)
 
-	router.GET("/v1/database/:dbname/collections/:collectionname", h.viewCollection)
+	router.GET("/v1/database/:dbname/collections/:collectionname", httputil.LoggingHandler(h.viewCollection))
 	//router.PUT("/v1/database/:dbname/collections/:collectionname", h.updateCollection)
 	//router.DELETE("/v1/database/:dbname/collections/:collectionname", h.removeCollection)
 
 	// Data access APIs
-	router.POST("/v1/data/raw", h.rawQueryHandler)
+	router.POST("/v1/data/raw", httputil.LoggingHandler(h.rawQueryHandler))
 
 	// TODO: options to enable/disable (or scope to just localhost)
 	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
