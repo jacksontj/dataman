@@ -67,10 +67,16 @@ func (s *DatasourceInstance) RefreshMeta() {
 }
 
 func (s *DatasourceInstance) refreshMeta() {
-	s.meta.Store(s.MetaStore.GetMeta())
+	if meta, err := s.MetaStore.GetMeta(); err == nil {
+		s.meta.Store(meta)
+	}
 
 	// TODO: filter only active things
-	meta := s.MetaStore.GetMeta()
+	meta, err := s.MetaStore.GetMeta()
+	// TODO: propogate the error
+	if err != nil {
+		return
+	}
 	// TODO separate function?
 	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
 	// to just get the ones they expect

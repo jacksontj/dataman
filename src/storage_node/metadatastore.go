@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -36,7 +35,7 @@ type MetadataStore struct {
 
 // TODO: split into get/list for each item?
 // TODO: have error?
-func (m *MetadataStore) GetMeta() *metadata.Meta {
+func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	meta := metadata.NewMeta()
 
 	// Get all databases
@@ -47,7 +46,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 	})
 	// TODO: better error handle
 	if databaseResult.Error != "" {
-		logrus.Fatalf("Error getting databaseResult: %v", databaseResult.Error)
+		return nil, fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
 	}
 
 	// for each database load the database + shard + collections etc.
@@ -65,7 +64,7 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 			},
 		})
 		if shardInstanceResult.Error != "" {
-			logrus.Fatalf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
+			return nil, fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
 		}
 
 		// Now loop over all collections in the database to load them
@@ -85,12 +84,15 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 				},
 			})
 			if collectionResult.Error != "" {
-				logrus.Fatalf("Error getting collectionResult: %v", collectionResult.Error)
+				return nil, fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
 			}
 
 			// Now loop over all collections in the database to load them
 			for _, collectionRecord := range collectionResult.Return {
-				collection := m.getCollectionByID(meta, collectionRecord["_id"].(int64))
+				collection, err := m.getCollectionByID(meta, collectionRecord["_id"].(int64))
+				if err != nil {
+					return nil, fmt.Errorf("Error getCollectionByID: %v", err)
+				}
 
 				shardInstance.Collections[collection.Name] = collection
 
@@ -102,12 +104,15 @@ func (m *MetadataStore) GetMeta() *metadata.Meta {
 
 	}
 
-	return meta
+	return meta, nil
 }
 
 func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		db.ID = existingDB.ID
 	}
@@ -145,7 +150,10 @@ func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 
 // TODO:
 func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
 
 	database, ok := meta.Databases[dbname]
 	if !ok {
@@ -175,7 +183,10 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 
 func (m *MetadataStore) EnsureExistsShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
 			shardInstance.ID = existingShardInstance.ID
@@ -220,7 +231,11 @@ func (m *MetadataStore) EnsureExistsShardInstance(db *metadata.Database, shardIn
 }
 
 func (m *MetadataStore) EnsureDoesntExistShardInstance(dbname, shardname string) error {
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
 	database, ok := meta.Databases[dbname]
 	if !ok {
 		return nil
@@ -266,7 +281,11 @@ func (m *MetadataStore) EnsureDoesntExistShardInstance(dbname, shardname string)
 // Collection Changes
 func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
 			if existingCollection, ok := existingShardInstance.Collections[collection.Name]; ok {
@@ -355,9 +374,23 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, shardInsta
 }
 
 func (m *MetadataStore) EnsureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
-	meta := m.GetMeta()
-	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]
-	if collection == nil {
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
+	database, ok := meta.Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := database.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
 		return nil
 	}
 
@@ -405,7 +438,11 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, shardinstance, colle
 
 // Index changes
 func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		db.ID = existingDB.ID
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
@@ -485,8 +522,30 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, shard
 }
 
 func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
-	meta := m.GetMeta()
-	collectionIndex := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname].Indexes[indexname]
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
+	database, ok := meta.Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := database.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
+		return nil
+	}
+
+	collectionIndex, ok := collection.Indexes[indexname]
+	if !ok {
+		return nil
+	}
 
 	// Remove the index items
 	collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
@@ -558,7 +617,11 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 	}
 
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta := m.GetMeta()
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		db.ID = existingDB.ID
 		if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; ok {
@@ -638,8 +701,25 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 }
 
 func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
-	meta := m.GetMeta()
-	collection := meta.Databases[dbname].ShardInstances[shardinstance].Collections[collectionname]
+	meta, err := m.GetMeta()
+	if err != nil {
+		return fmt.Errorf("Unable to get meta: %v", err)
+	}
+
+	database, ok := meta.Databases[dbname]
+	if !ok {
+		return nil
+	}
+
+	shardInstance, ok := database.ShardInstances[shardinstance]
+	if !ok {
+		return nil
+	}
+
+	collection, ok := shardInstance.Collections[collectionname]
+	if !ok {
+		return nil
+	}
 
 	fieldParts := strings.Split(fieldname, ".")
 
@@ -691,7 +771,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, shardinstance, 
 	return nil
 }
 
-func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Field {
+func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.Field, error) {
 	field, ok := meta.Fields[id]
 	if !ok {
 		// Load field
@@ -704,7 +784,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 			},
 		})
 		if collectionFieldResult.Error != "" {
-			logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
 		}
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
@@ -725,7 +805,10 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 		// If we have a parent, mark it down for now
 		if collectionFieldRecord["parent_collection_field_id"] != nil {
 			field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
-			parentField := m.getFieldByID(meta, field.ParentFieldID)
+			parentField, err := m.getFieldByID(meta, field.ParentFieldID)
+			if err != nil {
+				return nil, fmt.Errorf("Error getFieldByID: %v", err)
+			}
 
 			if parentField.SubFields == nil {
 				parentField.SubFields = make(map[string]*metadata.Field)
@@ -743,13 +826,19 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 			},
 		})
 		if collectionFieldRelationResult.Error != "" {
-			logrus.Fatalf("Error getting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+			return nil, fmt.Errorf("Error getting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
 		}
 		if len(collectionFieldRelationResult.Return) == 1 {
 			collectionFieldRelationRecord := collectionFieldRelationResult.Return[0]
 
-			relatedField := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
-			relatedCollection := m.getCollectionByID(meta, relatedField.CollectionID)
+			relatedField, err := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
+			if err != nil {
+				return nil, fmt.Errorf("Error getFieldByID: %v", err)
+			}
+			relatedCollection, err := m.getCollectionByID(meta, relatedField.CollectionID)
+			if err != nil {
+				return nil, fmt.Errorf("Error getCollectionByID: %v", err)
+			}
 			field.Relation = &metadata.FieldRelation{
 				ID:         collectionFieldRelationRecord["_id"].(int64),
 				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
@@ -761,10 +850,10 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) *metadata.Fi
 		meta.Fields[id] = field
 	}
 
-	return field
+	return field, nil
 }
 
-func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metadata.Collection {
+func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metadata.Collection, error) {
 	collection, ok := meta.Collections[id]
 	if !ok {
 		collectionResult := m.Store.Filter(map[string]interface{}{
@@ -776,7 +865,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			},
 		})
 		if collectionResult.Error != "" {
-			logrus.Fatalf("Error getting collectionResult: %v", collectionResult.Error)
+			return nil, fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
 		}
 
 		collectionRecord := collectionResult.Return[0]
@@ -795,14 +884,17 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			},
 		})
 		if collectionFieldResult.Error != "" {
-			logrus.Fatalf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
 		}
 
 		// TODO: remove
 		collection.Fields = make(map[string]*metadata.Field)
 
 		for _, collectionFieldRecord := range collectionFieldResult.Return {
-			field := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))
+			field, err := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))
+			if err != nil {
+				return nil, fmt.Errorf("Error getFieldByID: %v", err)
+			}
 			if field.ParentFieldID == 0 {
 				collection.Fields[field.Name] = field
 			}
@@ -818,7 +910,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			},
 		})
 		if collectionIndexResult.Error != "" {
-			logrus.Fatalf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+			return nil, fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
 		}
 
 		for _, collectionIndexRecord := range collectionIndexResult.Return {
@@ -832,7 +924,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 				},
 			})
 			if collectionIndexItemResult.Error != "" {
-				logrus.Fatalf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+				return nil, fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
 			}
 
 			// TODO: better? Right now we need a way to nicely define what the index points to
@@ -840,14 +932,20 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 			// works for now, but we'll need to come up with a better method later
 			indexFields := make([]string, len(collectionIndexItemResult.Return))
 			for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-				indexField := m.getFieldByID(meta, collectionIndexItemRecord["collection_field_id"].(int64))
+				indexField, err := m.getFieldByID(meta, collectionIndexItemRecord["collection_field_id"].(int64))
+				if err != nil {
+					return nil, fmt.Errorf("Error getFieldByID: %v", err)
+				}
 				nameChain := make([]string, 0)
 				for {
 					nameChain = append([]string{indexField.Name}, nameChain...)
 					if indexField.ParentFieldID == 0 {
 						break
 					} else {
-						indexField = m.getFieldByID(meta, indexField.ParentFieldID)
+						indexField, err = m.getFieldByID(meta, indexField.ParentFieldID)
+						if err != nil {
+							return nil, fmt.Errorf("Error getFieldByID: %v", err)
+						}
 					}
 				}
 				indexFields[i] = strings.Join(nameChain, ".")
@@ -866,5 +964,5 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) *metada
 		}
 		meta.Collections[collection.ID] = collection
 	}
-	return collection
+	return collection, nil
 }

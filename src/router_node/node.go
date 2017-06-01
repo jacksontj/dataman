@@ -122,14 +122,20 @@ func (s *RouterNode) fetchMeta() error {
 	// TODO: lots of error handling required
 
 	// TODO: support errors
-	meta := s.MetaStore.GetMeta()
-	if meta != nil {
+	meta, err := s.MetaStore.GetMeta()
+	if err != nil {
+		return err
+	}
+	if meta != nil && err == nil {
 		s.meta.Store(meta)
 	}
 	logrus.Debugf("Loaded meta: %v", meta)
 
 	// Get filter meta
-	meta = s.MetaStore.GetMeta()
+	meta, err = s.MetaStore.GetMeta()
+	if err != nil {
+		return err
+	}
 	// TODO separate function?
 	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
 	// to just get the ones they expect
