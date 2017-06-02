@@ -36,6 +36,10 @@ func wrapHandler(h http.Handler) httprouter.Handle {
 func (h *HTTPApi) Start(router *httprouter.Router) {
 	// Just dump the current meta we have
 	router.GET("/v1/metadata", httputil.LoggingHandler(h.showMetadata))
+	// TODO: allow for other methods to get subsets of metadata
+	// metadata/storage_node
+	// metadata/datastores
+	// metadata/databases
 
 	// Storage node APIs
 	router.GET("/v1/storage_node", httputil.LoggingHandler(h.listStorageNodes))
