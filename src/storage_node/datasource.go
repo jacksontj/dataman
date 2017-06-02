@@ -1,6 +1,7 @@
 package storagenode
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -173,9 +174,8 @@ func (s *DatasourceInstance) HandleQuery(q map[query.QueryType]query.QueryArgs) 
 	return s.HandleQueries([]map[query.QueryType]query.QueryArgs{q})[0]
 }
 
+// TODO: we should actually do these in parallel (potentially with some config of *how* parallel)
 func (s *DatasourceInstance) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
-	// TODO: we should actually do these in parallel (potentially with some
-	// config of *how* parallel)
 	results := make([]*query.Result, len(queries))
 
 	// We specifically want to load this once for the batch so we don't have mixed
@@ -249,7 +249,6 @@ func (s *DatasourceInstance) EnsureExistsDatabase(db *metadata.Database) error {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// TODO: restructure so the lock isn't so weird :/
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
 	if err := s.ensureExistsDatabase(db); err != nil {
@@ -374,7 +373,6 @@ func (s *DatasourceInstance) EnsureExistsShardInstance(db *metadata.Database, sh
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// TODO: restructure so the lock isn't so weird :/
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
 	if err := s.ensureExistsShardInstance(db, shardInstance); err != nil {
@@ -507,7 +505,6 @@ func (s *DatasourceInstance) EnsureExistsCollection(db *metadata.Database, shard
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// TODO: restructure so the lock isn't so weird :/
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
 	if err := s.ensureExistsCollection(db, shardInstance, collection); err != nil {
@@ -673,7 +670,6 @@ func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, 
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// TODO: restructure so the lock isn't so weird :/
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
 	if err := s.ensureExistsCollectionField(db, shardInstance, collection, field); err != nil {
@@ -751,6 +747,11 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 	// Test the db -- if its good lets mark it as active
 	existingCollectionField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name)
 	if !field.Equal(existingCollectionField) {
+		fmt.Println("not equal")
+		fb, _ := json.Marshal(field)
+		fmt.Printf("%s\n", fb)
+		efb, _ := json.Marshal(existingCollectionField)
+		fmt.Printf("%s\n", efb)
 		return fmt.Errorf("Unable to apply collectionField change to datasource_instance")
 	}
 
@@ -826,7 +827,6 @@ func (s *DatasourceInstance) EnsureExistsCollectionIndex(db *metadata.Database, 
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
-	// TODO: restructure so the lock isn't so weird :/
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
 	if err := s.ensureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {

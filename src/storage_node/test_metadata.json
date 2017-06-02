@@ -13,7 +13,8 @@
 							"fields": {
 								"_id": {
 									"name": "_id",
-									"type": "int"
+									"type": "int",
+									"not_null": true
 								},
 								"data": {
 									"name": "data",
@@ -62,7 +63,8 @@
 							"fields": {
 								"_id": {
 									"name": "_id",
-									"type": "int"
+									"type": "int",
+									"not_null": true
 								},
 								"data": {
 									"name": "data",
@@ -110,7 +112,8 @@
 							"fields": {
 								"_id": {
 									"name": "_id",
-									"type": "int"
+									"type": "int",
+									"not_null": true
 								},
 								"username": {
 									"name": "username",

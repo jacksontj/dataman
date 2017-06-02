@@ -33,7 +33,10 @@ func getMetaStore() (*MetadataStore, error) {
 }
 
 func resetMetaStore(metaStore *MetadataStore) error {
-	meta := metaStore.GetMeta()
+	meta, err := metaStore.GetMeta()
+	if err != nil {
+		return err
+	}
 
 	for dbname, _ := range meta.Databases {
 		if err := metaStore.EnsureDoesntExistDatabase(dbname); err != nil {
@@ -74,6 +77,7 @@ func getTestMeta() (*metadata.Meta, error) {
 	if err := json.Unmarshal([]byte(metaString), &testMeta); err != nil {
 		return nil, err
 	}
+
 	return testMeta, nil
 }
 
@@ -98,20 +102,22 @@ func TestMetaStore_Database(t *testing.T) {
 	}
 
 	// Ensure that the one we had and the one stored are the same
-	if !metaEqual(testMeta, metaStore.GetMeta()) {
-		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
+	meta, _ := metaStore.GetMeta()
+	if !metaEqual(testMeta, meta) {
+		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Now lets update the provision state for stuff
-	db := metaStore.GetMeta().Databases["example_forum"]
+	db := meta.Databases["example_forum"]
 	db.ProvisionState = metadata.Provision
 	if err := metaStore.EnsureExistsDatabase(db); err != nil {
 		t.Fatalf("Error ensuring DB 2: %v", err)
 	}
 
 	// Make sure it changed
-	if !metaEqual(db, metaStore.GetMeta().Databases["example_forum"]) {
-		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
+	meta, _ = metaStore.GetMeta()
+	if !metaEqual(db, meta.Databases["example_forum"]) {
+		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Remove it all
@@ -154,8 +160,9 @@ func TestMetaStore_ShardInstance(t *testing.T) {
 	}
 
 	// Check
-	if !metaEqual(testMeta, metaStore.GetMeta()) {
-		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
+	meta, _ := metaStore.GetMeta()
+	if !metaEqual(testMeta, meta) {
+		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Update the shardInstance
@@ -165,8 +172,9 @@ func TestMetaStore_ShardInstance(t *testing.T) {
 	}
 
 	// Check
-	if !metaEqual(testMeta, metaStore.GetMeta()) {
-		t.Fatalf("not equal %v != %v", testMeta, metaStore.GetMeta())
+	meta, _ = metaStore.GetMeta()
+	if !metaEqual(testMeta, meta) {
+		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Remove the shardInstance

@@ -1,6 +1,8 @@
 package storagenode
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -60,6 +62,8 @@ func TestDatasource_Database(t *testing.T) {
 
 	// Insert the meta -- here the provision state is all 0
 	if err := datasourceInstance.EnsureExistsDatabase(testMeta.Databases["example_forum"]); err != nil {
+		b, _ := json.Marshal(testMeta.Databases["example_forum"])
+		fmt.Printf("%s\n", b)
 		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
@@ -77,7 +81,7 @@ func TestDatasource_Database(t *testing.T) {
 
 	// Make sure it changed
 	if !metaEqual(db, datasourceInstance.GetMeta().Databases["example_forum"]) {
-		t.Fatalf("not equal %v != %v", testMeta, datasourceInstance.GetMeta())
+		t.Fatalf("not equal %v != %v", db, datasourceInstance.GetMeta().Databases["example_forum"])
 	}
 
 	// Remove it all
