@@ -226,7 +226,7 @@ class LegacyUserHandler(tornado.web.RequestHandler):
     def get(self):
         def listusers():
             cur = self.conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            cur.execute("""SELECT * FROM public.user""")
+            cur.execute("""SELECT * FROM dbshard_example_forum_2.user""")
             return cur.fetchall()
         users = yield self.pool.submit(listusers)
         self.render("userlist.html", users=users)
