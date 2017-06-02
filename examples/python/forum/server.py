@@ -117,7 +117,9 @@ define("debug", default=False, help="run in debug mode")
 class BaseHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def prepare(self):
-        users = yield dataman.filter(schema.DBNAME, 'user', {'username':self.get_secure_cookie("user")})
+        users = self.get_secure_cookie("user")
+        if users:
+            users = yield dataman.filter(schema.DBNAME, 'user', {'username':self.get_secure_cookie("user")})
         if not users:
             self.current_user = None
         else:
