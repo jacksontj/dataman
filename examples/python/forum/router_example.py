@@ -76,6 +76,20 @@ def ensure_datastore(urlbase):
     tmp = ret.json()
     DATASTORES[tmp['name']] = tmp
 
+def remove_database(urlbase):
+    schema_json = json.load(open('example_forum_sharded.json'))
+    schema_json['name'] = DBNAME
+
+    # set the datastore id
+    schema_json['datastores'][0]['datastore']['_id'] = DATASTORES.values()[0]['_id']
+
+    ret = requests.delete(
+        urlbase+"/v1/database/"+DBNAME,
+    )
+    print 'remove database (', ret.request.method, ret.request.url, ')'
+    print ret
+    print ret.content
+
 def ensure_database(urlbase):
     schema_json = json.load(open('example_forum_sharded.json'))
     schema_json['name'] = DBNAME
@@ -94,9 +108,17 @@ def ensure_database(urlbase):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--router-node", required=True)
+    # TODO: one per layer?
+    parser.add_argument("--add", action='store_true')
+    parser.add_argument("--remove", action='store_true')
 
     args = parser.parse_args()
 
     ensure_storagenode(args.router_node)
     ensure_datastore(args.router_node)
-    ensure_database(args.router_node)
+    
+    if args.remove:
+        remove_database(args.router_node)
+    
+    if args.add:
+        ensure_database(args.router_node)
