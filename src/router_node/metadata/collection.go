@@ -79,6 +79,24 @@ type CollectionPartition struct {
 	ShardFunc   sharding.ShardFunc `json:"-"`
 }
 
+func (p *CollectionPartition) UnmarshalJSON(data []byte) error {
+	type Alias CollectionPartition
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(p),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// get the pointers to Hash and Shard func
+	p.HashFunc = p.ShardConfig.Hash.Get()
+	p.ShardFunc = p.ShardConfig.Shard.Get()
+
+	return nil
+}
+
 type ShardConfig struct {
 	Key   string               `json:"shard_key"`
 	Hash  sharding.HashMethod  `json:"hash_method"`

@@ -16,7 +16,6 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
-	"github.com/jacksontj/dataman/src/storage_node"
 
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -29,8 +28,6 @@ type RouterNode struct {
 
 	// All metadata
 	meta atomic.Value
-	// Only active objects in metadata
-	activeMeta atomic.Value
 
 	// TODO: stop mechanism
 	// background sync stuff
@@ -41,18 +38,9 @@ type RouterNode struct {
 }
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
-	storageConfig := &storagenode.DatasourceInstanceConfig{
-		StorageNodeType: config.MetaStoreType,
-		StorageConfig:   config.MetaStoreConfig,
-	}
-	metaStore, err := NewMetadataStore(storageConfig)
-	if err != nil {
-		return nil, err
-	}
 	node := &RouterNode{
-		Config:    config,
-		MetaStore: metaStore,
-		syncChan:  make(chan chan error),
+		Config:   config,
+		syncChan: make(chan chan error),
 	}
 
 	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
@@ -81,10 +69,6 @@ func (s *RouterNode) Start() error {
 	api.Start(router)
 
 	return http.ListenAndServe(s.Config.HTTP.Addr, router)
-}
-
-func (s *RouterNode) GetActiveMeta() *metadata.Meta {
-	return s.activeMeta.Load().(*metadata.Meta)
 }
 
 func (s *RouterNode) GetMeta() *metadata.Meta {
@@ -118,27 +102,30 @@ func (s *RouterNode) FetchMeta() error {
 }
 
 func (s *RouterNode) fetchMeta() error {
-	// First we need to determine all the databases that we are responsible for
-	// TODO: lots of error handling required
-
-	// TODO: support errors
-	meta, err := s.MetaStore.GetMeta()
+	// TODO: set the transport up in initialization
+	t := &http.Transport{}
+	// TODO: more
+	// Register all protocols we want to support
+	// TODO: namespace which files we'll allow to serve!
+	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	c := &http.Client{Transport: t}
+	res, err := c.Get(s.Config.MetaConfig.URL)
 	if err != nil {
 		return err
 	}
-	if meta != nil && err == nil {
-		s.meta.Store(meta)
-	}
-	logrus.Debugf("Loaded meta: %v", meta)
 
-	// Get filter meta
-	meta, err = s.MetaStore.GetMeta()
+	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
 	}
-	// TODO separate function?
-	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
-	// to just get the ones they expect
+	var meta metadata.Meta
+	err = json.Unmarshal(bytes, &meta)
+	if err != nil {
+		return err
+	}
+
+	// Filter out any unprovisioned data
+	// TODO: configurable (since hand-edits probably won't edit the numbers
 	// TODO: maybe have a "trim" method on these?
 	for key, database := range meta.Databases {
 		if database.ProvisionState != metadata.Active {
@@ -201,7 +188,7 @@ func (s *RouterNode) fetchMeta() error {
 		}
 	}
 
-	s.activeMeta.Store(meta)
+	s.meta.Store(&meta)
 
 	return nil
 }
@@ -213,7 +200,7 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
-	meta := s.GetActiveMeta()
+	meta := s.GetMeta()
 
 	for i, queryMap := range queries {
 		// We only allow a single method to be defined per item

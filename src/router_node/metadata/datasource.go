@@ -21,6 +21,7 @@ type DatasourceInstance struct {
 	ID   int64  `json:"_id"`
 	Name string `json:"name"`
 
+	// TODO remove ID? It is a child in the meta-- so no need to have the ID
 	// TODO: not sure how we want to link these
 	StorageNodeID int64 `json:"storage_node_id"`
 	// TODO: remove? We need some reverse linking since we need to send to the actual storagenode at some point

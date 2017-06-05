@@ -80,6 +80,7 @@ type DatastoreShard struct {
 	Name     string `json:"name"`
 	Instance int64  `json:"shard_instance"`
 
+	// TODO: have one list for serialization
 	Replicas *DatastoreShardReplicaSet `json:"replicas"`
 
 	// Internal fields

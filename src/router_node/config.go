@@ -2,6 +2,7 @@ package routernode
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -13,7 +14,8 @@ type Config struct {
 	MetaStoreType   storagenode.StorageType `yaml:"metastore_type"`
 	MetaStoreConfig map[string]interface{}  `yaml:"metastore_config"`
 
-	HTTP HTTPApiConfig `yaml:"http_api"`
+	HTTP       HTTPApiConfig `yaml:"http_api"`
+	MetaConfig MetaConfig    `yaml:"meta"`
 }
 
 func (c *Config) GetMetaStore(metaFunc metadata.MetaFunc) (storagenode.StorageDataInterface, error) {
@@ -31,4 +33,9 @@ func (c *Config) GetMetaStore(metaFunc metadata.MetaFunc) (storagenode.StorageDa
 // HTTP API configuration
 type HTTPApiConfig struct {
 	Addr string `yaml:"addr"`
+}
+
+type MetaConfig struct {
+	URL      string        `yaml:"url"`
+	Interval time.Duration `yaml:"interval"`
 }

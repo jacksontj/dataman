@@ -67,8 +67,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			// TODO: get the rest of it
 			// Config
 
-			DatasourceInstanceIDs: make(map[string]int64),
-			DatasourceInstances:   make(map[string]*metadata.DatasourceInstance),
+			DatasourceInstances: make(map[string]*metadata.DatasourceInstance),
 
 			ProvisionState: metadata.ProvisionState(storageNodeRecord["provision_state"].(int64)),
 		}
@@ -90,7 +89,6 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 		datasourceInstance.StorageNodeID = datasourceInstanceRecord["storage_node_id"].(int64)
 		datasourceInstance.StorageNode = meta.Nodes[datasourceInstanceRecord["storage_node_id"].(int64)]
 		datasourceInstance.ProvisionState = metadata.ProvisionState(datasourceInstanceRecord["provision_state"].(int64))
-		datasourceInstance.StorageNode.DatasourceInstanceIDs[datasourceInstance.Name] = datasourceInstance.ID
 		datasourceInstance.StorageNode.DatasourceInstances[datasourceInstance.Name] = datasourceInstance
 
 		// Load all of the shard instances associated with this datasource_instance
@@ -228,6 +226,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 
 				for _, datastoreShardRecord := range datastoreShardResult.Return {
 					datastoreShard := meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
+					vshardInstance.DatastoreShardIDs[datastoreShard.DatastoreID] = datastoreShardRecord["datastore_shard_id"].(int64)
 					vshardInstance.DatastoreShard[datastoreShard.DatastoreID] = meta.DatastoreShards[datastoreShardRecord["datastore_shard_id"].(int64)]
 				}
 

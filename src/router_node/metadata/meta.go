@@ -1,6 +1,10 @@
 package metadata
 
-import storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+import (
+	"encoding/json"
+
+	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+)
 
 func NewMeta() *Meta {
 	return &Meta{
@@ -39,4 +43,65 @@ func (m *Meta) ListDatabases() []string {
 		dbnames = append(dbnames, name)
 	}
 	return dbnames
+}
+
+func (m *Meta) UnmarshalJSON(data []byte) error {
+	type Alias Meta
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(m),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// TODO:
+	// Add linking things expect
+
+	if m.DatasourceInstance == nil {
+		m.DatasourceInstance = make(map[int64]*DatasourceInstance)
+	}
+
+	for _, storageNode := range m.Nodes {
+		for _, datasourceInstance := range storageNode.DatasourceInstances {
+			m.DatasourceInstance[datasourceInstance.ID] = datasourceInstance
+			datasourceInstance.StorageNode = storageNode
+		}
+	}
+
+	if m.DatastoreShards == nil {
+		m.DatastoreShards = make(map[int64]*DatastoreShard)
+	}
+
+	// Link DatastoreShardReplica -> DatasourceInstance
+	for _, datastore := range m.Datastore {
+		for _, datastoreShard := range datastore.Shards {
+			m.DatastoreShards[datastoreShard.ID] = datastoreShard
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+				datastoreShardReplica.DatasourceInstance = m.DatasourceInstance[datastoreShardReplica.DatasourceInstanceID]
+			}
+
+			for _, datastoreShardReplica := range datastoreShard.Replicas.Slaves {
+				datastoreShardReplica.DatasourceInstance = m.DatasourceInstance[datastoreShardReplica.DatasourceInstanceID]
+			}
+		}
+	}
+
+	// Link Database -> Datastore
+	for _, database := range m.Databases {
+		for _, databaseDatastore := range database.Datastores {
+			databaseDatastore.Datastore = m.Datastore[databaseDatastore.DatastoreID]
+		}
+		for _, databaseVShardInstance := range database.VShard.Instances {
+			if databaseVShardInstance.DatastoreShard == nil {
+				databaseVShardInstance.DatastoreShard = make(map[int64]*DatastoreShard)
+			}
+			for datastoreId, datastoreShardId := range databaseVShardInstance.DatastoreShardIDs {
+				databaseVShardInstance.DatastoreShard[datastoreId] = m.DatastoreShards[datastoreShardId]
+			}
+		}
+	}
+
+	return nil
 }
