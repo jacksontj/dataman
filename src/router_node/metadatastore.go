@@ -67,7 +67,8 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			// TODO: get the rest of it
 			// Config
 
-			DatasourceInstances: make(map[string]*metadata.DatasourceInstance),
+			DatasourceInstanceIDs: make(map[string]int64),
+			DatasourceInstances:   make(map[string]*metadata.DatasourceInstance),
 
 			ProvisionState: metadata.ProvisionState(storageNodeRecord["provision_state"].(int64)),
 		}
@@ -89,6 +90,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 		datasourceInstance.StorageNodeID = datasourceInstanceRecord["storage_node_id"].(int64)
 		datasourceInstance.StorageNode = meta.Nodes[datasourceInstanceRecord["storage_node_id"].(int64)]
 		datasourceInstance.ProvisionState = metadata.ProvisionState(datasourceInstanceRecord["provision_state"].(int64))
+		datasourceInstance.StorageNode.DatasourceInstanceIDs[datasourceInstance.Name] = datasourceInstance.ID
 		datasourceInstance.StorageNode.DatasourceInstances[datasourceInstance.Name] = datasourceInstance
 
 		// Load all of the shard instances associated with this datasource_instance
@@ -293,6 +295,7 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 			Read:           databaseDatastoreRecord["read"].(bool),
 			Write:          databaseDatastoreRecord["write"].(bool),
 			Required:       databaseDatastoreRecord["required"].(bool),
+			DatastoreID:    datastore.ID,
 			Datastore:      datastore,
 			ProvisionState: metadata.ProvisionState(databaseDatastoreRecord["provision_state"].(int64)),
 		}
@@ -383,10 +386,11 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 
 		for _, datastoreShardReplicaRecord := range datastoreShardReplicaResult.Return {
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				ID:             datastoreShardReplicaRecord["_id"].(int64),
-				Master:         datastoreShardReplicaRecord["master"].(bool),
-				Datasource:     meta.DatasourceInstance[datastoreShardReplicaRecord["datasource_instance_id"].(int64)],
-				ProvisionState: metadata.ProvisionState(datastoreShardReplicaRecord["provision_state"].(int64)),
+				ID:                   datastoreShardReplicaRecord["_id"].(int64),
+				Master:               datastoreShardReplicaRecord["master"].(bool),
+				DatasourceInstanceID: datastoreShardReplicaRecord["datasource_instance_id"].(int64),
+				DatasourceInstance:   meta.DatasourceInstance[datastoreShardReplicaRecord["datasource_instance_id"].(int64)],
+				ProvisionState:       metadata.ProvisionState(datastoreShardReplicaRecord["provision_state"].(int64)),
 			}
 
 			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
@@ -1146,7 +1150,7 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Da
 				if existingDatastoreShard.Instance == datastoreShard.Instance {
 					datastoreShard.ID = existingDatastoreShard.ID
 					for existingDatastoreShardReplica := range existingDatastoreShard.Replicas.IterReplica() {
-						if existingDatastoreShardReplica.Datasource.ID == datastoreShardReplica.Datasource.ID {
+						if existingDatastoreShardReplica.DatasourceInstance.ID == datastoreShardReplica.DatasourceInstance.ID {
 							datastoreShardReplica.ID = existingDatastoreShardReplica.ID
 							break
 						}
@@ -1160,7 +1164,7 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Da
 
 	datastoreShardReplicaRecord := map[string]interface{}{
 		"datastore_shard_id":     datastoreShard.ID,
-		"datasource_instance_id": datastoreShardReplica.Datasource.ID,
+		"datasource_instance_id": datastoreShardReplica.DatasourceInstance.ID,
 		"master":                 datastoreShardReplica.Master,
 
 		"provision_state": datastoreShardReplica.ProvisionState,

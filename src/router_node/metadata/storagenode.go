@@ -9,7 +9,8 @@ type StorageNode struct {
 	IP   net.IP `json:"ip"`
 	Port int    `json:"port"`
 
-	DatasourceInstances map[string]*DatasourceInstance `json:"datasource_instances"`
+	DatasourceInstanceIDs map[string]int64               `json:"datasource_instance_ids"`
+	DatasourceInstances   map[string]*DatasourceInstance `json:"-"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }

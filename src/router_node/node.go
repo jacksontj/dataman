@@ -334,7 +334,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	for i, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 		logrus.Debugf("\tGoing to %v", datasourceInstance)
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -409,7 +409,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 			// TODO: generate or store/read the name!
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -450,7 +450,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := database.VShard.Instances[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -494,7 +494,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 		// TODO: replicas -- add args for slave etc.
 		vshard := database.VShard.Instances[vshardNum-1]
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
@@ -526,7 +526,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: replicas -- add args for slave etc.
 			vshard := database.VShard.Instances[vshardNum-1]
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -547,7 +547,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			// TODO: parallel
 			for i, vshard := range database.VShard.Instances {
-				datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+				datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 				if !ok {
@@ -588,7 +588,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		vshard := database.VShard.Instances[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().Datasource
+		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
@@ -675,8 +675,8 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 
 			// TODO: for all? or not at all?
 			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
-				datastoreShardReplica.Datasource.StorageNode = meta.Nodes[datastoreShardReplica.Datasource.StorageNodeID]
-				datastoreShardReplica.Datasource.DatabaseShards = meta.DatasourceInstance[datastoreShardReplica.Datasource.ID].DatabaseShards
+				datastoreShardReplica.DatasourceInstance.StorageNode = meta.Nodes[datastoreShardReplica.DatasourceInstance.StorageNodeID]
+				datastoreShardReplica.DatasourceInstance.DatabaseShards = meta.DatasourceInstance[datastoreShardReplica.DatasourceInstance.ID].DatabaseShards
 			}
 		}
 	}
@@ -754,7 +754,7 @@ func (s *RouterNode) ensureExistsDatabase(db *metadata.Database) error {
 				// Update state
 				datastoreShardReplica.ProvisionState = metadata.Provision
 
-				datasourceInstance := datastoreShardReplica.Datasource
+				datasourceInstance := datastoreShardReplica.DatasourceInstance
 				// If we need to define the database, lets do so
 				if _, ok := provisionRequests[datasourceInstance]; !ok {
 					// TODO: better DB conversion
@@ -945,7 +945,7 @@ func (s *RouterNode) ensureDoesntExistDatabase(dbname string) error {
 				// Update state
 				datastoreShardReplica.ProvisionState = metadata.Provision
 
-				datasourceInstance := datastoreShardReplica.Datasource
+				datasourceInstance := datastoreShardReplica.DatasourceInstance
 				// If we need to define the database, lets do so
 				if _, ok := datasourceInstances[datasourceInstance]; !ok {
 					// TODO: better DB conversion

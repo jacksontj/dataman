@@ -47,7 +47,8 @@ type DatabaseDatastore struct {
 	// TODO: use once we support more than one datastore per database
 	Required bool `json:"required"`
 
-	Datastore *Datastore `json:"datastore"`
+	DatastoreID int64      `json:"datastore_id"`
+	Datastore   *Datastore `json:"-"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
@@ -160,9 +161,10 @@ func (d *DatastoreShardReplicaSet) GetSlave() *DatastoreShardReplica {
 }
 
 type DatastoreShardReplica struct {
-	ID         int64               `json:"_id"`
-	Datasource *DatasourceInstance `json:"datasource_instance"`
-	Master     bool                `json:"master"`
+	ID                   int64               `json:"_id"`
+	DatasourceInstanceID int64               `json:"datasource_instance_id"`
+	DatasourceInstance   *DatasourceInstance `json:"-"`
+	Master               bool                `json:"master"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
