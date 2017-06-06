@@ -33,13 +33,14 @@ def ensure_datastore(urlbase):
     data = {
 	    "name": "test_datastore",
 	    "provision_state": 3,
+
 	    "shards": [{
 			    "name": "datastore_test-shard1",
 			    "shard_instance": 1,
 			    "provision_state": 3,
 			    "replicas": {
 				    "masters": [{
-					    "datasource_instance": {},
+					    "datasource_instance_id": 0,
 					    "master": True,
     				    "provision_state": 3
 				    }],
@@ -52,7 +53,7 @@ def ensure_datastore(urlbase):
 			    "provision_state": 3,
 			    "replicas": {
 				    "masters": [{
-					    "datasource_instance": {},
+					    "datasource_instance_id": 0,
 					    "master": True,
     				    "provision_state": 3
 				    }],
@@ -64,7 +65,8 @@ def ensure_datastore(urlbase):
     
     dsi = STORAGE_NODES.values()
     for shard in data['shards']:
-        shard['replicas']['masters'][0]['datasource_instance'] = dsi.pop(0)['datasource_instances'].popitem()[1]
+        shard['replicas']['masters'][0]['datasource_instance_id'] = dsi.pop(0)['datasource_instances'].popitem()[1]['_id']
+        print shard['replicas']['masters'][0]['datasource_instance_id']
     print data
     ret = requests.post(
         urlbase+"/v1/datastore/"+data['name'],
@@ -81,7 +83,7 @@ def remove_database(urlbase):
     schema_json['name'] = DBNAME
 
     # set the datastore id
-    schema_json['datastores'][0]['datastore']['_id'] = DATASTORES.values()[0]['_id']
+    schema_json['datastores'][0]['datastore_id'] = DATASTORES.values()[0]['_id']
 
     ret = requests.delete(
         urlbase+"/v1/database/"+DBNAME,
@@ -95,7 +97,7 @@ def ensure_database(urlbase):
     schema_json['name'] = DBNAME
 
     # set the datastore id
-    schema_json['datastores'][0]['datastore']['_id'] = DATASTORES.values()[0]['_id']
+    schema_json['datastores'][0]['datastore_id'] = DATASTORES.values()[0]['_id']
 
     ret = requests.post(
         urlbase+"/v1/database/"+DBNAME,
@@ -115,6 +117,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ensure_storagenode(args.router_node)
+    
     ensure_datastore(args.router_node)
     
     if args.remove:

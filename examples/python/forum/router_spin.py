@@ -10,12 +10,12 @@ schema_json = json.load(open('example_forum_sharded.json'))
 schema_json['name'] = 'example_forum'
 
 # set the datastore id
-schema_json['datastores'][0]['datastore']['_id'] = 54
+schema_json['datastores'][0]['datastore_id'] = 54
 
 @tornado.gen.coroutine
 def ensure_database():
     request = tornado.httpclient.HTTPRequest(
-        'http://127.0.0.1:8080/v1/database/example_forum',
+        'http://127.0.0.1:8079/v1/database/example_forum',
         method='POST',
         body=json.dumps(schema_json),
         connect_timeout=9999999,
@@ -31,7 +31,7 @@ def ensure_database():
 @tornado.gen.coroutine
 def remove_database():
     request = tornado.httpclient.HTTPRequest(
-        'http://127.0.0.1:8080/v1/database/example_forum',
+        'http://127.0.0.1:8079/v1/database/example_forum',
         method='DELETE',
         connect_timeout=9999999,
         request_timeout=9999999,

@@ -139,9 +139,7 @@
     "datastores": [{
 		"read": true,
 		"write": true,
-		"datastore": {
-			"_id": 2
-		},
+        "datastore_id": 2,
 		"required": true
 	}],
 	"database_vshard": {
