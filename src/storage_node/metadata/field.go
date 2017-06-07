@@ -16,29 +16,29 @@ func SetFieldTreeState(field *Field, state ProvisionState) {
 	}
 }
 
-type FieldType string
+type DatamanFieldType string
 
 // TODO: re-work to have multiple mappings
 // The intention here is to have a mapping of client -> dataman -> datastore
 // this should be our listing of dataman FieldTypes, which have limits and validation methods
 // which we then leave up to the datasource to store.
 const (
-	Document FieldType = "document"
-	String             = "string"
-	Text               = "text"
-	Int                = "int"
-	Bool               = "bool"
-	DateTime           = "datetime"
+	Document DatamanFieldType = "document"
+	String                    = "string"
+	Text                      = "text"
+	Int                       = "int"
+	Bool                      = "bool"
+	DateTime                  = "datetime"
 )
 
 type Field struct {
 	ID int64 `json:"_id,omitempty"`
 	// TODO: remove? Need a method to link them
-	CollectionID  int64     `json:"-"`
-	ParentFieldID int64     `json:"-"`
-	Name          string    `json:"name"`
-	Type          FieldType `json:"type"`
-	// Arguments (limits etc.) for a given FieldType (varies per field)
+	CollectionID  int64            `json:"-"`
+	ParentFieldID int64            `json:"-"`
+	Name          string           `json:"name"`
+	Type          DatamanFieldType `json:"type"`
+	// Arguments (limits etc.) for a given DatamanFieldType (varies per field)
 	TypeArgs map[string]interface{} `json:"type_args,omitempty"`
 
 	// Various configuration options
