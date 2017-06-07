@@ -43,5 +43,6 @@ _testmain.go
 # them output into a "bin" directory of some type
 # Manual list of binaries we build to not include
 src/router_node/routernode/routernode
+src/task_node/tasknode/tasknode
 src/storage_node/storagenode/storagenode
 src/schemaexport/schemaexport
