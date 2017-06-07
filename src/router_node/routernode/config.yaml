@@ -8,5 +8,5 @@ http_api:
   addr: ":8080"
 
 meta:
-  url: file:///home/tjackson/src/dataman/src/router_node/routernode/meta.json
+  url: file:///meta.json
   interval: 1s

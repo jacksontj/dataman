@@ -105,7 +105,7 @@ func (s *RouterNode) fetchMeta() error {
 	// TODO: more
 	// Register all protocols we want to support
 	// TODO: namespace which files we'll allow to serve!
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
+	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("")))
 	c := &http.Client{Transport: t}
 	res, err := c.Get(s.Config.MetaConfig.URL)
 	if err != nil {
