@@ -112,6 +112,10 @@ func (s *RouterNode) fetchMeta() error {
 		return err
 	}
 
+	if res.StatusCode != 200 {
+		return fmt.Errorf("Unable to get meta: %v", res)
+	}
+
 	bytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return err
