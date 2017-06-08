@@ -34,8 +34,6 @@ func fieldToSchema(field *metadata.Field) (string, error) {
 		}
 
 		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
-	case metadata.Text:
-		fieldStr += "\"" + field.Name + "\" text"
 	case metadata.Int:
 		fieldStr += "\"" + field.Name + "\" int"
 	case metadata.Bool:
@@ -329,7 +327,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		case "boolean":
 			fieldType = metadata.Bool
 		case "text":
-			fieldType = metadata.Text
+			fieldType = metadata.String
 		case "timestamp without time zone":
 			fieldType = metadata.DateTime
 		default:

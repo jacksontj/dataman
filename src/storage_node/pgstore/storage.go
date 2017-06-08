@@ -158,8 +158,6 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 				return result
 			}
 			fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
-		case metadata.Text:
-			fallthrough
 		case metadata.String:
 			fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 		default:
@@ -216,8 +214,6 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 				return result
 			}
 			fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
-		case metadata.Text:
-			fallthrough
 		case metadata.String:
 			fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 		default:
@@ -259,8 +255,6 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 				return result
 			}
 			filterValues = append(filterValues, "'"+string(fieldJson)+"'")
-		case metadata.Text:
-			fallthrough
 		case metadata.String:
 			filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
 		default:
@@ -334,8 +328,6 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 					return result
 				}
 				filterValues = append(filterValues, "'"+string(fieldJson)+"'")
-			case metadata.Text:
-				fallthrough
 			case metadata.String:
 				filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
 			default:
@@ -405,8 +397,6 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 				for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue))
 				}
-			case metadata.Text:
-				fallthrough
 			case metadata.String:
 				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue))
 			default:

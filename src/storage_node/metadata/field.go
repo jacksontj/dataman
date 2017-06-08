@@ -25,7 +25,6 @@ type DatamanFieldType string
 const (
 	Document DatamanFieldType = "document"
 	String                    = "string"
-	Text                      = "text"
 	Int                       = "int"
 	Bool                      = "bool"
 	DateTime                  = "datetime"
@@ -93,12 +92,6 @@ func (f *Field) Normalize(val interface{}) (interface{}, error) {
 		}
 		if float64(len(s)) > f.TypeArgs["size"].(float64) {
 			return nil, fmt.Errorf("String too long")
-		}
-		return s, nil
-	case Text:
-		s, ok := val.(string)
-		if !ok {
-			return nil, fmt.Errorf("Not a string")
 		}
 		return s, nil
 	case Int:
