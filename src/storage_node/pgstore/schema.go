@@ -312,7 +312,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 	fields := make([]*metadata.Field, len(fieldRecords))
 	for i, fieldEntry := range fieldRecords {
-		var fieldType metadata.DatamanFieldType
+		var fieldType metadata.DatamanType
 		fieldTypeArgs := make(map[string]interface{})
 		switch fieldEntry["data_type"] {
 		case "integer":
