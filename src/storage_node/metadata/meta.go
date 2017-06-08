@@ -6,8 +6,9 @@ func NewMeta() *Meta {
 	return &Meta{
 		Databases: make(map[string]*Database),
 
-		Fields:      make(map[int64]*CollectionField),
-		Collections: make(map[int64]*Collection),
+		Fields:            make(map[int64]*CollectionField),
+		Collections:       make(map[int64]*Collection),
+		FieldTypeRegistry: FieldTypeRegistry,
 	}
 }
 
@@ -18,6 +19,8 @@ type Meta struct {
 
 	Fields      map[int64]*CollectionField `json:"-"`
 	Collections map[int64]*Collection      `json:"-"`
+
+	FieldTypeRegistry map[string]*FieldType `json:"field_types"`
 }
 
 // TODO: more than just names?

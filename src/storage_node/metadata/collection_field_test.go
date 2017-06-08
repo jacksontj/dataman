@@ -30,10 +30,9 @@ func TestFieldValidation_Document(t *testing.T) {
 			Type: Document,
 			SubFields: map[string]*CollectionField{
 				"name": &CollectionField{
-					Name:     "name",
-					Type:     String,
-					TypeArgs: map[string]interface{}{"size": float64(10)},
-					NotNull:  true,
+					Name:    "name",
+					Type:    String,
+					NotNull: true,
 				},
 				"number": &CollectionField{
 					Name: "number",
@@ -43,10 +42,9 @@ func TestFieldValidation_Document(t *testing.T) {
 					Type: Document,
 					SubFields: map[string]*CollectionField{
 						"name": &CollectionField{
-							Name:     "name",
-							Type:     String,
-							TypeArgs: map[string]interface{}{"size": float64(10)},
-							NotNull:  true,
+							Name:    "name",
+							Type:    String,
+							NotNull: true,
 						},
 					},
 				},
@@ -89,8 +87,7 @@ func TestFieldValidation_Document(t *testing.T) {
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:     String,
-			TypeArgs: map[string]interface{}{"size": float64(10)},
+			Type: String,
 		},
 		goodValues: []interface{}{
 			"foo",

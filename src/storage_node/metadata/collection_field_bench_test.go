@@ -39,17 +39,15 @@ func init() {
 			Type: Bool,
 		},
 		"string": &CollectionField{
-			Type:     String,
-			TypeArgs: map[string]interface{}{"size": float64(10)},
+			Type: String,
 		},
 		"document": &CollectionField{
 			Type: Document,
 			SubFields: map[string]*CollectionField{
 				"name": &CollectionField{
-					Name:     "name",
-					Type:     String,
-					TypeArgs: map[string]interface{}{"size": float64(10)},
-					NotNull:  true,
+					Name:    "name",
+					Type:    String,
+					NotNull: true,
 				},
 				"number": &CollectionField{
 					Name: "number",
@@ -59,10 +57,9 @@ func init() {
 					Type: Document,
 					SubFields: map[string]*CollectionField{
 						"name": &CollectionField{
-							Name:     "name",
-							Type:     String,
-							TypeArgs: map[string]interface{}{"size": float64(10)},
-							NotNull:  true,
+							Name:    "name",
+							Type:    String,
+							NotNull: true,
 						},
 					},
 				},
