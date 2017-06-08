@@ -41,9 +41,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -87,9 +84,6 @@ const schemaJson string = `
                 "field_type": {
                   "name": "field_type",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "field_type_args": {
@@ -100,9 +94,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "not_null": {
@@ -209,15 +200,12 @@ const schemaJson string = `
                 },
                 "data_json": {
                   "name": "data_json",
-                  "type": "text",
+                  "type": "string",
                   "provision_state": 0
                 },
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -449,9 +437,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -670,9 +655,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 }
               },
@@ -715,9 +697,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -789,9 +768,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -836,9 +812,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -881,9 +854,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -974,6 +944,118 @@ const schemaJson string = `
               },
               "provision_state": 0
             },
+            "field_type": {
+              "name": "field_type",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "dataman_type": {
+                  "name": "dataman_type",
+                  "type": "string",
+                  "provision_state": 0
+                },
+                "name": {
+                  "name": "name",
+                  "type": "string",
+                  "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "field_type_name_idx": {
+                  "name": "field_type_name_idx",
+                  "fields": [
+                    "name"
+                  ],
+                  "unique": true,
+                  "provision_state": 0
+                }
+              },
+              "provision_state": 0
+            },
+            "field_type_constraint": {
+              "name": "field_type_constraint",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "args": {
+                  "name": "args",
+                  "type": "document",
+                  "provision_state": 0
+                },
+                "constraint": {
+                  "name": "constraint",
+                  "type": "string",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "field_type_id": {
+                  "name": "field_type_id",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "field_type_constraint_field_type_id_constraint_id_idx": {
+                  "name": "field_type_constraint_field_type_id_constraint_id_idx",
+                  "fields": [
+                    "field_type_id",
+                    "\"constraint\""
+                  ],
+                  "provision_state": 0
+                }
+              },
+              "provision_state": 0
+            },
+            "field_type_datasource_type": {
+              "name": "field_type_datasource_type",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "args": {
+                  "name": "args",
+                  "type": "document",
+                  "provision_state": 0
+                },
+                "datasource_type": {
+                  "name": "datasource_type",
+                  "type": "string",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "field_type_id": {
+                  "name": "field_type_id",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "field_type_datasource_type_field_type_id_datasource_type_idx": {
+                  "name": "field_type_datasource_type_field_type_id_datasource_type_idx",
+                  "fields": [
+                    "field_type_id",
+                    "datasource_type"
+                  ],
+                  "unique": true,
+                  "provision_state": 0
+                }
+              },
+              "provision_state": 0
+            },
             "storage_node": {
               "name": "storage_node",
               "fields": {
@@ -986,17 +1068,11 @@ const schemaJson string = `
                 "ip": {
                   "name": "ip",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "not_null": true,
                   "provision_state": 0
                 },

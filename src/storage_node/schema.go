@@ -24,9 +24,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -80,28 +77,16 @@ const schemaJson string = `
                 "field_type": {
                   "name": "field_type",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
-                  "provision_state": 0
-                },
-                "field_type_args": {
-                  "name": "field_type_args",
-                  "type": "document",
                   "provision_state": 0
                 },
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "not_null": {
                   "name": "not_null",
-                  "type": "bool",
-                  "not_null": true,
+                  "type": "int",
                   "provision_state": 0
                 },
                 "parent_collection_field_id": {
@@ -158,6 +143,12 @@ const schemaJson string = `
                   },
                   "provision_state": 0
                 },
+                "provision_state": {
+                  "name": "provision_state",
+                  "type": "int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
                 "relation_collection_field_id": {
                   "name": "relation_collection_field_id",
                   "type": "int",
@@ -192,9 +183,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -277,9 +265,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
@@ -345,9 +330,6 @@ const schemaJson string = `
                 "name": {
                   "name": "name",
                   "type": "string",
-                  "type_args": {
-                    "size": 255
-                  },
                   "provision_state": 0
                 },
                 "provision_state": {
