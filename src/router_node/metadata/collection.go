@@ -22,7 +22,7 @@ type Collection struct {
 	// Collection VShards (if defined)
 	VShard *CollectionVShard `json:"collection_vshard,omitempty"`
 
-	Fields  map[string]*storagenodemetadata.Field           `json:"fields"`
+	Fields  map[string]*storagenodemetadata.CollectionField `json:"fields"`
 	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile
@@ -40,7 +40,7 @@ func (c *Collection) EnsureInternalFields() error {
 		if field, ok := c.Fields[name]; !ok {
 			// TODO: make a copy?
 			// TODO: better copy
-			newField := &storagenodemetadata.Field{}
+			newField := &storagenodemetadata.CollectionField{}
 			buf, _ := json.Marshal(internalField)
 			json.Unmarshal(buf, newField)
 			c.Fields[name] = newField

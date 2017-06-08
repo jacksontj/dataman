@@ -310,8 +310,8 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
 
 					// TODO: better!
-					var clearFieldID func(*storagenodemetadata.Field)
-					clearFieldID = func(field *storagenodemetadata.Field) {
+					var clearFieldID func(*storagenodemetadata.CollectionField)
+					clearFieldID = func(field *storagenodemetadata.CollectionField) {
 						field.ID = 0
 						if field.Relation != nil {
 							field.Relation.FieldID = 0

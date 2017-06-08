@@ -478,7 +478,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 		// A temporary place to put all the fields as we find them, we
 		// need this so we can assemble subfields etc.
 
-		collection.Fields = make(map[string]*storagenodemetadata.Field)
+		collection.Fields = make(map[string]*storagenodemetadata.CollectionField)
 		for _, collectionFieldRecord := range collectionFieldResult.Return {
 			field, err := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))
 			if err != nil {
@@ -558,7 +558,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 	return collection, nil
 }
 
-func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenodemetadata.Field, error) {
+func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenodemetadata.CollectionField, error) {
 	field, ok := meta.Fields[id]
 	if !ok {
 		// Load field
@@ -575,11 +575,11 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		}
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
-		field = &storagenodemetadata.Field{
+		field = &storagenodemetadata.CollectionField{
 			ID:             collectionFieldRecord["_id"].(int64),
 			CollectionID:   collectionFieldRecord["collection_id"].(int64),
 			Name:           collectionFieldRecord["name"].(string),
-			Type:           storagenodemetadata.FieldType(collectionFieldRecord["field_type"].(string)),
+			Type:           storagenodemetadata.DatamanType(collectionFieldRecord["field_type"].(string)),
 			ProvisionState: storagenodemetadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
 		}
 		if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
@@ -598,7 +598,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 			}
 
 			if parentField.SubFields == nil {
-				parentField.SubFields = make(map[string]*storagenodemetadata.Field)
+				parentField.SubFields = make(map[string]*storagenodemetadata.CollectionField)
 			}
 			parentField.SubFields[field.Name] = field
 		}
@@ -626,7 +626,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 			if err != nil {
 				return nil, fmt.Errorf("Error getCollectionByID: %v", err)
 			}
-			field.Relation = &storagenodemetadata.FieldRelation{
+			field.Relation = &storagenodemetadata.CollectionFieldRelation{
 				ID:         collectionFieldRelationRecord["_id"].(int64),
 				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
 				Collection: relatedCollection.Name,
@@ -1668,8 +1668,8 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
 	}
 
-	var relationDepCheck func(*storagenodemetadata.Field) error
-	relationDepCheck = func(field *storagenodemetadata.Field) error {
+	var relationDepCheck func(*storagenodemetadata.CollectionField) error
+	relationDepCheck = func(field *storagenodemetadata.CollectionField) error {
 		// if there is one, ensure that the field exists
 		if field.Relation != nil {
 			// TODO: better? We don't need to make the whole collection-- just the field
@@ -2036,11 +2036,11 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.Field) error {
+func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.CollectionField) error {
 
 	// Recursively search to see if a field exists that matches
-	var findField func(*storagenodemetadata.Field, *storagenodemetadata.Field)
-	findField = func(field, existingField *storagenodemetadata.Field) {
+	var findField func(*storagenodemetadata.CollectionField, *storagenodemetadata.CollectionField)
+	findField = func(field, existingField *storagenodemetadata.CollectionField) {
 		if existingField.Equal(field) {
 			field.ID = existingField.ID
 			if existingField.Relation != nil {
@@ -2058,7 +2058,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 		}
 	}
 
-	findCollectionField := func(collection *metadata.Collection, field *storagenodemetadata.Field) {
+	findCollectionField := func(collection *metadata.Collection, field *storagenodemetadata.CollectionField) {
 		for _, existingField := range collection.Fields {
 			if field.ID != 0 {
 				return

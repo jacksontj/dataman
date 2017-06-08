@@ -2,11 +2,11 @@ package metadata
 
 var InternalFieldPrefix = "_"
 
-var InternalFields map[string]*Field
+var InternalFields map[string]*CollectionField
 
 func init() {
-	tmpFields := []*Field{
-		&Field{
+	tmpFields := []*CollectionField{
+		&CollectionField{
 			Name:    "_id",
 			Type:    Int,
 			NotNull: true,
@@ -14,13 +14,13 @@ func init() {
 
 		// TODO: add
 		/*
-			&Field{
+			&CollectionField{
 				Name: "_created",
 				Type: DateTime,
 				NotNull: true,
 			},
 
-			&Field{
+			&CollectionField{
 				Name: "_updated",
 				Type: DateTime,
 				NotNull: true,
@@ -28,7 +28,7 @@ func init() {
 		*/
 
 	}
-	InternalFields = make(map[string]*Field)
+	InternalFields = make(map[string]*CollectionField)
 	for _, field := range tmpFields {
 		InternalFields[field.Name] = field
 	}

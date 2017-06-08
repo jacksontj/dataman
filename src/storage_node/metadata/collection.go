@@ -15,7 +15,7 @@ type Collection struct {
 
 	// NOTE: we reserve the "_" namespace for fields for our own data (created, etc.)
 	// All the columns in this table
-	Fields map[string]*Field `json:"fields"`
+	Fields map[string]*CollectionField `json:"fields"`
 
 	// map of name -> index
 	Indexes map[string]*CollectionIndex `json:"indexes,omitempty"`
@@ -117,7 +117,7 @@ type CollectionIndexItem struct {
 	CollectionIndexID int64 `json:"collection_index_id"`
 	CollectionFieldID int64 `json:"collection_field_id"`
 
-	Field *Field `json:"-"`
+	Field *CollectionField `json:"-"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }

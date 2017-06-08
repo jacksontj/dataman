@@ -665,7 +665,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
+func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
@@ -682,7 +682,7 @@ func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, 
 }
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
-func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
+func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
 	// TODO: remove this restriction? _id is a magical field which we add at the creation, only

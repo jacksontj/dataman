@@ -10,7 +10,7 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-func fieldToSchema(field *metadata.Field) (string, error) {
+func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	fieldStr := ""
 
 	switch field.Type {
@@ -225,7 +225,7 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 		tableName := tableEntry["table_name"].(string)
 		collection := metadata.NewCollection(tableName)
 
-		collection.Fields = make(map[string]*metadata.Field)
+		collection.Fields = make(map[string]*metadata.CollectionField)
 		for _, field := range s.ListCollectionField(dbname, shardinstance, collection.Name) {
 			collection.Fields[field.Name] = field
 		}
@@ -303,14 +303,14 @@ FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = ($1) AND table_name = ($2)
 `
 
-func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.Field {
+func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.CollectionField {
 	// Get the fields for the collection
 	fieldRecords, err := DoQuery(s.getDB(dbname), listColumnTemplate, shardinstance, collectionname)
 	if err != nil {
 		logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, collectionname, err)
 	}
 
-	fields := make([]*metadata.Field, len(fieldRecords))
+	fields := make([]*metadata.CollectionField, len(fieldRecords))
 	for i, fieldEntry := range fieldRecords {
 		var fieldType metadata.DatamanType
 		fieldTypeArgs := make(map[string]interface{})
@@ -338,7 +338,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 			fieldTypeArgs["size"] = maxSize
 		}
 
-		field := &metadata.Field{
+		field := &metadata.CollectionField{
 			Name:     fieldEntry["column_name"].(string),
 			Type:     fieldType,
 			TypeArgs: fieldTypeArgs,
@@ -353,7 +353,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		}
 		if len(relationEntries) > 0 {
 			relationEntry := relationEntries[0]
-			field.Relation = &metadata.FieldRelation{
+			field.Relation = &metadata.CollectionFieldRelation{
 				Collection: relationEntry["foreign_table_name"].(string),
 				Field:      relationEntry["foreign_column_name"].(string),
 			}
@@ -364,7 +364,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 }
 
 // TODO: better
-func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.Field {
+func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.CollectionField {
 	fields := s.ListCollectionField(dbname, shardinstance, collectionname)
 	for _, field := range fields {
 		if field.Name == fieldname {
@@ -385,7 +385,7 @@ ALTER TABLE "%s".%s ADD CONSTRAINT %s FOREIGN KEY (%s)
       REFERENCES public.collection_field (_id) MATCH SIMPLE
       ON UPDATE NO ACTION ON DELETE NO ACTION
 */
-func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.Field) error {
+func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
 		if _, err := DoQuery(s.dbMap[db.Name], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance.Name, collection.Name, fieldStr)); err != nil {

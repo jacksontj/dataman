@@ -3,7 +3,7 @@ package metadata
 import "testing"
 
 type fieldValidationCase struct {
-	field      *Field
+	field      *CollectionField
 	goodValues []interface{}
 	badValues  []interface{}
 }
@@ -26,23 +26,23 @@ func (f *fieldValidationCase) Test(t *testing.T) {
 
 func TestFieldValidation_Document(t *testing.T) {
 	testCase := &fieldValidationCase{
-		field: &Field{
+		field: &CollectionField{
 			Type: Document,
-			SubFields: map[string]*Field{
-				"name": &Field{
+			SubFields: map[string]*CollectionField{
+				"name": &CollectionField{
 					Name:     "name",
 					Type:     String,
 					TypeArgs: map[string]interface{}{"size": float64(10)},
 					NotNull:  true,
 				},
-				"number": &Field{
+				"number": &CollectionField{
 					Name: "number",
 					Type: Int,
 				},
-				"subDoc": &Field{
+				"subDoc": &CollectionField{
 					Type: Document,
-					SubFields: map[string]*Field{
-						"name": &Field{
+					SubFields: map[string]*CollectionField{
+						"name": &CollectionField{
 							Name:     "name",
 							Type:     String,
 							TypeArgs: map[string]interface{}{"size": float64(10)},
@@ -88,7 +88,7 @@ func TestFieldValidation_Document(t *testing.T) {
 
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
-		field: &Field{
+		field: &CollectionField{
 			Type:     String,
 			TypeArgs: map[string]interface{}{"size": float64(10)},
 		},
@@ -106,28 +106,9 @@ func TestFieldValidation_String(t *testing.T) {
 	testCase.Test(t)
 }
 
-func TestFieldValidation_Text(t *testing.T) {
-	testCase := &fieldValidationCase{
-		field: &Field{
-			Type: Text,
-		},
-		goodValues: []interface{}{
-			"foo",
-			"f",
-			"AstringThatisWayTooLong", // String which is too long
-			"",
-		},
-		badValues: []interface{}{
-			1,   // a number
-			nil, // nil
-		},
-	}
-	testCase.Test(t)
-}
-
 func TestFieldValidation_Int(t *testing.T) {
 	testCase := &fieldValidationCase{
-		field: &Field{
+		field: &CollectionField{
 			Type: Int,
 		},
 		goodValues: []interface{}{
@@ -146,7 +127,7 @@ func TestFieldValidation_Int(t *testing.T) {
 
 func TestFieldValidation_Bool(t *testing.T) {
 	testCase := &fieldValidationCase{
-		field: &Field{
+		field: &CollectionField{
 			Type: Bool,
 		},
 		goodValues: []interface{}{
@@ -166,7 +147,7 @@ func TestFieldValidation_Bool(t *testing.T) {
 /*
 func TestFieldValidation_DateTime(t *testing.T) {
 	testCase := &fieldValidationCase{
-		field: &Field{
+		field: &CollectionField{
 			Type: DateTime,
 		},
 		goodValues: []interface{}{

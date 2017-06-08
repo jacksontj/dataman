@@ -299,8 +299,8 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, shardInsta
 		return fmt.Errorf("Cannot add %s.%s, collections must have at least one field defined", db.Name, collection.Name)
 	}
 
-	var relationDepCheck func(*metadata.Field) error
-	relationDepCheck = func(field *metadata.Field) error {
+	var relationDepCheck func(*metadata.CollectionField) error
+	relationDepCheck = func(field *metadata.CollectionField) error {
 		// if there is one, ensure that the field exists
 		if field.Relation != nil {
 			// TODO: better? We don't need to make the whole collection-- just the field
@@ -586,10 +586,10 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardinstance, 
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.Field) error {
+func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field, parentField *metadata.CollectionField) error {
 	// Recursively search to see if a field exists that matches
-	var findField func(*metadata.Field, *metadata.Field)
-	findField = func(field, existingField *metadata.Field) {
+	var findField func(*metadata.CollectionField, *metadata.CollectionField)
+	findField = func(field, existingField *metadata.CollectionField) {
 		if existingField.Equal(field) {
 			field.ID = existingField.ID
 			if existingField.Relation != nil {
@@ -607,7 +607,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, shard
 		}
 	}
 
-	findCollectionField := func(collection *metadata.Collection, field *metadata.Field) {
+	findCollectionField := func(collection *metadata.Collection, field *metadata.CollectionField) {
 		for _, existingField := range collection.Fields {
 			if field.ID != 0 {
 				return
@@ -771,7 +771,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, shardinstance, 
 	return nil
 }
 
-func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.Field, error) {
+func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.CollectionField, error) {
 	field, ok := meta.Fields[id]
 	if !ok {
 		// Load field
@@ -788,7 +788,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.F
 		}
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
-		field = &metadata.Field{
+		field = &metadata.CollectionField{
 			ID:             collectionFieldRecord["_id"].(int64),
 			CollectionID:   collectionFieldRecord["collection_id"].(int64),
 			Name:           collectionFieldRecord["name"].(string),
@@ -811,7 +811,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.F
 			}
 
 			if parentField.SubFields == nil {
-				parentField.SubFields = make(map[string]*metadata.Field)
+				parentField.SubFields = make(map[string]*metadata.CollectionField)
 			}
 			parentField.SubFields[field.Name] = field
 		}
@@ -839,7 +839,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*metadata.F
 			if err != nil {
 				return nil, fmt.Errorf("Error getCollectionByID: %v", err)
 			}
-			field.Relation = &metadata.FieldRelation{
+			field.Relation = &metadata.CollectionFieldRelation{
 				ID:         collectionFieldRelationRecord["_id"].(int64),
 				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
 				Collection: relatedCollection.Name,
@@ -888,7 +888,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 		}
 
 		// TODO: remove
-		collection.Fields = make(map[string]*metadata.Field)
+		collection.Fields = make(map[string]*metadata.CollectionField)
 
 		for _, collectionFieldRecord := range collectionFieldResult.Return {
 			field, err := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))

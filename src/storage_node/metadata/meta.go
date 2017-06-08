@@ -6,7 +6,7 @@ func NewMeta() *Meta {
 	return &Meta{
 		Databases: make(map[string]*Database),
 
-		Fields:      make(map[int64]*Field),
+		Fields:      make(map[int64]*CollectionField),
 		Collections: make(map[int64]*Collection),
 	}
 }
@@ -16,8 +16,8 @@ func NewMeta() *Meta {
 type Meta struct {
 	Databases map[string]*Database `json:"databases"`
 
-	Fields      map[int64]*Field      `json:"-"`
-	Collections map[int64]*Collection `json:"-"`
+	Fields      map[int64]*CollectionField `json:"-"`
+	Collections map[int64]*Collection      `json:"-"`
 }
 
 // TODO: more than just names?

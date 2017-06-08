@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func SetFieldTreeState(field *Field, state ProvisionState) {
+func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 	if field.ProvisionState != Active {
 		field.ProvisionState = state
 	}
@@ -16,21 +16,7 @@ func SetFieldTreeState(field *Field, state ProvisionState) {
 	}
 }
 
-type DatamanType string
-
-// TODO: re-work to have multiple mappings
-// The intention here is to have a mapping of client -> dataman -> datastore
-// this should be our listing of dataman FieldTypes, which have limits and validation methods
-// which we then leave up to the datasource to store.
-const (
-	Document DatamanType = "document"
-	String               = "string"
-	Int                  = "int"
-	Bool                 = "bool"
-	DateTime             = "datetime"
-)
-
-type Field struct {
+type CollectionField struct {
 	ID int64 `json:"_id,omitempty"`
 	// TODO: remove? Need a method to link them
 	CollectionID  int64       `json:"-"`
@@ -44,26 +30,26 @@ type Field struct {
 	NotNull bool `json:"not_null,omitempty"` // Should we allow NULL fields
 
 	// Optional subfields
-	SubFields map[string]*Field `json:"subfields,omitempty"`
+	SubFields map[string]*CollectionField `json:"subfields,omitempty"`
 
 	// Optional relation
-	Relation *FieldRelation `json:"relation,omitempty"`
+	Relation *CollectionFieldRelation `json:"relation,omitempty"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
-func (f *Field) Equal(o *Field) bool {
+func (f *CollectionField) Equal(o *CollectionField) bool {
 	// TODO: better?
 	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull && f.ParentFieldID == o.ParentFieldID
 }
 
-func (f *Field) Validate(val interface{}) error {
+func (f *CollectionField) Validate(val interface{}) error {
 	_, err := f.Normalize(val)
 	return err
 }
 
 // Validate a field
-func (f *Field) Normalize(val interface{}) (interface{}, error) {
+func (f *CollectionField) Normalize(val interface{}) (interface{}, error) {
 	switch f.Type {
 	case Document:
 		valTyped, ok := val.(map[string]interface{})
@@ -119,7 +105,7 @@ func (f *Field) Normalize(val interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("Unknown type \"%s\" defined", f.Type)
 }
 
-type FieldRelation struct {
+type CollectionFieldRelation struct {
 	ID      int64 `json:"_id,omitempty"`
 	FieldID int64 `json:"field_id,omitempty"`
 
