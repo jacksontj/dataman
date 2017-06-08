@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -30,7 +31,7 @@ func NewMetadataStore(config *DatasourceInstanceConfig) (*MetadataStore, error) 
 }
 
 type MetadataStore struct {
-	Store StorageDataInterface
+	Store datasource.DataInterface
 }
 
 // TODO: split into get/list for each item?

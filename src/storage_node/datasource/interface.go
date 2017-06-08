@@ -1,11 +1,11 @@
-package storagenode
+package datasource
 
 import (
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-func DirectMetaFunc(schema StorageSchemaInterface) metadata.MetaFunc {
+func DirectMetaFunc(schema SchemaInterface) metadata.MetaFunc {
 	return func() *metadata.Meta {
 		m := &metadata.Meta{}
 
@@ -20,7 +20,7 @@ func DirectMetaFunc(schema StorageSchemaInterface) metadata.MetaFunc {
 // anything (meaning the underlying datasource_instance_shard_instance would be a superset
 // of the schema passed in-- useful for schema migrations)
 // Schema interface to the underlying datastore
-type StorageSchemaInterface interface {
+type SchemaInterface interface {
 	ListDatabase() []*metadata.Database
 	GetDatabase(dname string) *metadata.Database
 	AddDatabase(db *metadata.Database) error
@@ -59,7 +59,7 @@ type StorageSchemaInterface interface {
 // a batch or something similar
 
 // Storage data interface for handling all the queries etc
-type StorageDataInterface interface {
+type DataInterface interface {
 	// TODO: rename
 	Init(metadata.MetaFunc, map[string]interface{}) error
 	Get(query.QueryArgs) *query.Result

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -19,35 +20,35 @@ func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstanc
 		return nil, err
 	}
 
-	datasource := &DatasourceInstance{
+	datasourceInstance := &DatasourceInstance{
 		Config:    config,
 		MetaStore: metaStore,
 		syncChan:  make(chan chan error),
 	}
-	go datasource.background()
+	go datasourceInstance.background()
 
-	if err := datasource.Sync(); err != nil {
+	if err := datasourceInstance.Sync(); err != nil {
 		return nil, err
 	}
 
-	datasource.Store, err = config.GetStore(datasource.GetActiveMeta)
+	datasourceInstance.Store, err = config.GetStore(datasourceInstance.GetActiveMeta)
 	if err != nil {
 		return nil, err
 	}
 
-	if StoreSchema, ok := datasource.Store.(StorageSchemaInterface); ok {
-		datasource.StoreSchema = StoreSchema
+	if StoreSchema, ok := datasourceInstance.Store.(datasource.SchemaInterface); ok {
+		datasourceInstance.StoreSchema = StoreSchema
 	}
 
-	return datasource, nil
+	return datasourceInstance, nil
 }
 
 type DatasourceInstance struct {
 	Config    *DatasourceInstanceConfig
 	MetaStore *MetadataStore
 
-	StoreSchema StorageSchemaInterface
-	Store       StorageDataInterface
+	StoreSchema datasource.SchemaInterface
+	Store       datasource.DataInterface
 
 	// All metadata
 	meta atomic.Value

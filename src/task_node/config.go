@@ -3,20 +3,20 @@ package tasknode
 import (
 	"fmt"
 
-	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 // Common configuration for all storage nodes
 type Config struct {
 	// Config for accessing metadata store
-	MetaStoreType   storagenode.StorageType `yaml:"metastore_type"`
-	MetaStoreConfig map[string]interface{}  `yaml:"metastore_config"`
+	MetaStoreType   datasource.StorageType `yaml:"metastore_type"`
+	MetaStoreConfig map[string]interface{} `yaml:"metastore_config"`
 
 	HTTP HTTPApiConfig `yaml:"http_api"`
 }
 
-func (c *Config) GetMetaStore(metaFunc metadata.MetaFunc) (storagenode.StorageDataInterface, error) {
+func (c *Config) GetMetaStore(metaFunc metadata.MetaFunc) (datasource.DataInterface, error) {
 	node := c.MetaStoreType.Get()
 	if node == nil {
 		return nil, fmt.Errorf("Invalid storage_type defined: %s", c.MetaStoreType)

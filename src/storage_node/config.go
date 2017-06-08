@@ -1,6 +1,7 @@
 package storagenode
 
 import "github.com/jacksontj/dataman/src/storage_node/metadata"
+import "github.com/jacksontj/dataman/src/storage_node/datasource"
 import "fmt"
 
 // Common configuration for all storage nodes
@@ -17,11 +18,11 @@ type HTTPApiConfig struct {
 
 type DatasourceInstanceConfig struct {
 	// TODO: Rename to driver? Need a consistent name for this
-	StorageNodeType StorageType            `yaml:"storage_type"`
+	StorageNodeType datasource.StorageType `yaml:"storage_type"`
 	StorageConfig   map[string]interface{} `yaml:"storage_config"`
 }
 
-func (c *DatasourceInstanceConfig) GetStore(metaFunc metadata.MetaFunc) (StorageDataInterface, error) {
+func (c *DatasourceInstanceConfig) GetStore(metaFunc metadata.MetaFunc) (datasource.DataInterface, error) {
 	node := c.StorageNodeType.Get()
 	if node == nil {
 		return nil, fmt.Errorf("Invalid storage_type defined: %s", c.StorageNodeType)

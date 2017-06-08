@@ -1,4 +1,4 @@
-package storagenode
+package datasource
 
 // A collection of benchmarks to test the storagenode interface
 

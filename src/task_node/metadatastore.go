@@ -9,6 +9,7 @@ import (
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -33,7 +34,7 @@ func NewMetadataStore(config *storagenode.DatasourceInstanceConfig) (*MetadataSt
 }
 
 type MetadataStore struct {
-	Store storagenode.StorageDataInterface
+	Store datasource.DataInterface
 }
 
 // TODO: this should ideally load exactly *one* of any given record into a struct. This

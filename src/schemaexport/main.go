@@ -16,6 +16,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	flags "github.com/jessevdk/go-flags"
 )
@@ -52,7 +53,7 @@ func main() {
 	// Note: since we are soely doing schema *export* we don't define a meta func
 	// this means that all writes will fail as there is no schema to compare to
 	store, err := datasourceInstanceConfig.GetStore(nil)
-	storeSchema := store.(storagenode.StorageSchemaInterface)
+	storeSchema := store.(datasource.SchemaInterface)
 
 	for _, databasename := range opts.Databases {
 		meta.Databases[databasename] = storeSchema.GetDatabase(databasename)
