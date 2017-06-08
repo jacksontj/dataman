@@ -22,16 +22,7 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		maxSize := 255
 
 		// TODO: have options to set limits? Or always use text fields?
-		if size, ok := field.TypeArgs["size"]; ok {
-			switch typedSize := size.(type) {
-			case float64:
-				maxSize = int(typedSize)
-			case int64:
-				maxSize = int(typedSize)
-			default:
-				return "", fmt.Errorf("Unsupported type %s for string size", typedSize)
-			}
-		}
+		// TODO: this is where we want to use datasource_field_type and datasource_field_type_args
 
 		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
 	case metadata.Int:
@@ -313,7 +304,6 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 	fields := make([]*metadata.CollectionField, len(fieldRecords))
 	for i, fieldEntry := range fieldRecords {
 		var fieldType metadata.DatamanType
-		fieldTypeArgs := make(map[string]interface{})
 		switch fieldEntry["data_type"] {
 		case "integer":
 			fieldType = metadata.Int
@@ -334,15 +324,11 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
 		}
 
-		if maxSize, ok := fieldEntry["character_maximum_length"]; ok && maxSize != nil {
-			fieldTypeArgs["size"] = maxSize
-		}
-
+		// TODO: generate the datasource_field_type from the size etc.
 		field := &metadata.CollectionField{
-			Name:     fieldEntry["column_name"].(string),
-			Type:     fieldType,
-			TypeArgs: fieldTypeArgs,
-			NotNull:  fieldEntry["is_nullable"].(string) == "NO",
+			Name:    fieldEntry["column_name"].(string),
+			Type:    fieldType,
+			NotNull: fieldEntry["is_nullable"].(string) == "NO",
 		}
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"

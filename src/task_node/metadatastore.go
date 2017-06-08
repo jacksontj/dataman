@@ -583,9 +583,6 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 			Type:           storagenodemetadata.DatamanType(collectionFieldRecord["field_type"].(string)),
 			ProvisionState: storagenodemetadata.ProvisionState(collectionFieldRecord["provision_state"].(int64)),
 		}
-		if fieldTypeArgs, ok := collectionFieldRecord["field_type_args"]; ok && fieldTypeArgs != nil {
-			field.TypeArgs = fieldTypeArgs.(map[string]interface{})
-		}
 		if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
 			field.NotNull = collectionFieldRecord["not_null"].(bool)
 		}
@@ -2098,7 +2095,6 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 		"name":            field.Name,
 		"collection_id":   collection.ID,
 		"field_type":      field.Type,
-		"field_type_args": field.TypeArgs,
 		"not_null":        field.NotNull,
 		"provision_state": field.ProvisionState,
 	}
