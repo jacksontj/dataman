@@ -1,6 +1,7 @@
 package metadata
 
 import "encoding/json"
+import "fmt"
 
 func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 	if field.ProvisionState != Active {
@@ -65,7 +66,32 @@ func (f *CollectionField) Validate(val interface{}) error {
 // Validate a field
 func (f *CollectionField) Normalize(val interface{}) (interface{}, error) {
 	// TODO: add in constraints etc. for now we'll just normalize the type
-	return f.FieldType.Normalize(val)
+	normalizedVal, err := f.FieldType.Normalize(val)
+	if err != nil {
+		return normalizedVal, err
+	}
+
+	if f.SubFields != nil {
+		if f.FieldType.DatamanType != Document {
+			return normalizedVal, fmt.Errorf("Subfields on a non-document type")
+		}
+		mapVal := normalizedVal.(map[string]interface{})
+		for k, subField := range f.SubFields {
+			// TODO: config options for strictness
+			subValue, ok := mapVal[k]
+			if !ok {
+				if subField.NotNull {
+					return normalizedVal, fmt.Errorf("Subfield %s missing", k)
+				}
+			} else {
+				mapVal[k], err = subField.Normalize(subValue)
+				if err != nil {
+					return normalizedVal, fmt.Errorf("Error normalizing subfield %s: %v", k, err)
+				}
+			}
+		}
+	}
+	return normalizedVal, nil
 }
 
 type CollectionFieldRelation struct {

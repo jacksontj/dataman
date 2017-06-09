@@ -6,8 +6,9 @@ func NewMeta() *Meta {
 	return &Meta{
 		Databases: make(map[string]*Database),
 
-		Fields:            make(map[int64]*CollectionField),
-		Collections:       make(map[int64]*Collection),
+		Fields:      make(map[int64]*CollectionField),
+		Collections: make(map[int64]*Collection),
+		// TODO: move out of metadata (not tied to database definitions etc.)
 		FieldTypeRegistry: FieldTypeRegistry,
 	}
 }

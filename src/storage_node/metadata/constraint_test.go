@@ -1,10 +1,16 @@
 package metadata
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 )
+
+type constraintTestValue struct {
+	Type  DatamanType
+	Value interface{}
+	Size  int
+}
+
+// size
 
 func TestConstraint_LessThan(t *testing.T) {
 	constraintFunc, err := LessThan.GetConstraintFunc(
@@ -29,7 +35,4 @@ func TestConstraint_LessThan(t *testing.T) {
 		}
 	}
 
-	b, err := json.Marshal(ConstraintTypes)
-	fmt.Println(err)
-	t.Fatalf(string(b))
 }

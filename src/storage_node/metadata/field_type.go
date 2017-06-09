@@ -51,7 +51,7 @@ type FieldType struct {
 
 // Validate and normalize
 func (f *FieldType) Normalize(val interface{}) (interface{}, error) {
-	normalizedVal, err := f.Normalize(val)
+	normalizedVal, err := f.DatamanType.Normalize(val)
 	if err != nil {
 		return normalizedVal, err
 	}

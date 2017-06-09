@@ -19,7 +19,7 @@ func (f *fieldValidationCase) Test(t *testing.T) {
 	// Check the negative cases
 	for _, val := range f.badValues {
 		if err := f.field.Validate(val); err == nil {
-			t.Errorf("No error validating a bad value: %v", val)
+			t.Errorf("No error validating a bad value: %v\n%v", val, f)
 		}
 	}
 }
@@ -27,24 +27,29 @@ func (f *fieldValidationCase) Test(t *testing.T) {
 func TestFieldValidation_Document(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type: Document,
+			Type:      "_document",
+			FieldType: FieldTypeRegistry["_document"],
 			SubFields: map[string]*CollectionField{
 				"name": &CollectionField{
-					Name:    "name",
-					Type:    String,
-					NotNull: true,
+					Name:      "name",
+					Type:      "_string",
+					FieldType: FieldTypeRegistry["_string"],
+					NotNull:   true,
 				},
 				"number": &CollectionField{
-					Name: "number",
-					Type: Int,
+					Name:      "number",
+					Type:      "_int",
+					FieldType: FieldTypeRegistry["_int"],
 				},
 				"subDoc": &CollectionField{
-					Type: Document,
+					Type:      "_document",
+					FieldType: FieldTypeRegistry["_document"],
 					SubFields: map[string]*CollectionField{
 						"name": &CollectionField{
-							Name:    "name",
-							Type:    String,
-							NotNull: true,
+							Name:      "name",
+							Type:      String,
+							FieldType: FieldTypeRegistry["_string"],
+							NotNull:   true,
 						},
 					},
 				},
@@ -87,7 +92,8 @@ func TestFieldValidation_Document(t *testing.T) {
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type: String,
+			Type:      String,
+			FieldType: FieldTypeRegistry["_string"],
 		},
 		goodValues: []interface{}{
 			"foo",
@@ -95,7 +101,6 @@ func TestFieldValidation_String(t *testing.T) {
 			"",
 		},
 		badValues: []interface{}{
-			"AstringThatisWayTooLong", // String which is too long
 			1,   // a number
 			nil, // nil
 		},
@@ -106,7 +111,8 @@ func TestFieldValidation_String(t *testing.T) {
 func TestFieldValidation_Int(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type: Int,
+			Type:      Int,
+			FieldType: FieldTypeRegistry["_int"],
 		},
 		goodValues: []interface{}{
 			0,
@@ -125,7 +131,8 @@ func TestFieldValidation_Int(t *testing.T) {
 func TestFieldValidation_Bool(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type: Bool,
+			Type:      Bool,
+			FieldType: FieldTypeRegistry["_bool"],
 		},
 		goodValues: []interface{}{
 			true,

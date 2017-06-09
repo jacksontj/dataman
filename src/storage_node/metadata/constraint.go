@@ -8,66 +8,48 @@ type ConstraintInstance struct {
 	Func ConstraintFunc         `json:"-"`
 }
 
-// Map args for each ConstraintType
-var ConstraintTypes map[ConstraintType]map[string]DatamanType
-
-func init() {
-	// TODO: support N datamanTypes per constraint type
-	ConstraintTypes = map[ConstraintType]map[string]DatamanType{
-		// TODO: pull these into structs? I don't really like this methodology-- not very pluggable
-		LessThan: map[string]DatamanType{
-			"value": Int,
-		},
-		LessThanEqual: map[string]DatamanType{
-			"value": Int,
-		},
-		GreaterThan: map[string]DatamanType{},
-	}
-}
-
 type ConstraintFunc func(interface{}) bool
 
 type ConstraintType string
 
 const (
-	LessThan      ConstraintType = "lt"
-	LessThanEqual                = "lte"
-	GreaterThan                  = "gt"
+	LessThan         ConstraintType = "lt"
+	LessThanEqual                   = "lte"
+	GreaterThan                     = "gt"
+	GreaterThanEqual                = "gte"
+	Equal                           = "equal"
+	NotEqual                        = "notequal"
+	InSet                           = "inset"
+	NotInSet                        = "notinset"
 )
 
-// TODO: error if there are too many args
-func (c ConstraintType) NormalizeArgs(args map[string]interface{}) error {
-	typeMap, ok := ConstraintTypes[c]
-	if !ok {
-		return nil
-	}
-
-	for k, datamanType := range typeMap {
-		if currentValue, ok := args[k]; ok {
-			normalizedVal, err := datamanType.Normalize(currentValue)
-			if err != nil {
-				return err
-			}
-			args[k] = normalizedVal
-		} else {
-			return fmt.Errorf("Missing arg %s", k)
-		}
-	}
-	return nil
-}
+// Things we need to define:
+//  - supported inputTypes (more than one)
+//  - args (and the types we allow for them)
+//      - some args need to match the inputType (value we are comparing to)
 
 // Return "validationFunc, error"
 func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType DatamanType) (ConstraintFunc, error) {
-	c.NormalizeArgs(args)
 
 	switch c {
 	case LessThan:
-		value := args["value"]
+		value, ok := args["value"]
+		if !ok {
+			return nil, fmt.Errorf("Missing arg value")
+		}
+		var intType DatamanType
+		intType = Int
+		value, err := intType.Normalize(value)
+		if err != nil {
+			return nil, err
+		}
 		switch inputType {
 		case Int:
 			return func(v interface{}) bool {
 				return v.(int) < value.(int)
 			}, nil
+		case Text:
+			fallthrough
 		case String:
 			return func(v interface{}) bool {
 				return len(v.(string)) < value.(int)
@@ -76,12 +58,23 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 			return nil, fmt.Errorf("Unsupported inputType %s", inputType)
 		}
 	case LessThanEqual:
-		value := args["value"]
+		value, ok := args["value"]
+		if !ok {
+			return nil, fmt.Errorf("Missing arg value")
+		}
+		var intType DatamanType
+		intType = Int
+		value, err := intType.Normalize(value)
+		if err != nil {
+			return nil, err
+		}
 		switch inputType {
 		case Int:
 			return func(v interface{}) bool {
 				return v.(int) <= value.(int)
 			}, nil
+		case Text:
+			fallthrough
 		case String:
 			return func(v interface{}) bool {
 				return len(v.(string)) <= value.(int)
@@ -89,7 +82,14 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		default:
 			return nil, fmt.Errorf("Unsupported inputType %s", inputType)
 		}
-
+		/*
+			GreaterThan:
+			GreaterThanEqual:
+			Equal:
+			NotEqual:
+			InSet:
+			NotInSet:
+		*/
 	}
 	return nil, fmt.Errorf("Unknown contraint type %s", c)
 }

@@ -21,7 +21,8 @@ const (
 	// TODO: int64
 	// TODO: uint
 	// TODO: uint64
-	Bool     = "bool"
+	Bool = "bool"
+	// TODO: actually implement
 	DateTime = "datetime"
 )
 
