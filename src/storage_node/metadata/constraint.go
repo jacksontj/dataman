@@ -28,6 +28,10 @@ const (
 //  - args (and the types we allow for them)
 //      - some args need to match the inputType (value we are comparing to)
 
+// IDEA
+// Set list of arguments-- not all of them use them -- so we hard-code that "value" will mirror the "inputTYpe"
+//      similarly value_list and/or value_set.
+
 // Return "validationFunc, error"
 func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType DatamanType) (ConstraintFunc, error) {
 

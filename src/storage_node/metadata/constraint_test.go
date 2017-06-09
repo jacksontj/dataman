@@ -4,10 +4,70 @@ import (
 	"testing"
 )
 
+var constraintTestValues []*constraintTestValue
+
+func init() {
+	constraintTestValues = []*constraintTestValue{
+		// TODO:
+		//&constraintTestValue{
+		//	Type: Document,
+		//	Value: "foobar",
+		//	Size: 6,
+		//},
+		&constraintTestValue{
+			Type:  String,
+			Value: "foobar",
+			Size:  6,
+		},
+		&constraintTestValue{
+			Type:  Text,
+			Value: "somethinglongerimsure",
+			Size:  22,
+		},
+		&constraintTestValue{
+			Type:  Int,
+			Value: 100,
+			Size:  100,
+		},
+		// TODO
+		//&constraintTestValue{
+		//	Type: Bool,
+		//	Value: true,
+		//},
+		// TODO
+		//&constraintTestValue{
+		//	Type: String,
+		//	Value: "foobar",
+		//	Size: 6,
+		//},
+	}
+}
+
 type constraintTestValue struct {
 	Type  DatamanType
 	Value interface{}
 	Size  int
+}
+
+func TestConstraint_Loop(t *testing.T) {
+	for _, constraintValue := range constraintTestValues {
+		for _, inputValue := range constraintTestValues {
+			args := map[string]interface{}{"value": constraintValue.Value}
+			f, err := LessThan.GetConstraintFunc(args, inputValue.Type)
+
+			if constraintValue.Type == inputValue.Type {
+				if err != nil {
+					t.Errorf("Error creating valid constraint: %v", err)
+				} else {
+					f(inputValue.Value)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("No error when creating invalid constraint: constraintValue=%v inputValue=%v", constraintValue, inputValue)
+				}
+			}
+		}
+	}
 }
 
 // size

@@ -165,11 +165,14 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Verify that referenced datastores exist
 	for _, databaseDatastore := range db.Datastores {
-		if databaseDatastore.Datastore.ID == 0 {
+		fmt.Println(databaseDatastore)
+		if databaseDatastore.DatastoreID == 0 {
 			return fmt.Errorf("Unknown datastore (missing ID): %v", databaseDatastore)
 		}
-		if _, ok := meta.Datastore[databaseDatastore.Datastore.ID]; !ok {
+		if datastore, ok := meta.Datastore[databaseDatastore.DatastoreID]; !ok {
 			return fmt.Errorf("Unknown datastore (ID %d not found): %v", databaseDatastore.Datastore.ID, databaseDatastore)
+		} else {
+			databaseDatastore.Datastore = datastore
 		}
 	}
 
@@ -496,7 +499,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 			if err != nil {
 				return err
 			}
-			return fmt.Errorf(string(body))
+			return fmt.Errorf(datasourceInstance.GetBaseURL() + string(body))
 		}
 
 		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)

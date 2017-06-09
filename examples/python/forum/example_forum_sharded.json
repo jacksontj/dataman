@@ -8,7 +8,7 @@
 					"subfields": {
 						"content": {
 							"not_null": true,
-							"type": "string",
+							"field_type": "_string",
 							"name": "content",
 							"type_args": {
 								"size": 255
@@ -16,7 +16,7 @@
 						},
 						"thread_id": {
 							"not_null": true,
-							"type": "int",
+							"field_type": "_int",
 							"name": "thread_id",
 							"relation": {
 							    "collection": "thread",
@@ -25,7 +25,7 @@
 						},
 						"created_by": {
 							"not_null": true,
-							"type": "string",
+							"field_type": "_string",
 							"name": "created_by",
 							"type_args": {
 								"size": 255
@@ -33,11 +33,11 @@
 						},
 						"created": {
 							"not_null": true,
-							"type": "int",
+							"field_type": "_int",
 							"name": "created"
 						}
 					},
-					"type": "document",
+					"field_type": "_document",
 					"name": "data"
 				}
 			},
@@ -61,7 +61,7 @@
 			"fields": {
 				"username": {
 					"not_null": true,
-					"type": "string",
+					"field_type": "_string",
 					"name": "username",
 					"type_args": {
 						"size": 128
@@ -91,12 +91,12 @@
 					"subfields": {
 						"created": {
 							"not_null": true,
-							"type": "int",
+							"field_type": "_int",
 							"name": "created"
 						},
 						"created_by": {
 							"not_null": true,
-							"type": "string",
+							"field_type": "_string",
 							"name": "created_by",
 							"type_args": {
 								"size": 255
@@ -104,14 +104,14 @@
 						},
 						"title": {
 							"not_null": true,
-							"type": "string",
+							"field_type": "_string",
 							"name": "title",
 							"type_args": {
 								"size": 255
 							}
 						}
 					},
-					"type": "document",
+					"field_type": "_document",
 					"name": "data"
 				}
 			},
@@ -139,7 +139,7 @@
     "datastores": [{
 		"read": true,
 		"write": true,
-        "datastore_id": 2,
+        "datastore_id": 54,
 		"required": true
 	}],
 	"database_vshard": {

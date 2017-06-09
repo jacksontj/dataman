@@ -1149,11 +1149,6 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Da
 				if existingDatastoreShard.Instance == datastoreShard.Instance {
 					datastoreShard.ID = existingDatastoreShard.ID
 					for existingDatastoreShardReplica := range existingDatastoreShard.Replicas.IterReplica() {
-						fmt.Println("a", existingDatastoreShardReplica)
-						fmt.Println("b", existingDatastoreShardReplica.DatasourceInstance)
-						fmt.Println("c", datastoreShardReplica)
-						fmt.Println("d", datastoreShardReplica.DatasourceInstanceID)
-
 						if existingDatastoreShardReplica.DatasourceInstance.ID == datastoreShardReplica.DatasourceInstanceID {
 							datastoreShardReplica.ID = existingDatastoreShardReplica.ID
 							break
