@@ -1,5 +1,7 @@
 package metadata
 
+import "encoding/json"
+
 func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 	if field.ProvisionState != Active {
 		field.ProvisionState = state
@@ -14,10 +16,13 @@ func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 type CollectionField struct {
 	ID int64 `json:"_id,omitempty"`
 	// TODO: remove? Need a method to link them
-	CollectionID  int64       `json:"-"`
-	ParentFieldID int64       `json:"-"`
-	Name          string      `json:"name"`
-	Type          DatamanType `json:"type"`
+	CollectionID  int64  `json:"-"`
+	ParentFieldID int64  `json:"-"`
+	Name          string `json:"name"`
+	// TODO: define a type for this?
+	Type      string     `json:"field_type"`
+	FieldType *FieldType `json:"-"`
+	// TODO: have link to the actual type struct
 
 	// Various configuration options
 	NotNull bool `json:"not_null,omitempty"` // Should we allow NULL fields
@@ -29,6 +34,22 @@ type CollectionField struct {
 	Relation *CollectionFieldRelation `json:"relation,omitempty"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (f *CollectionField) UnmarshalJSON(data []byte) error {
+	type Alias CollectionField
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(f),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	f.FieldType = FieldTypeRegistry[f.Type]
+
+	return nil
 }
 
 func (f *CollectionField) Equal(o *CollectionField) bool {
@@ -44,7 +65,7 @@ func (f *CollectionField) Validate(val interface{}) error {
 // Validate a field
 func (f *CollectionField) Normalize(val interface{}) (interface{}, error) {
 	// TODO: add in constraints etc. for now we'll just normalize the type
-	return f.Type.Normalize(val)
+	return f.FieldType.Normalize(val)
 }
 
 type CollectionFieldRelation struct {

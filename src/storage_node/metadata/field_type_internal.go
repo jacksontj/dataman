@@ -38,5 +38,16 @@ func listInternalFieldTypes() []*FieldType {
 				},
 			},
 		},
+
+		&FieldType{
+			Name:        "phone number",
+			DatamanType: String,
+			Constraints: []*ConstraintInstance{
+				&ConstraintInstance{
+					Type: LessThanEqual,
+					Args: map[string]interface{}{"value": 10},
+				},
+			},
+		},
 	}
 }

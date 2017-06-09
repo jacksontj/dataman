@@ -18,6 +18,9 @@ func init() {
 		LessThan: map[string]DatamanType{
 			"value": Int,
 		},
+		LessThanEqual: map[string]DatamanType{
+			"value": Int,
+		},
 		GreaterThan: map[string]DatamanType{},
 	}
 }
@@ -27,8 +30,9 @@ type ConstraintFunc func(interface{}) bool
 type ConstraintType string
 
 const (
-	LessThan    ConstraintType = "lt"
-	GreaterThan                = "gt"
+	LessThan      ConstraintType = "lt"
+	LessThanEqual                = "lte"
+	GreaterThan                  = "gt"
 )
 
 // TODO: error if there are too many args
@@ -63,6 +67,24 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		case Int:
 			return func(v interface{}) bool {
 				return v.(int) < value.(int)
+			}, nil
+		case String:
+			return func(v interface{}) bool {
+				return len(v.(string)) < value.(int)
+			}, nil
+		default:
+			return nil, fmt.Errorf("Unsupported inputType %s", inputType)
+		}
+	case LessThanEqual:
+		value := args["value"]
+		switch inputType {
+		case Int:
+			return func(v interface{}) bool {
+				return v.(int) <= value.(int)
+			}, nil
+		case String:
+			return func(v interface{}) bool {
+				return len(v.(string)) <= value.(int)
 			}, nil
 		default:
 			return nil, fmt.Errorf("Unsupported inputType %s", inputType)

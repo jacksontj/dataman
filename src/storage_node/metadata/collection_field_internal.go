@@ -5,11 +5,14 @@ var InternalFieldPrefix = "_"
 var InternalFields map[string]*CollectionField
 
 func init() {
+	initFieldTypeRegistry()
 	tmpFields := []*CollectionField{
 		&CollectionField{
-			Name:    "_id",
-			Type:    Int,
-			NotNull: true,
+			Name: "_id",
+			// TODO: better
+			Type:      "_int",
+			FieldType: FieldTypeRegistry["_int"],
+			NotNull:   true,
 		},
 
 		// TODO: add

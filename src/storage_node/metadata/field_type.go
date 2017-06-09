@@ -18,6 +18,13 @@ import (
 var FieldTypeRegistry map[string]*FieldType
 
 func init() {
+	initFieldTypeRegistry()
+}
+
+func initFieldTypeRegistry() {
+	if FieldTypeRegistry != nil {
+		return
+	}
 	FieldTypeRegistry = map[string]*FieldType{}
 
 	for _, fieldType := range listInternalFieldTypes() {
@@ -40,7 +47,6 @@ type FieldType struct {
 	Name        string                `json:"name"`
 	DatamanType DatamanType           `json:"dataman_type"`
 	Constraints []*ConstraintInstance `json:"constraints,omitempty"`
-	//DatasourceFieldType map[string]
 }
 
 // Validate and normalize
@@ -61,39 +67,7 @@ func (f *FieldType) Normalize(val interface{}) (interface{}, error) {
 	return normalizedVal, nil
 }
 
-/*
-
-{
-    "name": "age",
-    "dataman_type": "int",
-    "constraints": [{
-        "type": "<",
-        "args": {
-            "value": 100
-        }
-    }],
-    "datasource_field_type": {
-        "1": {
-            "type": "smallint",
-            "args": {
-                "size": 2
-            }
-        }
-    }
+func (f *FieldType) Equal(o *FieldType) bool {
+	// TODO: also compare constraints
+	return f.Name == o.Name && f.DatamanType == o.DatamanType
 }
-
-{
-     "name": "phone number",
-     "dataman_type": "string",
-     "datasource_field_type": {
-         "1": {
-             "type": "character varying",
-             "args": {
-                 "size": 10
-             }
-         }
-     }
- }
-
-
-*/

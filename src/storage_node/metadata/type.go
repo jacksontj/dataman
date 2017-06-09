@@ -14,7 +14,7 @@ type DatamanType string
 
 const (
 	Document DatamanType = "document"
-	String               = "string"	// max len 4096
+	String               = "string" // max len 4096
 	Text                 = "text"
 	// We should support converting anything to an int that doesn't lose data
 	Int = "int"
@@ -24,6 +24,14 @@ const (
 	Bool     = "bool"
 	DateTime = "datetime"
 )
+
+// TODO: have this register the type? Right now this assumes this is in-sync with field_type_internal.go (which is bad to do)
+func (f DatamanType) ToFieldType() *FieldType {
+	return &FieldType{
+		Name:        "_" + string(f),
+		DatamanType: f,
+	}
+}
 
 // Normalize the given interface into what we want/expect
 func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
@@ -74,3 +82,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 	}
 	return nil, fmt.Errorf("Unknown type \"%s\" defined", f)
 }
+
+// TODO: have method which will reflect type to determine dataman type
+// then we can have the datasources just call the method with the largest thing
+// they can store in a given field type to determine the closest dataman_type

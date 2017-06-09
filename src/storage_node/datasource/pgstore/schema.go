@@ -13,18 +13,11 @@ import (
 func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	fieldStr := ""
 
-	switch field.Type {
+	switch field.FieldType.DatamanType {
 	case metadata.Document:
 		fieldStr += "\"" + field.Name + "\" jsonb"
 	case metadata.String:
-		// TODO: move to config
-		// Default value
-		maxSize := 255
-
-		// TODO: have options to set limits? Or always use text fields?
-		// TODO: this is where we want to use datasource_field_type and datasource_field_type_args
-
-		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
+		fieldStr += "\"" + field.Name + "\" character varying(255)"
 	case metadata.Text:
 		fieldStr += "\"" + field.Name + "\" text"
 	case metadata.Int:
@@ -305,32 +298,35 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 	fields := make([]*metadata.CollectionField, len(fieldRecords))
 	for i, fieldEntry := range fieldRecords {
-		var fieldType metadata.DatamanType
+		var datamanType metadata.DatamanType
 		switch fieldEntry["data_type"] {
 		case "integer":
-			fieldType = metadata.Int
+			datamanType = metadata.Int
 		case "character varying":
-			fieldType = metadata.String
+			datamanType = metadata.String
 		// TODO: do we want to do this based on size?
 		case "smallint":
-			fieldType = metadata.Int
+			datamanType = metadata.Int
 		case "jsonb":
-			fieldType = metadata.Document
+			datamanType = metadata.Document
 		case "boolean":
-			fieldType = metadata.Bool
+			datamanType = metadata.Bool
 		case "text":
-			fieldType = metadata.Text
+			datamanType = metadata.Text
 		case "timestamp without time zone":
-			fieldType = metadata.DateTime
+			datamanType = metadata.DateTime
 		default:
 			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
 		}
 
+		fieldType := datamanType.ToFieldType()
+
 		// TODO: generate the datasource_field_type from the size etc.
 		field := &metadata.CollectionField{
-			Name:    fieldEntry["column_name"].(string),
-			Type:    fieldType,
-			NotNull: fieldEntry["is_nullable"].(string) == "NO",
+			Name:      fieldEntry["column_name"].(string),
+			Type:      fieldType.Name,
+			FieldType: fieldType,
+			NotNull:   fieldEntry["is_nullable"].(string) == "NO",
 		}
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
@@ -527,7 +523,7 @@ func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metad
 			if !ok {
 				return fmt.Errorf("Index %s on unknown field %s", index.Name, fieldName)
 			}
-			if field.Type != metadata.Document {
+			if field.FieldType.DatamanType != metadata.Document {
 				return fmt.Errorf("Nested index %s on a non-document field %s", index.Name, fieldName)
 			}
 			indexAddQuery += "(" + fieldParts[0]
