@@ -49,24 +49,27 @@ type constraintTestValue struct {
 	Size  int
 }
 
-func TestConstraint_Loop(t *testing.T) {
-	for _, constraintValue := range constraintTestValues {
-		for _, inputValue := range constraintTestValues {
-			args := map[string]interface{}{"value": constraintValue.Value}
-			f, err := LessThan.GetConstraintFunc(args, inputValue.Type)
-
-			if constraintValue.Type == inputValue.Type {
-				if err != nil {
-					t.Errorf("Error creating valid constraint: %v", err)
-				} else {
-					f(inputValue.Value)
-				}
-			} else {
-				if err == nil {
-					t.Errorf("No error when creating invalid constraint: constraintValue=%v inputValue=%v", constraintValue, inputValue)
-				}
+// TODO: reuse for bench?
+func TestConstraint(t *testing.T) {
+	for constraintType, constraintArgMap := range Constraints {
+		// For every constraint
+		t.Run(string(constraintType), func(t *testing.T) {
+			for inputType, _ := range constraintArgMap {
+				t.Run(string(inputType), func(t *testing.T) {
+					for _, inputValue := range constraintTestValues {
+						// TODO: test error cases
+						if inputValue.Type != inputType {
+							continue
+						}
+						args := map[string]interface{}{"value": inputValue.Value}
+						_, err := constraintType.GetConstraintFunc(args, inputType)
+						if err != nil {
+							t.Fatalf("Error getting valid constraint: %v", err)
+						}
+					}
+				})
 			}
-		}
+		})
 	}
 }
 
