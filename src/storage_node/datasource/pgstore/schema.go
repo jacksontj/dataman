@@ -25,6 +25,8 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		// TODO: this is where we want to use datasource_field_type and datasource_field_type_args
 
 		fieldStr += "\"" + field.Name + fmt.Sprintf("\" character varying(%d)", maxSize)
+	case metadata.Text:
+		fieldStr += "\"" + field.Name + "\" text"
 	case metadata.Int:
 		fieldStr += "\"" + field.Name + "\" int"
 	case metadata.Bool:
@@ -317,7 +319,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		case "boolean":
 			fieldType = metadata.Bool
 		case "text":
-			fieldType = metadata.String
+			fieldType = metadata.Text
 		case "timestamp without time zone":
 			fieldType = metadata.DateTime
 		default:

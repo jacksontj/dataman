@@ -74,7 +74,7 @@ func (f *FieldType) Normalize(val interface{}) (interface{}, error) {
     }],
     "datasource_field_type": {
         "1": {
-            "type": "int",
+            "type": "smallint",
             "args": {
                 "size": 2
             }

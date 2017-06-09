@@ -14,7 +14,8 @@ type DatamanType string
 
 const (
 	Document DatamanType = "document"
-	String               = "string"
+	String               = "string"	// max len 4096
+	Text                 = "text"
 	// We should support converting anything to an int that doesn't lose data
 	Int = "int"
 	// TODO: int64
@@ -38,6 +39,16 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		s, ok := val.(string)
 		if !ok {
 			return nil, fmt.Errorf("Not a string")
+		}
+		// TODO: default, code this out somewhere
+		if len(s) > 4096 {
+			return nil, fmt.Errorf("String too long!")
+		}
+		return s, nil
+	case Text:
+		s, ok := val.(string)
+		if !ok {
+			return nil, fmt.Errorf("Not text")
 		}
 		return s, nil
 	case Int:

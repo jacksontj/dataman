@@ -12,6 +12,7 @@ type ConstraintInstance struct {
 var ConstraintTypes map[ConstraintType]map[string]DatamanType
 
 func init() {
+	// TODO: support N datamanTypes per constraint type
 	ConstraintTypes = map[ConstraintType]map[string]DatamanType{
 		// TODO: pull these into structs? I don't really like this methodology-- not very pluggable
 		LessThan: map[string]DatamanType{

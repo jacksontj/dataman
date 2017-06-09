@@ -24,7 +24,7 @@ func listInternalFieldTypes() []*FieldType {
 		},
 		&FieldType{
 			Name:        "_text",
-			DatamanType: String,
+			DatamanType: Text,
 		},
 
 		// TODO: move out to database?
