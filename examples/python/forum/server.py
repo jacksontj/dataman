@@ -43,19 +43,46 @@ class DatamanClient(object):
         self.base_url = base_url
 
     @tornado.gen.coroutine
-    def get(self, db, collection, _id):
+    def get(self, db, collection, _id, join_fields=None):
+
+        request = {
+            'db': db,
+            'collection': collection,
+            '_id': _id,
+        }
+        if join_fields:
+            request['join'] = join_fields
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([
-            {'get': {
-                'db': db,
-                'collection': collection,
-                '_id': _id,
-            }}])
+            body=json.dumps([{'get': request}])
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
+        response = json.loads(ret.body)[0]
+        if 'error' in response:
+            raise Exception(response['error'])
+        # TODO: handle errors?
+        items = []
+        raise tornado.gen.Return(response['return'])
+
+    @tornado.gen.coroutine
+    def set(self, db, collection, record, join_fields=None):
+
+        request = {
+            'db': db,
+            'collection': collection,
+            'record': record,
+        }
+        if join_fields:
+            request['join'] = join_fields
+
+        ret = yield self._client.fetch(
+            self.base_url+'/v1/data/raw',
+            method='POST',
+            body=json.dumps([{'set': request}])
+        )
+        logging.debug("dataman Set took (in seconds) " + str(ret.request_time))
         response = json.loads(ret.body)[0]
         if 'error' in response:
             raise Exception(response['error'])
@@ -188,6 +215,15 @@ class ThreadHandler(BaseHandler):
             self.redirect("/")
         else:
             messages = yield dataman.filter(schema.DBNAME, 'message', {'data': {'thread_id': thread_id}})
+            try:
+                print messages[0]['_id']
+                tmp = yield dataman.get(schema.DBNAME, 'message', messages[0]['_id'], ['data.thread_id'])
+                print 'get', tmp
+                tmp = yield dataman.set(schema.DBNAME, 'message', tmp[0], ['data.thread_id'])
+                print 'set', tmp
+            except:
+                raise
+                pass
             # TODO: sort by _created server-side
             # TODO: switch from _created -> timebased UUID
             #messages = sorted(messages, key=lambda k: k['_created'])

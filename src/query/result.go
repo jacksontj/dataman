@@ -1,5 +1,7 @@
 package query
 
+import "fmt"
+
 // Encapsulate a result from the datastore
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
@@ -39,4 +41,31 @@ func MergeResult(results ...*Result) *Result {
 	}
 
 	return combinedResult
+}
+
+func GetValue(value map[string]interface{}, nameParts []string) interface{} {
+	fmt.Printf("value=%v nameParts=%v\n", value, nameParts)
+	val := value[nameParts[0]]
+
+	for _, namePart := range nameParts[1:] {
+		val = val.(map[string]interface{})[namePart]
+	}
+	return val
+}
+
+func SetValue(value map[string]interface{}, newValue interface{}, nameParts []string) interface{} {
+	var val interface{}
+	if len(nameParts) > 1 {
+		val = value[nameParts[0]]
+		for _, namePart := range nameParts[1 : len(nameParts)-1] {
+			val = val.(map[string]interface{})[namePart]
+		}
+
+	} else {
+		val = value
+	}
+
+	val.(map[string]interface{})[nameParts[len(nameParts)-1]] = newValue
+
+	return val
 }

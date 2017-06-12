@@ -3,6 +3,7 @@ package storagenode
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -203,6 +204,46 @@ QUERYLOOP:
 				// If this is a write operation, do whatever schema validation is necessary
 				switch queryType {
 				case query.Set:
+					// TODO: somewhere else!
+					// TODO: handle the errors -- if this was a single shard we'd use transactions, but since this
+					// can potentially span *many* shards we need to determine what the failure modes will be
+					// Right now we'll support joins on sets by doing the set before we do the base set
+					if joinFieldList, ok := queryArgs["join"]; ok {
+						for _, joinFieldName := range joinFieldList.([]interface{}) {
+							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
+							// Get the field we are working with
+							joinField := collection.GetField(joinFieldNameParts)
+							joinRecord := query.GetValue(queryArgs["record"].(map[string]interface{}), joinFieldNameParts)
+
+							actualFieldValue := query.GetValue(joinRecord.(map[string]interface{}), []string{joinField.Relation.Field})
+
+							joinCollection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+							if err != nil {
+								results[i] = &query.Result{Error: err.Error()}
+								continue QUERYLOOP
+							}
+
+							if err := joinCollection.ValidateRecord(joinRecord.(map[string]interface{})); err != nil {
+								results[i] = &query.Result{Error: err.Error()}
+								continue QUERYLOOP
+							}
+
+							joinResults := s.Store.Set(map[string]interface{}{
+								"db":             queryArgs["db"],
+								"shard_instance": queryArgs["shard_instance"].(string),
+								"collection":     joinField.Relation.Collection,
+								"record":         joinRecord,
+							})
+							if joinResults.Error != "" {
+								results[i] = &query.Result{Error: joinResults.Error}
+								continue QUERYLOOP
+							}
+
+							// Update the value in the main record
+							query.SetValue(queryArgs["record"].(map[string]interface{}), actualFieldValue, joinFieldNameParts)
+						}
+
+					}
 					fallthrough
 				case query.Insert:
 					fallthrough
@@ -222,6 +263,23 @@ QUERYLOOP:
 				switch queryType {
 				case query.Get:
 					results[i] = s.Store.Get(queryArgs)
+
+					// TODO: move to routing layer only
+					// This only works for stuff that has a shard count of 1
+					if joinFieldList, ok := queryArgs["join"]; ok {
+						for _, joinFieldName := range joinFieldList.([]interface{}) {
+							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
+							joinField := collection.GetField(joinFieldNameParts)
+							joinResults := s.Store.Get(map[string]interface{}{
+								"db":             queryArgs["db"],
+								"shard_instance": queryArgs["shard_instance"].(string),
+								"collection":     joinField.Relation.Collection,
+								"_id":            query.GetValue(results[i].Return[0], joinFieldNameParts),
+							})
+
+							query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
+						}
+					}
 				case query.Set:
 					results[i] = s.Store.Set(queryArgs)
 				case query.Insert:

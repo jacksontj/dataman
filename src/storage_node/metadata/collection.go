@@ -23,6 +23,16 @@ type Collection struct {
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
+func (c *Collection) GetField(nameParts []string) *CollectionField {
+	field := c.Fields[nameParts[0]]
+
+	for _, part := range nameParts[1:] {
+		field = field.SubFields[part]
+	}
+
+	return field
+}
+
 func (c *Collection) Equal(o *Collection) bool {
 	if c.Name != o.Name {
 		return false
