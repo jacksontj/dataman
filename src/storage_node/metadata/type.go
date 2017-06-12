@@ -75,7 +75,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case string:
 			return strconv.ParseInt(typedVal, 10, 64)
 		default:
-			return nil, fmt.Errorf("Unknown Int type: %v", reflect.TypeOf(val))
+			return nil, fmt.Errorf("Unknown Int type: %s", reflect.TypeOf(val))
 		}
 	case Bool:
 		if b, ok := val.(bool); !ok {
