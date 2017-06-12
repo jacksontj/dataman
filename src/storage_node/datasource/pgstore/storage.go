@@ -400,18 +400,23 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 				return result
 			}
 
-			switch field.FieldType.DatamanType {
-			case metadata.Document:
-				// TODO: recurse and add many
-				for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue))
-				}
-			case metadata.Text:
-				fallthrough
-			case metadata.String:
-				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue))
+			switch fieldValue.(type) {
+			case nil:
+				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=null", fieldName, fieldValue))
 			default:
-				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=%v", fieldName, fieldValue))
+				switch field.FieldType.DatamanType {
+				case metadata.Document:
+					// TODO: recurse and add many
+					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
+						whereParts = append(whereParts, fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue))
+					}
+				case metadata.Text:
+					fallthrough
+				case metadata.String:
+					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue))
+				default:
+					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=%v", fieldName, fieldValue))
+				}
 			}
 		}
 		if len(whereParts) > 0 {
