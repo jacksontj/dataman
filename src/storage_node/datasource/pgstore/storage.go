@@ -203,7 +203,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.Fields[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Fuekd %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
+			result.Error = fmt.Sprintf("CollectionField %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
 			return result
 		}
 

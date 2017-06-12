@@ -3,6 +3,26 @@ package metadata
 import "encoding/json"
 import "fmt"
 
+type ValidationResult struct {
+	Error   string                       `json:"error, omitempty"`
+	Fields  map[string]*ValidationResult `json:"fields,omitempty"`
+	isValid bool
+	checked bool
+}
+
+func (r *ValidationResult) IsValid() bool {
+	if !r.checked {
+		r.isValid = r.Error == ""
+		if r.Fields != nil {
+			for _, fieldResult := range r.Fields {
+				r.isValid = r.isValid && (fieldResult.Error == "")
+			}
+		}
+		r.checked = true
+	}
+	return r.isValid
+}
+
 func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 	if field.ProvisionState != Active {
 		field.ProvisionState = state
@@ -55,43 +75,45 @@ func (f *CollectionField) UnmarshalJSON(data []byte) error {
 
 func (f *CollectionField) Equal(o *CollectionField) bool {
 	// TODO: better?
-	return f.Name == o.Name && f.Type == o.Type && f.NotNull == o.NotNull && f.ParentFieldID == o.ParentFieldID
-}
-
-func (f *CollectionField) Validate(val interface{}) error {
-	_, err := f.Normalize(val)
-	return err
+	return f.Name == o.Name && f.FieldType.DatamanType == o.FieldType.DatamanType && f.NotNull == o.NotNull && f.ParentFieldID == o.ParentFieldID
 }
 
 // Validate a field
-func (f *CollectionField) Normalize(val interface{}) (interface{}, error) {
+func (f *CollectionField) Normalize(val interface{}) (interface{}, *ValidationResult) {
+	result := &ValidationResult{}
+
+	var normalizedVal interface{}
+
+	var err error
 	// TODO: add in constraints etc. for now we'll just normalize the type
-	normalizedVal, err := f.FieldType.Normalize(val)
+	normalizedVal, err = f.FieldType.Normalize(val)
 	if err != nil {
-		return normalizedVal, err
+		result.Error = err.Error()
 	}
 
 	if f.SubFields != nil {
 		if f.FieldType.DatamanType != Document {
-			return normalizedVal, fmt.Errorf("Subfields on a non-document type")
+			result.Error = fmt.Sprintf("Subfields on a non-document type")
+			return normalizedVal, result
 		}
+		result.Fields = make(map[string]*ValidationResult)
 		mapVal := normalizedVal.(map[string]interface{})
 		for k, subField := range f.SubFields {
+			var subResult *ValidationResult
 			// TODO: config options for strictness
 			subValue, ok := mapVal[k]
 			if !ok {
 				if subField.NotNull {
-					return normalizedVal, fmt.Errorf("Subfield %s missing", k)
+					subResult = &ValidationResult{Error: fmt.Sprintf("Subfield %s missing", k)}
 				}
 			} else {
-				mapVal[k], err = subField.Normalize(subValue)
-				if err != nil {
-					return normalizedVal, fmt.Errorf("Error normalizing subfield %s: %v", k, err)
-				}
+				mapVal[k], subResult = subField.Normalize(subValue)
 			}
+			result.Fields[k] = subResult
 		}
 	}
-	return normalizedVal, nil
+
+	return normalizedVal, result
 }
 
 type CollectionFieldRelation struct {

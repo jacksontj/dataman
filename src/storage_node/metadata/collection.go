@@ -70,25 +70,23 @@ func (c *Collection) ListIndexes() []string {
 
 // TODO: underlying datasources should know how to do this-- us doing it shouldn't
 // be necessary
-func (c *Collection) ValidateRecord(record map[string]interface{}) error {
+func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
 		// TODO: some flag on the field on whether it is internal or not would be good!!!
 		if _, ok := InternalFields[fieldName]; !ok {
 			// We don't want to enforce internal fields
 			if v, ok := record[fieldName]; ok {
-				var err error
-				if record[fieldName], err = field.Normalize(v); err != nil {
-					return err
-				}
+				record[fieldName], result.Fields[fieldName] = field.Normalize(v)
 			} else {
-				if field.NotNull {
-					return fmt.Errorf("Missing required field %s", fieldName)
+				result.Fields[fieldName] = &ValidationResult{
+					Error: fmt.Sprintf("Missing required field %s", fieldName),
 				}
 			}
 		}
 	}
-	return nil
+	return result
 }
 
 type CollectionIndex struct {

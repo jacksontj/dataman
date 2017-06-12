@@ -6,7 +6,9 @@ import "fmt"
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
 	Error  string                   `json:"error,omitempty"`
-	Meta   map[string]interface{}   `json:"meta,omitempty"`
+	// TODO: pointer to the right thing
+	ValidationError interface{}            `json:"validation_error,omitempty"`
+	Meta            map[string]interface{} `json:"meta,omitempty"`
 }
 
 // Merge multiple results together

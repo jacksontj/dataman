@@ -192,6 +192,7 @@ QUERYLOOP:
 		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
+
 				collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), queryArgs["collection"].(string))
 				// Verify that the table is within our domain
 				if err != nil {
@@ -223,8 +224,8 @@ QUERYLOOP:
 								continue QUERYLOOP
 							}
 
-							if err := joinCollection.ValidateRecord(joinRecord.(map[string]interface{})); err != nil {
-								results[i] = &query.Result{Error: err.Error()}
+							if validationResultMap := joinCollection.ValidateRecord(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
+								results[i] = &query.Result{ValidationError: validationResultMap}
 								continue QUERYLOOP
 							}
 
@@ -252,8 +253,8 @@ QUERYLOOP:
 					// TODO: some datastores can actually do the enforcement on their own. We
 					// probably want to leave this up to lower layers, and provide some wrapper
 					// that they can call if they can't do it in the datastore itself
-					if err := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); err != nil {
-						results[i] = &query.Result{Error: err.Error()}
+					if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+						results[i] = &query.Result{ValidationError: validationResultMap}
 						continue QUERYLOOP
 					}
 				}
