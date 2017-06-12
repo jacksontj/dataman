@@ -21,6 +21,7 @@ func NewLocalDatasourceInstance(config *DatasourceInstanceConfig, meta *metadata
 	}
 
 	datasourceInstance.meta.Store(meta)
+	datasourceInstance.activeMeta.Store(meta)
 
 	var err error
 	datasourceInstance.Store, err = config.GetStore(datasourceInstance.GetActiveMeta)
