@@ -78,6 +78,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 					fieldType.DatamanType,
 					metadata.ConstraintType(fieldTypeConstraintRecord["constraint"].(string)),
 					fieldTypeConstraintRecord["args"].(map[string]interface{}),
+					fieldTypeConstraintRecord["validation_error"].(string),
 				)
 				if err != nil {
 					fmt.Println(fieldTypeRecord)

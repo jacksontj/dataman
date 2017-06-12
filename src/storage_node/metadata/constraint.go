@@ -64,23 +64,25 @@ func init() {
 	}
 }
 
-func NewConstraintInstance(d DatamanType, t ConstraintType, args map[string]interface{}) (*ConstraintInstance, error) {
+func NewConstraintInstance(d DatamanType, t ConstraintType, args map[string]interface{}, validationError string) (*ConstraintInstance, error) {
 	f, err := t.GetConstraintFunc(args, d)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ConstraintInstance{
-		Type: t,
-		Args: args,
-		Func: f,
+		Type:            t,
+		Args:            args,
+		ValidationError: validationError,
+		Func:            f,
 	}, nil
 }
 
 type ConstraintInstance struct {
-	Type ConstraintType         `json:"constraint_type"`
-	Args map[string]interface{} `json:"args"`
-	Func ConstraintFunc         `json:"-"`
+	Type            ConstraintType         `json:"constraint_type"`
+	Args            map[string]interface{} `json:"args"`
+	ValidationError string                 `json:"validation_error"`
+	Func            ConstraintFunc         `json:"-"`
 }
 
 type ConstraintFunc func(interface{}) bool

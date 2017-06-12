@@ -106,9 +106,9 @@ func (f *FieldType) Normalize(val interface{}) (interface{}, error) {
 	}
 
 	if f.Constraints != nil {
-		for i, constraint := range f.Constraints {
+		for _, constraint := range f.Constraints {
 			if !constraint.Func(normalizedVal) {
-				return normalizedVal, fmt.Errorf("Failed constraint %d: %v", i, constraint)
+				return normalizedVal, fmt.Errorf(constraint.ValidationError)
 			}
 		}
 	}
