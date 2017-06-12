@@ -13,6 +13,28 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
+// TODO: remove-- and just have as config options
+func NewLocalDatasourceInstance(config *DatasourceInstanceConfig, meta *metadata.Meta) (*DatasourceInstance, error) {
+	datasourceInstance := &DatasourceInstance{
+		Config:   config,
+		syncChan: make(chan chan error),
+	}
+
+	datasourceInstance.meta.Store(meta)
+
+	var err error
+	datasourceInstance.Store, err = config.GetStore(datasourceInstance.GetActiveMeta)
+	if err != nil {
+		return nil, err
+	}
+
+	if StoreSchema, ok := datasourceInstance.Store.(datasource.SchemaInterface); ok {
+		datasourceInstance.StoreSchema = StoreSchema
+	}
+
+	return datasourceInstance, nil
+}
+
 func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstance, error) {
 
 	// Create the meta store
