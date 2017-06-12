@@ -39,23 +39,38 @@ func (f DatamanType) ToFieldType() *FieldType {
 func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 	switch f {
 	case Document:
-		valTyped, ok := val.(map[string]interface{})
-		if !ok {
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case map[string]interface{}:
+			return typedVal, nil
+		default:
 			return nil, fmt.Errorf("Not a document")
 		}
 
-		return valTyped, nil
 	case String:
-		s, ok := val.(string)
-		if !ok {
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case string:
+			// TODO: default, code this out somewhere
+			if len(typedVal) > 4096 {
+				return nil, fmt.Errorf("String too long!")
+			}
+			return typedVal, nil
+		default:
 			return nil, fmt.Errorf("Not a string")
 		}
-		// TODO: default, code this out somewhere
-		if len(s) > 4096 {
-			return nil, fmt.Errorf("String too long!")
-		}
-		return s, nil
+
 	case Text:
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case string:
+			return typedVal, nil
+		default:
+			return nil, fmt.Errorf("Not a string")
+		}
 		s, ok := val.(string)
 		if !ok {
 			return nil, fmt.Errorf("Not text")
@@ -80,10 +95,13 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return nil, fmt.Errorf("Unknown Int type: %s", reflect.TypeOf(val))
 		}
 	case Bool:
-		if b, ok := val.(bool); !ok {
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case bool:
+			return typedVal, nil
+		default:
 			return nil, fmt.Errorf("Not a bool")
-		} else {
-			return b, nil
 		}
 	// TODO: implement
 	case DateTime:
