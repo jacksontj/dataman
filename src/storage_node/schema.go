@@ -79,11 +79,6 @@ const schemaJson string = `
                   "field_type": "_string",
                   "provision_state": 0
                 },
-                "field_type_args": {
-                  "name": "field_type_args",
-                  "field_type": "_document",
-                  "provision_state": 0
-                },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
@@ -286,6 +281,78 @@ const schemaJson string = `
               },
               "provision_state": 0
             },
+            "field_type": {
+              "name": "field_type",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "dataman_type": {
+                  "name": "dataman_type",
+                  "field_type": "_string",
+                  "provision_state": 0
+                },
+                "name": {
+                  "name": "name",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "field_type_name_idx": {
+                  "name": "field_type_name_idx",
+                  "fields": [
+                    "name"
+                  ],
+                  "unique": true,
+                  "provision_state": 0
+                }
+              },
+              "provision_state": 0
+            },
+            "field_type_constraint": {
+              "name": "field_type_constraint",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "args": {
+                  "name": "args",
+                  "field_type": "_document",
+                  "provision_state": 0
+                },
+                "constraint": {
+                  "name": "constraint",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 0
+                },
+                "field_type_id": {
+                  "name": "field_type_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 0
+                }
+              },
+              "indexes": {
+                "field_type_constraint_field_type_id_constraint_id_idx": {
+                  "name": "field_type_constraint_field_type_id_constraint_id_idx",
+                  "fields": [
+                    "field_type_id",
+                    "\"constraint\""
+                  ],
+                  "provision_state": 0
+                }
+              },
+              "provision_state": 0
+            },
             "shard_instance": {
               "name": "shard_instance",
               "fields": {
@@ -396,30 +463,6 @@ const schemaJson string = `
     "_text": {
       "name": "_text",
       "dataman_type": "text"
-    },
-    "age": {
-      "name": "age",
-      "dataman_type": "int",
-      "constraints": [
-        {
-          "constraint_type": "lt",
-          "args": {
-            "value": 200
-          }
-        }
-      ]
-    },
-    "phone number": {
-      "name": "phone number",
-      "dataman_type": "string",
-      "constraints": [
-        {
-          "constraint_type": "lte",
-          "args": {
-            "value": 10
-          }
-        }
-      ]
     }
   }
 }

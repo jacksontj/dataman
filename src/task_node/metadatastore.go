@@ -45,6 +45,56 @@ type MetadataStore struct {
 func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	meta := metadata.NewMeta()
 
+	// Add all field_types
+	fieldTypeResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "field_type",
+	})
+	// TODO: better error handle
+	if fieldTypeResult.Error != "" {
+		return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+	}
+
+	// for each database load the database + collections etc.
+	for _, fieldTypeRecord := range fieldTypeResult.Return {
+		fieldType := &storagenodemetadata.FieldType{
+			Name:        fieldTypeRecord["name"].(string),
+			DatamanType: storagenodemetadata.DatamanType(fieldTypeRecord["dataman_type"].(string)),
+		}
+
+		fieldTypeConstraintResult := m.Store.Filter(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "field_type_constraint",
+			"filter": map[string]interface{}{
+				"field_type_id": fieldTypeRecord["_id"],
+			},
+		})
+		// TODO: better error handle
+		if fieldTypeConstraintResult.Error != "" {
+			return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+		}
+
+		if len(fieldTypeConstraintResult.Return) > 0 {
+			fieldType.Constraints = make([]*storagenodemetadata.ConstraintInstance, len(fieldTypeConstraintResult.Return))
+			for i, fieldTypeConstraintRecord := range fieldTypeConstraintResult.Return {
+				var err error
+				fieldType.Constraints[i], err = storagenodemetadata.NewConstraintInstance(
+					fieldType.DatamanType,
+					storagenodemetadata.ConstraintType(fieldTypeConstraintRecord["constraint"].(string)),
+					fieldTypeConstraintRecord["args"].(map[string]interface{}),
+				)
+				if err != nil {
+					fmt.Println(fieldTypeRecord)
+					fmt.Println(fieldTypeConstraintRecord)
+					return nil, fmt.Errorf("Unable to load field_type %s: %v", fieldType.Name, err)
+				}
+			}
+		}
+		meta.FieldTypeRegistry.Add(fieldType)
+	}
+
 	// Add all nodes
 	storageNodeResult := m.Store.Filter(map[string]interface{}{
 		"db":             "dataman_router",

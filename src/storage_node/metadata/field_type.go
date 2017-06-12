@@ -16,6 +16,7 @@ import (
 
 */
 
+// TODO: exclude internal fields from serialization? Or have separate maps for internal vs user-defined?
 type FieldTypeRegister struct {
 	r map[string]*FieldType
 	l *sync.RWMutex
@@ -52,6 +53,12 @@ func (r *FieldTypeRegister) Merge(o *FieldTypeRegister) {
 			r.r[name] = fieldType
 		}
 	}
+}
+
+func (r *FieldTypeRegister) MarshalJSON() ([]byte, error) {
+	r.l.RLock()
+	defer r.l.RUnlock()
+	return json.Marshal(r.r)
 }
 
 func (r *FieldTypeRegister) UnmarshalJSON(data []byte) error {
