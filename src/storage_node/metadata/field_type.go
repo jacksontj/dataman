@@ -38,6 +38,21 @@ func (r *FieldTypeRegister) Get(name string) *FieldType {
 	defer r.l.RUnlock()
 	return r.r[name]
 }
+func (r *FieldTypeRegister) Merge(o *FieldTypeRegister) {
+	// TODO: if the `o` is being mutated this can be a problem. For now since this is just serialization stuff
+	// I'm not bothering, if we go down that path we'll probably want to do some channel thing to avoid deadlocks
+	r.l.Lock()
+	defer r.l.Unlock()
+
+	for name, fieldType := range o.r {
+		if strings.HasPrefix(name, InternalFieldPrefix) {
+			continue
+		}
+		if _, ok := r.r[name]; !ok {
+			r.r[name] = fieldType
+		}
+	}
+}
 
 func (r *FieldTypeRegister) UnmarshalJSON(data []byte) error {
 	r.r = make(map[string]*FieldType)

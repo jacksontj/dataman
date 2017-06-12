@@ -15,6 +15,9 @@ func NewMeta() *Meta {
 		Fields:             make(map[int64]*storagenodemetadata.CollectionField),
 		Collections:        make(map[int64]*Collection),
 
+		// TODO: move out of metadata (not tied to database definitions etc.)
+		FieldTypeRegistry: storagenodemetadata.FieldTypeRegistry,
+
 		Databases: make(map[string]*Database),
 	}
 }
@@ -32,6 +35,8 @@ type Meta struct {
 	DatastoreShards map[int64]*DatastoreShard                      `json:"-"`
 	Fields          map[int64]*storagenodemetadata.CollectionField `json:"-"`
 	Collections     map[int64]*Collection                          `json:"-"`
+
+	FieldTypeRegistry *storagenodemetadata.FieldTypeRegister `json:"field_types"`
 
 	Databases map[string]*Database `json:"databases"`
 }

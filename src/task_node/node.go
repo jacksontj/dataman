@@ -123,6 +123,10 @@ func (t *TaskNode) fetchMeta() error {
 		t.meta.Store(meta)
 	}
 	logrus.Debugf("Loaded meta: %v", meta)
+
+	// TODO: elsewhere?
+	storagenodemetadata.FieldTypeRegistry.Merge(meta.FieldTypeRegistry)
+
 	return nil
 }
 

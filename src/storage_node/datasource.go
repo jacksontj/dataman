@@ -162,6 +162,9 @@ func (s *DatasourceInstance) refreshMeta() error {
 	}
 
 	s.activeMeta.Store(meta)
+
+	// TODO: elsewhere?
+	metadata.FieldTypeRegistry.Merge(meta.FieldTypeRegistry)
 	return nil
 }
 
