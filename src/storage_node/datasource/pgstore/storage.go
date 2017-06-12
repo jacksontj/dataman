@@ -209,20 +209,25 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 		}
 
 		fieldHeaders = append(fieldHeaders, "\""+fieldName+"\"")
-		switch field.FieldType.DatamanType {
-		case metadata.Document:
-			fieldJson, err := json.Marshal(fieldValue)
-			if err != nil {
-				result.Error = err.Error()
-				return result
+		switch fieldValue.(type) {
+			case nil:
+				fieldValues = append(fieldValues, "null")
+			default:
+			switch field.FieldType.DatamanType {
+			case metadata.Document:
+				fieldJson, err := json.Marshal(fieldValue)
+				if err != nil {
+					result.Error = err.Error()
+					return result
+				}
+				fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
+			case metadata.Text:
+				fallthrough
+			case metadata.String:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+			default:
+				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
 			}
-			fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
-		case metadata.Text:
-			fallthrough
-		case metadata.String:
-			fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
-		default:
-			fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
 		}
 	}
 
