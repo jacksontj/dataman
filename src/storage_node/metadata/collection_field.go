@@ -48,7 +48,7 @@ func (f *CollectionField) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	f.FieldType = FieldTypeRegistry[f.Type]
+	f.FieldType = FieldTypeRegistry.Get(f.Type)
 
 	return nil
 }

@@ -11,7 +11,7 @@ func init() {
 			Name: "_id",
 			// TODO: better
 			Type:      "_int",
-			FieldType: FieldTypeRegistry["_int"],
+			FieldType: FieldTypeRegistry.Get("_int"),
 			NotNull:   true,
 		},
 

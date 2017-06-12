@@ -1,8 +1,10 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 )
 
 /*
@@ -14,8 +16,41 @@ import (
 
 */
 
+type FieldTypeRegister struct {
+	r map[string]*FieldType
+	l *sync.RWMutex
+}
+
+func (r *FieldTypeRegister) Add(f *FieldType) error {
+	r.l.Lock()
+	defer r.l.Unlock()
+	if strings.HasPrefix(f.Name, InternalFieldPrefix) {
+		return fmt.Errorf("Reserved namespace!")
+	}
+	if _, ok := r.r[f.Name]; ok {
+		return fmt.Errorf("Field type of that name already exists")
+	}
+	r.r[f.Name] = f
+	return nil
+}
+func (r *FieldTypeRegister) Get(name string) *FieldType {
+	r.l.RLock()
+	defer r.l.RUnlock()
+	return r.r[name]
+}
+
+func (r *FieldTypeRegister) UnmarshalJSON(data []byte) error {
+	r.r = make(map[string]*FieldType)
+	if err := json.Unmarshal(data, &r.r); err != nil {
+		return err
+	}
+	r.l = &sync.RWMutex{}
+
+	return nil
+}
+
 // TODO: encapsulate in a struct (for locking etc.)
-var FieldTypeRegistry map[string]*FieldType
+var FieldTypeRegistry *FieldTypeRegister
 
 func init() {
 	initFieldTypeRegistry()
@@ -25,22 +60,14 @@ func initFieldTypeRegistry() {
 	if FieldTypeRegistry != nil {
 		return
 	}
-	FieldTypeRegistry = map[string]*FieldType{}
+	FieldTypeRegistry = &FieldTypeRegister{
+		r: make(map[string]*FieldType),
+		l: &sync.RWMutex{},
+	}
 
 	for _, fieldType := range listInternalFieldTypes() {
-		FieldTypeRegistry[fieldType.Name] = fieldType
+		FieldTypeRegistry.r[fieldType.Name] = fieldType
 	}
-}
-
-func AddFieldType(f *FieldType) error {
-	if strings.HasPrefix(f.Name, InternalFieldPrefix) {
-		return fmt.Errorf("Reserved namespace!")
-	}
-	if _, ok := FieldTypeRegistry[f.Name]; ok {
-		return fmt.Errorf("Field type of that name already exists")
-	}
-	FieldTypeRegistry[f.Name] = f
-	return nil
 }
 
 type FieldType struct {

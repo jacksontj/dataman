@@ -21,7 +21,7 @@ type Meta struct {
 	Fields      map[int64]*CollectionField `json:"-"`
 	Collections map[int64]*Collection      `json:"-"`
 
-	FieldTypeRegistry map[string]*FieldType `json:"field_types"`
+	FieldTypeRegistry *FieldTypeRegister `json:"field_types"`
 }
 
 // TODO: more than just names?
