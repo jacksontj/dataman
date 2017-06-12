@@ -63,6 +63,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		return s, nil
 	case Int:
 		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
 		// TODO: remove? Or error if we would lose precision
 		case int32:
 			return int(typedVal), nil
