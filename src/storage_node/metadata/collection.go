@@ -68,8 +68,6 @@ func (c *Collection) ListIndexes() []string {
 	return indexes
 }
 
-// TODO: underlying datasources should know how to do this-- us doing it shouldn't
-// be necessary
 func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationResult {
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	// TODO: We need to check that we where given no more than the Fields we know about
@@ -86,6 +84,23 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationRe
 					}
 				}
 				// TODO: include an empty result? Not sure if an empty one is any good (also-- check for subfields?)
+			}
+		}
+	}
+	return result
+}
+
+// TODO: underlying datasources should know how to do this-- us doing it shouldn't
+// be necessary
+func (c *Collection) ValidateRecordUpdate(record map[string]interface{}) *ValidationResult {
+	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
+	// TODO: We need to check that we where given no more than the Fields we know about
+	for fieldName, field := range c.Fields {
+		// TODO: some flag on the field on whether it is internal or not would be good!!!
+		if _, ok := InternalFields[fieldName]; !ok {
+			// We don't want to enforce internal fields
+			if v, ok := record[fieldName]; ok {
+				record[fieldName], result.Fields[fieldName] = field.Normalize(v)
 			}
 		}
 	}

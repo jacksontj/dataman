@@ -247,7 +247,7 @@ QUERYLOOP:
 								continue QUERYLOOP
 							}
 
-							if validationResultMap := joinCollection.ValidateRecord(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
+							if validationResultMap := joinCollection.ValidateRecordUpdate(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
 								results[i] = &query.Result{ValidationError: validationResultMap}
 								continue QUERYLOOP
 							}
@@ -268,15 +268,30 @@ QUERYLOOP:
 						}
 
 					}
-					fallthrough
+					// TODO: cleanup this validation of records -- we really should just split this into insert vs update methods
+					// this is a hack to unblock integrations
+					if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
+						if validationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+							results[i] = &query.Result{ValidationError: validationResultMap}
+							continue QUERYLOOP
+						}
+					} else {
+						if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+							results[i] = &query.Result{ValidationError: validationResultMap}
+							continue QUERYLOOP
+						}
+					}
 				case query.Insert:
-					fallthrough
+					if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+						results[i] = &query.Result{ValidationError: validationResultMap}
+						continue QUERYLOOP
+					}
 				case query.Update:
 					// On set, if there is a schema on the table-- enforce the schema
 					// TODO: some datastores can actually do the enforcement on their own. We
 					// probably want to leave this up to lower layers, and provide some wrapper
 					// that they can call if they can't do it in the datastore itself
-					if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+					if validationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
 						results[i] = &query.Result{ValidationError: validationResultMap}
 						continue QUERYLOOP
 					}
