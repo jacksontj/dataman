@@ -300,6 +300,15 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 	for i, fieldEntry := range fieldRecords {
 		var datamanType metadata.DatamanType
 		switch fieldEntry["data_type"] {
+		// TODO: add to dataman types
+		case "int4range":
+			fallthrough
+		case "bigint":
+			fallthrough
+		case "real":
+			fallthrough
+		case "double precision":
+			fallthrough
 		case "integer":
 			datamanType = metadata.Int
 		case "character varying":
@@ -315,6 +324,9 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 			datamanType = metadata.Bool
 		case "text":
 			datamanType = metadata.Text
+		// TODO: add to dataman types
+		case "tsrange":
+			fallthrough
 		case "timestamp without time zone":
 			datamanType = metadata.DateTime
 		default:
