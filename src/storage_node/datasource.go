@@ -246,6 +246,14 @@ QUERYLOOP:
 					continue
 				}
 
+				if _, ok := queryArgs["join"]; ok {
+					// TODO: remove? We can only do joins at this layer if there is only one shardInstance
+					if meta.Databases[queryArgs["db"].(string)].ShardInstances[queryArgs["shard_instance"].(string)].Count != 1 {
+						results[i] = &query.Result{Error: "Joins only supported on collections with one shardInstance"}
+						continue QUERYLOOP
+					}
+				}
+
 				// If this is a write operation, do whatever schema validation is necessary
 				switch queryType {
 				case query.Set:
