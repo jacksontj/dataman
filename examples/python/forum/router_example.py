@@ -65,8 +65,9 @@ def ensure_datastore(urlbase):
     
     dsi = STORAGE_NODES.values()
     for shard in data['shards']:
-        shard['replicas']['masters'][0]['datasource_instance_id'] = dsi.pop(0)['datasource_instances'].popitem()[1]['_id']
-        print shard['replicas']['masters'][0]['datasource_instance_id']
+        if len(dsi) == 0:
+            dsi = STORAGE_NODES.values()
+        shard['replicas']['masters'][0]['datasource_instance_id'] = dsi.pop(0)['datasource_instances'].itervalues().next()['_id']
     print data
     ret = requests.post(
         urlbase+"/v1/datastore/"+data['name'],
