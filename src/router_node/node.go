@@ -101,7 +101,7 @@ func (s *RouterNode) FetchMeta() error {
 
 func (s *RouterNode) fetchMeta() error {
 	// TODO: set the transport up in initialization
-	t := &http.Transport{}
+	t := &http.Transport{DisableKeepAlives: true}
 	// TODO: more
 	// Register all protocols we want to support
 	// TODO: namespace which files we'll allow to serve!
@@ -111,6 +111,7 @@ func (s *RouterNode) fetchMeta() error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
 		return fmt.Errorf("Unable to get meta: %v", res)
