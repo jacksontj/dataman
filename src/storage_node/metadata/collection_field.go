@@ -4,7 +4,7 @@ import "encoding/json"
 import "fmt"
 
 type ValidationResult struct {
-	Error   string                       `json:"error, omitempty"`
+	Error   string                       `json:"error,omitempty"`
 	Fields  map[string]*ValidationResult `json:"fields,omitempty"`
 	isValid bool
 	checked bool
@@ -14,8 +14,11 @@ func (r *ValidationResult) IsValid() bool {
 	if !r.checked {
 		r.isValid = r.Error == ""
 		if r.Fields != nil {
-			for _, fieldResult := range r.Fields {
-				r.isValid = r.isValid && (fieldResult.Error == "")
+			for k, fieldResult := range r.Fields {
+				if fieldResult.IsValid() {
+					delete(r.Fields, k)
+				}
+				r.isValid = r.isValid && fieldResult.IsValid()
 			}
 		}
 		r.checked = true
