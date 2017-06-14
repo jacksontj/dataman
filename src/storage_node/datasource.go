@@ -134,7 +134,6 @@ func (s *DatasourceInstance) refreshMeta() error {
 
 	// TODO: filter only active things
 	meta, err := s.MetaStore.GetMeta()
-	// TODO: propogate the error
 	if err != nil {
 		return err
 	}
