@@ -47,6 +47,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
 	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 
+	// TODO: wrap a different registry (if we ever want more than one per process)
 	router.GET("/v1/debug/metrics", wrapHandler(exp.ExpHandler(metrics.DefaultRegistry)))
 }
 
