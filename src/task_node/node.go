@@ -12,6 +12,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rcrowley/go-metrics"
 
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node"
@@ -34,6 +35,8 @@ type TaskNode struct {
 
 	// TODO: this should be pluggable, presumably in the datasource
 	schemaLock sync.Mutex
+
+	registry metrics.Registry
 }
 
 func NewTaskNode(config *Config) (*TaskNode, error) {
@@ -50,6 +53,11 @@ func NewTaskNode(config *Config) (*TaskNode, error) {
 		Config:    config,
 		MetaStore: metaStore,
 		syncChan:  make(chan chan error),
+
+		// TODO: have config (or something) optionally pass in a parent register
+		// Set up metrics
+		// TODO: differentiate namespace on something in config (that has to be process-wide unique)
+		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "tasknode."),
 	}
 
 	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
@@ -110,7 +118,27 @@ func (t *TaskNode) FetchMeta() error {
 
 }
 
-func (t *TaskNode) fetchMeta() error {
+func (t *TaskNode) fetchMeta() (err error) {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		if err == nil {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", t.registry)
+			t.Update(end.Sub(start))
+		} else {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", t.registry)
+			t.Update(end.Sub(start))
+		}
+	}()
+
 	// First we need to determine all the databases that we are responsible for
 	// TODO: lots of error handling required
 
@@ -130,11 +158,31 @@ func (t *TaskNode) fetchMeta() error {
 	return nil
 }
 
-func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) error {
+func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) (err error) {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		if err == nil {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("EnsureExistsDatabase.success.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("EnsureExistsDatabase.success.time", t.registry)
+			t.Update(end.Sub(start))
+		} else {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("EnsureExistsDatabase.failure.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("EnsureExistsDatabase.failure.time", t.registry)
+			t.Update(end.Sub(start))
+		}
+	}()
+
 	// TODO: restructure so the lock isn't so weird :/
 	t.schemaLock.Lock()
 	defer t.schemaLock.Unlock()
-	if err := t.ensureExistsDatabase(db); err != nil {
+	if err = t.ensureExistsDatabase(db); err != nil {
 		return err
 	}
 
@@ -426,11 +474,31 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 	return nil
 }
 
-func (t *TaskNode) EnsureDoesntExistDatabase(dbname string) error {
+func (t *TaskNode) EnsureDoesntExistDatabase(dbname string) (err error) {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		if err == nil {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("EnsureDoesntExistDatabase.success.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("EnsureDoesntExistDatabase.success.time", t.registry)
+			t.Update(end.Sub(start))
+		} else {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("EnsureDoesntExistDatabase.failure.last", t.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("EnsureDoesntExistDatabase.failure.time", t.registry)
+			t.Update(end.Sub(start))
+		}
+	}()
+
 	// TODO: restructure so the lock isn't so weird :/
 	t.schemaLock.Lock()
 	defer t.schemaLock.Unlock()
-	if err := t.ensureDoesntExistDatabase(dbname); err != nil {
+	if err = t.ensureDoesntExistDatabase(dbname); err != nil {
 		return err
 	}
 
