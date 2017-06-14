@@ -222,7 +222,6 @@ class ThreadHandler(BaseHandler):
                 tmp = yield dataman.set(schema.DBNAME, 'message', tmp[0], ['data.thread_id'])
                 print 'set', tmp
             except:
-                raise
                 pass
             # TODO: sort by _created server-side
             # TODO: switch from _created -> timebased UUID
