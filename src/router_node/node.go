@@ -12,6 +12,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rcrowley/go-metrics"
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -33,12 +34,18 @@ type RouterNode struct {
 
 	// TODO: this should be pluggable, presumably in the datasource
 	schemaLock sync.Mutex
+
+	registry metrics.Registry
 }
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
 	node := &RouterNode{
 		Config:   config,
 		syncChan: make(chan chan error),
+		// TODO: have config (or something) optionally pass in a parent register
+		// Set up metrics
+		// TODO: differentiate namespace on something in config (that has to be process-wide unique)
+		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "routernode."),
 	}
 
 	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
@@ -99,7 +106,27 @@ func (s *RouterNode) FetchMeta() error {
 
 }
 
-func (s *RouterNode) fetchMeta() error {
+func (s *RouterNode) fetchMeta() (err error) {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		if err == nil {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", s.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", s.registry)
+			t.Update(end.Sub(start))
+		} else {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", s.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", s.registry)
+			t.Update(end.Sub(start))
+		}
+	}()
+
 	// TODO: set the transport up in initialization
 	t := &http.Transport{DisableKeepAlives: true}
 	// TODO: more
@@ -196,7 +223,15 @@ func (s *RouterNode) fetchMeta() error {
 	return nil
 }
 
+// Handle a batch of queries
 func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		t := metrics.GetOrRegisterTimer("handleQueries.time", s.registry)
+		t.Update(end.Sub(start))
+	}()
+
 	// TODO: we should actually do these in parallel (potentially with some
 	// config of *how* parallel)
 	results := make([]*query.Result, len(queries))
@@ -206,40 +241,51 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 	meta := s.GetMeta()
 
 	for i, queryMap := range queries {
-		// We only allow a single method to be defined per item
 		if len(queryMap) == 1 {
 			for queryType, queryArgs := range queryMap {
-				// Switch between read and write operations
-				switch queryType {
-				// Write operations
-				case query.Set:
-					fallthrough
-				case query.Insert:
-					fallthrough
-				case query.Update:
-					fallthrough
-				case query.Delete:
-					results[i] = s.handleWrite(meta, queryType, queryArgs)
-
-				// Read operations
-				case query.Get:
-					fallthrough
-				case query.Filter:
-					results[i] = s.handleRead(meta, queryType, queryArgs)
-
-					// All other operations should error
-				default:
-					results[i] = &query.Result{Error: "Unkown query type: " + string(queryType)}
-				}
+				results[i] = s.handleQuery(meta, queryType, queryArgs)
 			}
-
 		} else {
 			results[i] = &query.Result{
-				Error: fmt.Sprintf("Only one QueryType supported per query: %v -- %v", queryMap, queries),
+				Error: fmt.Sprintf("Exactly one QueryType supported per query: %v", queryMap),
 			}
 		}
 	}
 	return results
+}
+
+// handle a single query
+func (s *RouterNode) handleQuery(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
+	start := time.Now()
+	defer func() {
+		// TODO: break this out to a per database/collection/shard number?
+		end := time.Now()
+		t := metrics.GetOrRegisterTimer(fmt.Sprintf("handleQuery.%s.time", queryType), s.registry)
+		t.Update(end.Sub(start))
+	}()
+
+	// Switch between read and write operations
+	switch queryType {
+	// Write operations
+	case query.Set:
+		fallthrough
+	case query.Insert:
+		fallthrough
+	case query.Update:
+		fallthrough
+	case query.Delete:
+		return s.handleWrite(meta, queryType, queryArgs)
+
+	// Read operations
+	case query.Get:
+		fallthrough
+	case query.Filter:
+		return s.handleRead(meta, queryType, queryArgs)
+
+		// All other operations should error
+	default:
+		return &query.Result{Error: "Unknown query type: " + string(queryType)}
+	}
 }
 
 func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
