@@ -4,16 +4,20 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rcrowley/go-metrics"
 )
 
 func NewStorageNode(config *Config) (*StorageNode, error) {
 	node := &StorageNode{
 		Config:      config,
 		Datasources: make(map[string]*DatasourceInstance),
+
+		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "storagenode."),
 	}
 
 	// TODO: error if no datasources?
 	for datasourceName, datasourceConfig := range config.Datasources {
+		datasourceConfig.Registry = metrics.NewPrefixedChildRegistry(node.registry, datasourceName+".")
 		if datasource, err := NewDatasourceInstance(datasourceConfig); err == nil {
 			node.Datasources[datasourceName] = datasource
 		} else {
@@ -30,6 +34,8 @@ type StorageNode struct {
 	Config *Config
 
 	Datasources map[string]*DatasourceInstance
+
+	registry metrics.Registry
 }
 
 // TODO: have a stop?

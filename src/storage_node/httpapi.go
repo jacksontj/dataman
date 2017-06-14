@@ -7,6 +7,8 @@ import (
 	"net/http/pprof"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics/exp"
 
 	"github.com/jacksontj/dataman/src/httputil"
 	"github.com/jacksontj/dataman/src/query"
@@ -83,6 +85,9 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/debug/pprof/profile", wrapHandler(http.HandlerFunc(pprof.Profile)))
 	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
 	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
+
+	// TODO: wrap a different registry (if we ever want more than one per process)
+	router.GET("/v1/debug/metrics", wrapHandler(exp.ExpHandler(metrics.DefaultRegistry)))
 }
 
 // List all of the datasource_instances on the storage node

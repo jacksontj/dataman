@@ -1,6 +1,9 @@
 package storagenode
 
-import "github.com/jacksontj/dataman/src/storage_node/metadata"
+import (
+	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/rcrowley/go-metrics"
+)
 import "github.com/jacksontj/dataman/src/storage_node/datasource"
 import "fmt"
 
@@ -20,6 +23,16 @@ type DatasourceInstanceConfig struct {
 	// TODO: Rename to driver? Need a consistent name for this
 	StorageNodeType datasource.StorageType `yaml:"storage_type"`
 	StorageConfig   map[string]interface{} `yaml:"storage_config"`
+
+	Registry metrics.Registry `yaml:"-"`
+}
+
+func (c *DatasourceInstanceConfig) GetRegistry() metrics.Registry {
+	if c.Registry != nil {
+		return c.Registry
+	} else {
+		return metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "datasourceinstance.")
+	}
 }
 
 func (c *DatasourceInstanceConfig) GetStore(metaFunc metadata.MetaFunc) (datasource.DataInterface, error) {

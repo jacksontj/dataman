@@ -11,6 +11,7 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/rcrowley/go-metrics"
 )
 
 // TODO: remove-- and just have as config options
@@ -18,6 +19,7 @@ func NewLocalDatasourceInstance(config *DatasourceInstanceConfig, meta *metadata
 	datasourceInstance := &DatasourceInstance{
 		Config:   config,
 		syncChan: make(chan chan error),
+		registry: config.GetRegistry(),
 	}
 
 	datasourceInstance.meta.Store(meta)
@@ -48,7 +50,9 @@ func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstanc
 		Config:    config,
 		MetaStore: metaStore,
 		syncChan:  make(chan chan error),
+		registry:  config.GetRegistry(),
 	}
+
 	go datasourceInstance.background()
 
 	if err := datasourceInstance.Sync(); err != nil {
@@ -85,6 +89,8 @@ type DatasourceInstance struct {
 
 	// TODO: this should be pluggable, presumably in the datasource
 	schemaLock sync.Mutex
+
+	registry metrics.Registry
 }
 
 // TODO: remove? since we need to do this while holding the lock it seems useless
@@ -125,7 +131,27 @@ func (s *DatasourceInstance) RefreshMeta() error {
 	return s.refreshMeta()
 }
 
-func (s *DatasourceInstance) refreshMeta() error {
+func (s *DatasourceInstance) refreshMeta() (err error) {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		if err == nil {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", s.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", s.registry)
+			t.Update(end.Sub(start))
+		} else {
+			// Last update time
+			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", s.registry)
+			c.Update(end.Unix())
+
+			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", s.registry)
+			t.Update(end.Sub(start))
+		}
+	}()
+
 	if meta, err := s.MetaStore.GetMeta(); err == nil {
 		s.meta.Store(meta)
 	} else {
@@ -203,6 +229,13 @@ func (s *DatasourceInstance) HandleQuery(q map[query.QueryType]query.QueryArgs) 
 
 // TODO: we should actually do these in parallel (potentially with some config of *how* parallel)
 func (s *DatasourceInstance) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		t := metrics.GetOrRegisterTimer("handleQueries.time", s.registry)
+		t.Update(end.Sub(start))
+	}()
+
 	results := make([]*query.Result, len(queries))
 
 	// We specifically want to load this once for the batch so we don't have mixed
