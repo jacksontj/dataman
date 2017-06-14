@@ -16,14 +16,35 @@ import (
 
 // TODO: remove-- and just have as config options
 func NewLocalDatasourceInstance(config *DatasourceInstanceConfig, meta *metadata.Meta) (*DatasourceInstance, error) {
+	return NewDatasourceInstance(config, NewStaticMetadataStore(meta))
+}
+
+// Create a DatasourceInstance with a default MetadataStore (based on the same config as the storagenode)
+func NewDatasourceInstanceDefault(config *DatasourceInstanceConfig) (*DatasourceInstance, error) {
+	// Create the meta store
+	metaStore, err := NewMetadataStore(config)
+	if err != nil {
+		return nil, err
+	}
+	return NewDatasourceInstance(config, metaStore)
+
+}
+
+func NewDatasourceInstance(config *DatasourceInstanceConfig, metaStore StorageMetadataStore) (*DatasourceInstance, error) {
 	datasourceInstance := &DatasourceInstance{
-		Config:   config,
-		syncChan: make(chan chan error),
-		registry: config.GetRegistry(),
+		Config:    config,
+		MetaStore: metaStore,
+		syncChan:  make(chan chan error),
+		registry:  config.GetRegistry(),
 	}
 
-	datasourceInstance.meta.Store(meta)
-	datasourceInstance.activeMeta.Store(meta)
+	datasourceInstance.MutableMetaStore, _ = datasourceInstance.MetaStore.(MutableStorageMetadataStore)
+
+	go datasourceInstance.background()
+
+	if err := datasourceInstance.Sync(); err != nil {
+		return nil, err
+	}
 
 	var err error
 	datasourceInstance.Store, err = config.GetStore(datasourceInstance.GetActiveMeta)
@@ -38,42 +59,10 @@ func NewLocalDatasourceInstance(config *DatasourceInstanceConfig, meta *metadata
 	return datasourceInstance, nil
 }
 
-func NewDatasourceInstance(config *DatasourceInstanceConfig) (*DatasourceInstance, error) {
-
-	// Create the meta store
-	metaStore, err := NewMetadataStore(config)
-	if err != nil {
-		return nil, err
-	}
-
-	datasourceInstance := &DatasourceInstance{
-		Config:    config,
-		MetaStore: metaStore,
-		syncChan:  make(chan chan error),
-		registry:  config.GetRegistry(),
-	}
-
-	go datasourceInstance.background()
-
-	if err := datasourceInstance.Sync(); err != nil {
-		return nil, err
-	}
-
-	datasourceInstance.Store, err = config.GetStore(datasourceInstance.GetActiveMeta)
-	if err != nil {
-		return nil, err
-	}
-
-	if StoreSchema, ok := datasourceInstance.Store.(datasource.SchemaInterface); ok {
-		datasourceInstance.StoreSchema = StoreSchema
-	}
-
-	return datasourceInstance, nil
-}
-
 type DatasourceInstance struct {
-	Config    *DatasourceInstanceConfig
-	MetaStore *MetadataStore
+	Config           *DatasourceInstanceConfig
+	MetaStore        StorageMetadataStore
+	MutableMetaStore MutableStorageMetadataStore
 
 	StoreSchema datasource.SchemaInterface
 	Store       datasource.DataInterface
@@ -417,7 +406,7 @@ func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Add it to the metadata so we know we where working on it
 	db.ProvisionState = metadata.Provision
-	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
 		return err
 	}
 
@@ -430,7 +419,7 @@ func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate
-	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
 		return err
 	}
 
@@ -449,7 +438,7 @@ func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Active
-	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
 		return err
 	}
 
@@ -481,7 +470,7 @@ func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
 
 	// Set the state as deallocate
 	db.ProvisionState = metadata.Deallocate
-	if err := s.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
 		return err
 	}
 
@@ -494,7 +483,7 @@ func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
 		return err
 	}
 
@@ -547,7 +536,7 @@ func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, sh
 
 	// Add it to the metadata so we know we where working on it
 	shardInstance.ProvisionState = metadata.Provision
-	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
 		return err
 	}
 
@@ -560,7 +549,7 @@ func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, sh
 
 	// Since we made the database, lets update the metadata about it
 	shardInstance.ProvisionState = metadata.Validate
-	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
 		return err
 	}
 
@@ -578,7 +567,7 @@ func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, sh
 	}
 
 	shardInstance.ProvisionState = metadata.Active
-	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
 		return err
 	}
 	return nil
@@ -613,7 +602,7 @@ func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shard
 
 	// Set the state as deallocate
 	shardInstance.ProvisionState = metadata.Deallocate
-	if err := s.MetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
 		return err
 	}
 
@@ -626,7 +615,7 @@ func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shard
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
 		return err
 	}
 
@@ -685,7 +674,7 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 
 	// Add it to the metadata so we know we where working on it
 	collection.ProvisionState = metadata.Provision
-	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -713,7 +702,7 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 
 	// Since we made the database, lets update the metadata about it
 	collection.ProvisionState = metadata.Validate
-	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -739,7 +728,7 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 	}
 
 	collection.ProvisionState = metadata.Active
-	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
 		return err
 	}
 	return nil
@@ -778,7 +767,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, 
 
 	// Set the state as deallocate
 	collection.ProvisionState = metadata.Deallocate
-	if err := s.MetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -791,7 +780,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, 
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
 		return err
 	}
 
@@ -861,7 +850,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 
 	// Add it to the metadata so we know we where working on it
 	metadata.SetFieldTreeState(field, metadata.Provision)
-	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
@@ -873,7 +862,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 	}
 
 	metadata.SetFieldTreeState(field, metadata.Validate)
-	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
@@ -890,7 +879,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 
 	// Since we made the database, lets update the metadata about it
 	metadata.SetFieldTreeState(field, metadata.Active)
-	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
@@ -935,7 +924,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinsta
 
 	// Set the state as deallocate
 	field.ProvisionState = metadata.Deallocate
-	if err := s.MetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
@@ -948,7 +937,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinsta
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
 		return err
 	}
 
@@ -1014,7 +1003,7 @@ func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, 
 
 	// Add it to the metadata so we know we where working on it
 	index.ProvisionState = metadata.Provision
-	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1026,7 +1015,7 @@ func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, 
 	}
 
 	index.ProvisionState = metadata.Validate
-	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1038,7 +1027,7 @@ func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, 
 
 	// Since we made the database, lets update the metadata about it
 	index.ProvisionState = metadata.Active
-	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1084,7 +1073,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinsta
 
 	// Set the state as deallocate
 	index.ProvisionState = metadata.Deallocate
-	if err := s.MetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1097,7 +1086,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinsta
 	}
 
 	// Remove from meta
-	if err := s.MetaStore.EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
 		return err
 	}
 

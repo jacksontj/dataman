@@ -18,7 +18,7 @@ func NewStorageNode(config *Config) (*StorageNode, error) {
 	// TODO: error if no datasources?
 	for datasourceName, datasourceConfig := range config.Datasources {
 		datasourceConfig.Registry = metrics.NewPrefixedChildRegistry(node.registry, datasourceName+".")
-		if datasource, err := NewDatasourceInstance(datasourceConfig); err == nil {
+		if datasource, err := NewDatasourceInstanceDefault(datasourceConfig); err == nil {
 			node.Datasources[datasourceName] = datasource
 		} else {
 			return nil, err
