@@ -8,5 +8,6 @@ http_api:
   addr: ":8080"
 
 meta:
-  url: file:///meta.json
+  #url: file:///meta.json
+  url: http://127.0.0.1:8079/v1/metadata
   interval: 1s
