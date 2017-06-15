@@ -156,28 +156,30 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 	// TODO: better? We could just do this looking elsewhere, but it is simpler (for the plugins primarily)
 	// to just get the ones they expect
 	// TODO: maybe have a "trim" method on these?
-	for key, database := range meta.Databases {
-		if database.ProvisionState != metadata.Active {
-			delete(meta.Databases, key)
-		} else {
-			for key, shardInstance := range database.ShardInstances {
-				if shardInstance.ProvisionState != metadata.Active {
-					delete(database.ShardInstances, key)
-				} else {
-					for key, collection := range shardInstance.Collections {
-						if collection.ProvisionState != metadata.Active {
-							delete(shardInstance.Collections, key)
-						} else {
-							for key, field := range collection.Fields {
-								// TODO: need to recurse
-								if field.ProvisionState != metadata.Active {
-									delete(collection.Fields, key)
+	if !s.Config.SkipProvisionTrim {
+		for key, database := range meta.Databases {
+			if database.ProvisionState != metadata.Active {
+				delete(meta.Databases, key)
+			} else {
+				for key, shardInstance := range database.ShardInstances {
+					if shardInstance.ProvisionState != metadata.Active {
+						delete(database.ShardInstances, key)
+					} else {
+						for key, collection := range shardInstance.Collections {
+							if collection.ProvisionState != metadata.Active {
+								delete(shardInstance.Collections, key)
+							} else {
+								for key, field := range collection.Fields {
+									// TODO: need to recurse
+									if field.ProvisionState != metadata.Active {
+										delete(collection.Fields, key)
+									}
 								}
-							}
 
-							for key, index := range collection.Indexes {
-								if index.ProvisionState != metadata.Active {
-									delete(collection.Indexes, key)
+								for key, index := range collection.Indexes {
+									if index.ProvisionState != metadata.Active {
+										delete(collection.Indexes, key)
+									}
 								}
 							}
 						}
@@ -185,30 +187,24 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 				}
 			}
 		}
-	}
 
-	for key, field := range meta.Fields {
-		if field.ProvisionState != metadata.Active {
-			delete(meta.Fields, key)
+		for key, field := range meta.Fields {
+			if field.ProvisionState != metadata.Active {
+				delete(meta.Fields, key)
+			}
+		}
+
+		for key, collection := range meta.Collections {
+			if collection.ProvisionState != metadata.Active {
+				delete(meta.Collections, key)
+			}
 		}
 	}
-
-	for key, collection := range meta.Collections {
-		if collection.ProvisionState != metadata.Active {
-			delete(meta.Collections, key)
-		}
-	}
-
 	s.activeMeta.Store(meta)
 
 	// TODO: elsewhere?
 	metadata.FieldTypeRegistry.Merge(meta.FieldTypeRegistry)
 	return nil
-}
-
-// TODO: remove? need some mechanism to override the meta func for schema migrations, imports, etc.
-func (s *DatasourceInstance) SetActiveMeta(meta *metadata.Meta) {
-	s.activeMeta.Store(meta)
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct

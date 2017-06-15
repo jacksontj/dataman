@@ -1,5 +1,9 @@
 package storagenode
 
+func GetSchema() string {
+	return schemaJson
+}
+
 // TODO: might as well make this a static struct var instantiation
 const schemaJson string = `
 {

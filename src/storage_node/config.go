@@ -24,6 +24,8 @@ type DatasourceInstanceConfig struct {
 	StorageNodeType datasource.StorageType `yaml:"storage_type"`
 	StorageConfig   map[string]interface{} `yaml:"storage_config"`
 
+	SkipProvisionTrim bool `yaml:"skip_provision_trim"`
+
 	Registry metrics.Registry `yaml:"-"`
 }
 
