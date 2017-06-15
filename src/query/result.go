@@ -10,21 +10,17 @@ type Result struct {
 }
 
 // Merge multiple results together
-func MergeResult(results ...*Result) *Result {
-	numResults := 0
-	for _, result := range results {
-		numResults += len(result.Return)
-	}
-
+func MergeResult(numResults int, results chan *Result) *Result {
 	// We want to make sure we don't duplicate return entries
 	ids := make(map[float64]struct{})
 
 	combinedResult := &Result{
-		Return: make([]map[string]interface{}, 0, numResults),
+		Return: make([]map[string]interface{}, 0),
 		Meta:   make(map[string]interface{}),
 	}
 
-	for _, result := range results {
+	recievedResults := 0
+	for result := range results {
 		if result.Error != "" {
 			combinedResult.Error += "\n" + result.Error
 		}
@@ -36,8 +32,10 @@ func MergeResult(results ...*Result) *Result {
 				combinedResult.Return = append(combinedResult.Return, resultReturn)
 			}
 		}
-
-		numResults += len(result.Return)
+		recievedResults++
+		if recievedResults == numResults {
+			break
+		}
 	}
 
 	return combinedResult
