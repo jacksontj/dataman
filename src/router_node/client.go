@@ -48,11 +48,13 @@ func MultiQuerySingle(shards []*metadata.DatastoreShard, q *query.Query) (*query
 
 */
 
+// TODO: use same client as everyone else (with some LRU/LFU cache of the connections?)
+var client = &http.Client{}
+
 // Take a query and send it to a given destination
 func Query(datasource *metadata.DatasourceInstance, datasourceShard *metadata.DatasourceInstanceShardInstance, queries []*query.Query) ([]*query.Result, error) {
 	// TODO: pass in? Or options?
 	// TODO: these should be associated with the storage_node (since that is what we are talking through)
-	client := &http.Client{}
 
 	// TODO: better marshalling
 	queriesMap := make([]map[query.QueryType]interface{}, len(queries))
