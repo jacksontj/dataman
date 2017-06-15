@@ -21,10 +21,10 @@ type DatasourceInstanceClient struct {
 	dsi *storagenode.DatasourceInstance
 }
 
-func (d *DatasourceInstanceClient) DoQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
-	return d.dsi.HandleQuery(q)
+func (d *DatasourceInstanceClient) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
+	return d.dsi.HandleQuery(q), nil
 }
 
-func (d *DatasourceInstanceClient) DoQueries(q []map[query.QueryType]query.QueryArgs) []*query.Result {
-	return d.dsi.HandleQueries(q)
+func (d *DatasourceInstanceClient) DoQueries(q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
+	return d.dsi.HandleQueries(q), nil
 }

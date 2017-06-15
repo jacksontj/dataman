@@ -29,11 +29,16 @@ type HTTPDatamanClient struct {
 	client      *http.Client
 }
 
-func (d *HTTPDatamanClient) DoQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
-	return d.DoQueries([]map[query.QueryType]query.QueryArgs{q})[0]
+func (d *HTTPDatamanClient) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
+	results, err := d.DoQueries([]map[query.QueryType]query.QueryArgs{q})
+	if err != nil {
+		return nil, err
+	} else {
+		return results[0], err
+	}
 }
 
-func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
 	// TODO: better marshalling
 	queriesMap := make([]map[query.QueryType]interface{}, len(queries))
 	for i, q := range queries {
@@ -44,7 +49,7 @@ func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryA
 
 	encQueries, err := json.Marshal(queriesMap)
 	if err != nil {
-		return errorSlice(len(queries), err.Error())
+		return nil, err
 	}
 	bodyReader := bytes.NewReader(encQueries)
 
@@ -55,24 +60,24 @@ func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryA
 		bodyReader,
 	)
 	if err != nil {
-		return errorSlice(len(queries), err.Error())
+		return nil, err
 	}
 	resp, err := d.client.Do(req)
 	if err != nil {
-		return errorSlice(len(queries), err.Error())
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errorSlice(len(queries), err.Error())
+		return nil, err
 	}
 
 	results := make([]*query.Result, len(queries))
 	err = json.Unmarshal(body, &results)
 	if err != nil {
-		return errorSlice(len(queries), err.Error())
+		return nil, err
 	}
 
-	return results
+	return results, nil
 }

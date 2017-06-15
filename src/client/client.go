@@ -16,6 +16,6 @@ type DatamanClient interface {
 	*/
 
 	// Generic access methods. These are to be used for non-base functions, or if you need concurrency in querying
-	DoQuery(map[query.QueryType]query.QueryArgs) *query.Result
-	DoQueries([]map[query.QueryType]query.QueryArgs) []*query.Result
+	DoQuery(map[query.QueryType]query.QueryArgs) (*query.Result, error)
+	DoQueries([]map[query.QueryType]query.QueryArgs) ([]*query.Result, error)
 }

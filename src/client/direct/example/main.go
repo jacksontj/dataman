@@ -47,7 +47,7 @@ func main() {
 		logrus.Fatalf("Error NewStaticDatasourceInstanceClient: %v", err)
 	}
 
-	ret := client.DoQuery(
+	ret, err := client.DoQuery(
 		map[query.QueryType]query.QueryArgs{
 			query.Filter: map[string]interface{}{
 				"db":         "example_forum",
@@ -57,6 +57,6 @@ func main() {
 		},
 	)
 
-	fmt.Println(ret)
+	fmt.Println(ret, err)
 
 }
