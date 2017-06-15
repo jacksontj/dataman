@@ -49,11 +49,10 @@ func main() {
 
 	ret := client.DoQuery(
 		map[query.QueryType]query.QueryArgs{
-			query.Get: map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "field_type",
-				"_id":            1,
+			query.Filter: map[string]interface{}{
+				"db":         "example_forum",
+				"collection": "user",
+				"filter":     map[string]interface{}{},
 			},
 		},
 	)

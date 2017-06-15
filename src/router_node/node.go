@@ -377,7 +377,6 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
 			vshardResults <- &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
-			continue
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 				if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
