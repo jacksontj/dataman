@@ -256,6 +256,7 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 
 // handle a single query
 func (s *RouterNode) handleQuery(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
+	// TODO: don't have internal duplexing count
 	start := time.Now()
 	defer func() {
 		// TODO: break this out to a per database/collection/shard number?
