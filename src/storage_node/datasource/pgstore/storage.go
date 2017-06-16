@@ -374,8 +374,8 @@ func filterTypeToComparator(f filter.FilterType) string {
 //
 func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 	whereClause := ""
-	if tmp, ok := args["filter"]; ok && tmp != nil {
-		filterData := args["filter"].(map[string]interface{})
+	if rawFilter, ok := args["filter"]; ok && rawFilter != nil {
+		filterData := rawFilter.(map[string]interface{})
 		meta := s.GetMeta()
 		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 		if err != nil {
