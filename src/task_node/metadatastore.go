@@ -68,7 +68,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			"shard_instance": "public",
 			"collection":     "field_type_constraint",
 			"filter": map[string]interface{}{
-				"field_type_id": fieldTypeRecord["_id"],
+				"field_type_id": []interface{}{"=", fieldTypeRecord["_id"]},
 			},
 		})
 		// TODO: better error handle
@@ -149,7 +149,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			"shard_instance": "public",
 			"collection":     "datasource_instance_shard_instance",
 			"filter": map[string]interface{}{
-				"datasource_instance_id": datasourceInstanceRecord["_id"],
+				"datasource_instance_id": []interface{}{"=", datasourceInstanceRecord["_id"]},
 			},
 		})
 		// TODO: better error handle
@@ -220,7 +220,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			"shard_instance": "public",
 			"collection":     "database_vshard",
 			"filter": map[string]interface{}{
-				"database_id": databaseRecord["_id"],
+				"database_id": []interface{}{"=", databaseRecord["_id"]},
 			},
 		})
 		// TODO: better error handle
@@ -248,7 +248,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 				"shard_instance": "public",
 				"collection":     "database_vshard_instance",
 				"filter": map[string]interface{}{
-					"database_vshard_id": databaseVshardRecord["_id"],
+					"database_vshard_id": []interface{}{"=", databaseVshardRecord["_id"]},
 				},
 			})
 			// TODO: better error handle
@@ -269,7 +269,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 					"shard_instance": "public",
 					"collection":     "database_vshard_instance_datastore_shard",
 					"filter": map[string]interface{}{
-						"database_vshard_instance_id": vshardInstance.ID,
+						"database_vshard_instance_id": []interface{}{"=", vshardInstance.ID},
 					},
 				})
 				// TODO: better error handle
@@ -323,7 +323,7 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 		"shard_instance": "public",
 		"collection":     "database_datastore",
 		"filter": map[string]interface{}{
-			"database_id": database_id,
+			"database_id": []interface{}{"=", database_id},
 		},
 	})
 	// TODO: better error handle
@@ -381,7 +381,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		"shard_instance": "public",
 		"collection":     "datastore",
 		"filter": map[string]interface{}{
-			"_id": datastore_id,
+			"_id": []interface{}{"=", datastore_id},
 		},
 	})
 	// TODO: better error handle
@@ -401,7 +401,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		"shard_instance": "public",
 		"collection":     "datastore_shard",
 		"filter": map[string]interface{}{
-			"datastore_id": datastoreRecord["_id"],
+			"datastore_id": []interface{}{"=", datastoreRecord["_id"]},
 		},
 	})
 
@@ -427,7 +427,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 			"shard_instance": "public",
 			"collection":     "datastore_shard_replica",
 			"filter": map[string]interface{}{
-				"datastore_shard_id": datastoreShardRecord["_id"],
+				"datastore_shard_id": []interface{}{"=", datastoreShardRecord["_id"]},
 			},
 		})
 
@@ -464,7 +464,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			"shard_instance": "public",
 			"collection":     "collection",
 			"filter": map[string]interface{}{
-				"_id": id,
+				"_id": []interface{}{"=", id},
 			},
 		})
 		// TODO: better error handle
@@ -483,7 +483,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			"shard_instance": "public",
 			"collection":     "collection_partition",
 			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
+				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
 		// TODO: better error handle
@@ -520,7 +520,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			"shard_instance": "public",
 			"collection":     "collection_field",
 			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
+				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
 		if collectionFieldResult.Error != "" {
@@ -548,7 +548,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			"shard_instance": "public",
 			"collection":     "collection_index",
 			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
+				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
 		if collectionIndexResult.Error != "" {
@@ -562,7 +562,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 				"shard_instance": "public",
 				"collection":     "collection_index_item",
 				"filter": map[string]interface{}{
-					"collection_index_id": collectionIndexRecord["_id"],
+					"collection_index_id": []interface{}{"=", collectionIndexRecord["_id"]},
 				},
 			})
 			if collectionIndexItemResult.Error != "" {
@@ -619,7 +619,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 			"shard_instance": "public",
 			"collection":     "collection_field",
 			"filter": map[string]interface{}{
-				"_id": id,
+				"_id": []interface{}{"=", id},
 			},
 		})
 		if collectionFieldResult.Error != "" {
@@ -659,7 +659,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
 			"filter": map[string]interface{}{
-				"collection_field_id": id,
+				"collection_field_id": []interface{}{"=", id},
 			},
 		})
 		if collectionFieldRelationResult.Error != "" {
@@ -1573,7 +1573,7 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseVShardInstance(dbname string, d
 		"shard_instance": "public",
 		"collection":     "database_vshard_instance_datastore_shard",
 		"filter": map[string]interface{}{
-			"database_vshard_instance_id": databaseVShardInstance.ID,
+			"database_vshard_instance_id": []interface{}{"=", databaseVShardInstance.ID},
 		},
 	})
 	if databaseVShardInstanceDatastoreShardDelete.Error != "" {
@@ -2048,7 +2048,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 		"shard_instance": "public",
 		"collection":     "collection_index_item",
 		"filter": map[string]interface{}{
-			"collection_index_id": collectionIndex.ID,
+			"collection_index_id": []interface{}{"=", collectionIndex.ID},
 		},
 	})
 	if collectionIndexItemResult.Error != "" {

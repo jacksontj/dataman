@@ -91,9 +91,9 @@ class DatamanClient(object):
         raise tornado.gen.Return(response['return'])
 
     @tornado.gen.coroutine
-    def filter(self, db, collection, record=None):
-        if record is None:
-            record = {}
+    def filter(self, db, collection, filter=None):
+        if filter is None:
+            filter = {}
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
@@ -102,7 +102,7 @@ class DatamanClient(object):
             {'filter': {
                 'db': db,
                 'collection': collection,
-                'filter': record,
+                'filter': filter,
             }}])
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
@@ -146,7 +146,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
         users = self.get_secure_cookie("user")
         if users:
-            users = yield dataman.filter(schema.DBNAME, 'user', {'username':self.get_secure_cookie("user")})
+            users = yield dataman.filter(schema.DBNAME, 'user', {'username': ['=', self.get_secure_cookie("user")]})
         if not users:
             self.current_user = None
         else:
@@ -214,7 +214,7 @@ class ThreadHandler(BaseHandler):
         if not threads:
             self.redirect("/")
         else:
-            messages = yield dataman.filter(schema.DBNAME, 'message', {'data': {'thread_id': thread_id}})
+            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]})
             try:
                 print messages[0]['_id']
                 tmp = yield dataman.get(schema.DBNAME, 'message', messages[0]['_id'], ['data.thread_id'])

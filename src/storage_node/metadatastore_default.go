@@ -62,7 +62,7 @@ func (m *DefaultMetadataStore) GetMeta() (*metadata.Meta, error) {
 			"shard_instance": "public",
 			"collection":     "field_type_constraint",
 			"filter": map[string]interface{}{
-				"field_type_id": fieldTypeRecord["_id"],
+				"field_type_id": []interface{}{"=", fieldTypeRecord["_id"]},
 			},
 		})
 		// TODO: better error handle
@@ -112,7 +112,7 @@ func (m *DefaultMetadataStore) GetMeta() (*metadata.Meta, error) {
 			"shard_instance": "public",
 			"collection":     "shard_instance",
 			"filter": map[string]interface{}{
-				"database_id": databaseRecord["_id"],
+				"database_id": []interface{}{"=", databaseRecord["_id"]},
 			},
 		})
 		if shardInstanceResult.Error != "" {
@@ -132,7 +132,7 @@ func (m *DefaultMetadataStore) GetMeta() (*metadata.Meta, error) {
 				"shard_instance": "public",
 				"collection":     "collection",
 				"filter": map[string]interface{}{
-					"shard_instance_id": shardInstanceRecord["_id"],
+					"shard_instance_id": []interface{}{"=", shardInstanceRecord["_id"]},
 				},
 			})
 			if collectionResult.Error != "" {
@@ -605,7 +605,7 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardins
 		"shard_instance": "public",
 		"collection":     "collection_index_item",
 		"filter": map[string]interface{}{
-			"collection_index_id": collectionIndex.ID,
+			"collection_index_id": []interface{}{"=", collectionIndex.ID},
 		},
 	})
 	if collectionIndexItemResult.Error != "" {
@@ -831,7 +831,7 @@ func (m *DefaultMetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*met
 			"shard_instance": "public",
 			"collection":     "collection_field",
 			"filter": map[string]interface{}{
-				"_id": id,
+				"_id": []interface{}{"=", id},
 			},
 		})
 		if collectionFieldResult.Error != "" {
@@ -871,7 +871,7 @@ func (m *DefaultMetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*met
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
 			"filter": map[string]interface{}{
-				"collection_field_id": id,
+				"collection_field_id": []interface{}{"=", id},
 			},
 		})
 		if collectionFieldRelationResult.Error != "" {
@@ -910,7 +910,7 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 			"shard_instance": "public",
 			"collection":     "collection",
 			"filter": map[string]interface{}{
-				"_id": id,
+				"_id": []interface{}{"=", id},
 			},
 		})
 		if collectionResult.Error != "" {
@@ -929,7 +929,7 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 			"shard_instance": "public",
 			"collection":     "collection_field",
 			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
+				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
 		if collectionFieldResult.Error != "" {
@@ -955,7 +955,7 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 			"shard_instance": "public",
 			"collection":     "collection_index",
 			"filter": map[string]interface{}{
-				"collection_id": collectionRecord["_id"],
+				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
 		if collectionIndexResult.Error != "" {
@@ -969,7 +969,7 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 				"shard_instance": "public",
 				"collection":     "collection_index_item",
 				"filter": map[string]interface{}{
-					"collection_index_id": collectionIndexRecord["_id"],
+					"collection_index_id": []interface{}{"=", collectionIndexRecord["_id"]},
 				},
 			})
 			if collectionIndexItemResult.Error != "" {

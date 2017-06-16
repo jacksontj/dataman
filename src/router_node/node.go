@@ -347,8 +347,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	case query.Filter:
 		// if there is only one partition and we have our shard key, we can be more specific
-		if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
-			shardKey, err := partition.HashFunc(rawShardKey)
+		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
+			shardKey, err := partition.HashFunc(rawShardFilter.([]interface{})[1])
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
@@ -550,8 +550,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	case query.Update:
 		// If the shard_key is defined, then we can send this to a single shard
-		if rawShardKey, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok {
-			shardKey, err := partition.HashFunc(rawShardKey)
+		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
+			shardKey, err := partition.HashFunc(rawShardFilter.([]interface{})[1])
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}

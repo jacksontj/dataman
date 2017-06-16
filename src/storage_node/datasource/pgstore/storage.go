@@ -18,6 +18,7 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
 	_ "github.com/lib/pq"
 )
 
@@ -112,11 +113,13 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	return result
 }
 
+// TODO: move this up to the storage node layer (since this is datasource agnostic)
 func (s *Storage) Set(args query.QueryArgs) *query.Result {
 	record := args["record"]
 	if id, ok := record.(map[string]interface{})["_id"]; ok {
-		args["filter"] = map[string]interface{}{"_id": id}
+		args["filter"] = map[string]interface{}{"_id": []interface{}{filter.Equal, id}}
 		delete(record.(map[string]interface{}), "_id")
+
 		return s.Update(args)
 	} else {
 		return s.Insert(args)
@@ -244,48 +247,12 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 		}
 	}
 
-	// TODO: move to some method
-	filterData := args["filter"].(map[string]interface{})
-	filterHeaders := make([]string, 0, len(filterData))
-	filterValues := make([]string, 0, len(filterData))
-
-	for filterName, filterValue := range filterData {
-		if strings.HasPrefix(filterName, "_") {
-			filterHeaders = append(filterHeaders, "\""+filterName+"\"")
-			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
-			continue
-		}
-		field, ok := collection.Fields[filterName]
-		if !ok {
-			result.Error = fmt.Sprintf("Field2 %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
-			return result
-		}
-
-		filterHeaders = append(filterHeaders, "\""+filterName+"\"")
-		switch field.FieldType.DatamanType {
-		case metadata.Document:
-			fieldJson, err := json.Marshal(filterValue)
-			if err != nil {
-				result.Error = err.Error()
-				return result
-			}
-			filterValues = append(filterValues, "'"+string(fieldJson)+"'")
-		case metadata.Text:
-			fallthrough
-		case metadata.String:
-			filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
-		default:
-			filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
-		}
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Error = err.Error()
+		return result
 	}
 
-	whereClause := ""
-	for i, header := range filterHeaders {
-		whereClause += header + "=" + filterValues[i]
-		if i+1 < len(filterHeaders) {
-			whereClause += ", "
-		}
-	}
 	//updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET _updated='now',%s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 
@@ -309,58 +276,10 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	whereClause := ""
-
-	if filter, ok := args["filter"]; ok {
-		meta := s.GetMeta()
-		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
-		if err != nil {
-			result.Error = err.Error()
-			return result
-		}
-
-		// TODO: move to some method
-		filterData := filter.(map[string]interface{})
-		filterHeaders := make([]string, 0, len(filterData))
-		filterValues := make([]string, 0, len(filterData))
-
-		for filterName, filterValue := range filterData {
-			if strings.HasPrefix(filterName, "_") {
-				filterHeaders = append(filterHeaders, "\""+filterName+"\"")
-				filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
-				continue
-			}
-			field, ok := collection.Fields[filterName]
-			if !ok {
-				result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", filterName, args["db"], args["collection"])
-				return result
-			}
-
-			filterHeaders = append(filterHeaders, "\""+filterName+"\"")
-			switch field.FieldType.DatamanType {
-			case metadata.Document:
-				fieldJson, err := json.Marshal(filterValue)
-				if err != nil {
-					result.Error = err.Error()
-					return result
-				}
-				filterValues = append(filterValues, "'"+string(fieldJson)+"'")
-			case metadata.Text:
-				fallthrough
-			case metadata.String:
-				filterValues = append(filterValues, fmt.Sprintf("'%v'", filterValue))
-			default:
-				filterValues = append(filterValues, fmt.Sprintf("%v", filterValue))
-			}
-		}
-
-		whereClause += ","
-		for i, header := range filterHeaders {
-			whereClause += header + "=" + filterValues[i]
-			if i+1 < len(filterHeaders) {
-				whereClause += ", "
-			}
-		}
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Error = err.Error()
+		return result
 	}
 
 	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE _id=%v%s RETURNING *", args["shard_instance"].(string), args["collection"], args["_id"], whereClause)
@@ -389,49 +308,13 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 	// don't support it (new in postgres 7.3)
 	sqlQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s", args["shard_instance"].(string), args["collection"])
 
-	if _, ok := args["filter"]; ok && args["filter"] != nil {
-		recordData := args["filter"].(map[string]interface{})
-		meta := s.GetMeta()
-		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
-		if err != nil {
-			result.Error = err.Error()
-			return result
-		}
-
-		whereParts := make([]string, 0)
-		for fieldName, fieldValue := range recordData {
-			if strings.HasPrefix(fieldName, "_") {
-				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
-				continue
-			}
-			field, ok := collection.Fields[fieldName]
-			if !ok {
-				result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
-				return result
-			}
-
-			switch fieldValue.(type) {
-			case nil:
-				whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=null", fieldName, fieldValue))
-			default:
-				switch field.FieldType.DatamanType {
-				case metadata.Document:
-					// TODO: recurse and add many
-					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-						whereParts = append(whereParts, fmt.Sprintf(" \"%s\"->>'%s'='%v'", fieldName, innerName, innerValue))
-					}
-				case metadata.Text:
-					fallthrough
-				case metadata.String:
-					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"='%v'", fieldName, fieldValue))
-				default:
-					whereParts = append(whereParts, fmt.Sprintf(" \"%s\"=%v", fieldName, fieldValue))
-				}
-			}
-		}
-		if len(whereParts) > 0 {
-			sqlQuery += " WHERE " + strings.Join(whereParts, " AND ")
-		}
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+	if whereClause != "" {
+		sqlQuery += " WHERE " + whereClause
 	}
 
 	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
@@ -469,4 +352,114 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 			}
 		}
 	}
+}
+
+func filterTypeToComparator(f filter.FilterType) string {
+	switch f {
+	case filter.In:
+		return "IN"
+	case filter.NotIn:
+		return "NOT IN"
+	default:
+		return string(f)
+	}
+}
+
+// Take a filter map and return the "where" section (without the actual WHERE statement) for the given filter
+// This takes a map of filter which would look something like this:
+//
+//	{"_id": ["=", 100]}
+//
+//	{"count": ["<", 100], "foo.bar.baz": [">", 10000]}
+//
+func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
+	whereClause := ""
+	if tmp, ok := args["filter"]; ok && tmp != nil {
+		filterData := args["filter"].(map[string]interface{})
+		meta := s.GetMeta()
+		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
+		if err != nil {
+			return "", err
+		}
+
+		whereParts := make([]string, 0)
+		for rawFieldName, fieldFilterRaw := range filterData {
+			fieldNameParts := strings.Split(rawFieldName, ".")
+
+			field, ok := collection.Fields[fieldNameParts[0]]
+			if !ok {
+				return "", fmt.Errorf("Field %s doesn't exist in %v.%v", fieldNameParts[0], args["db"], args["collection"])
+			}
+
+			fieldName := `"` + fieldNameParts[0] + `"`
+
+			if len(fieldNameParts) > 1 {
+				var ok bool
+				for _, fieldNamePart := range fieldNameParts[1:] {
+					fieldName += "->>'" + fieldNamePart + "'"
+					if field == nil {
+						field, ok = collection.Fields[fieldNameParts[0]]
+						if !ok {
+							return "", fmt.Errorf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
+						}
+					} else {
+						field, ok = field.SubFields[fieldNamePart]
+						if !ok {
+							return "", fmt.Errorf("SubField %s doesn't exist in %v.%v: %v", fieldName, args["db"], args["collection"], field.SubFields)
+						}
+					}
+				}
+			}
+
+			fieldFilter, ok := fieldFilterRaw.([]interface{})
+			if !ok {
+				return "", fmt.Errorf(`"filter" must be a list not %v`, fieldFilterRaw)
+			}
+
+			filterType := filter.FilterType(fieldFilter[0].(string))
+
+			fieldValue := fieldFilter[1]
+
+			switch fieldValue.(type) {
+			// SQL treats nulls completely differently-- so we need to do that
+			case nil:
+				var comparator string
+				// Note: sql kinda sucks for NIL types-- so we have to special case this
+				switch filterType {
+				case filter.Equal:
+					comparator = "IS"
+				case filter.NotEqual:
+					comparator = "IS NOT"
+				default:
+					comparator = filterTypeToComparator(filterType)
+				}
+				whereParts = append(whereParts, fmt.Sprintf(" \"%s\" %s NULL", fieldName, comparator))
+			default:
+				switch field.FieldType.DatamanType {
+				case metadata.Document:
+					// TODO: recurse and add many
+					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
+						whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'%s'%v'", fieldName, innerName, filterTypeToComparator(filterType), innerValue))
+					}
+				case metadata.Text:
+					fallthrough
+				case metadata.String:
+					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
+				default:
+					// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
+					// This is just cheating assuming that any depth is an object-- but we'll need to do better once we support arrays etc.
+					if len(fieldNameParts) > 1 {
+						whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
+					} else {
+						whereParts = append(whereParts, fmt.Sprintf(" %s%s%v", fieldName, filterTypeToComparator(filterType), fieldValue))
+					}
+				}
+			}
+
+		}
+		if len(whereParts) > 0 {
+			whereClause += strings.Join(whereParts, " AND ")
+		}
+	}
+	return whereClause, nil
 }
