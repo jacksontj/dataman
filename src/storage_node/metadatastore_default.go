@@ -701,6 +701,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(db *metadata.Database
 	if parentField != nil {
 		fieldRecord["parent_collection_field_id"] = parentField.ID
 	}
+
+	if field.Default != nil {
+		fieldRecord["default"] = field.Default
+	}
+
 	if field.ID != 0 {
 		fieldRecord["_id"] = field.ID
 	}
@@ -849,6 +854,13 @@ func (m *DefaultMetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*met
 		}
 		if notNull, ok := collectionFieldRecord["not_null"]; ok && notNull != nil {
 			field.NotNull = collectionFieldRecord["not_null"].(bool)
+		}
+		if defaultValue, ok := collectionFieldRecord["default"]; ok && defaultValue != nil {
+			defaultVal, err := field.FieldType.DatamanType.Normalize(collectionFieldRecord["default"])
+			if err != nil {
+				return nil, err
+			}
+			field.Default = defaultVal
 		}
 
 		// If we have a parent, mark it down for now

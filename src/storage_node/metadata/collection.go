@@ -78,9 +78,9 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationRe
 			if v, ok := record[fieldName]; ok {
 				record[fieldName], result.Fields[fieldName] = field.Normalize(v)
 			} else {
-				if field.NotNull {
+				if field.NotNull && field.Default == nil {
 					result.Fields[fieldName] = &ValidationResult{
-						Error: fmt.Sprintf("Missing required field %s", fieldName),
+						Error: fmt.Sprintf("Missing required field %s %v", fieldName, field.Default),
 					}
 				}
 				// TODO: include an empty result? Not sure if an empty one is any good (also-- check for subfields?)

@@ -23,18 +23,18 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "shard_instance_id": {
                   "name": "shard_instance_id",
@@ -44,7 +44,7 @@ const schemaJson string = `
                     "collection": "shard_instance",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -55,10 +55,10 @@ const schemaJson string = `
                     "shard_instance_id"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "collection_field": {
               "name": "collection_field",
@@ -67,7 +67,7 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_id": {
                   "name": "collection_id",
@@ -76,23 +76,28 @@ const schemaJson string = `
                     "collection": "collection",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
+                },
+                "default": {
+                  "name": "default",
+                  "field_type": "_string",
+                  "provision_state": 3
                 },
                 "field_type": {
                   "name": "field_type",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "not_null": {
                   "name": "not_null",
                   "field_type": "_bool",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "parent_collection_field_id": {
                   "name": "parent_collection_field_id",
@@ -101,13 +106,13 @@ const schemaJson string = `
                     "collection": "collection_field",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -118,10 +123,10 @@ const schemaJson string = `
                     "name"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "collection_field_relation": {
               "name": "collection_field_relation",
@@ -130,13 +135,13 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "cascade_on_delete": {
                   "name": "cascade_on_delete",
                   "field_type": "_bool",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_field_id": {
                   "name": "collection_field_id",
@@ -146,7 +151,7 @@ const schemaJson string = `
                     "collection": "collection_field",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "relation_collection_field_id": {
                   "name": "relation_collection_field_id",
@@ -156,10 +161,10 @@ const schemaJson string = `
                     "collection": "collection_field",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "collection_index": {
               "name": "collection_index",
@@ -168,7 +173,7 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_id": {
                   "name": "collection_id",
@@ -177,23 +182,23 @@ const schemaJson string = `
                     "collection": "collection",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "unique": {
                   "name": "unique",
                   "field_type": "_bool",
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -204,10 +209,10 @@ const schemaJson string = `
                     "collection_id"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "collection_index_item": {
               "name": "collection_index_item",
@@ -216,7 +221,7 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_field_id": {
                   "name": "collection_field_id",
@@ -226,7 +231,7 @@ const schemaJson string = `
                     "collection": "collection_field",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_index_id": {
                   "name": "collection_index_id",
@@ -236,7 +241,7 @@ const schemaJson string = `
                     "collection": "collection_index",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -247,10 +252,10 @@ const schemaJson string = `
                     "collection_field_id"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "database": {
               "name": "database",
@@ -259,18 +264,18 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -280,10 +285,10 @@ const schemaJson string = `
                     "name"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "field_type": {
               "name": "field_type",
@@ -292,18 +297,18 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "dataman_type": {
                   "name": "dataman_type",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -313,36 +318,41 @@ const schemaJson string = `
                     "name"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "field_type_constraint": {
               "name": "field_type_constraint",
               "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 0
-                },
                 "args": {
                   "name": "args",
                   "field_type": "_document",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "constraint": {
                   "name": "constraint",
                   "field_type": "_string",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
+                },
+                "f": {
+                  "name": "f",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
                 },
                 "field_type_id": {
                   "name": "field_type_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
+                },
+                "validation_error": {
+                  "name": "validation_error",
+                  "field_type": "_string",
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -352,10 +362,10 @@ const schemaJson string = `
                     "field_type_id",
                     "\"constraint\""
                   ],
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             },
             "shard_instance": {
               "name": "shard_instance",
@@ -364,18 +374,18 @@ const schemaJson string = `
                   "name": "_id",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "collection_shard": {
                   "name": "collection_shard",
                   "field_type": "_bool",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "count": {
                   "name": "count",
                   "field_type": "_int",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "database_id": {
                   "name": "database_id",
@@ -385,29 +395,29 @@ const schemaJson string = `
                     "collection": "database",
                     "field": "_id"
                   },
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "database_shard": {
                   "name": "database_shard",
                   "field_type": "_bool",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "instance": {
                   "name": "instance",
                   "field_type": "_int",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
                   "not_null": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
               "indexes": {
@@ -422,7 +432,7 @@ const schemaJson string = `
                     "name"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 },
                 "shard_instance_name_database_id_idx": {
                   "name": "shard_instance_name_database_id_idx",
@@ -431,16 +441,16 @@ const schemaJson string = `
                     "database_id"
                   ],
                   "unique": true,
-                  "provision_state": 0
+                  "provision_state": 3
                 }
               },
-              "provision_state": 0
+              "provision_state": 3
             }
           },
-          "provision_state": 0
+          "provision_state": 3
         }
       },
-      "provision_state": 0
+      "provision_state": 3
     }
   },
   "field_types": {

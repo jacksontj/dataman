@@ -49,7 +49,8 @@ type CollectionField struct {
 	// TODO: have link to the actual type struct
 
 	// Various configuration options
-	NotNull bool `json:"not_null,omitempty"` // Should we allow NULL fields
+	NotNull bool        `json:"not_null,omitempty"` // Should we allow NULL fields
+	Default interface{} `json:"default,omitempty"`
 
 	// Optional subfields
 	SubFields map[string]*CollectionField `json:"subfields,omitempty"`
@@ -107,7 +108,13 @@ func (f *CollectionField) Normalize(val interface{}) (interface{}, *ValidationRe
 			subValue, ok := mapVal[k]
 			if !ok {
 				if subField.NotNull {
-					subResult = &ValidationResult{Error: fmt.Sprintf("Subfield %s missing", k)}
+					if subField.Default == nil {
+						subResult = &ValidationResult{Error: fmt.Sprintf("Subfield %s missing", k)}
+					} else {
+						// TODO: configurable?
+						// Since top-level ones will have the default value set, we want the same behavior for sub-fields
+						mapVal[k] = subField.Default
+					}
 				}
 			} else {
 				mapVal[k], subResult = subField.Normalize(subValue)

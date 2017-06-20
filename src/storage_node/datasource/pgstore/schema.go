@@ -34,6 +34,10 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		fieldStr += " NOT NULL"
 	}
 
+	if field.Default != nil {
+		fieldStr += fmt.Sprintf(" DEFAULT %v", field.Default)
+	}
+
 	return fieldStr, nil
 }
 
@@ -287,7 +291,7 @@ func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string)
 }
 
 const listColumnTemplate = `
-SELECT column_name, data_type, character_maximum_length, is_nullable
+SELECT column_name, data_type, character_maximum_length, is_nullable, column_default
 FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = ($1) AND table_name = ($2)
 `
@@ -345,6 +349,16 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 			FieldType:      fieldType,
 			NotNull:        fieldEntry["is_nullable"].(string) == "NO",
 			ProvisionState: metadata.Active,
+		}
+
+		// If there is a default defined, lets attempt to load it (assuming it is a type we understand)
+		if fieldEntry["column_default"] != nil {
+			// TODO: log a warning if we don't understand? Some fields (internal fields like _id) have magic
+			// next sequence things-- which we don't want to be warned about
+			defaultVal, err := datamanType.Normalize(fieldEntry["column_default"])
+			if err == nil {
+				field.Default = defaultVal
+			}
 		}
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
