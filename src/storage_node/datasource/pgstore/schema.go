@@ -56,6 +56,7 @@ func (s *Storage) GetDatabase(dbname string) *metadata.Database {
 		return nil
 	}
 	database := metadata.NewDatabase(dbname)
+	database.ProvisionState = metadata.Active
 	shardInstances := s.ListShardInstance(dbname)
 
 	if shardInstances != nil {
@@ -131,6 +132,7 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 			continue
 		default:
 			shardInstance := metadata.NewShardInstance(schemaName)
+			shardInstance.ProvisionState = metadata.Active
 
 			// TODO: parse out the name to get the shard info
 			shardInstance.Count = 1
@@ -210,6 +212,7 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 	for i, tableEntry := range tables {
 		tableName := tableEntry["table_name"].(string)
 		collection := metadata.NewCollection(tableName)
+		collection.ProvisionState = metadata.Active
 
 		collection.Fields = make(map[string]*metadata.CollectionField)
 		for _, field := range s.ListCollectionField(dbname, shardinstance, collection.Name) {
@@ -337,10 +340,11 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 		// TODO: generate the datasource_field_type from the size etc.
 		field := &metadata.CollectionField{
-			Name:      fieldEntry["column_name"].(string),
-			Type:      fieldType.Name,
-			FieldType: fieldType,
-			NotNull:   fieldEntry["is_nullable"].(string) == "NO",
+			Name:           fieldEntry["column_name"].(string),
+			Type:           fieldType.Name,
+			FieldType:      fieldType,
+			NotNull:        fieldEntry["is_nullable"].(string) == "NO",
+			ProvisionState: metadata.Active,
 		}
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
@@ -465,9 +469,10 @@ func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname stri
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			index := &metadata.CollectionIndex{
-				Name:   string(indexEntry["index_name"].([]byte)),
-				Fields: indexFields,
-				Unique: indexEntry["is_unique"].(bool),
+				Name:           string(indexEntry["index_name"].([]byte)),
+				Fields:         indexFields,
+				Unique:         indexEntry["is_unique"].(bool),
+				ProvisionState: metadata.Active,
 			}
 			// TODO: re-enable later
 			if len(index.Name) > 55 && false {
@@ -502,9 +507,10 @@ func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, inde
 				indexFields[i] = normalizeFieldName(indexField)
 			}
 			return &metadata.CollectionIndex{
-				Name:   strings.Replace(string(indexEntry["index_name"].([]byte)), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
-				Fields: indexFields,
-				Unique: indexEntry["is_unique"].(bool),
+				Name:           strings.Replace(string(indexEntry["index_name"].([]byte)), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
+				Fields:         indexFields,
+				Unique:         indexEntry["is_unique"].(bool),
+				ProvisionState: metadata.Active,
 			}
 		}
 	}
