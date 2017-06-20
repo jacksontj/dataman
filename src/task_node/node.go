@@ -528,20 +528,22 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 
 	datasourceInstances := make(map[*metadata.DatasourceInstance]struct{})
 
-	for _, vshardInstance := range db.VShard.Instances {
-		for _, datastoreShard := range vshardInstance.DatastoreShard {
-			// Update state
-			datastoreShard.ProvisionState = metadata.Provision
-			// TODO: slaves as well
-			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+	if db.VShard.Instances != nil {
+		for _, vshardInstance := range db.VShard.Instances {
+			for _, datastoreShard := range vshardInstance.DatastoreShard {
 				// Update state
-				datastoreShardReplica.ProvisionState = metadata.Provision
+				datastoreShard.ProvisionState = metadata.Provision
+				// TODO: slaves as well
+				for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
+					// Update state
+					datastoreShardReplica.ProvisionState = metadata.Provision
 
-				datasourceInstance := datastoreShardReplica.DatasourceInstance
-				// If we need to define the database, lets do so
-				if _, ok := datasourceInstances[datasourceInstance]; !ok {
-					// TODO: better DB conversion
-					datasourceInstances[datasourceInstance] = struct{}{}
+					datasourceInstance := datastoreShardReplica.DatasourceInstance
+					// If we need to define the database, lets do so
+					if _, ok := datasourceInstances[datasourceInstance]; !ok {
+						// TODO: better DB conversion
+						datasourceInstances[datasourceInstance] = struct{}{}
+					}
 				}
 			}
 		}
