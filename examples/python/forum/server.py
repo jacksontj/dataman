@@ -215,14 +215,6 @@ class ThreadHandler(BaseHandler):
             self.redirect("/")
         else:
             messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]})
-            try:
-                print messages[0]['_id']
-                tmp = yield dataman.get(schema.DBNAME, 'message', messages[0]['_id'], ['data.thread_id'])
-                print 'get', tmp
-                tmp = yield dataman.set(schema.DBNAME, 'message', tmp[0], ['data.thread_id'])
-                print 'set', tmp
-            except:
-                pass
             # TODO: sort by _created server-side
             # TODO: switch from _created -> timebased UUID
             #messages = sorted(messages, key=lambda k: k['_created'])
