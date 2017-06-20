@@ -100,6 +100,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return nil, nil
 		case bool:
 			return typedVal, nil
+		case string:
+			return strconv.ParseBool(typedVal)
 		default:
 			return nil, fmt.Errorf("Not a bool")
 		}
