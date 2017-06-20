@@ -2,6 +2,7 @@ package datamanhttp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -29,16 +30,7 @@ type HTTPDatamanClient struct {
 	client      *http.Client
 }
 
-func (d *HTTPDatamanClient) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
-	results, err := d.DoQueries([]map[query.QueryType]query.QueryArgs{q})
-	if err != nil {
-		return nil, err
-	} else {
-		return results[0], err
-	}
-}
-
-func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
+func (d *HTTPDatamanClient) DoQueries(ctx context.Context, queries []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
 	// TODO: better marshalling
 	queriesMap := make([]map[query.QueryType]interface{}, len(queries))
 	for i, q := range queries {
@@ -62,6 +54,10 @@ func (d *HTTPDatamanClient) DoQueries(queries []map[query.QueryType]query.QueryA
 	if err != nil {
 		return nil, err
 	}
+
+	// Pass the context on
+	req.WithContext(ctx)
+
 	resp, err := d.client.Do(req)
 	if err != nil {
 		return nil, err

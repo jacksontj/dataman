@@ -1,21 +1,45 @@
 package datamanclient
 
-import "github.com/jacksontj/dataman/src/query"
+import (
+	"context"
+	"time"
 
-// Interface for all dataman client access
-// This includes clients that access the datasource directly etc.
-type DatamanClient interface {
-	// TODO: require? (or separate interface?)
-	// Convenience functions -- these are the base that we require all client support directly
-	/*
-	   Get(query.QueryArgs) *query.Result
-	   Set(query.QueryArgs) *query.Result
-	   Insert(query.QueryArgs) *query.Result
-	   Update(query.QueryArgs) *query.Result
-	   Delete(query.QueryArgs) *query.Result
-	*/
+	"github.com/jacksontj/dataman/src/query"
+)
 
-	// Generic access methods. These are to be used for non-base functions, or if you need concurrency in querying
-	DoQuery(map[query.QueryType]query.QueryArgs) (*query.Result, error)
-	DoQueries([]map[query.QueryType]query.QueryArgs) ([]*query.Result, error)
+// TODO support switching config in-flight? If so then we'll need to store a
+// pointer to it in the context -- which would require implementing one ourself
+type Client struct {
+	Transport DatamanClientTransport
+	// TODO: config
+}
+
+// TODO: add these convenience methods
+/*
+   Get(query.QueryArgs) *query.Result
+   Set(query.QueryArgs) *query.Result
+   Insert(query.QueryArgs) *query.Result
+   Update(query.QueryArgs) *query.Result
+   Delete(query.QueryArgs) *query.Result
+*/
+
+func (d *Client) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
+	timeout := time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
+	results, err := d.Transport.DoQueries(ctx, []map[query.QueryType]query.QueryArgs{q})
+	if err != nil {
+		return nil, err
+	} else {
+		return results[0], err
+	}
+}
+
+func (d *Client) DoQueries(q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
+	timeout := time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel() // Cancel ctx as soon as handleSearch returns.
+
+	return d.Transport.DoQueries(ctx, q)
 }

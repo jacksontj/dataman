@@ -1,30 +1,29 @@
 package datamandirect
 
 import (
+	"context"
+
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-func NewStaticDatasourceInstanceClient(config *storagenode.DatasourceInstanceConfig, meta *metadata.Meta) (*DatasourceInstanceClient, error) {
+func NewStaticDatasourceInstanceTransport(config *storagenode.DatasourceInstanceConfig, meta *metadata.Meta) (*DatasourceInstanceTransport, error) {
 	datasourceInstance, err := storagenode.NewLocalDatasourceInstance(config, meta)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DatasourceInstanceClient{
+	return &DatasourceInstanceTransport{
 		dsi: datasourceInstance,
 	}, nil
 }
 
-type DatasourceInstanceClient struct {
+type DatasourceInstanceTransport struct {
 	dsi *storagenode.DatasourceInstance
 }
 
-func (d *DatasourceInstanceClient) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
-	return d.dsi.HandleQuery(q), nil
-}
-
-func (d *DatasourceInstanceClient) DoQueries(q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
+// TODO: use context
+func (d *DatasourceInstanceTransport) DoQueries(ctx context.Context, q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
 	return d.dsi.HandleQueries(q), nil
 }
