@@ -112,7 +112,9 @@ func (f *CollectionField) Normalize(val interface{}) (interface{}, *ValidationRe
 			} else {
 				mapVal[k], subResult = subField.Normalize(subValue)
 			}
-			result.Fields[k] = subResult
+			if subResult != nil {
+				result.Fields[k] = subResult
+			}
 		}
 	}
 
