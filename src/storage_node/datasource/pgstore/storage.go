@@ -184,6 +184,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 		result.Error = err.Error()
 		return result
 	}
+	s.normalizeResult(args, result)
 
 	// TODO: add metadata back to the result
 	return result
