@@ -30,7 +30,7 @@ func getDatasourceInstance() (*DatasourceInstance, error) {
 		break
 	}
 
-	return NewDatasourceInstance(datasourceInstanceConfig)
+	return NewDatasourceInstanceDefault(datasourceInstanceConfig)
 }
 
 func resetDatasourceInstance(datasourceInstance *DatasourceInstance) error {
@@ -72,18 +72,6 @@ func TestDatasource_Database(t *testing.T) {
 		t.Fatalf("not equal %v != %v", testMeta, datasourceInstance.GetMeta())
 	}
 
-	// Now lets update the provision state for stuff
-	db := datasourceInstance.GetMeta().Databases["example_forum"]
-	db.ProvisionState = metadata.Provision
-	if err := datasourceInstance.EnsureExistsDatabase(db); err != nil {
-		t.Fatalf("Error ensuring DB 2: %v", err)
-	}
-
-	// Make sure it changed
-	if !metaEqual(db, datasourceInstance.GetMeta().Databases["example_forum"]) {
-		t.Fatalf("not equal %v != %v", db, datasourceInstance.GetMeta().Databases["example_forum"])
-	}
-
 	// Remove it all
 	if err := datasourceInstance.EnsureDoesntExistDatabase("example_forum"); err != nil {
 		t.Fatalf("Error EnsureDoesntExistDatabase: %v", err)
@@ -123,6 +111,7 @@ func TestDatasource_ShardInstance(t *testing.T) {
 		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
+	testMeta.Databases["example_forum"].ProvisionState = metadata.Active
 	// Check
 	if !metaEqual(testMeta, datasourceInstance.GetMeta()) {
 		t.Fatalf("not equal %v != %v", testMeta, datasourceInstance.GetMeta())
@@ -137,6 +126,11 @@ func TestDatasource_ShardInstance(t *testing.T) {
 	// Check
 	if !metaEqual(testMeta, datasourceInstance.GetMeta()) {
 		t.Fatalf("not equal %v != %v", testMeta, datasourceInstance.GetMeta())
+	}
+
+	// Remove all the DBs-- so we can remove the shardInstance
+	if err := resetDatasourceInstance(datasourceInstance); err != nil {
+		t.Fatalf("Unable to reset meta store: %v", err)
 	}
 
 	// Remove the shardInstance

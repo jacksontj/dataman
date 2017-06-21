@@ -7,6 +7,9 @@ type StorageMetadataStore interface {
 }
 
 type MutableStorageMetadataStore interface {
+	// This is an extension of the base interface, so we need to include it
+	StorageMetadataStore
+
 	EnsureExistsDatabase(db *metadata.Database) error
 	EnsureDoesntExistDatabase(dbname string) error
 	EnsureExistsShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error

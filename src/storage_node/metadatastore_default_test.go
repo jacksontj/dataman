@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func getMetaStore() (*MetadataStore, error) {
+func getMetaStore() (MutableStorageMetadataStore, error) {
 	config := &Config{}
 	configBytes, err := ioutil.ReadFile("storagenode/config.yaml")
 	if err != nil {
@@ -32,7 +32,7 @@ func getMetaStore() (*MetadataStore, error) {
 	return NewMetadataStore(datasourceInstanceConfig)
 }
 
-func resetMetaStore(metaStore *MetadataStore) error {
+func resetMetaStore(metaStore MutableStorageMetadataStore) error {
 	meta, err := metaStore.GetMeta()
 	if err != nil {
 		return err

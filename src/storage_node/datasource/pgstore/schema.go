@@ -179,7 +179,7 @@ func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadat
 }
 
 func (s *Storage) RemoveShardInstance(dbname, shardInstance string) error {
-	if _, err := DoQuery(s.getDB(dbname), fmt.Sprintf("DROP SCHEMA IF NOT EXISTS \"%s\"", shardInstance)); err != nil {
+	if _, err := DoQuery(s.getDB(dbname), fmt.Sprintf("DROP SCHEMA IF EXISTS \"%s\"", shardInstance)); err != nil {
 		return fmt.Errorf("Unable to drop schema: %v", err)
 	}
 	return nil

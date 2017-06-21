@@ -14,7 +14,7 @@ import (
 
 func getMetaStore() (*MetadataStore, error) {
 	config := &Config{}
-	configBytes, err := ioutil.ReadFile("routernode/config.yaml")
+	configBytes, err := ioutil.ReadFile("tasknode/config.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func getMetaStore() (*MetadataStore, error) {
 }
 
 func resetMetaStore(metaStore *MetadataStore) error {
-	meta := metaStore.GetMeta()
+	meta := getMeta(metaStore)
 
 	// TODO MORE!
 	for _, database := range meta.Databases {
@@ -82,6 +82,11 @@ func metaEqual(a, b interface{}) bool {
 	return true
 }
 
+func getMeta(m *MetadataStore) *metadata.Meta {
+	meta, _ := m.GetMeta()
+	return meta
+}
+
 func TestMetaStore_StorageNode(t *testing.T) {
 	metaStore, err := getMetaStore()
 	if err != nil {
@@ -103,8 +108,8 @@ func TestMetaStore_StorageNode(t *testing.T) {
 	}
 
 	// Ensure that the one we had and the one stored are the same
-	if !metaEqual(storageNode, metaStore.GetMeta().Nodes[storageNode.ID]) {
-		t.Fatalf("not equal %v != %v", storageNode, metaStore.GetMeta())
+	if !metaEqual(storageNode, getMeta(metaStore).Nodes[storageNode.ID]) {
+		t.Fatalf("not equal %v != %v", storageNode, getMeta(metaStore))
 	}
 
 	// Now lets update the provision state for stuff
@@ -114,8 +119,8 @@ func TestMetaStore_StorageNode(t *testing.T) {
 	}
 
 	// Make sure it changed
-	if !metaEqual(storageNode, metaStore.GetMeta().Nodes[storageNode.ID]) {
-		t.Fatalf("not equal %v != %v", storageNode, metaStore.GetMeta())
+	if !metaEqual(storageNode, getMeta(metaStore).Nodes[storageNode.ID]) {
+		t.Fatalf("not equal %v != %v", storageNode, getMeta(metaStore))
 	}
 
 	// Run sub-tests
@@ -128,8 +133,8 @@ func TestMetaStore_StorageNode(t *testing.T) {
 		}
 
 		// Ensure that the one we had and the one stored are the same
-		if !metaEqual(datasourceInstance, metaStore.GetMeta().DatasourceInstance[datasourceInstance.ID]) {
-			t.Fatalf("not equal %v != %v", datasourceInstance, metaStore.GetMeta().DatasourceInstance[datasourceInstance.ID])
+		if !metaEqual(datasourceInstance, getMeta(metaStore).DatasourceInstance[datasourceInstance.ID]) {
+			t.Fatalf("not equal %v != %v", datasourceInstance, getMeta(metaStore).DatasourceInstance[datasourceInstance.ID])
 		}
 
 		// Now lets update the provision state for stuff
@@ -139,8 +144,8 @@ func TestMetaStore_StorageNode(t *testing.T) {
 		}
 
 		// Make sure it changed
-		if !metaEqual(datasourceInstance, metaStore.GetMeta().DatasourceInstance[datasourceInstance.ID]) {
-			t.Fatalf("not equal %v != %v", datasourceInstance, metaStore.GetMeta().DatasourceInstance[datasourceInstance.ID])
+		if !metaEqual(datasourceInstance, getMeta(metaStore).DatasourceInstance[datasourceInstance.ID]) {
+			t.Fatalf("not equal %v != %v", datasourceInstance, getMeta(metaStore).DatasourceInstance[datasourceInstance.ID])
 		}
 
 		// TODO: test DSISI? -- this gets a little weird since it requires the other to be defined
@@ -178,8 +183,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 	}
 
 	// Ensure that the one we had and the one stored are the same
-	if !metaEqual(datastore, metaStore.GetMeta().Datastore[datastore.ID]) {
-		t.Fatalf("not equal %v != %v", datastore, metaStore.GetMeta().Datastore[datastore.ID])
+	if !metaEqual(datastore, getMeta(metaStore).Datastore[datastore.ID]) {
+		t.Fatalf("not equal %v != %v", datastore, getMeta(metaStore).Datastore[datastore.ID])
 	}
 
 	// Now lets update the provision state for stuff
@@ -189,8 +194,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 	}
 
 	// Make sure it changed
-	if !metaEqual(datastore, metaStore.GetMeta().Datastore[datastore.ID]) {
-		t.Fatalf("not equal %v != %v", datastore, metaStore.GetMeta().Datastore[datastore.ID])
+	if !metaEqual(datastore, getMeta(metaStore).Datastore[datastore.ID]) {
+		t.Fatalf("not equal %v != %v", datastore, getMeta(metaStore).Datastore[datastore.ID])
 	}
 
 	// Run sub-tests
@@ -207,8 +212,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 		}
 
 		// Ensure that the one we had and the one stored are the same
-		if !metaEqual(datastoreShard, metaStore.GetMeta().DatastoreShards[datastoreShard.ID]) {
-			t.Fatalf("not equal %v != %v", datastoreShard, metaStore.GetMeta().DatastoreShards[datastoreShard.ID])
+		if !metaEqual(datastoreShard, getMeta(metaStore).DatastoreShards[datastoreShard.ID]) {
+			t.Fatalf("not equal %v != %v", datastoreShard, getMeta(metaStore).DatastoreShards[datastoreShard.ID])
 		}
 
 		// Now lets update the provision state for stuff
@@ -218,8 +223,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 		}
 
 		// Make sure it changed
-		if !metaEqual(datastoreShard, metaStore.GetMeta().DatastoreShards[datastoreShard.ID]) {
-			t.Fatalf("not equal %v != %v", datastoreShard, metaStore.GetMeta().DatastoreShards[datastoreShard.ID])
+		if !metaEqual(datastoreShard, getMeta(metaStore).DatastoreShards[datastoreShard.ID]) {
+			t.Fatalf("not equal %v != %v", datastoreShard, getMeta(metaStore).DatastoreShards[datastoreShard.ID])
 		}
 
 		t.Run("datastore_shard_replica", func(t *testing.T) {
@@ -241,8 +246,9 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			datastoreShardReplica := &metadata.DatastoreShardReplica{
-				Datasource: datasourceInstance,
-				Master:     true,
+				DatasourceInstanceID: datasourceInstance.ID,
+				DatasourceInstance:   datasourceInstance,
+				Master:               true,
 			}
 
 			// Insert the meta -- here the provision state is all 0
@@ -251,8 +257,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Ensure that the one we had and the one stored are the same
-			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
-				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
+			if !metaEqual(datastoreShardReplica, getMeta(metaStore).DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
+				t.Fatalf("not equal %v != %v", datastoreShardReplica, getMeta(metaStore).DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
 			}
 
 			// Now lets update the provision state for stuff
@@ -262,8 +268,8 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Make sure it changed
-			if !metaEqual(datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
-				t.Fatalf("not equal %v != %v", datastoreShardReplica, metaStore.GetMeta().DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
+			if !metaEqual(datastoreShardReplica, getMeta(metaStore).DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID)) {
+				t.Fatalf("not equal %v != %v", datastoreShardReplica, getMeta(metaStore).DatastoreShards[datastoreShard.ID].Replicas.GetByID(datastoreShardReplica.ID))
 			}
 
 			// Remove it all
@@ -304,143 +310,173 @@ func TestMetaStore_Database(t *testing.T) {
 	// Get a Database
 	dbString := `
 {
-	"name": "test123",
+	"name": "example_forum",
 	"collections": {
 		"message": {
 			"name": "message",
 			"fields": {
+				"_id": {
+					"name": "_id",
+					"field_type": "_int",
+					"not_null": true,
+					"provision_state": 3
+				},
 				"data": {
+					"name": "data",
+					"field_type": "_document",
 					"subfields": {
 						"content": {
-							"not_null": true,
-							"type": "string",
 							"name": "content",
-							"type_args": {
-								"size": 255
-							}
-						},
-						"thread_id": {
+							"field_type": "_string",
 							"not_null": true,
-							"type": "int",
-							"name": "thread_id",
-							"relation": {
-								"collection": "thread",
-								"field": "_id"
-							}
-						},
-						"created_by": {
-							"not_null": true,
-							"type": "string",
-							"name": "created_by",
-							"type_args": {
-								"size": 255
-							}
+							"provision_state": 3
 						},
 						"created": {
+							"name": "created",
+							"field_type": "_int",
 							"not_null": true,
-							"type": "int",
-							"name": "created"
+							"provision_state": 3
+						},
+						"created_by": {
+							"name": "created_by",
+							"field_type": "_string",
+							"not_null": true,
+							"provision_state": 3
+						},
+						"thread_id": {
+							"name": "thread_id",
+							"field_type": "_int",
+							"not_null": true,
+							"relation": {
+								"field_id": 17425,
+								"collection": "thread",
+								"field": "_id"
+							},
+							"provision_state": 3
 						}
 					},
-					"type": "document",
-					"name": "data"
+					"provision_state": 3
 				}
 			},
-			"partitions": [{
-				"shard_config": {
-					"hash_method": "cast",
-					"shard_method": "mod",
-					"shard_key": "_id"
-				},
-				"start_id": 1
-			}],
 			"indexes": {
 				"created": {
-					"fields": ["data.created"],
-					"name": "created"
-				}
-			}
-		},
-		"user": {
-			"name": "user",
-			"fields": {
-				"username": {
-					"not_null": true,
-					"type": "string",
-					"name": "username",
-					"type_args": {
-						"size": 128
-					}
+					"name": "created",
+					"fields": [
+						"data.created"
+					],
+					"provision_state": 3
 				}
 			},
 			"partitions": [{
+				"start_id": 1,
 				"shard_config": {
-					"hash_method": "sha256",
-					"shard_method": "mod",
-					"shard_key": "username"
-				},
-				"start_id": 1
-			}],
-			"indexes": {
-				"username": {
-					"fields": ["username"],
-					"unique": true,
-					"name": "username"
+					"shard_key": "_id",
+					"hash_method": "cast",
+					"shard_method": "mod"
 				}
-			}
+			}],
+			"provision_state": 3
 		},
 		"thread": {
 			"name": "thread",
 			"fields": {
+				"_id": {
+					"name": "_id",
+					"field_type": "_int",
+					"not_null": true,
+					"provision_state": 3
+				},
 				"data": {
+					"name": "data",
+					"field_type": "_document",
 					"subfields": {
 						"created": {
+							"name": "created",
+							"field_type": "_int",
 							"not_null": true,
-							"type": "int",
-							"name": "created"
+							"provision_state": 3
 						},
 						"created_by": {
-							"not_null": true,
-							"type": "string",
 							"name": "created_by",
-							"type_args": {
-								"size": 255
-							}
+							"field_type": "_string",
+							"not_null": true,
+							"provision_state": 3
 						},
 						"title": {
-							"not_null": true,
-							"type": "string",
 							"name": "title",
-							"type_args": {
-								"size": 255
-							}
+							"field_type": "_string",
+							"not_null": true,
+							"provision_state": 3
 						}
 					},
-					"type": "document",
-					"name": "data"
+					"provision_state": 3
+				}
+			},
+			"indexes": {
+				"created": {
+					"name": "created",
+					"fields": [
+						"data.created"
+					],
+					"provision_state": 3
+				},
+				"title": {
+					"name": "title",
+					"fields": [
+						"data.title"
+					],
+					"unique": true,
+					"provision_state": 3
 				}
 			},
 			"partitions": [{
+				"start_id": 1,
 				"shard_config": {
+					"shard_key": "_id",
 					"hash_method": "cast",
-					"shard_method": "mod",
-					"shard_key": "_id"
-				},
-				"start_id": 1
-			}],
-			"indexes": {
-				"title": {
-					"fields": ["data.title"],
-					"unique": true,
-					"name": "title"
-				},
-				"created": {
-					"fields": ["data.created"],
-					"name": "created"
+					"shard_method": "mod"
 				}
-			}
+			}],
+			"provision_state": 3
+		},
+		"user": {
+			"name": "user",
+			"fields": {
+				"_id": {
+					"name": "_id",
+					"field_type": "_int",
+					"not_null": true,
+					"provision_state": 3
+				},
+				"username": {
+					"name": "username",
+					"field_type": "_string",
+					"not_null": true,
+					"provision_state": 3
+				}
+			},
+			"indexes": {
+				"username": {
+					"name": "username",
+					"fields": [
+						"username"
+					],
+					"unique": true,
+					"provision_state": 3
+				}
+			},
+			"partitions": [{
+				"start_id": 1,
+				"shard_config": {
+					"shard_key": "username",
+					"hash_method": "sha256",
+					"shard_method": "mod"
+				}
+			}],
+			"provision_state": 3
 		}
-	}
+	},
+	"provision_state": 3
 }
 `
 	database := &metadata.Database{}
@@ -457,8 +493,8 @@ func TestMetaStore_Database(t *testing.T) {
 	}
 
 	// Ensure that the one we had and the one stored are the same
-	if !metaEqual(database, metaStore.GetMeta().Databases[database.Name]) {
-		t.Fatalf("not equal %v != %v", database, metaStore.GetMeta().Databases[database.Name])
+	if !metaEqual(database, getMeta(metaStore).Databases[database.Name]) {
+		t.Fatalf("not equal %v != %v", database, getMeta(metaStore).Databases[database.Name])
 	}
 
 	// Now lets update the provision state for stuff
@@ -467,8 +503,8 @@ func TestMetaStore_Database(t *testing.T) {
 		t.Fatalf("Error ensuring database 2: %v", err)
 	}
 	// Make sure it changed
-	if !metaEqual(database, metaStore.GetMeta().Databases[database.Name]) {
-		t.Fatalf("not equal %v != %v", database, metaStore.GetMeta().Databases[database.Name])
+	if !metaEqual(database, getMeta(metaStore).Databases[database.Name]) {
+		t.Fatalf("not equal %v != %v", database, getMeta(metaStore).Databases[database.Name])
 	}
 	// Remove it all
 	if err := metaStore.EnsureDoesntExistDatabase(database.Name); err != nil {

@@ -1,142 +1,163 @@
 {
-	"databases": {
-		"example_forum": {
-			"name": "example_forum",
-			"shard_instances": {
-				"dbshard_example_forum_2": {
-					"name": "dbshard_example_forum_2",
-					"count": 2,
-					"instance": 2,
-					"collections": {
-						"message": {
-							"name": "message",
-							"fields": {
-								"_id": {
-									"name": "_id",
-									"type": "int",
-									"not_null": true
-								},
-								"data": {
-									"name": "data",
-									"type": "document",
-									"subfields": {
-										"content": {
-											"name": "content",
-											"type": "string",
-											"type_args": {
-												"size": 255
-											}
-										},
-										"created": {
-											"name": "created",
-											"type": "int"
-										},
-										"created_by": {
-											"name": "created_by",
-											"type": "string",
-											"type_args": {
-												"size": 255
-											}
-										},
-										"thread_id": {
-											"name": "thread_id",
-											"type": "int",
-											"relation": {
-												"collection": "thread",
-												"field": "_id"
-											}
-										}
-									}
-								}
-							},
-							"indexes": {
-								"created": {
-									"name": "created",
-									"fields": [
-										"data.created"
-									]
-								}
-							}
-						},
-						"thread": {
-							"name": "thread",
-							"fields": {
-								"_id": {
-									"name": "_id",
-									"type": "int",
-									"not_null": true
-								},
-								"data": {
-									"name": "data",
-									"type": "document",
-									"subfields": {
-										"created": {
-											"name": "created",
-											"type": "int"
-										},
-										"created_by": {
-											"name": "created_by",
-											"type": "string",
-											"type_args": {
-												"size": 255
-											}
-										},
-										"title": {
-											"name": "title",
-											"type": "string",
-											"type_args": {
-												"size": 255
-											}
-										}
-									}
-								}
-							},
-							"indexes": {
-								"created": {
-									"name": "created",
-									"fields": [
-										"data.created"
-									]
-								},
-								"title": {
-									"name": "title",
-									"fields": [
-										"data.title"
-									],
-									"unique": true
-								}
-							}
-						},
-						"user": {
-							"name": "user",
-							"fields": {
-								"_id": {
-									"name": "_id",
-									"type": "int",
-									"not_null": true
-								},
-								"username": {
-									"name": "username",
-									"type": "string",
-									"type_args": {
-										"size": 128
-									}
-								}
-							},
-							"indexes": {
-								"username": {
-									"name": "username",
-									"fields": [
-										"username"
-									],
-									"unique": true
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+
+    "databases": {
+        "example_forum": {
+            "name": "example_forum",
+            "shard_instances": {
+                "dbshard_example_forum_2": {
+                    "name": "dbshard_example_forum_2",
+                    "count": 2,
+                    "instance": 1,
+                    "collections": {
+                        "message": {
+                            "name": "message",
+                            "fields": {
+                                "_id": {
+                                    "name": "_id",
+                                    "field_type": "_int",
+                                    "not_null": true
+                                },
+                                "data": {
+                                    "name": "data",
+                                    "field_type": "_document",
+                                    "subfields": {
+                                        "content": {
+                                            "name": "content",
+                                            "field_type": "_string",
+                                            "not_null": true
+                                        },
+                                        "created": {
+                                            "name": "created",
+                                            "field_type": "_int",
+                                            "not_null": true
+                                        },
+                                        "created_by": {
+                                            "name": "created_by",
+                                            "field_type": "_string",
+                                            "not_null": true
+                                        },
+                                        "thread_id": {
+                                            "name": "thread_id",
+                                            "field_type": "_int",
+                                            "not_null": true,
+                                            "relation": {
+                                                "field_id": 18343,
+                                                "collection": "thread",
+                                                "field": "_id"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "indexes": {
+                                "created": {
+                                    "name": "created",
+                                    "fields": [
+                                        "data.created"
+                                    ]
+                                }
+                            }
+                        },
+                        "thread": {
+                            "name": "thread",
+                            "fields": {
+                                "_id": {
+                                    "name": "_id",
+                                    "field_type": "_int",
+                                    "not_null": true
+                                },
+                                "data": {
+                                    "name": "data",
+                                    "field_type": "_document",
+                                    "subfields": {
+                                        "created": {
+                                            "name": "created",
+                                            "field_type": "_int",
+                                            "not_null": true
+                                        },
+                                        "created_by": {
+                                            "name": "created_by",
+                                            "field_type": "_string",
+                                            "not_null": true
+                                        },
+                                        "title": {
+                                            "name": "title",
+                                            "field_type": "_string",
+                                            "not_null": true
+                                        }
+                                    }
+                                }
+                            },
+                            "indexes": {
+                                "created": {
+                                    "name": "created",
+                                    "fields": [
+                                        "data.created"
+                                    ]
+                                },
+                                "title": {
+                                    "name": "title",
+                                    "fields": [
+                                        "data.title"
+                                    ],
+                                    "unique": true
+                                }
+                            }
+                        },
+                        "user": {
+                            "name": "user",
+                            "fields": {
+                                "_id": {
+                                    "name": "_id",
+                                    "field_type": "_int",
+                                    "not_null": true
+                                },
+                                "username": {
+                                    "name": "username",
+                                    "field_type": "_string",
+                                    "not_null": true
+                                }
+                            },
+                            "indexes": {
+                                "username": {
+                                    "name": "username",
+                                    "fields": [
+                                        "username"
+                                    ],
+                                    "unique": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "field_types": {
+        "_bool": {
+            "name": "_bool",
+            "dataman_type": "bool"
+        },
+        "_datetime": {
+            "name": "_datetime",
+            "dataman_type": "datetime"
+        },
+        "_document": {
+            "name": "_document",
+            "dataman_type": "document"
+        },
+        "_int": {
+            "name": "_int",
+            "dataman_type": "int"
+        },
+        "_string": {
+            "name": "_string",
+            "dataman_type": "string"
+        },
+        "_text": {
+            "name": "_text",
+            "dataman_type": "text"
+        }
+    }
 
 }
