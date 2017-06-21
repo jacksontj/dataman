@@ -10,6 +10,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/client"
 	"github.com/jacksontj/dataman/src/client/direct"
+	"github.com/jacksontj/dataman/src/client/http"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -30,7 +31,7 @@ func doExamples(client *datamanclient.Client) {
 	fmt.Println(ret, err)
 }
 
-func main() {
+func direct() {
 	config := &storagenode.Config{}
 	configBytes, err := ioutil.ReadFile("../../storage_node/storagenode/config.yaml")
 	if err != nil {
@@ -70,4 +71,20 @@ func main() {
 	client := &datamanclient.Client{Transport: transport}
 	doExamples(client)
 
+}
+
+func http() {
+	transport, err := datamanhttp.NewHTTPDatamanClient("http://127.0.0.1:8080/v1/")
+	if err != nil {
+		logrus.Fatalf("Error NewHTTPDatamanClient: %v", err)
+	}
+
+	client := &datamanclient.Client{Transport: transport}
+	doExamples(client)
+
+}
+
+func main() {
+	direct()
+	http()
 }

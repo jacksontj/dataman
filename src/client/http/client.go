@@ -10,14 +10,6 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 )
 
-func errorSlice(count int, err string) []*query.Result {
-	errors := make([]*query.Result, count)
-	for i := 0; i < count; i++ {
-		errors[i] = &query.Result{Error: err}
-	}
-	return errors
-}
-
 func NewHTTPDatamanClient(destination string) (*HTTPDatamanClient, error) {
 	return &HTTPDatamanClient{
 		destination: destination,

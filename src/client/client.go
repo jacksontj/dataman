@@ -7,6 +7,7 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 )
 
+// TODO: support per-query config?
 // TODO support switching config in-flight? If so then we'll need to store a
 // pointer to it in the context -- which would require implementing one ourself
 type Client struct {
