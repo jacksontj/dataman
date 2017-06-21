@@ -90,7 +90,11 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case float64:
 			return int(typedVal), nil
 		case string:
-			return strconv.ParseInt(typedVal, 10, 64)
+			if typedVal == "" {
+				return nil, nil
+			} else {
+				return strconv.ParseInt(typedVal, 10, 64)
+			}
 		default:
 			return nil, fmt.Errorf("Unknown Int type: %s", reflect.TypeOf(val))
 		}
