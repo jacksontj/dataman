@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"testing"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/mitchellh/copystructure"
 
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 
 	"gopkg.in/yaml.v2"
@@ -139,4 +142,281 @@ func TestDatasource_ShardInstance(t *testing.T) {
 	}
 
 	// TODO: check
+}
+
+// All the tests around data access
+func TestDatasource_DataAccess(t *testing.T) {
+	datasourceInstance, err := getDatasourceInstance()
+	if err != nil {
+		t.Fatalf("Unable to get datasourceInstance: %v", err)
+	}
+
+	if err := resetDatasourceInstance(datasourceInstance); err != nil {
+		t.Fatalf("Unable to reset meta store: %v", err)
+	}
+
+	databaseAdd := &metadata.Database{
+		Name: "test_function_access",
+		ShardInstances: map[string]*metadata.ShardInstance{
+			"shard1": &metadata.ShardInstance{
+				Name:     "shard1",
+				Instance: 1,
+				Count:    1,
+				Collections: map[string]*metadata.Collection{
+					"item": &metadata.Collection{
+						Name: "item",
+						Fields: map[string]*metadata.CollectionField{
+							"data": &metadata.CollectionField{
+								Name:      "data",
+								Type:      "_document",
+								FieldType: metadata.Document.ToFieldType(),
+							},
+							"name": &metadata.CollectionField{
+								Name:      "name",
+								Type:      "_string",
+								FieldType: metadata.DatamanType(metadata.String).ToFieldType(),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Add the database
+	if err := datasourceInstance.EnsureExistsDatabase(databaseAdd); err != nil {
+		t.Fatalf("Error adding database: %v", err)
+	}
+
+	row := map[string]interface{}{
+		"data": map[string]interface{}{
+			"lastName": "mctester",
+		},
+		"name": "tester",
+	}
+
+	//Insert
+	//	- add a valid row
+	//	- add an invalid row
+	//	- add a conflicting row
+	result := datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Insert: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         row,
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when adding a valid document: %v", result.Error)
+	}
+	insertedId := result.Return[0]["_id"].(int64)
+
+	badRowTmp, _ := copystructure.Copy(row)
+	badRow := badRowTmp.(map[string]interface{})
+	badRow["notacolumn"] = "bar"
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Insert: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         badRow,
+		},
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when adding an invalid document")
+	}
+
+	conflictingRowTmp, _ := copystructure.Copy(row)
+	conflictingRow := conflictingRowTmp.(map[string]interface{})
+	conflictingRow["_id"] = insertedId
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Insert: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         conflictingRow,
+		},
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when adding a conflicting row")
+	}
+
+	//Get
+	//	- get an item which doesn't exist
+	//	- get an item which does exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Get: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"_id":            -1,
+		},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Found a non-existant item")
+	}
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Get: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"_id":            insertedId,
+		},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to find inserted item!")
+	}
+
+	//Update
+	//	- update a non-existant item
+	//	- update to column which doesn't exist
+	//	- update a single column
+	//		-- vaid type
+	//		-- invalid type
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Update: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": -1},
+			"record":         map[string]interface{}{"name": "bar"},
+		},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Updated %d rows for a non-existant row?", len(result.Return))
+	}
+
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Update: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": insertedId},
+			"record":         badRow,
+		},
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when updating a row with invalid record")
+	}
+
+	invalidColumnRowTmp, _ := copystructure.Copy(row)
+	invalidColumnRow := invalidColumnRowTmp.(map[string]interface{})
+	invalidColumnRow["name"] = 100
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Update: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": insertedId},
+			"record":         invalidColumnRow,
+		},
+	})
+	// TODO: need to do actual type checking down in the storageinterface
+	if result.Error == "" && false {
+		t.Fatalf("No error when updating a row with invalid column type: %v", result)
+	}
+
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Update: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}},
+			"record":         map[string]interface{}{"name": "tester2"},
+		},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Update found nothing: %v", result)
+	}
+	// Check that "data" is untouched, but "name" is updated
+	if result.Return[0]["name"] != "tester2" {
+		t.Fatalf("Update didn't update column name! expected=%v actual=%v", "tester2", result.Return[0]["name"])
+	}
+	if !reflect.DeepEqual(result.Return[0]["data"], row["data"]) {
+		t.Fatalf("Update changed value of data.lastName! expected=%v actual=%v", result.Return[0]["data"].(map[string]string)["lastName"], row["data"].(map[string]string)["lastName"])
+	}
+
+	// Set
+	//  - update a row (does/doesn't exist)
+	//  - create a row (valid, invalid)
+	// Update something which doesn't exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Set: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         map[string]interface{}{"notthere": -1, "name": "bar"},
+		},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
+	}
+
+	// Update something which *does* exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Set: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         map[string]interface{}{"_id": insertedId, "name": "bar"},
+		},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to set row for an existing row: %v", result)
+	}
+
+	// create a valid row
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Set: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         map[string]interface{}{"name": "setname"},
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
+	}
+
+	// create a invalid row
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Set: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"record":         badRow,
+		},
+	})
+	if result.Error == "" {
+		t.Fatalf("No error when set-ing a row with invalid record")
+	}
+
+	//Delete
+	//	- delete an item which doesn't exist
+	//	- an item that does exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Delete: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"_id":            -1,
+		},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
+	}
+
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Delete: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"_id":            insertedId,
+		},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to delete a row?! %v", result)
+	}
+
 }

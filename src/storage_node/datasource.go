@@ -643,6 +643,9 @@ func (s *DatasourceInstance) EnsureExistsCollection(db *metadata.Database, shard
 }
 
 func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+	if err := collection.EnsureInternalFields(); err != nil {
+		return err
+	}
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
 	if existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection != nil {

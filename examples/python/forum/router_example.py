@@ -19,6 +19,8 @@ def ensure_storagenode(urlbase):
             continue
         with open(os.path.join(STORAGE_NODE_DIR, fname), 'r') as f:
             storage_node = json.load(f)
+            if 'NUC' in storage_node['name']:
+                continue
             ret = requests.post(
                 urlbase+"/v1/storage_node/"+storage_node['name'],
                 json=storage_node,
