@@ -25,6 +25,9 @@ func MergeResult(numResults int, results chan *Result) *Result {
 			combinedResult.Error += "\n" + result.Error
 		}
 		// TODO: merge meta
+		if len(combinedResult.Meta) == 0 {
+			combinedResult.Meta = result.Meta
+		}
 
 		for _, resultReturn := range result.Return {
 			if _, ok := ids[resultReturn["_id"].(float64)]; !ok {
