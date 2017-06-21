@@ -69,13 +69,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case string:
 			return typedVal, nil
 		default:
-			return nil, fmt.Errorf("Not a string")
-		}
-		s, ok := val.(string)
-		if !ok {
 			return nil, fmt.Errorf("Not text")
 		}
-		return s, nil
 	case Int:
 		switch typedVal := val.(type) {
 		case nil:
