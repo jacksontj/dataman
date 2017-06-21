@@ -647,8 +647,8 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		}
 
 		// If we have a parent, mark it down for now
-		if collectionFieldRecord["parent_collection_field_id"] != nil {
-			field.ParentFieldID = collectionFieldRecord["parent_collection_field_id"].(int64)
+		if parentFieldID, _ := collectionFieldRecord["parent_collection_field_id"].(int64); parentFieldID != 0 {
+			field.ParentFieldID = parentFieldID
 			parentField, err := m.getFieldByID(meta, field.ParentFieldID)
 			if err != nil {
 				return nil, fmt.Errorf("Error getFieldByID: %v", err)
@@ -2154,6 +2154,8 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	}
 	if parentField != nil {
 		fieldRecord["parent_collection_field_id"] = parentField.ID
+	} else {
+		fieldRecord["parent_collection_field_id"] = 0
 	}
 	if field.Default != nil {
 		fieldRecord["default"] = field.Default
