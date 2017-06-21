@@ -392,6 +392,61 @@ func TestDatasource_DataAccess(t *testing.T) {
 		t.Fatalf("No error when set-ing a row with invalid record")
 	}
 
+	// Filter
+	//  - Get a row that doesn't exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Filter: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"notthere": []interface{}{"=", -1}, "name": []interface{}{"=", "bar"}},
+		},
+	})
+	if len(result.Return) != 0 {
+		t.Fatalf("Filter %d rows for a non-existant row?", len(result.Return))
+	}
+
+	//  - Get a row that does exist
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Filter: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+		},
+	})
+	if len(result.Return) != 1 {
+		t.Fatalf("Unable to filter row for an existing row: %v", result)
+	}
+
+	//  fields
+	requestFields := []string{
+		"_id",
+		"data.lastName",
+	}
+	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
+		query.Filter: map[string]interface{}{
+			"db":             databaseAdd.Name,
+			"shard_instance": "shard1",
+			"collection":     "item",
+			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+			"fields":         requestFields,
+		},
+	})
+	if result.Error != "" {
+		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
+	}
+
+	// Check that we only got what we expected
+	flatResult := query.FlattenResult(result.Return[0])
+	resultFields := make([]string, 0, len(flatResult))
+	for k, _ := range flatResult {
+		resultFields = append(resultFields, k)
+	}
+	if !reflect.DeepEqual(requestFields, resultFields) {
+		t.Fatalf("Error, got back different fields expected=%v actual=%v", requestFields, resultFields)
+	}
+
 	//Delete
 	//	- delete an item which doesn't exist
 	//	- an item that does exist

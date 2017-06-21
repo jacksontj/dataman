@@ -359,6 +359,10 @@ QUERYLOOP:
 						Error: "Unsupported query type " + string(queryType),
 					}
 				}
+				// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+				if fields, ok := queryArgs["fields"]; ok {
+					results[i].Project(fields.([]string))
+				}
 			}
 
 		} else {

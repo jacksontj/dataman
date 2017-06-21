@@ -1,5 +1,7 @@
 package query
 
+import "strings"
+
 // Encapsulate a result from the datastore
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
@@ -7,6 +9,37 @@ type Result struct {
 	// TODO: pointer to the right thing
 	ValidationError interface{}            `json:"validation_error,omitempty"`
 	Meta            map[string]interface{} `json:"meta,omitempty"`
+}
+
+func (r *Result) Project(fields []string) {
+	// TODO: do this in the underlying datasource so we can get a partial select
+	projectionFields := make([][]string, len(fields))
+	for i, fieldName := range fields {
+		projectionFields[i] = strings.Split(fieldName, ".")
+	}
+
+	for i, returnRow := range r.Return {
+		projectedResult := make(map[string]interface{})
+		for _, fieldNameParts := range projectionFields {
+			if len(fieldNameParts) == 1 {
+				projectedResult[fieldNameParts[0]] = returnRow[fieldNameParts[0]]
+			} else {
+				dstTmp := projectedResult
+				srcTmp := returnRow
+				for _, fieldNamePart := range fieldNameParts[:len(fieldNameParts)-1] {
+					_, ok := dstTmp[fieldNamePart]
+					if !ok {
+						dstTmp[fieldNamePart] = make(map[string]interface{})
+					}
+					dstTmp = dstTmp[fieldNamePart].(map[string]interface{})
+					srcTmp = srcTmp[fieldNamePart].(map[string]interface{})
+				}
+				// Now we are on the last hop-- just copy the value over
+				dstTmp[fieldNameParts[len(fieldNameParts)-1]] = srcTmp[fieldNameParts[len(fieldNameParts)-1]]
+			}
+		}
+		r.Return[i] = projectedResult
+	}
 }
 
 // Merge multiple results together
@@ -68,4 +101,21 @@ func SetValue(value map[string]interface{}, newValue interface{}, nameParts []st
 	val.(map[string]interface{})[nameParts[len(nameParts)-1]] = newValue
 
 	return val
+}
+
+func FlattenResult(m map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for k, v := range m {
+		switch typedV := v.(type) {
+		case map[string]interface{}:
+			// get the submap as a flattened thing
+			subMap := FlattenResult(typedV)
+			for subK, subV := range subMap {
+				result[k+"."+subK] = subV
+			}
+		default:
+			result[k] = v
+		}
+	}
+	return result
 }
