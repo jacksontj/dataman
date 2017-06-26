@@ -1,6 +1,9 @@
 package query
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // Encapsulate a result from the datastore
 type Result struct {
@@ -118,4 +121,51 @@ func FlattenResult(m map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return result
+}
+
+// TODO: change map[string]interface to a `Record` struct type
+// sort the given data by the given keys
+func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) []map[string]interface{} {
+	splitSortKeys := make([][]string, len(sortKeys))
+	for i, sortKey := range sortKeys {
+		splitSortKeys[i] = strings.Split(sortKey, ".")
+	}
+
+	less := func(i, j int) (l bool) {
+		if reverse {
+			defer func() { l = !l }()
+		}
+		for _, keyParts := range splitSortKeys {
+			// TODO: record could (and should) point at the CollectionFields which will tell us types
+			iVal := GetValue(data[i], keyParts)
+			jVal := GetValue(data[j], keyParts)
+			switch iValTyped := iVal.(type) {
+			case string:
+				jValTyped := jVal.(string)
+				if iValTyped != jValTyped {
+					l = iValTyped < jValTyped
+					return
+				}
+			case int:
+				jValTyped := jVal.(int)
+				if iValTyped != jValTyped {
+					l = iValTyped < jValTyped
+					return
+				}
+			case bool:
+				jValTyped := jVal.(bool)
+				l = !iValTyped && jValTyped
+				return
+			// TODO: return error? At this point if all return false, I'm not sure what happens
+			default:
+				l = false
+				return
+
+			}
+		}
+		l = false
+		return
+	}
+	sort.Slice(data, less)
+	return data
 }
