@@ -45,6 +45,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return nil, nil
 		case map[string]interface{}:
 			return typedVal, nil
+		// TODO: put this behind a switch to enforce strictness
 		case string:
 			mapVal := make(map[string]interface{})
 			if err := json.Unmarshal([]byte(typedVal), mapVal); err == nil {
