@@ -91,19 +91,23 @@ class DatamanClient(object):
         raise tornado.gen.Return(response['return'])
 
     @tornado.gen.coroutine
-    def filter(self, db, collection, filter=None):
+    def filter(self, db, collection, filter=None, sort=None):
         if filter is None:
             filter = {}
+        
+        request = {
+            'db': db,
+            'collection': collection,
+            'filter': filter,
+        }
+        if sort is not None:
+            request['sort'] = sort
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
             body=json.dumps([
-            {'filter': {
-                'db': db,
-                'collection': collection,
-                'filter': filter,
-            }}])
+            {'filter': request}])
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
         response = json.loads(ret.body)[0]
@@ -126,6 +130,7 @@ class DatamanClient(object):
             }}])
         )
         logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
+        print ret.body
         response = json.loads(ret.body)[0]
         if 'error' in response:
             raise Exception(response['error'])
@@ -214,10 +219,9 @@ class ThreadHandler(BaseHandler):
         if not threads:
             self.redirect("/")
         else:
-            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]})
-            # TODO: sort by _created server-side
-            # TODO: switch from _created -> timebased UUID
-            #messages = sorted(messages, key=lambda k: k['_created'])
+            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]}, sort={'fields': ['data.created', '_id']})
+            for m in messages:
+                print m
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
