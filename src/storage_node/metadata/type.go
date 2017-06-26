@@ -1,6 +1,7 @@
 package metadata
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -44,6 +45,13 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return nil, nil
 		case map[string]interface{}:
 			return typedVal, nil
+		case string:
+			mapVal := make(map[string]interface{})
+			if err := json.Unmarshal([]byte(typedVal), mapVal); err == nil {
+				return mapVal, nil
+			} else {
+				return nil, err
+			}
 		default:
 			return nil, fmt.Errorf("Not a document")
 		}
