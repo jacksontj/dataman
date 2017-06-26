@@ -359,9 +359,32 @@ QUERYLOOP:
 						Error: "Unsupported query type " + string(queryType),
 					}
 				}
+
 				// TODO: move into the underlying datasource -- we should be doing partial selects etc.
 				if fields, ok := queryArgs["fields"]; ok {
 					results[i].Project(fields.([]string))
+				}
+
+				// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
+				if sortArgsRaw, ok := queryArgs["sort"]; ok {
+					// TODO: parse out before doing the query, if its wrong we can't do anything
+					sortArgs, ok := sortArgsRaw.(map[string]interface{})
+					if !ok {
+						results[i].Error = "Unable to sort result, invalid sort args"
+						continue
+					}
+					// TODO: better?
+					sortKeys := make([]string, len(sortArgs["fields"].([]interface{})))
+					for i, sortKey := range sortArgs["fields"].([]interface{}) {
+						sortKeys[i] = sortKey.(string)
+					}
+
+					reverse := false
+					if reverseRaw, ok := sortArgs["reverse"]; ok {
+						reverse = reverseRaw.(bool)
+					}
+					// TODO: how do we define order?
+					results[i].Sort(sortKeys, reverse)
 				}
 			}
 

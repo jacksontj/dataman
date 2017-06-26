@@ -14,6 +14,12 @@ type Result struct {
 	Meta            map[string]interface{} `json:"meta,omitempty"`
 }
 
+func (r *Result) Sort(keys []string, reverse bool) {
+	if r.Return != nil {
+		Sort(keys, r.Return, reverse)
+	}
+}
+
 func (r *Result) Project(fields []string) {
 	// TODO: do this in the underlying datasource so we can get a partial select
 	projectionFields := make([][]string, len(fields))
@@ -125,7 +131,7 @@ func FlattenResult(m map[string]interface{}) map[string]interface{} {
 
 // TODO: change map[string]interface to a `Record` struct type
 // sort the given data by the given keys
-func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) []map[string]interface{} {
+func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) {
 	splitSortKeys := make([][]string, len(sortKeys))
 	for i, sortKey := range sortKeys {
 		splitSortKeys[i] = strings.Split(sortKey, ".")
@@ -152,12 +158,27 @@ func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) []map[
 					l = iValTyped < jValTyped
 					return
 				}
+			case int64:
+				jValTyped := jVal.(int64)
+				if iValTyped != jValTyped {
+					l = iValTyped < jValTyped
+					return
+				}
+			case float64:
+				jValTyped := jVal.(float64)
+				if iValTyped != jValTyped {
+					l = iValTyped < jValTyped
+					return
+				}
 			case bool:
 				jValTyped := jVal.(bool)
-				l = !iValTyped && jValTyped
-				return
+				if iValTyped != jValTyped {
+					l = !iValTyped && jValTyped
+					return
+				}
 			// TODO: return error? At this point if all return false, I'm not sure what happens
 			default:
+				panic("Unknown type")
 				l = false
 				return
 
@@ -167,5 +188,4 @@ func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) []map[
 		return
 	}
 	sort.Slice(data, less)
-	return data
 }
