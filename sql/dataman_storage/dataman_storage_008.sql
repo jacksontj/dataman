@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90603
 File Encoding         : 65001
 
-Date: 2017-06-20 12:08:15
+Date: 2017-06-27 10:49:55
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4534
+ START 4540
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 4534, true);
+SELECT setval('"public"."collection__id_seq"', 4540, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 18281
+ START 18309
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 18281, true);
+SELECT setval('"public"."collection_field__id_seq"', 18309, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1314
+ START 1316
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 1314, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 1316, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 5756
+ START 5764
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 5756, true);
+SELECT setval('"public"."collection_index__id_seq"', 5764, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 88038
+ START 88222
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 88038, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 88222, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1506
+ START 1507
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 1506, true);
+SELECT setval('"public"."database__id_seq"', 1507, true);
 
 -- ----------------------------
 -- Sequence structure for field_type__id_seq
@@ -118,9 +118,9 @@ CREATE SEQUENCE "public"."shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1512
+ START 1514
  CACHE 1;
-SELECT setval('"public"."shard_instance__id_seq"', 1512, true);
+SELECT setval('"public"."shard_instance__id_seq"', 1514, true);
 
 -- ----------------------------
 -- Table structure for collection
@@ -361,13 +361,12 @@ ALTER TABLE "public"."collection" ADD FOREIGN KEY ("shard_instance_id") REFERENC
 -- Foreign Key structure for table "public"."collection_field"
 -- ----------------------------
 ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("collection_id") REFERENCES "public"."collection" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
-ALTER TABLE "public"."collection_field" ADD FOREIGN KEY ("parent_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_field_relation"
 -- ----------------------------
-ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("relation_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_field_relation" ADD FOREIGN KEY ("relation_collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index"
@@ -377,8 +376,8 @@ ALTER TABLE "public"."collection_index" ADD FOREIGN KEY ("collection_id") REFERE
 -- ----------------------------
 -- Foreign Key structure for table "public"."collection_index_item"
 -- ----------------------------
-ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_index_id") REFERENCES "public"."collection_index" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."collection_index_item" ADD FOREIGN KEY ("collection_field_id") REFERENCES "public"."collection_field" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."shard_instance"
