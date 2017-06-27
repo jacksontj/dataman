@@ -1,336 +1,334 @@
 {
-
-    "storage_node": {
-        "138": {
-            "_id": 138,
-            "name": "X1",
-            "ip": "127.0.0.1",
-            "port": 8081,
-            "datasource_instances": {
-                "postgres1": {
-                    "_id": 117,
-                    "name": "postgres1",
-                    "storage_node_id": 138,
-                    "datasource_instance_shard_instance": {
-                        "3437": {
-                            "_id": 3270,
-                            "name": "dbshard_example_forum_1",
-                            "database_vshard_instance_id": 3437,
-                            "provision_state": 3
-                        },
-                        "3438": {
-                            "_id": 3271,
-                            "name": "dbshard_example_forum_2",
-                            "database_vshard_instance_id": 3438,
-                            "provision_state": 3
-                        }
-                    },
-                    "provision_state": 3
-                }
+  "storage_node": {
+    "138": {
+      "_id": 138,
+      "name": "X1",
+      "ip": "127.0.0.1",
+      "port": 8081,
+      "datasource_instances": {
+        "postgres1": {
+          "_id": 117,
+          "name": "postgres1",
+          "storage_node_id": 138,
+          "datasource_instance_shard_instance": {
+            "3437": {
+              "_id": 3270,
+              "name": "dbshard_example_forum_1",
+              "database_vshard_instance_id": 3437,
+              "provision_state": 3
             },
-            "provision_state": 3
+            "3438": {
+              "_id": 3271,
+              "name": "dbshard_example_forum_2",
+              "database_vshard_instance_id": 3438,
+              "provision_state": 3
+            }
+          },
+          "provision_state": 3
         }
-    },
-    "datastores": {
-        "55": {
-            "_id": 55,
-            "name": "test_datastore",
-            "shards": [
-                {
-                    "_id": 68,
-                    "name": "datastore_test-shard1",
-                    "shard_instance": 1,
-                    "replicas": {
-                        "masters": [
-                            {
-                                "_id": 67,
-                                "datasource_instance_id": 117,
-                                "master": true,
-                                "provision_state": 3
-                            }
-                        ],
-                        "slaves": [ ]
-                    },
-                    "provision_state": 3
-                },
-                {
-                    "_id": 69,
-                    "name": "test-shard2",
-                    "shard_instance": 2,
-                    "replicas": {
-                        "masters": [
-                            {
-                                "_id": 68,
-                                "datasource_instance_id": 117,
-                                "master": true,
-                                "provision_state": 3
-                            }
-                        ],
-                        "slaves": [ ]
-                    },
-                    "provision_state": 3
-                }
-            ],
-            "provision_state": 3
-        }
-    },
-    "field_types": {
-        "_bool": {
-            "name": "_bool",
-            "dataman_type": "bool"
-        },
-        "_datetime": {
-            "name": "_datetime",
-            "dataman_type": "datetime"
-        },
-        "_document": {
-            "name": "_document",
-            "dataman_type": "document"
-        },
-        "_int": {
-            "name": "_int",
-            "dataman_type": "int"
-        },
-        "_string": {
-            "name": "_string",
-            "dataman_type": "string"
-        },
-        "_text": {
-            "name": "_text",
-            "dataman_type": "text"
-        }
-    },
-    "databases": {
-        "example_forum": {
-            "_id": 1448,
-            "name": "example_forum",
-            "datastores": [
-                {
-                    "_id": 1382,
-                    "read": true,
-                    "write": true,
-                    "required": true,
-                    "datastore_id": 55,
-                    "provision_state": 3
-                }
-            ],
-            "collections": {
-                "message": {
-                    "_id": 4184,
-                    "name": "message",
-                    "fields": {
-                        "_id": {
-                            "_id": 17433,
-                            "name": "_id",
-                            "field_type": "_int",
-                            "not_null": true,
-                            "provision_state": 3
-                        },
-                        "data": {
-                            "_id": 17428,
-                            "name": "data",
-                            "field_type": "_document",
-                            "subfields": {
-                                "content": {
-                                    "_id": 17429,
-                                    "name": "content",
-                                    "field_type": "_string",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
-                                "created": {
-                                    "_id": 17432,
-                                    "name": "created",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
-                                "created_by": {
-                                    "_id": 17431,
-                                    "name": "created_by",
-                                    "field_type": "_string",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
-                                "thread_id": {
-                                    "_id": 17430,
-                                    "name": "thread_id",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "relation": {
-                                        "_id": 1250,
-                                        "field_id": 17427,
-                                        "collection": "thread",
-                                        "field": "_id"
-                                    },
-                                    "provision_state": 3
-                                }
-                            },
-                            "provision_state": 3
-                        }
-                    },
-                    "indexes": {
-                        "created": {
-                            "_id": 5443,
-                            "name": "created",
-                            "fields": [
-                                "data.created"
-                            ],
-                            "provision_state": 3
-                        }
-                    },
-                    "partitions": [
-                        {
-                            "_id": 4180,
-                            "start_id": 1,
-                            "shard_config": {
-                                "shard_key": "_id",
-                                "hash_method": "cast",
-                                "shard_method": "mod"
-                            }
-                        }
-                    ],
-                    "provision_state": 3
-                },
-                "thread": {
-                    "_id": 4183,
-                    "name": "thread",
-                    "fields": {
-                        "_id": {
-                            "_id": 17427,
-                            "name": "_id",
-                            "field_type": "_int",
-                            "not_null": true,
-                            "provision_state": 3
-                        },
-                        "data": {
-                            "_id": 17423,
-                            "name": "data",
-                            "field_type": "_document",
-                            "subfields": {
-                                "created": {
-                                    "_id": 17424,
-                                    "name": "created",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
-                                "created_by": {
-                                    "_id": 17426,
-                                    "name": "created_by",
-                                    "field_type": "_string",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
-                                "title": {
-                                    "_id": 17425,
-                                    "name": "title",
-                                    "field_type": "_string",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                }
-                            },
-                            "provision_state": 3
-                        }
-                    },
-                    "indexes": {
-                        "created": {
-                            "_id": 5441,
-                            "name": "created",
-                            "fields": [
-                                "data.created"
-                            ],
-                            "provision_state": 3
-                        },
-                        "title": {
-                            "_id": 5442,
-                            "name": "title",
-                            "fields": [
-                                "data.title"
-                            ],
-                            "unique": true,
-                            "provision_state": 3
-                        }
-                    },
-                    "partitions": [
-                        {
-                            "_id": 4179,
-                            "start_id": 1,
-                            "shard_config": {
-                                "shard_key": "_id",
-                                "hash_method": "cast",
-                                "shard_method": "mod"
-                            }
-                        }
-                    ],
-                    "provision_state": 3
-                },
-                "user": {
-                    "_id": 4185,
-                    "name": "user",
-                    "fields": {
-                        "_id": {
-                            "_id": 17435,
-                            "name": "_id",
-                            "field_type": "_int",
-                            "not_null": true,
-                            "provision_state": 3
-                        },
-                        "username": {
-                            "_id": 17434,
-                            "name": "username",
-                            "field_type": "_string",
-                            "not_null": true,
-                            "provision_state": 3
-                        }
-                    },
-                    "indexes": {
-                        "username": {
-                            "_id": 5444,
-                            "name": "username",
-                            "fields": [
-                                "username"
-                            ],
-                            "unique": true,
-                            "provision_state": 3
-                        }
-                    },
-                    "partitions": [
-                        {
-                            "_id": 4181,
-                            "start_id": 1,
-                            "shard_config": {
-                                "shard_key": "username",
-                                "hash_method": "sha256",
-                                "shard_method": "mod"
-                            }
-                        }
-                    ],
-                    "provision_state": 3
-                }
-            },
-            "database_vshard": {
-                "_id": 1389,
-                "shard_count": 2,
-                "instances": [
-                    {
-                        "_id": 3437,
-                        "instance": 1,
-                        "datastore_shard": {
-                            "55": 69
-                        }
-                    },
-                    {
-                        "_id": 3438,
-                        "instance": 2,
-                        "datastore_shard": {
-                            "55": 68
-                        }
-                    }
-                ]
-            },
-            "provision_state": 3
-        }
+      },
+      "provision_state": 3
     }
-
+  },
+  "datastores": {
+    "55": {
+      "_id": 55,
+      "name": "test_datastore",
+      "shards": [
+        {
+          "_id": 68,
+          "name": "datastore_test-shard1",
+          "shard_instance": 1,
+          "replicas": {
+            "masters": [
+              {
+                "_id": 67,
+                "datasource_instance_id": 117,
+                "master": true,
+                "provision_state": 3
+              }
+            ],
+            "slaves": []
+          },
+          "provision_state": 3
+        },
+        {
+          "_id": 69,
+          "name": "test-shard2",
+          "shard_instance": 2,
+          "replicas": {
+            "masters": [
+              {
+                "_id": 68,
+                "datasource_instance_id": 117,
+                "master": true,
+                "provision_state": 3
+              }
+            ],
+            "slaves": []
+          },
+          "provision_state": 3
+        }
+      ],
+      "provision_state": 3
+    }
+  },
+  "field_types": {
+    "_bool": {
+      "name": "_bool",
+      "dataman_type": "bool"
+    },
+    "_datetime": {
+      "name": "_datetime",
+      "dataman_type": "datetime"
+    },
+    "_document": {
+      "name": "_document",
+      "dataman_type": "document"
+    },
+    "_int": {
+      "name": "_int",
+      "dataman_type": "int"
+    },
+    "_string": {
+      "name": "_string",
+      "dataman_type": "string"
+    },
+    "_text": {
+      "name": "_text",
+      "dataman_type": "text"
+    }
+  },
+  "databases": {
+    "example_forum": {
+      "_id": 1448,
+      "name": "example_forum",
+      "datastores": [
+        {
+          "_id": 1382,
+          "read": true,
+          "write": true,
+          "required": true,
+          "datastore_id": 55,
+          "provision_state": 3
+        }
+      ],
+      "collections": {
+        "message": {
+          "_id": 4184,
+          "name": "message",
+          "fields": {
+            "_id": {
+              "_id": 17433,
+              "name": "_id",
+              "field_type": "_int",
+              "not_null": true,
+              "provision_state": 3
+            },
+            "data": {
+              "_id": 17428,
+              "name": "data",
+              "field_type": "_document",
+              "subfields": {
+                "content": {
+                  "_id": 17429,
+                  "name": "content",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "created": {
+                  "_id": 17432,
+                  "name": "created",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "created_by": {
+                  "_id": 17431,
+                  "name": "created_by",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "thread_id": {
+                  "_id": 17430,
+                  "name": "thread_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "_id": 1250,
+                    "field_id": 17427,
+                    "collection": "thread",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            }
+          },
+          "indexes": {
+            "created": {
+              "_id": 5443,
+              "name": "created",
+              "fields": [
+                "data.created"
+              ],
+              "provision_state": 3
+            }
+          },
+          "partitions": [
+            {
+              "_id": 4180,
+              "start_id": 1,
+              "shard_config": {
+                "shard_key": "_id",
+                "hash_method": "cast",
+                "shard_method": "mod"
+              }
+            }
+          ],
+          "provision_state": 3
+        },
+        "thread": {
+          "_id": 4183,
+          "name": "thread",
+          "fields": {
+            "_id": {
+              "_id": 17427,
+              "name": "_id",
+              "field_type": "_int",
+              "not_null": true,
+              "provision_state": 3
+            },
+            "data": {
+              "_id": 17423,
+              "name": "data",
+              "field_type": "_document",
+              "subfields": {
+                "created": {
+                  "_id": 17424,
+                  "name": "created",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "created_by": {
+                  "_id": 17426,
+                  "name": "created_by",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "title": {
+                  "_id": 17425,
+                  "name": "title",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            }
+          },
+          "indexes": {
+            "created": {
+              "_id": 5441,
+              "name": "created",
+              "fields": [
+                "data.created"
+              ],
+              "provision_state": 3
+            },
+            "title": {
+              "_id": 5442,
+              "name": "title",
+              "fields": [
+                "data.title"
+              ],
+              "unique": true,
+              "provision_state": 3
+            }
+          },
+          "partitions": [
+            {
+              "_id": 4179,
+              "start_id": 1,
+              "shard_config": {
+                "shard_key": "_id",
+                "hash_method": "cast",
+                "shard_method": "mod"
+              }
+            }
+          ],
+          "provision_state": 3
+        },
+        "user": {
+          "_id": 4185,
+          "name": "user",
+          "fields": {
+            "_id": {
+              "_id": 17435,
+              "name": "_id",
+              "field_type": "_int",
+              "not_null": true,
+              "provision_state": 3
+            },
+            "username": {
+              "_id": 17434,
+              "name": "username",
+              "field_type": "_string",
+              "not_null": true,
+              "provision_state": 3
+            }
+          },
+          "indexes": {
+            "username": {
+              "_id": 5444,
+              "name": "username",
+              "fields": [
+                "username"
+              ],
+              "unique": true,
+              "provision_state": 3
+            }
+          },
+          "partitions": [
+            {
+              "_id": 4181,
+              "start_id": 1,
+              "shard_config": {
+                "shard_key": "username",
+                "hash_method": "sha256",
+                "shard_method": "mod"
+              }
+            }
+          ],
+          "provision_state": 3
+        }
+      },
+      "database_vshard": {
+        "_id": 1389,
+        "shard_count": 2,
+        "instances": [
+          {
+            "_id": 3437,
+            "instance": 1,
+            "datastore_shard": {
+              "55": 69
+            }
+          },
+          {
+            "_id": 3438,
+            "instance": 2,
+            "datastore_shard": {
+              "55": 68
+            }
+          }
+        ]
+      },
+      "provision_state": 3
+    }
+  }
 }
