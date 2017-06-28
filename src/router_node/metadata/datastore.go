@@ -58,9 +58,9 @@ type DatabaseDatastore struct {
 
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
-		Name:   name,
+		Name:    name,
 		VShards: make(map[int64]*DatastoreVShard),
-		Shards: make(map[int64]*DatastoreShard),
+		Shards:  make(map[int64]*DatastoreShard),
 	}
 }
 
