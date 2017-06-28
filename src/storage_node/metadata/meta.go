@@ -34,14 +34,14 @@ func (m *Meta) ListDatabases() []string {
 }
 
 // TODO: REMOVE!
-func (m *Meta) GetCollection(db, shardinstance, collection string) (*Collection, error) {
+func (m *Meta) GetCollection(db, shardinstance, collectionName string) (*Collection, error) {
 
 	if database, ok := m.Databases[db]; ok {
 		if shardInstance, ok := database.ShardInstances[shardinstance]; ok {
-			if collection, ok := shardInstance.Collections[collection]; ok {
+			if collection, ok := shardInstance.Collections[collectionName]; ok {
 				return collection, nil
 			} else {
-				return nil, fmt.Errorf("Unknown collection %s", collection)
+				return nil, fmt.Errorf("Unknown collection %s", collectionName)
 			}
 		} else {
 			return nil, fmt.Errorf("Unknown shardinstance %s", shardinstance)

@@ -197,27 +197,46 @@ func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) (err error) {
 // serial synchronous provisioning-- which is definitely not what we want long-term
 // Add a database
 func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
+	meta := t.GetMeta()
+
+	// for keeping track of all datastores we have vshard mappings for
+	mappedDatastores := make(map[int64]struct{})
+
 	// Validate the schemas passed in
 	for _, collection := range db.Collections {
 		if err := collection.EnsureInternalFields(); err != nil {
 			return err
 		}
 		// TODO: we need to recurse!
+		hasRelation := false
 		for _, field := range collection.Fields {
-			if field.Relation != nil && db.VShard.ShardCount != 1 {
-				return fmt.Errorf("relations are currently only supported on collections with a shardcount of 1")
+			if field.Relation != nil {
+				hasRelation = true
+				break
+			}
+		}
+		if hasRelation && collection.IsSharded() {
+			return fmt.Errorf("relations are currently only supported on collections with a shardcount of 1")
+		}
+
+		for _, keyspace := range collection.Keyspaces {
+			for _, partition := range keyspace.Partitions {
+				for _, datastoreVShardID := range partition.DatastoreVShardIDs {
+					datastoreVShard, ok := meta.DatastoreVShards[datastoreVShardID]
+					if !ok {
+						return fmt.Errorf("Unknown datastore_vshard_id == %v", datastoreVShardID)
+					}
+					mappedDatastores[datastoreVShard.DatastoreID] = struct{}{}
+				}
 			}
 		}
 	}
-
-	meta := t.GetMeta()
 
 	// TODO: move the validation to the metadata store?
 	// Validate the data (make sure we don't have conflicts w/e)
 
 	// Verify that referenced datastores exist
 	for _, databaseDatastore := range db.Datastores {
-		fmt.Println(databaseDatastore)
 		if databaseDatastore.DatastoreID == 0 {
 			return fmt.Errorf("Unknown datastore (missing ID): %v", databaseDatastore)
 		}
@@ -226,68 +245,16 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 		} else {
 			databaseDatastore.Datastore = datastore
 		}
-	}
-
-	// Verify that the vshards map to things that exist
-	for _, vshard := range db.VShard.Instances {
-		for datastoreID, datastoreShard := range vshard.DatastoreShard {
-			if _, ok := meta.Datastore[datastoreID]; !ok {
-				return fmt.Errorf("Datastore referenced in vshard doesn't exist: %v", vshard)
-			}
-			if datastoreShard.ID == 0 {
-				return fmt.Errorf("Unknown datastore_shard_id (missing ID): %v", datastoreShard)
-			}
-			var ok bool
-			datastoreShard, ok = meta.DatastoreShards[datastoreShard.ID]
-			if !ok {
-				return fmt.Errorf("Unknown datastore_shard_id (ID %d not found): %v", datastoreShard.ID, datastoreShard)
-			}
-			// If the datastore shard they requested is present, lets fill it in
-			vshard.DatastoreShard[datastoreID] = datastoreShard
-
-			// TODO: for all? or not at all?
-			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
-				datastoreShardReplica.DatasourceInstance.StorageNode = meta.Nodes[datastoreShardReplica.DatasourceInstance.StorageNodeID]
-				datastoreShardReplica.DatasourceInstance.DatabaseShards = meta.DatasourceInstance[datastoreShardReplica.DatasourceInstance.ID].DatabaseShards
-			}
+		if _, ok := mappedDatastores[databaseDatastore.DatastoreID]; !ok {
+			return fmt.Errorf("Datastore %v has no mapping in collection_partitions", databaseDatastore.DatastoreID)
 		}
+
 	}
 
 	// TODO: remove
 	// Now we enforce our silly development restrictions
 	if len(db.Datastores) > 1 {
 		return fmt.Errorf("Only support a max of 1 datastore during this stage of development")
-	}
-
-	// If the user didn't define instances, lets do it for them
-	if db.VShard.Instances == nil || len(db.VShard.Instances) == 0 {
-		// We need a counter (to balance) for each datastore
-		shardMapState := make(map[int64]int64)
-
-		db.VShard.Instances = make([]*metadata.DatabaseVShardInstance, db.VShard.ShardCount)
-
-		// Now we create each instance
-		for i := int64(0); i < db.VShard.ShardCount; i++ {
-			// map of shards for this particular instance
-			shardMap := make(map[int64]*metadata.DatastoreShard)
-			// For each datastore we round-robin between the datastore_shardt. This
-			// gives us the most even distribution of vshards across datastore_shards
-			for _, databaseDatastore := range db.Datastores {
-				datastore := meta.Datastore[databaseDatastore.Datastore.ID]
-				currCount, ok := shardMapState[datastore.ID]
-				if !ok {
-					currCount = 1
-					shardMapState[datastore.ID] = currCount
-				}
-
-				shardMap[datastore.ID] = datastore.Shards[currCount%int64(len(datastore.Shards))]
-				shardMapState[datastore.ID] = currCount + 1
-			}
-			db.VShard.Instances[i] = &metadata.DatabaseVShardInstance{
-				ShardInstance:  int64(i + 1),
-				DatastoreShard: shardMap,
-			}
-		}
 	}
 
 	// At this point we've cleaned up what the user gave us, lets check if we already have this
@@ -317,79 +284,96 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	provisionRequests := make(map[*metadata.DatasourceInstance]*storagenodemetadata.Database)
 
-	for _, vshardInstance := range db.VShard.Instances {
-		for _, datastoreShard := range vshardInstance.DatastoreShard {
-			// Update state
-			datastoreShard.ProvisionState = metadata.Provision
-			// TODO: slaves as well
-			for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
-				// Update state
-				datastoreShardReplica.ProvisionState = metadata.Provision
+	newBytes, err := json.MarshalIndent(&db, "", "  ")
+	if err != nil {
+		logrus.Fatalf("Unable to marshal: %v", err)
+	}
 
-				datasourceInstance := datastoreShardReplica.DatasourceInstance
-				// If we need to define the database, lets do so
-				if _, ok := provisionRequests[datasourceInstance]; !ok {
-					// TODO: better DB conversion
-					provisionRequests[datasourceInstance] = storagenodemetadata.NewDatabase(db.Name)
-				}
+	ioutil.WriteFile("/tmp/c", newBytes, 0644)
 
-				shardInstanceName := fmt.Sprintf("dbshard_%s_%d", db.Name, vshardInstance.ShardInstance)
+	for _, collection := range db.Collections {
+		for _, keyspace := range collection.Keyspaces {
+			for _, partition := range keyspace.Partitions {
+				for _, vShardID := range partition.DatastoreVShardIDs {
+					vShard := meta.DatastoreVShards[vShardID]
+					for _, vShardInstance := range vShard.Shards {
+						vShardInstance.ProvisionState = metadata.Provision
 
-				// TODO: check if this already defined, if so we need to check it -- this works for now since we just clobber always
-				// but we'll need to check the state of the currently out there one
-				datasourceInstanceShardInstance := &metadata.DatasourceInstanceShardInstance{
-					Name: shardInstanceName,
-					DatabaseVshardInstanceId: vshardInstance.ID,
-					ProvisionState:           metadata.Provision,
-				}
+						// Name for the shard_instance on the datasource_instance
+						shardInstanceName := fmt.Sprintf("dbshard_%s_%d_%d", db.Name, vShardID, vShardInstance.Instance)
 
-				// Add entry to datasource_instance_shard_instance
-				if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
-					return err
-				}
+						// TODO: better picking!
+						datasourceInstance := vShardInstance.DatastoreShard.Replicas.Masters[0].DatasourceInstance
 
-				// Add this shard_instance to the database for the datasource_instance
-				remoteDatasourceInstanceShardInstance := storagenodemetadata.NewShardInstance(shardInstanceName)
-				// Create the ShardInstance for the DatasourceInstance
-				provisionRequests[datasourceInstance].ShardInstances[shardInstanceName] = remoteDatasourceInstanceShardInstance
-				remoteDatasourceInstanceShardInstance.Count = db.VShard.ShardCount
-				remoteDatasourceInstanceShardInstance.Instance = vshardInstance.ShardInstance
-
-				// TODO: convert from collections -> collections
-				for name, collection := range db.Collections {
-					// TODO: recurse and set the state for all layers below?
-					collection.ProvisionState = metadata.Provision
-
-					datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(name)
-					datasourceInstanceShardInstanceCollection.Fields = collection.Fields
-					datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
-
-					// TODO: better!
-					var clearFieldID func(*storagenodemetadata.CollectionField)
-					clearFieldID = func(field *storagenodemetadata.CollectionField) {
-						field.ID = 0
-						if field.Relation != nil {
-							field.Relation.FieldID = 0
-							field.Relation.ID = 0
+						// If we need to define the database, lets do so
+						storagenodeDatabase, ok := provisionRequests[datasourceInstance]
+						if !ok {
+							// TODO: better DB conversion
+							storagenodeDatabase = storagenodemetadata.NewDatabase(db.Name)
+							provisionRequests[datasourceInstance] = storagenodeDatabase
 						}
-						if field.SubFields != nil {
-							for _, subfield := range field.SubFields {
-								clearFieldID(subfield)
+
+						remoteDatasourceInstanceShardInstance, ok := storagenodeDatabase.ShardInstances[shardInstanceName]
+						// Create the datasourceInstanceShardInstance (if it doesn't exist)
+						if !ok {
+							// Create the remote shardInstance
+							remoteDatasourceInstanceShardInstance = storagenodemetadata.NewShardInstance(shardInstanceName)
+							// Create the ShardInstance for the DatasourceInstance
+							remoteDatasourceInstanceShardInstance.Count = vShard.Count
+							remoteDatasourceInstanceShardInstance.Instance = vShardInstance.Instance
+
+							storagenodeDatabase.ShardInstances[shardInstanceName] = remoteDatasourceInstanceShardInstance
+
+							// TODO: check if this already defined, if so we need to check it -- this works for now since we just clobber always
+							// but we'll need to check the state of the currently out there one
+							datasourceInstanceShardInstance := &metadata.DatasourceInstanceShardInstance{
+								Name: shardInstanceName,
+								DatasourceVShardInstanceID: vShardInstance.ID,
+								ProvisionState:             metadata.Provision,
+							}
+
+							// Add entry to datasource_instance_shard_instance
+							if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
+								return err
+							}
+
+						}
+
+						// Convert the collection to a storagenode one, and add it
+						// TODO: recurse and set the state for all layers below?
+						collection.ProvisionState = metadata.Provision
+
+						// TODO: add ToStorageNodeCollection() to collection?
+						datasourceInstanceShardInstanceCollection := storagenodemetadata.NewCollection(collection.Name)
+						datasourceInstanceShardInstanceCollection.Fields = collection.Fields
+						datasourceInstanceShardInstanceCollection.Indexes = collection.Indexes
+
+						// TODO: better!
+						var clearFieldID func(*storagenodemetadata.CollectionField)
+						clearFieldID = func(field *storagenodemetadata.CollectionField) {
+							field.ID = 0
+							if field.Relation != nil {
+								field.Relation.FieldID = 0
+								field.Relation.ID = 0
+							}
+							if field.SubFields != nil {
+								for _, subfield := range field.SubFields {
+									clearFieldID(subfield)
+								}
 							}
 						}
-					}
 
-					// Zero out the IDs
-					for _, field := range datasourceInstanceShardInstanceCollection.Fields {
-						clearFieldID(field)
-					}
-					for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
-						index.ID = 0
-					}
+						// Zero out the IDs
+						for _, field := range datasourceInstanceShardInstanceCollection.Fields {
+							clearFieldID(field)
+						}
+						for _, index := range datasourceInstanceShardInstanceCollection.Indexes {
+							index.ID = 0
+						}
 
-					remoteDatasourceInstanceShardInstance.Collections[name] = datasourceInstanceShardInstanceCollection
+						remoteDatasourceInstanceShardInstance.Collections[collection.Name] = datasourceInstanceShardInstanceCollection
+					}
 				}
-
 			}
 		}
 	}
@@ -429,7 +413,7 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
 		// remove entry from datasource_instance_shard_instance
-		for _, datasourceInstanceShardInstance := range datasourceInstance.DatabaseShards {
+		for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
 			datasourceInstanceShardInstance.ProvisionState = metadata.Active
 			if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 				return err
@@ -528,20 +512,14 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 
 	datasourceInstances := make(map[*metadata.DatasourceInstance]struct{})
 
-	if db.VShard.Instances != nil {
-		for _, vshardInstance := range db.VShard.Instances {
-			for _, datastoreShard := range vshardInstance.DatastoreShard {
-				// Update state
-				datastoreShard.ProvisionState = metadata.Provision
-				// TODO: slaves as well
-				for _, datastoreShardReplica := range datastoreShard.Replicas.Masters {
-					// Update state
-					datastoreShardReplica.ProvisionState = metadata.Provision
-
-					datasourceInstance := datastoreShardReplica.DatasourceInstance
-					// If we need to define the database, lets do so
-					if _, ok := datasourceInstances[datasourceInstance]; !ok {
-						// TODO: better DB conversion
+	for _, collection := range db.Collections {
+		for _, keyspace := range collection.Keyspaces {
+			for _, partition := range keyspace.Partitions {
+				for _, vShardID := range partition.DatastoreVShardIDs {
+					vShard := meta.DatastoreVShards[vShardID]
+					for _, vShardInstance := range vShard.Shards {
+						// TODO: better picking!
+						datasourceInstance := vShardInstance.DatastoreShard.Replicas.Masters[0].DatasourceInstance
 						datasourceInstances[datasourceInstance] = struct{}{}
 					}
 				}
@@ -578,7 +556,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 
 		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
 		// remove entry from datasource_instance_shard_instance
-		for _, datasourceInstanceShardInstance := range datasourceInstance.DatabaseShards {
+		for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
 			if err := t.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
 				return err
 			}

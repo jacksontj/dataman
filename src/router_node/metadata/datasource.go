@@ -11,9 +11,8 @@ type Datasource struct {
 
 func NewDatasourceInstance(name string) *DatasourceInstance {
 	return &DatasourceInstance{
-		Name:             name,
-		DatabaseShards:   make(map[int64]*DatasourceInstanceShardInstance),
-		CollectionShards: make(map[int64]*DatasourceInstanceShardInstance),
+		Name:           name,
+		ShardInstances: make(map[int64]*DatasourceInstanceShardInstance),
 	}
 }
 
@@ -31,10 +30,7 @@ type DatasourceInstance struct {
 	Config map[string]interface{} `json:"config,omitempty"`
 
 	// All of the shard instances it has
-	// database_vshard.ID -> DatasourceInstanceShardInstance
-	DatabaseShards map[int64]*DatasourceInstanceShardInstance `json:"datasource_instance_shard_instance,omitempty"`
-	// collection_vshard.ID -> DatasourceInstanceShardInstance
-	CollectionShards map[int64]*DatasourceInstanceShardInstance `json:"collection_shard_instance,omitempty"`
+	ShardInstances map[int64]*DatasourceInstanceShardInstance `json:"shard_instances"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
@@ -50,9 +46,8 @@ func (d *DatasourceInstance) GetURL() string {
 type DatasourceInstanceShardInstance struct {
 	ID int64 `json:"_id"`
 	// TODO: remove?
-	Name string `json:"name,omitempty"`
-	// TODO: either support both in this struct, or have 2 structs
-	DatabaseVshardInstanceId int64 `json:"database_vshard_instance_id"`
+	Name                       string `json:"name,omitempty"`
+	DatasourceVShardInstanceID int64  `json:"datasource_vshard_instance_id"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }

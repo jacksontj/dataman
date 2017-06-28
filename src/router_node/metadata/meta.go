@@ -8,12 +8,14 @@ import (
 
 func NewMeta() *Meta {
 	return &Meta{
-		Nodes:              make(map[int64]*StorageNode),
-		DatasourceInstance: make(map[int64]*DatasourceInstance),
-		Datastore:          make(map[int64]*Datastore),
-		DatastoreShards:    make(map[int64]*DatastoreShard),
-		Fields:             make(map[int64]*storagenodemetadata.CollectionField),
-		Collections:        make(map[int64]*Collection),
+		Nodes:                    make(map[int64]*StorageNode),
+		DatasourceInstance:       make(map[int64]*DatasourceInstance),
+		Datastore:                make(map[int64]*Datastore),
+		DatastoreShards:          make(map[int64]*DatastoreShard),
+		DatastoreVShards:         make(map[int64]*DatastoreVShard),
+		DatastoreVShardInstances: make(map[int64]*DatastoreVShardInstance),
+		Fields:      make(map[int64]*storagenodemetadata.CollectionField),
+		Collections: make(map[int64]*Collection),
 
 		// TODO: move out of metadata (not tied to database definitions etc.)
 		FieldTypeRegistry: storagenodemetadata.FieldTypeRegistry,
@@ -118,7 +120,6 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 	for _, database := range m.Databases {
 		for _, databaseDatastore := range database.Datastores {
 			databaseDatastore.Datastore = m.Datastore[databaseDatastore.DatastoreID]
-			databaseDatastore.DatastoreVShard = databaseDatastore.Datastore.VShards[databaseDatastore.DatastoreVShardID]
 		}
 
 		// Link all the vshard stuff into collection keyspaces etc.

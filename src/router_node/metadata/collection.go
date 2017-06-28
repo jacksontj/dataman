@@ -33,6 +33,31 @@ type Collection struct {
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
+func (c *Collection) IsSharded() bool {
+	for _, keyspace := range c.Keyspaces {
+		if len(keyspace.Partitions) > 1 {
+			return true
+		} else if len(keyspace.Partitions) == 1 {
+			for _, datastoreVShard := range keyspace.Partitions[0].DatastoreVShards {
+				if datastoreVShard.Count > 1 {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (c *Collection) GetField(nameParts []string) *storagenodemetadata.CollectionField {
+	field := c.Fields[nameParts[0]]
+
+	for _, part := range nameParts[1:] {
+		field = field.SubFields[part]
+	}
+
+	return field
+}
+
 // TODO: elsewhere?
 // We need to ensure that collections have all of the internal fields that we define
 // TODO: error here if one that isn't compatible is defined
@@ -57,7 +82,7 @@ func (c *Collection) EnsureInternalFields() error {
 }
 
 type CollectionKeyspace struct {
-	ID       int64               `json:"_id"`
+	ID       int64               `json:"_id,omitempty"`
 	Hash     sharding.HashMethod `json:"hash_method"`
 	HashFunc sharding.HashFunc   `json:"-"`
 	ShardKey []string            `json:"shard_key"`
@@ -83,7 +108,7 @@ func (c *CollectionKeyspace) UnmarshalJSON(data []byte) error {
 }
 
 type CollectionKeyspacePartition struct {
-	ID      int64 `json:"_id"`
+	ID      int64 `json:"_id,omitempty"`
 	StartId int64 `json:"start_id"`
 	EndId   int64 `json:"end_id,omitempty"`
 

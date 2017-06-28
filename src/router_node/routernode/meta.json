@@ -14,13 +14,13 @@
             "3437": {
               "_id": 3270,
               "name": "dbshard_example_forum_1",
-              "database_vshard_instance_id": 3437,
+              "datasource_vshard_instance_id": 1,
               "provision_state": 3
             },
             "3438": {
               "_id": 3271,
               "name": "dbshard_example_forum_2",
-              "database_vshard_instance_id": 3438,
+              "datasource_vshard_instance_id": 2,
               "provision_state": 3
             }
           },
@@ -52,6 +52,7 @@
               "provision_state": 3
             }
           ],
+          "database_id": 1448,
           "provision_state": 3
         }
       },

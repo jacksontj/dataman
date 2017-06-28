@@ -406,7 +406,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 		} else {
-			vshards = databaseDatastore.DatastoreVShard.Shards
+			vshards = partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
 		}
 
 	default:
@@ -427,9 +427,9 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 		logrus.Debugf("\tGoing to %v", datasourceInstance)
 
-		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			vshardResults <- &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			vshardResults <- &query.Result{Error: "1 Unknown datasourceInstanceShardInstance"}
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 				if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
@@ -504,9 +504,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 			// TODO: generate or store/read the name!
-			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 			if !ok {
-				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+				return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
 			}
 
 			if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
@@ -545,9 +545,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			// TODO: replicas -- add args for slave etc.
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
-			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 			if !ok {
-				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+				return &query.Result{Error: "3 Unknown datasourceInstanceShardInstance"}
 			}
 
 			result, err := QuerySingle(
@@ -572,7 +572,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// TODO: remove this, we just want to set all values here in the router layer and
 		// then all of this won't be necessary
 		if keyspace.ShardKey[0] == "_id" {
-			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards)) + 1
 		} else {
 			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
 			if !ok {
@@ -591,9 +591,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
-		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			return &query.Result{Error: "4 Unknown datasourceInstanceShardInstance"}
 		}
 
 		result, err := QuerySingle(
@@ -622,9 +622,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
-			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 			if !ok {
-				return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+				return &query.Result{Error: "5 Unknown datasourceInstanceShardInstance"}
 			}
 
 			// TODO: replicas -- add args for slave etc.
@@ -640,9 +640,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			for _, vshard := range partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards {
 				datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
-				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+				datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 				if !ok {
-					vshardResults <- &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+					vshardResults <- &query.Result{Error: "6 Unknown datasourceInstanceShardInstance"}
 				} else {
 					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 						// TODO: replicas -- add args for slave etc.
@@ -681,9 +681,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
-		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Error: "Unknown datasourceInstanceShardInstance"}
+			return &query.Result{Error: "7 Unknown datasourceInstanceShardInstance"}
 		}
 
 		// TODO: replicas -- add args for slave etc.

@@ -20,15 +20,6 @@ const schemaJson string = `
                   "not_null": true,
                   "provision_state": 3
                 },
-                "collection_vshard_id": {
-                  "name": "collection_vshard_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "collection_vshard",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
                 "database_id": {
                   "name": "database_id",
                   "field_type": "_int",
@@ -105,7 +96,6 @@ const schemaJson string = `
                 "parent_collection_field_id": {
                   "name": "parent_collection_field_id",
                   "field_type": "_int",
-                  "not_null": true,
                   "provision_state": 3
                 },
                 "provision_state": {
@@ -195,11 +185,6 @@ const schemaJson string = `
                   },
                   "provision_state": 3
                 },
-                "data_json": {
-                  "name": "data_json",
-                  "field_type": "_text",
-                  "provision_state": 3
-                },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
@@ -273,8 +258,8 @@ const schemaJson string = `
               },
               "provision_state": 3
             },
-            "collection_partition": {
-              "name": "collection_partition",
+            "collection_keyspace": {
+              "name": "collection_keyspace",
               "fields": {
                 "_id": {
                   "name": "_id",
@@ -292,14 +277,59 @@ const schemaJson string = `
                   },
                   "provision_state": 3
                 },
+                "hash_method": {
+                  "name": "hash_method",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "write": {
+                  "name": "write",
+                  "field_type": "_bool",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "collection_keyspace_TOREMOVE": {
+                  "name": "collection_keyspace_TOREMOVE",
+                  "fields": [
+                    "collection_id"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
+            "collection_keyspace_partition": {
+              "name": "collection_keyspace_partition",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "collection_keyspace_id": {
+                  "name": "collection_keyspace_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "collection": "collection_keyspace",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
                 "end_id": {
                   "name": "end_id",
                   "field_type": "_int",
                   "provision_state": 3
                 },
-                "shard_config_json": {
-                  "name": "shard_config_json",
-                  "field_type": "_document",
+                "shard_method": {
+                  "name": "shard_method",
+                  "field_type": "_string",
+                  "not_null": true,
                   "provision_state": 3
                 },
                 "start_id": {
@@ -310,71 +340,10 @@ const schemaJson string = `
                 }
               },
               "indexes": {
-                "collection_partition_collection_id_idx": {
-                  "name": "collection_partition_collection_id_idx",
+                "collection_keyspace_partition_TOREMOVE": {
+                  "name": "collection_keyspace_partition_TOREMOVE",
                   "fields": [
-                    "collection_id"
-                  ],
-                  "provision_state": 3
-                },
-                "toremove": {
-                  "name": "toremove",
-                  "fields": [
-                    "collection_id"
-                  ],
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
-            "collection_vshard": {
-              "name": "collection_vshard",
-              "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "shard_count": {
-                  "name": "shard_count",
-                  "field_type": "_int",
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
-            "collection_vshard_instance": {
-              "name": "collection_vshard_instance",
-              "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "collection_vshard_id": {
-                  "name": "collection_vshard_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "collection_vshard",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
-                "shard_instance": {
-                  "name": "shard_instance",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                }
-              },
-              "indexes": {
-                "collection_vshard_instance_collection_vshard_id_shard_insta_idx": {
-                  "name": "collection_vshard_instance_collection_vshard_id_shard_insta_idx",
-                  "fields": [
-                    "collection_vshard_id",
-                    "shard_instance"
+                    "collection_keyspace_id"
                   ],
                   "unique": true,
                   "provision_state": 3
@@ -382,8 +351,8 @@ const schemaJson string = `
               },
               "provision_state": 3
             },
-            "collection_vshard_instance_datastore_shard": {
-              "name": "collection_vshard_instance_datastore_shard",
+            "collection_keyspace_partition_datastore_vshard": {
+              "name": "collection_keyspace_partition_datastore_vshard",
               "fields": {
                 "_id": {
                   "name": "_id",
@@ -391,30 +360,71 @@ const schemaJson string = `
                   "not_null": true,
                   "provision_state": 3
                 },
-                "collection_vshard_instance_id": {
-                  "name": "collection_vshard_instance_id",
+                "collection_keyspace_partition_id": {
+                  "name": "collection_keyspace_partition_id",
                   "field_type": "_int",
+                  "not_null": true,
                   "relation": {
-                    "collection": "collection_vshard_instance",
+                    "collection": "collection_keyspace_partition",
                     "field": "_id"
                   },
                   "provision_state": 3
                 },
-                "datastore_shard_id": {
-                  "name": "datastore_shard_id",
+                "datastore_vshard_id": {
+                  "name": "datastore_vshard_id",
                   "field_type": "_int",
+                  "not_null": true,
                   "relation": {
-                    "collection": "datastore_shard",
+                    "collection": "datastore_vshard",
                     "field": "_id"
                   },
                   "provision_state": 3
                 }
               },
+              "provision_state": 3
+            },
+            "collection_keyspace_shardkey": {
+              "name": "collection_keyspace_shardkey",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "collection_field_id": {
+                  "name": "collection_field_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "collection": "collection_field",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "collection_keyspace_id": {
+                  "name": "collection_keyspace_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "collection": "collection_keyspace",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "order": {
+                  "name": "order",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
               "indexes": {
-                "collection_vshard_instance_da_collection_vshard_instance_id_idx": {
-                  "name": "collection_vshard_instance_da_collection_vshard_instance_id_idx",
+                "collection_keyspace_item_collection_keyspace_id_order_idx": {
+                  "name": "collection_keyspace_item_collection_keyspace_id_order_idx",
                   "fields": [
-                    "collection_vshard_instance_id"
+                    "collection_keyspace_id",
+                    "\"order\""
                   ],
                   "unique": true,
                   "provision_state": 3
@@ -524,122 +534,6 @@ const schemaJson string = `
               },
               "provision_state": 3
             },
-            "database_vshard": {
-              "name": "database_vshard",
-              "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "database_id": {
-                  "name": "database_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "database",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
-                "shard_count": {
-                  "name": "shard_count",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                }
-              },
-              "indexes": {
-                "database_vshard_database_id_idx": {
-                  "name": "database_vshard_database_id_idx",
-                  "fields": [
-                    "database_id"
-                  ],
-                  "unique": true,
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
-            "database_vshard_instance": {
-              "name": "database_vshard_instance",
-              "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "database_vshard_id": {
-                  "name": "database_vshard_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "relation": {
-                    "collection": "database_vshard",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
-                "shard_instance": {
-                  "name": "shard_instance",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                }
-              },
-              "indexes": {
-                "database_vshard_instance_database_vshard_id_shard_instance_idx": {
-                  "name": "database_vshard_instance_database_vshard_id_shard_instance_idx",
-                  "fields": [
-                    "database_vshard_id",
-                    "shard_instance"
-                  ],
-                  "unique": true,
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
-            "database_vshard_instance_datastore_shard": {
-              "name": "database_vshard_instance_datastore_shard",
-              "fields": {
-                "_id": {
-                  "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "database_vshard_instance_id": {
-                  "name": "database_vshard_instance_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "database_vshard_instance",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
-                "datastore_shard_id": {
-                  "name": "datastore_shard_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "datastore_shard",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                }
-              },
-              "indexes": {
-                "database_vshard_instance_datast_database_vshard_instance_id_idx": {
-                  "name": "database_vshard_instance_datast_database_vshard_instance_id_idx",
-                  "fields": [
-                    "database_vshard_instance_id"
-                  ],
-                  "unique": true,
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
             "datasource": {
               "name": "datasource",
               "fields": {
@@ -735,29 +629,20 @@ const schemaJson string = `
                   "not_null": true,
                   "provision_state": 3
                 },
-                "collection_vshard_instance_id": {
-                  "name": "collection_vshard_instance_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "collection_vshard_instance",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
-                "database_vshard_instance_id": {
-                  "name": "database_vshard_instance_id",
-                  "field_type": "_int",
-                  "relation": {
-                    "collection": "database_vshard_instance",
-                    "field": "_id"
-                  },
-                  "provision_state": 3
-                },
                 "datasource_instance_id": {
                   "name": "datasource_instance_id",
                   "field_type": "_int",
                   "relation": {
                     "collection": "datasource_instance",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "datastore_vshard_instance_id": {
+                  "name": "datastore_vshard_instance_id",
+                  "field_type": "_int",
+                  "relation": {
+                    "collection": "datastore_vshard_instance",
                     "field": "_id"
                   },
                   "provision_state": 3
@@ -775,16 +660,6 @@ const schemaJson string = `
                 }
               },
               "indexes": {
-                "datasource_instance_shard_ins_datasource_instance_id_databa_idx": {
-                  "name": "datasource_instance_shard_ins_datasource_instance_id_databa_idx",
-                  "fields": [
-                    "datasource_instance_id",
-                    "database_vshard_instance_id",
-                    "collection_vshard_instance_id"
-                  ],
-                  "unique": true,
-                  "provision_state": 3
-                },
                 "datasource_instance_shard_insta_datasource_instance_id_name_idx": {
                   "name": "datasource_instance_shard_insta_datasource_instance_id_name_idx",
                   "fields": [
@@ -941,6 +816,103 @@ const schemaJson string = `
               },
               "provision_state": 3
             },
+            "datastore_vshard": {
+              "name": "datastore_vshard",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "database_id": {
+                  "name": "database_id",
+                  "field_type": "_int",
+                  "relation": {
+                    "collection": "database",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "datastore_id": {
+                  "name": "datastore_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "collection": "datastore",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "name": {
+                  "name": "name",
+                  "field_type": "_string",
+                  "provision_state": 3
+                },
+                "shard_count": {
+                  "name": "shard_count",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "datastore_vshard_name_idx": {
+                  "name": "datastore_vshard_name_idx",
+                  "fields": [
+                    "name"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
+            "datastore_vshard_instance": {
+              "name": "datastore_vshard_instance",
+              "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "datastore_shard_id": {
+                  "name": "datastore_shard_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                },
+                "datastore_vshard_id": {
+                  "name": "datastore_vshard_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "relation": {
+                    "collection": "datastore_vshard",
+                    "field": "_id"
+                  },
+                  "provision_state": 3
+                },
+                "shard_instance": {
+                  "name": "shard_instance",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "datastore_vshard_instance_datastore_vshard_id_shard_instanc_idx": {
+                  "name": "datastore_vshard_instance_datastore_vshard_id_shard_instanc_idx",
+                  "fields": [
+                    "datastore_vshard_id",
+                    "shard_instance"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
             "field_type": {
               "name": "field_type",
               "fields": {
@@ -998,6 +970,10 @@ const schemaJson string = `
                   "name": "field_type_id",
                   "field_type": "_int",
                   "not_null": true,
+                  "relation": {
+                    "collection": "field_type",
+                    "field": "_id"
+                  },
                   "provision_state": 3
                 },
                 "validation_error": {

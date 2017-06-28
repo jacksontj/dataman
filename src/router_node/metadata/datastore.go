@@ -50,9 +50,9 @@ type DatabaseDatastore struct {
 	DatastoreID int64      `json:"datastore_id"`
 	Datastore   *Datastore `json:"-"`
 
+	// TODO
 	// Default datastore vshard for all collections in the database
-	DatastoreVShardID int64            `json:"datastore_vshard_id"`
-	DatastoreVShard   *DatastoreVShard `json:"-"`
+	//DatastoreVShardID int64 `json:"datastore_vshard_id"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
@@ -85,6 +85,8 @@ type DatastoreVShard struct {
 
 	Shards []*DatastoreVShardInstance `json:"shards"`
 
+	DatabaseID int64 `json:"database_id"`
+
 	// Internal fields
 	DatastoreID    int64          `json:"-"`
 	ProvisionState ProvisionState `json:"provision_state"`
@@ -96,6 +98,9 @@ type DatastoreVShardInstance struct {
 
 	DatastoreShardID int64           `json:"datastore_shard_id"`
 	DatastoreShard   *DatastoreShard `json:"-"`
+	// TODO: use this too?
+	// This way we can define the shards and vshards in one go
+	DatastoreShardInstance int64 `json:"datastore_shard_instance,omitempty"`
 
 	// Internal fields
 	DatastoreVShardID int64          `json:"-"`
