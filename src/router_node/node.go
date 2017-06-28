@@ -356,7 +356,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	// Sharding consists of:
 	//		- select datasource(s)
-	//		- select partition(s) -- for now only one
+	//		- select keyspace(s) -- for now only one
+	//		- select keyspace_partition
 	//		- select vshard (collection or partition)
 	//			- hash "shard-key"
 	//			- select vshard
@@ -365,44 +366,47 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	// TODO: support multiple datastores
 	databaseDatastore := database.DatastoreSet.Read[0]
+	// TODO: support multiple keyspaces
+	keyspace := collection.Keyspaces[0]
 	// TODO: support multiple partitions
-	partition := collection.Partitions[0]
+	partition := keyspace.Partitions[0]
 
 	// TODO: support collection vshards -- to do this we'll probably need a combined struct?
-	var vshards []*metadata.DatabaseVShardInstance
+	var vshards []*metadata.DatastoreVShardInstance
 
 	// Depending on query type we might be able to be more specific about which vshards we go to
 	switch queryType {
 	// TODO: change the query format for Get()
 	case query.Get:
-		if partition.ShardConfig.Key != "_id" {
+		// TODO: support compound shard keys
+		if !(len(keyspace.ShardKey) == 1 && keyspace.ShardKey[0] == "_id") {
 			return &query.Result{Error: "Get *must* have _id be the shard-key for now"}
 		}
-		rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
+		rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", keyspace.ShardKey)}
 		}
-		shardKey, err := partition.HashFunc(rawShardKey)
+		shardKey, err := keyspace.HashFunc(rawShardKey)
 		if err != nil {
 			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
 
-		vshardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
-		vshards = []*metadata.DatabaseVShardInstance{database.VShard.Instances[vshardNum-1]}
+		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]}
 
 	case query.Filter:
 		// if there is only one partition and we have our shard key, we can be more specific
-		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
-			shardKey, err := partition.HashFunc(rawShardFilter.([]interface{})[1])
+		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[keyspace.ShardKey[0]]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
+			shardKey, err := keyspace.HashFunc(rawShardFilter.([]interface{})[1])
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
-			vshards = []*metadata.DatabaseVShardInstance{database.VShard.Instances[vshardNum-1]}
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]}
 		} else {
-			vshards = database.VShard.Instances
+			vshards = databaseDatastore.DatastoreVShard.Shards
 		}
 
 	default:
@@ -418,7 +422,9 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	for _, vshard := range vshards {
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+		// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
+		// it has the data -- scaling up/down etc.)
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 		logrus.Debugf("\tGoing to %v", datasourceInstance)
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -468,7 +474,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 	databaseDatastore := database.DatastoreSet.Write
 	// TODO: support multiple partitions
-	partition := collection.Partitions[0]
+	keyspace := collection.Keyspaces[0]
+	// TODO: support multiple partitions
+	partition := keyspace.Partitions[0]
 
 	// TODO: eventually we'll want to be more sophisticated and do this same thing if there
 	// are a set of id's we can derive from the original query, so we can do a limited
@@ -476,23 +484,24 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	switch queryType {
 	// Write operations
 	case query.Set:
+		// TODO: use the actual primary key instead of "_id"
 		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
 		if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
-			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+			rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Set()s must include the shard-key: %v", partition.ShardConfig.Key)}
+				return &query.Result{Error: fmt.Sprintf("Set()s must include the shard-key: %v", keyspace.ShardKey)}
 			}
-			shardKey, err := partition.HashFunc(rawShardKey)
+			shardKey, err := keyspace.HashFunc(rawShardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 
-			vshard := database.VShard.Instances[vshardNum-1]
+			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 			// TODO: generate or store/read the name!
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -514,25 +523,27 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			var vshardNum int
 			// TODO: don't special case this-- but for now we will. This should be some
 			// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
-			if partition.ShardConfig.Key == "_id" {
-				vshardNum = rand.Intn(len(database.VShard.Instances))
+			// TODO: remove this, we just want to set all values here in the router layer and
+			// then all of this won't be necessary
+			if keyspace.ShardKey[0] == "_id" {
+				vshardNum = rand.Intn(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 			} else {
-				rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+				rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
 				if !ok {
-					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", partition.ShardConfig.Key)}
+					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", keyspace.ShardKey)}
 				}
-				shardKey, err := partition.HashFunc(rawShardKey)
+				shardKey, err := keyspace.HashFunc(rawShardKey)
 				if err != nil {
 					// TODO: wrap the error
 					return &query.Result{Error: err.Error()}
 				}
-				vshardNum = partition.ShardFunc(shardKey, len(database.VShard.Instances))
+				vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 			}
 
-			vshard := database.VShard.Instances[vshardNum-1]
+			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -558,24 +569,27 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		var vshardNum int
 		// TODO: don't special case this-- but for now we will. This should be some
 		// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
-		if partition.ShardConfig.Key == "_id" {
-			vshardNum = rand.Intn(len(database.VShard.Instances)) + 1
+		// TODO: remove this, we just want to set all values here in the router layer and
+		// then all of this won't be necessary
+		if keyspace.ShardKey[0] == "_id" {
+			vshardNum = rand.Intn(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 		} else {
-			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[partition.ShardConfig.Key]
+			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", partition.ShardConfig.Key)}
+				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", keyspace.ShardKey)}
 			}
-			shardKey, err := partition.HashFunc(rawShardKey)
+			shardKey, err := keyspace.HashFunc(rawShardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum = partition.ShardFunc(shardKey, len(database.VShard.Instances))
+			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 		}
 
+		vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+
 		// TODO: replicas -- add args for slave etc.
-		vshard := database.VShard.Instances[vshardNum-1]
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {
@@ -596,17 +610,17 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 	case query.Update:
 		// If the shard_key is defined, then we can send this to a single shard
-		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[partition.ShardConfig.Key]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
-			shardKey, err := partition.HashFunc(rawShardFilter.([]interface{})[1])
+		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[keyspace.ShardKey[0]]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
+			shardKey, err := keyspace.HashFunc(rawShardFilter.([]interface{})[1])
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 
 			// TODO: replicas -- add args for slave etc.
-			vshard := database.VShard.Instances[vshardNum-1]
-			datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 			if !ok {
@@ -621,10 +635,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 
 		} else { // Otherwise we need to send this query to all shards to let them handle it
-			vshardResults := make(chan *query.Result, len(database.VShard.Instances))
+			vshardResults := make(chan *query.Result, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 
-			for _, vshard := range database.VShard.Instances {
-				datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+			for _, vshard := range partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID] {
+				datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 				if !ok {
@@ -642,30 +656,30 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			}
 
-			return query.MergeResult(len(database.VShard.Instances), vshardResults)
+			return query.MergeResult(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]), vshardResults)
 		}
 	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
 	// current implementation won't work. Instead of doing the get/set
 	case query.Delete:
-		if partition.ShardConfig.Key != "_id" {
+		if keyspace.ShardKey[0] != "_id" {
 			return &query.Result{Error: "Delete *must* have _id be the shard-key for now"}
 		}
 
-		rawShardKey, ok := queryArgs[partition.ShardConfig.Key]
+		rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", partition.ShardConfig.Key)}
+			return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key: %v", keyspace.ShardKey)}
 		}
-		shardKey, err := partition.HashFunc(rawShardKey)
+		shardKey, err := keyspace.HashFunc(rawShardKey)
 		if err != nil {
 			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
-		vshardNum := partition.ShardFunc(shardKey, len(database.VShard.Instances))
+		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
 
-		vshard := database.VShard.Instances[vshardNum-1]
+		vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard[databaseDatastore.Datastore.ID].Replicas.GetMaster().DatasourceInstance
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
 		if !ok {

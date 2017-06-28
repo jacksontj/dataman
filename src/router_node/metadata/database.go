@@ -25,8 +25,6 @@ type Database struct {
 	// mapping of all collections
 	Collections map[string]*Collection `json:"collections"`
 
-	VShard *DatabaseVShard `json:"database_vshard"`
-
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
@@ -60,27 +58,4 @@ func (d *Database) UnmarshalJSON(data []byte) error {
 	d.DatastoreSet = set
 
 	return nil
-}
-
-func NewDatabaseVShard() *DatabaseVShard {
-	return &DatabaseVShard{
-		Instances: make([]*DatabaseVShardInstance, 0),
-	}
-}
-
-type DatabaseVShard struct {
-	ID         int64 `json:"_id,omitempty"`
-	ShardCount int64 `json:"shard_count"`
-
-	// TODO: make a map so insert order isn't an issue? (I imagine slice is more performant?)
-	Instances []*DatabaseVShardInstance `json:"instances"`
-}
-
-type DatabaseVShardInstance struct {
-	ID            int64 `json:"_id,omitempty"`
-	ShardInstance int64 `json:"instance"`
-
-	// Map of datastore_id -> datastore_shard
-	DatastoreShardIDs map[int64]int64           `json:"datastore_shard"`
-	DatastoreShard    map[int64]*DatastoreShard `json:"-"`
 }

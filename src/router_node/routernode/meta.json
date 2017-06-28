@@ -34,6 +34,27 @@
     "55": {
       "_id": 55,
       "name": "test_datastore",
+      "vshards": {
+        "1": {
+          "_id": 1,
+          "count": 2,
+          "shards": [
+            {
+              "_id": 1,
+              "shard_instance": 1,
+              "datastore_shard_id": 68,
+              "provision_state": 3
+            },
+            {
+              "_id": 2,
+              "shard_instance": 2,
+              "datastore_shard_id": 69,
+              "provision_state": 3
+            }
+          ],
+          "provision_state": 3
+        }
+      },
       "shards": [
         {
           "_id": 68,
@@ -110,6 +131,7 @@
           "write": true,
           "required": true,
           "datastore_id": 55,
+          "datastore_vshard_id": 1,
           "provision_state": 3
         }
       ],
@@ -178,15 +200,24 @@
               "provision_state": 3
             }
           },
-          "partitions": [
+          "keyspaces": [
             {
-              "_id": 4180,
-              "start_id": 1,
-              "shard_config": {
-                "shard_key": "_id",
-                "hash_method": "cast",
-                "shard_method": "mod"
-              }
+              "_id": 1,
+              "hash_method": "cast",
+              "shard_key": [
+                "_id"
+              ],
+              "partitions": [
+                {
+                  "_id": 1,
+                  "start_id": 1,
+                  "shard_method": "mod",
+                  "datastore_vshard_instance_ids": [
+                    1,
+                    2
+                  ]
+                }
+              ]
             }
           ],
           "provision_state": 3
@@ -251,15 +282,24 @@
               "provision_state": 3
             }
           },
-          "partitions": [
+          "keyspaces": [
             {
-              "_id": 4179,
-              "start_id": 1,
-              "shard_config": {
-                "shard_key": "_id",
-                "hash_method": "cast",
-                "shard_method": "mod"
-              }
+              "_id": 1,
+              "hash_method": "cast",
+              "shard_key": [
+                "_id"
+              ],
+              "partitions": [
+                {
+                  "_id": 1,
+                  "start_id": 1,
+                  "shard_method": "mod",
+                  "datastore_vshard_instance_ids": [
+                    1,
+                    2
+                  ]
+                }
+              ]
             }
           ],
           "provision_state": 3
@@ -294,39 +334,28 @@
               "provision_state": 3
             }
           },
-          "partitions": [
+          "keyspaces": [
             {
-              "_id": 4181,
-              "start_id": 1,
-              "shard_config": {
-                "shard_key": "username",
-                "hash_method": "sha256",
-                "shard_method": "mod"
-              }
+              "_id": 1,
+              "hash_method": "sha256",
+              "shard_key": [
+                "username"
+              ],
+              "partitions": [
+                {
+                  "_id": 1,
+                  "start_id": 1,
+                  "shard_method": "mod",
+                  "datastore_vshard_instance_ids": [
+                    1,
+                    2
+                  ]
+                }
+              ]
             }
           ],
           "provision_state": 3
         }
-      },
-      "database_vshard": {
-        "_id": 1389,
-        "shard_count": 2,
-        "instances": [
-          {
-            "_id": 3437,
-            "instance": 1,
-            "datastore_shard": {
-              "55": 69
-            }
-          },
-          {
-            "_id": 3438,
-            "instance": 2,
-            "datastore_shard": {
-              "55": 68
-            }
-          }
-        ]
       },
       "provision_state": 3
     }

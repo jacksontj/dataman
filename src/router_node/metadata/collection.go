@@ -20,14 +20,15 @@ type Collection struct {
 	Name string `json:"name"`
 
 	// Collection VShards (if defined)
-	VShard *CollectionVShard `json:"collection_vshard,omitempty"`
+	// TODO: this needs to be a map of datastore_id -> datastore_vshard
+	//VShard *CollectionVShard `json:"collection_vshard,omitempty"`
 
 	Fields  map[string]*storagenodemetadata.CollectionField `json:"fields"`
 	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
-	Partitions []*CollectionPartition `json:"partitions"`
+	Keyspaces []*CollectionKeyspace `json:"keyspaces"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
@@ -55,32 +56,47 @@ func (c *Collection) EnsureInternalFields() error {
 	return nil
 }
 
-type CollectionVShard struct {
-	ID         int64 `json:"_id"`
-	ShardCount int64 `json:"shard_count"`
-	Instances  []*CollectionVShardInstance
+type CollectionKeyspace struct {
+	ID       int64               `json:"_id"`
+	Hash     sharding.HashMethod `json:"hash_method"`
+	HashFunc sharding.HashFunc   `json:"-"`
+	ShardKey []string            `json:"shard_key"`
+
+	Partitions []*CollectionKeyspacePartition `json:"partitions"`
 }
 
-type CollectionVShardInstance struct {
-	ID            int64 `json:"_id"`
-	ShardInstance int64 `json:"instance"`
+func (c *CollectionKeyspace) UnmarshalJSON(data []byte) error {
+	type Alias CollectionKeyspace
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
 
-	DatastoreShard *DatastoreShard `json:"datastore_shard"`
+	// get the pointers to Hash and Shard func
+	c.HashFunc = c.Hash.Get()
+
+	return nil
 }
 
-type CollectionPartition struct {
+type CollectionKeyspacePartition struct {
 	ID      int64 `json:"_id"`
 	StartId int64 `json:"start_id"`
 	EndId   int64 `json:"end_id,omitempty"`
 
-	// TODO: separate struct for shard config?
-	ShardConfig *ShardConfig       `json:"shard_config"`
-	HashFunc    sharding.HashFunc  `json:"-"`
-	ShardFunc   sharding.ShardFunc `json:"-"`
+	Shard     sharding.ShardMethod `json:"shard_method"`
+	ShardFunc sharding.ShardFunc   `json:"-"`
+
+	DatastoreVShardInstanceIDs []int64 `json:"datastore_vshard_instance_ids"`
+	// map of datastore_id -> vshards
+	DatastoreVShardInstances map[int64][]*DatastoreVShardInstance `json:"-"`
 }
 
-func (p *CollectionPartition) UnmarshalJSON(data []byte) error {
-	type Alias CollectionPartition
+func (p *CollectionKeyspacePartition) UnmarshalJSON(data []byte) error {
+	type Alias CollectionKeyspacePartition
 	aux := &struct {
 		*Alias
 	}{
@@ -91,14 +107,7 @@ func (p *CollectionPartition) UnmarshalJSON(data []byte) error {
 	}
 
 	// get the pointers to Hash and Shard func
-	p.HashFunc = p.ShardConfig.Hash.Get()
-	p.ShardFunc = p.ShardConfig.Shard.Get()
+	p.ShardFunc = p.Shard.Get()
 
 	return nil
-}
-
-type ShardConfig struct {
-	Key   string               `json:"shard_key"`
-	Hash  sharding.HashMethod  `json:"hash_method"`
-	Shard sharding.ShardMethod `json:"shard_method"`
 }

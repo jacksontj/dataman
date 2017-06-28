@@ -50,6 +50,9 @@ type DatabaseDatastore struct {
 	DatastoreID int64      `json:"datastore_id"`
 	Datastore   *Datastore `json:"-"`
 
+	DatastoreVShardID int64            `json:"datastore_vshard_id"`
+	DatastoreVShard   *DatastoreVShard `json:"-"`
+
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
@@ -65,14 +68,36 @@ type Datastore struct {
 
 	Name string `json:"name"`
 
-	// TODO: remove?
-	// TODO: better type
-	//ShardConfig map[string]interface{} `json:"shard_config"`
+	VShards map[int64]*DatastoreVShard `json:"vshards"`
 
 	// TODO: change to map of int64 -> shard
 	Shards []*DatastoreShard `json:"shards"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+type DatastoreVShard struct {
+	ID    int64 `json:"_id"`
+	Count int64 `json:"count"`
+	// TODO: name field?
+
+	Shards []*DatastoreVShardInstance `json:"shards"`
+
+	// Internal fields
+	DatastoreID    int64          `json:"-"`
+	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+type DatastoreVShardInstance struct {
+	ID       int64 `json:"_id"`
+	Instance int64 `json:"shard_instance"`
+
+	DatastoreShardID int64           `json:"datastore_shard_id"`
+	DatastoreShard   *DatastoreShard `json:"-"`
+
+	// Internal fields
+	DatastoreVShardID int64          `json:"-"`
+	ProvisionState    ProvisionState `json:"provision_state"`
 }
 
 type DatastoreShard struct {

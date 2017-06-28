@@ -32,9 +32,11 @@ type Meta struct {
 	Datastore          map[int64]*Datastore          `json:"datastores"`
 
 	// TODO: remove? or make private?
-	DatastoreShards map[int64]*DatastoreShard                      `json:"-"`
-	Fields          map[int64]*storagenodemetadata.CollectionField `json:"-"`
-	Collections     map[int64]*Collection                          `json:"-"`
+	DatastoreShards          map[int64]*DatastoreShard                      `json:"-"`
+	DatastoreVShards         map[int64]*DatastoreVShard                     `json:"-"`
+	DatastoreVShardInstances map[int64]*DatastoreVShardInstance             `json:"-"`
+	Fields                   map[int64]*storagenodemetadata.CollectionField `json:"-"`
+	Collections              map[int64]*Collection                          `json:"-"`
 
 	FieldTypeRegistry *storagenodemetadata.FieldTypeRegister `json:"field_types"`
 
@@ -79,6 +81,14 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 		m.DatastoreShards = make(map[int64]*DatastoreShard)
 	}
 
+	if m.DatastoreVShards == nil {
+		m.DatastoreVShards = make(map[int64]*DatastoreVShard)
+	}
+
+	if m.DatastoreVShardInstances == nil {
+		m.DatastoreVShardInstances = make(map[int64]*DatastoreVShardInstance)
+	}
+
 	// Link DatastoreShardReplica -> DatasourceInstance
 	for _, datastore := range m.Datastore {
 		for _, datastoreShard := range datastore.Shards {
@@ -91,19 +101,42 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 				datastoreShardReplica.DatasourceInstance = m.DatasourceInstance[datastoreShardReplica.DatasourceInstanceID]
 			}
 		}
+
+		// create all the lookup tables for vshards
+		for _, datastoreVShard := range datastore.VShards {
+			datastoreVShard.DatastoreID = datastore.ID
+			m.DatastoreVShards[datastoreVShard.ID] = datastoreVShard
+			for _, datastoreVShardInstance := range datastoreVShard.Shards {
+				datastoreVShardInstance.DatastoreVShardID = datastoreVShard.ID
+				datastoreVShardInstance.DatastoreShard = m.DatastoreShards[datastoreVShardInstance.DatastoreShardID]
+				m.DatastoreVShardInstances[datastoreVShardInstance.ID] = datastoreVShardInstance
+			}
+		}
 	}
 
 	// Link Database -> Datastore
 	for _, database := range m.Databases {
 		for _, databaseDatastore := range database.Datastores {
 			databaseDatastore.Datastore = m.Datastore[databaseDatastore.DatastoreID]
+			databaseDatastore.DatastoreVShard = databaseDatastore.Datastore.VShards[databaseDatastore.DatastoreVShardID]
 		}
-		for _, databaseVShardInstance := range database.VShard.Instances {
-			if databaseVShardInstance.DatastoreShard == nil {
-				databaseVShardInstance.DatastoreShard = make(map[int64]*DatastoreShard)
-			}
-			for datastoreId, datastoreShardId := range databaseVShardInstance.DatastoreShardIDs {
-				databaseVShardInstance.DatastoreShard[datastoreId] = m.DatastoreShards[datastoreShardId]
+
+		// Link all the vshard stuff into collection keyspaces etc.
+		for _, collection := range database.Collections {
+			for _, keyspace := range collection.Keyspaces {
+				for _, partition := range keyspace.Partitions {
+					for _, datastoreVShardInstanceID := range partition.DatastoreVShardInstanceIDs {
+						if partition.DatastoreVShardInstances == nil {
+							partition.DatastoreVShardInstances = make(map[int64][]*DatastoreVShardInstance)
+						}
+						datastoreVShardInstance := m.DatastoreVShardInstances[datastoreVShardInstanceID]
+						datastoreID := m.DatastoreVShards[datastoreVShardInstance.DatastoreVShardID].DatastoreID
+						if _, ok := partition.DatastoreVShardInstances[datastoreID]; !ok {
+							partition.DatastoreVShardInstances[datastoreID] = make([]*DatastoreVShardInstance, 0)
+						}
+						partition.DatastoreVShardInstances[datastoreID] = append(partition.DatastoreVShardInstances[datastoreID], datastoreVShardInstance)
+					}
+				}
 			}
 		}
 	}
