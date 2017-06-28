@@ -102,7 +102,6 @@ const schemaJson string = `
                 "parent_collection_field_id": {
                   "name": "parent_collection_field_id",
                   "field_type": "_int",
-                  "not_null": true,
                   "provision_state": 3
                 },
                 "provision_state": {
