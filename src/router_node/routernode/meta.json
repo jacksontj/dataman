@@ -55,8 +55,8 @@
           "provision_state": 3
         }
       },
-      "shards": [
-        {
+      "shards": {
+        "68": {
           "_id": 68,
           "name": "datastore_test-shard1",
           "shard_instance": 1,
@@ -73,7 +73,7 @@
           },
           "provision_state": 3
         },
-        {
+        "69": {
           "_id": 69,
           "name": "test-shard2",
           "shard_instance": 2,
@@ -90,7 +90,7 @@
           },
           "provision_state": 3
         }
-      ],
+      },
       "provision_state": 3
     }
   },

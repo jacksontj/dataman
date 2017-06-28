@@ -59,7 +59,8 @@ type DatabaseDatastore struct {
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
 		Name:   name,
-		Shards: make([]*DatastoreShard, 0),
+		VShards: make(map[int64]*DatastoreVShard),
+		Shards: make(map[int64]*DatastoreShard),
 	}
 }
 
@@ -71,7 +72,7 @@ type Datastore struct {
 	VShards map[int64]*DatastoreVShard `json:"vshards"`
 
 	// TODO: change to map of int64 -> shard
-	Shards []*DatastoreShard `json:"shards"`
+	Shards map[int64]*DatastoreShard `json:"shards"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
