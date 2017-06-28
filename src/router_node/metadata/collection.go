@@ -90,9 +90,9 @@ type CollectionKeyspacePartition struct {
 	Shard     sharding.ShardMethod `json:"shard_method"`
 	ShardFunc sharding.ShardFunc   `json:"-"`
 
-	DatastoreVShardInstanceIDs []int64 `json:"datastore_vshard_instance_ids"`
-	// map of datastore_id -> vshards
-	DatastoreVShardInstances map[int64][]*DatastoreVShardInstance `json:"-"`
+	DatastoreVShardIDs []int64 `json:"datastore_vshard_ids"`
+	// map of datastore_id -> vshard
+	DatastoreVShards map[int64]*DatastoreVShard `json:"-"`
 }
 
 func (p *CollectionKeyspacePartition) UnmarshalJSON(data []byte) error {

@@ -392,8 +392,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 			return &query.Result{Error: err.Error()}
 		}
 
-		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
-		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]}
+		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 
 	case query.Filter:
 		// if there is only one partition and we have our shard key, we can be more specific
@@ -403,8 +403,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
-			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]}
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 		} else {
 			vshards = databaseDatastore.DatastoreVShard.Shards
 		}
@@ -496,9 +496,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
-			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
@@ -526,7 +526,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			// TODO: remove this, we just want to set all values here in the router layer and
 			// then all of this won't be necessary
 			if keyspace.ShardKey[0] == "_id" {
-				vshardNum = rand.Intn(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+				vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 			} else {
 				rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
 				if !ok {
@@ -537,10 +537,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 					// TODO: wrap the error
 					return &query.Result{Error: err.Error()}
 				}
-				vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+				vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 			}
 
-			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 			// TODO: replicas -- add args for slave etc.
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
@@ -572,7 +572,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// TODO: remove this, we just want to set all values here in the router layer and
 		// then all of this won't be necessary
 		if keyspace.ShardKey[0] == "_id" {
-			vshardNum = rand.Intn(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		} else {
 			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
 			if !ok {
@@ -583,10 +583,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		}
 
-		vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
@@ -616,10 +616,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 			// TODO: replicas -- add args for slave etc.
-			vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -635,9 +635,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 
 		} else { // Otherwise we need to send this query to all shards to let them handle it
-			vshardResults := make(chan *query.Result, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+			vshardResults := make(chan *query.Result, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
-			for _, vshard := range partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID] {
+			for _, vshard := range partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards {
 				datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
 				datasourceInstanceShardInstance, ok := datasourceInstance.DatabaseShards[vshard.ID]
@@ -656,7 +656,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			}
 
-			return query.MergeResult(len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]), vshardResults)
+			return query.MergeResult(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
 	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
 	// current implementation won't work. Instead of doing the get/set
@@ -674,9 +674,9 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
-		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID]))
+		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
-		vshard := partition.DatastoreVShardInstances[databaseDatastore.Datastore.ID][vshardNum-1]
+		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance

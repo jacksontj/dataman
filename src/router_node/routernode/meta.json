@@ -212,9 +212,8 @@
                   "_id": 1,
                   "start_id": 1,
                   "shard_method": "mod",
-                  "datastore_vshard_instance_ids": [
-                    1,
-                    2
+                  "datastore_vshard_ids": [
+                    1
                   ]
                 }
               ]
@@ -294,9 +293,8 @@
                   "_id": 1,
                   "start_id": 1,
                   "shard_method": "mod",
-                  "datastore_vshard_instance_ids": [
-                    1,
-                    2
+                  "datastore_vshard_ids": [
+                    1
                   ]
                 }
               ]
@@ -346,9 +344,8 @@
                   "_id": 1,
                   "start_id": 1,
                   "shard_method": "mod",
-                  "datastore_vshard_instance_ids": [
-                    1,
-                    2
+                  "datastore_vshard_ids": [
+                    1
                   ]
                 }
               ]

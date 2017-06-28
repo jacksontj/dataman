@@ -50,6 +50,7 @@ type DatabaseDatastore struct {
 	DatastoreID int64      `json:"datastore_id"`
 	Datastore   *Datastore `json:"-"`
 
+	// Default datastore vshard for all collections in the database
 	DatastoreVShardID int64            `json:"datastore_vshard_id"`
 	DatastoreVShard   *DatastoreVShard `json:"-"`
 

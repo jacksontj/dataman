@@ -125,16 +125,12 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 		for _, collection := range database.Collections {
 			for _, keyspace := range collection.Keyspaces {
 				for _, partition := range keyspace.Partitions {
-					for _, datastoreVShardInstanceID := range partition.DatastoreVShardInstanceIDs {
-						if partition.DatastoreVShardInstances == nil {
-							partition.DatastoreVShardInstances = make(map[int64][]*DatastoreVShardInstance)
+					for _, datastoreVShardID := range partition.DatastoreVShardIDs {
+						if partition.DatastoreVShards == nil {
+							partition.DatastoreVShards = make(map[int64]*DatastoreVShard)
 						}
-						datastoreVShardInstance := m.DatastoreVShardInstances[datastoreVShardInstanceID]
-						datastoreID := m.DatastoreVShards[datastoreVShardInstance.DatastoreVShardID].DatastoreID
-						if _, ok := partition.DatastoreVShardInstances[datastoreID]; !ok {
-							partition.DatastoreVShardInstances[datastoreID] = make([]*DatastoreVShardInstance, 0)
-						}
-						partition.DatastoreVShardInstances[datastoreID] = append(partition.DatastoreVShardInstances[datastoreID], datastoreVShardInstance)
+						datastoreVShard := m.DatastoreVShards[datastoreVShardID]
+						partition.DatastoreVShards[datastoreVShard.DatastoreID] = datastoreVShard
 					}
 				}
 			}
