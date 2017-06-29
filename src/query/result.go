@@ -14,9 +14,9 @@ type Result struct {
 	Meta            map[string]interface{} `json:"meta,omitempty"`
 }
 
-func (r *Result) Sort(keys []string, reverse bool) {
+func (r *Result) Sort(keys []string, reverseList []bool) {
 	if r.Return != nil {
-		Sort(keys, r.Return, reverse)
+		Sort(keys, reverseList, r.Return)
 	}
 }
 
@@ -131,17 +131,21 @@ func FlattenResult(m map[string]interface{}) map[string]interface{} {
 
 // TODO: change map[string]interface to a `Record` struct type
 // sort the given data by the given keys
-func Sort(sortKeys []string, data []map[string]interface{}, reverse bool) {
+func Sort(sortKeys []string, reverseList []bool, data []map[string]interface{}) {
 	splitSortKeys := make([][]string, len(sortKeys))
 	for i, sortKey := range sortKeys {
 		splitSortKeys[i] = strings.Split(sortKey, ".")
 	}
 
 	less := func(i, j int) (l bool) {
-		if reverse {
-			defer func() { l = !l }()
-		}
-		for _, keyParts := range splitSortKeys {
+		var reverse bool
+		defer func() {
+			if reverse {
+				l = !l
+			}
+		}()
+		for sortKeyIdx, keyParts := range splitSortKeys {
+			reverse = reverseList[sortKeyIdx]
 			// TODO: record could (and should) point at the CollectionFields which will tell us types
 			iVal := GetValue(data[i], keyParts)
 			jVal := GetValue(data[j], keyParts)

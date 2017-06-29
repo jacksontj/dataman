@@ -409,25 +409,37 @@ QUERYLOOP:
 				}
 
 				// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
-				if sortArgsRaw, ok := queryArgs["sort"]; ok {
+				if sortListRaw, ok := queryArgs["sort"]; ok {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
-					sortArgs, ok := sortArgsRaw.(map[string]interface{})
+					sortList, ok := sortListRaw.([]string)
 					if !ok {
 						results[i].Error = "Unable to sort result, invalid sort args"
 						continue
 					}
-					// TODO: better?
-					sortKeys := make([]string, len(sortArgs["fields"].([]interface{})))
-					for i, sortKey := range sortArgs["fields"].([]interface{}) {
-						sortKeys[i] = sortKey.(string)
-					}
+					sortReverseList := make([]bool, len(sortList))
 
-					reverse := false
-					if reverseRaw, ok := sortArgs["reverse"]; ok {
-						reverse = reverseRaw.(bool)
+					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok {
+						// TODO: better, seems heavy
+						for i, _ := range sortReverseList {
+							sortReverseList[i] = false
+						}
+					} else {
+						switch sortReverseRawTyped := sortReverseRaw.(type) {
+						case bool:
+							for i, _ := range sortReverseList {
+								sortReverseList[i] = sortReverseRawTyped
+							}
+						case []bool:
+							if len(sortReverseRawTyped) != len(sortList) {
+								results[i].Error = "Unable to sort_reverse must be the same len as sort"
+								continue
+							}
+							sortReverseList = sortReverseRawTyped
+						}
+
 					}
 					// TODO: how do we define order?
-					results[i].Sort(sortKeys, reverse)
+					results[i].Sort(sortList, sortReverseList)
 				}
 			}
 

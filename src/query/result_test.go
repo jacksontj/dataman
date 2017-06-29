@@ -115,13 +115,14 @@ func TestSingle(t *testing.T) {
 	for _, testCase := range singleSortTestCases {
 		for _, dataPerm := range recordPermutations(testCase.CopyData()) {
 			// Forward sort
-			Sort(testCase.sortKeys, dataPerm, false)
+			Sort(testCase.sortKeys, []bool{false, false}, dataPerm)
 			if !reflect.DeepEqual(testCase.data, dataPerm) {
 				t.Fatalf("Unable to sort by %v, expected=%v actual=%v", testCase.sortKeys, testCase.data, dataPerm)
 			}
 
+			// TODO: tests for different sort orders per field
 			// Reverse sort
-			Sort(testCase.sortKeys, dataPerm, true)
+			Sort(testCase.sortKeys, []bool{true, true}, dataPerm)
 			for i, sortedVal := range dataPerm {
 				if !reflect.DeepEqual(testCase.data[len(dataPerm)-1-i], sortedVal) {
 					t.Fatalf("Unable to sort by %v, expected=%v actual=%v", testCase.sortKeys, testCase.data, dataPerm)
