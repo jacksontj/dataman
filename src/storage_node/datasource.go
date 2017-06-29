@@ -264,32 +264,35 @@ QUERYLOOP:
 							joinField := collection.GetField(joinFieldNameParts)
 							joinRecord := query.GetValue(queryArgs["record"].(map[string]interface{}), joinFieldNameParts)
 
-							actualFieldValue := query.GetValue(joinRecord.(map[string]interface{}), []string{joinField.Relation.Field})
+							// If there isn't a join record-- skip
+							if joinRecord != nil {
+								actualFieldValue := query.GetValue(joinRecord.(map[string]interface{}), []string{joinField.Relation.Field})
 
-							joinCollection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
-							if err != nil {
-								results[i] = &query.Result{Error: err.Error()}
-								continue QUERYLOOP
+								joinCollection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+								if err != nil {
+									results[i] = &query.Result{Error: err.Error()}
+									continue QUERYLOOP
+								}
+
+								if validationResultMap := joinCollection.ValidateRecordUpdate(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
+									results[i] = &query.Result{ValidationError: validationResultMap}
+									continue QUERYLOOP
+								}
+
+								joinResults := s.Store.Set(map[string]interface{}{
+									"db":             queryArgs["db"],
+									"shard_instance": queryArgs["shard_instance"].(string),
+									"collection":     joinField.Relation.Collection,
+									"record":         joinRecord,
+								})
+								if joinResults.Error != "" {
+									results[i] = &query.Result{Error: joinResults.Error}
+									continue QUERYLOOP
+								}
+
+								// Update the value in the main record
+								query.SetValue(queryArgs["record"].(map[string]interface{}), actualFieldValue, joinFieldNameParts)
 							}
-
-							if validationResultMap := joinCollection.ValidateRecordUpdate(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
-								results[i] = &query.Result{ValidationError: validationResultMap}
-								continue QUERYLOOP
-							}
-
-							joinResults := s.Store.Set(map[string]interface{}{
-								"db":             queryArgs["db"],
-								"shard_instance": queryArgs["shard_instance"].(string),
-								"collection":     joinField.Relation.Collection,
-								"record":         joinRecord,
-							})
-							if joinResults.Error != "" {
-								results[i] = &query.Result{Error: joinResults.Error}
-								continue QUERYLOOP
-							}
-
-							// Update the value in the main record
-							query.SetValue(queryArgs["record"].(map[string]interface{}), actualFieldValue, joinFieldNameParts)
 						}
 
 					}
@@ -333,15 +336,18 @@ QUERYLOOP:
 					if joinFieldList, ok := queryArgs["join"]; ok {
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-							joinField := collection.GetField(joinFieldNameParts)
-							joinResults := s.Store.Get(map[string]interface{}{
-								"db":             queryArgs["db"],
-								"shard_instance": queryArgs["shard_instance"].(string),
-								"collection":     joinField.Relation.Collection,
-								"_id":            query.GetValue(results[i].Return[0], joinFieldNameParts),
-							})
+							// If there isn't a join record-- skip
+							if rawJoinValue := query.GetValue(results[i].Return[0], joinFieldNameParts); rawJoinValue != nil {
+								joinField := collection.GetField(joinFieldNameParts)
+								joinResults := s.Store.Get(map[string]interface{}{
+									"db":             queryArgs["db"],
+									"shard_instance": queryArgs["shard_instance"].(string),
+									"collection":     joinField.Relation.Collection,
+									"_id":            rawJoinValue,
+								})
 
-							query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
+								query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
+							}
 						}
 					}
 				case query.Set:
@@ -361,14 +367,17 @@ QUERYLOOP:
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							joinField := collection.GetField(joinFieldNameParts)
 							for j, _ := range results[i].Return {
-								joinResults := s.Store.Get(map[string]interface{}{
-									"db":             queryArgs["db"],
-									"shard_instance": queryArgs["shard_instance"].(string),
-									"collection":     joinField.Relation.Collection,
-									"_id":            query.GetValue(results[i].Return[j], joinFieldNameParts),
-								})
+								// If there isn't a join record-- skip
+								if rawJoinValue := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
+									joinResults := s.Store.Get(map[string]interface{}{
+										"db":             queryArgs["db"],
+										"shard_instance": queryArgs["shard_instance"].(string),
+										"collection":     joinField.Relation.Collection,
+										"_id":            rawJoinValue,
+									})
 
-								query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
+									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
+								}
 							}
 						}
 					}
