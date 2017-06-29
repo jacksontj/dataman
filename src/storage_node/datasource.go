@@ -411,6 +411,7 @@ QUERYLOOP:
 				// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
 				if sortListRaw, ok := queryArgs["sort"]; ok {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
+					// TODO: we need to suppor interface{} as well
 					sortList, ok := sortListRaw.([]string)
 					if !ok {
 						results[i].Error = "Unable to sort result, invalid sort args"
@@ -438,7 +439,6 @@ QUERYLOOP:
 						}
 
 					}
-					// TODO: how do we define order?
 					results[i].Sort(sortList, sortReverseList)
 				}
 			}
