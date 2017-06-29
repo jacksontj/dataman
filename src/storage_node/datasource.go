@@ -262,6 +262,11 @@ QUERYLOOP:
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							// Get the field we are working with
 							joinField := collection.GetField(joinFieldNameParts)
+							// TODO: look this up before the call
+							if joinField == nil {
+								results[i] = &query.Result{Error: "Invalid joinField " + joinFieldName.(string)}
+								continue
+							}
 							joinRecord := query.GetValue(queryArgs["record"].(map[string]interface{}), joinFieldNameParts)
 
 							// If there isn't a join record-- skip
@@ -339,6 +344,11 @@ QUERYLOOP:
 							// If there isn't a join record-- skip
 							if rawJoinValue := query.GetValue(results[i].Return[0], joinFieldNameParts); rawJoinValue != nil {
 								joinField := collection.GetField(joinFieldNameParts)
+								// TODO: look this up before the call
+								if joinField == nil {
+									results[i].Error = "Invalid joinField " + joinFieldName.(string)
+									continue
+								}
 								joinResults := s.Store.Get(map[string]interface{}{
 									"db":             queryArgs["db"],
 									"shard_instance": queryArgs["shard_instance"].(string),
@@ -366,6 +376,11 @@ QUERYLOOP:
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							joinField := collection.GetField(joinFieldNameParts)
+							// TODO: look this up before the call
+							if joinField == nil {
+								results[i].Error = "Invalid joinField " + joinFieldName.(string)
+								continue
+							}
 							for j, _ := range results[i].Return {
 								// If there isn't a join record-- skip
 								if rawJoinValue := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
