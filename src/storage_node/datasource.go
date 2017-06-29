@@ -354,6 +354,25 @@ QUERYLOOP:
 					results[i] = s.Store.Delete(queryArgs)
 				case query.Filter:
 					results[i] = s.Store.Filter(queryArgs)
+					// TODO: move to routing layer only
+					// This only works for stuff that has a shard count of 1
+					if joinFieldList, ok := queryArgs["join"]; ok {
+						for _, joinFieldName := range joinFieldList.([]interface{}) {
+							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
+							joinField := collection.GetField(joinFieldNameParts)
+							for j, _ := range results[i].Return {
+								joinResults := s.Store.Get(map[string]interface{}{
+									"db":             queryArgs["db"],
+									"shard_instance": queryArgs["shard_instance"].(string),
+									"collection":     joinField.Relation.Collection,
+									"_id":            query.GetValue(results[i].Return[j], joinFieldNameParts),
+								})
+
+								query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
+							}
+						}
+					}
+
 				default:
 					results[i] = &query.Result{
 						Error: "Unsupported query type " + string(queryType),
