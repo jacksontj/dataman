@@ -1,6 +1,27 @@
 {
 	"name": "test_datastore",
-	"shards": [{
+	"vshards": {
+		"1": {
+			"_id": 1,
+			"count": 2,
+			"shards": [{
+					"_id": 1,
+					"shard_instance": 1,
+					"datastore_shard_id": 68,
+					"provision_state": 3
+				},
+				{
+					"_id": 2,
+					"shard_instance": 2,
+					"datastore_shard_id": 69,
+					"provision_state": 3
+				}
+			],
+			"provision_state": 3
+		}
+	},
+	"shards": {
+		"1": {
 			"name": "datastore_test-shard1",
 			"shard_instance": 1,
 			"replicas": {
@@ -15,7 +36,7 @@
 				"slaves": []
 			}
 		},
-		{
+		"2": {
 			"name": "test-shard2",
 			"shard_instance": 2,
 			"replicas": {
@@ -30,5 +51,5 @@
 				"slaves": []
 			}
 		}
-	]
+	}
 }

@@ -35,8 +35,29 @@ def ensure_datastore(urlbase):
     data = {
 	    "name": "test_datastore",
 	    "provision_state": 3,
-
-	    "shards": [{
+        "vshards": {
+            "4": {
+                "_id": 4,
+                "count": 2,
+                "shards": [
+                    {
+                        "_id": 2,
+                        "shard_instance": 1,
+                        "datastore_shard_id": 68,
+                        "provision_state": 3
+                    },
+                    {
+                      "_id": 3,
+                      "shard_instance": 2,
+                      "datastore_shard_id": 69,
+                      "provision_state": 3
+                    }
+                ],
+                "provision_state": 3
+            }
+        },
+	    "shards": {
+	        "1": {
 			    "name": "datastore_test-shard1",
 			    "shard_instance": 1,
 			    "provision_state": 3,
@@ -49,7 +70,7 @@ def ensure_datastore(urlbase):
 				    "slaves": [],
 			    }
 		    },
-		    {
+		    "2": {
 			    "name": "test-shard2",
 			    "shard_instance": 2,
 			    "provision_state": 3,
@@ -62,11 +83,11 @@ def ensure_datastore(urlbase):
 				    "slaves": []
 			    }
 		    }
-	    ]
+	    }
     }
     
     dsi = STORAGE_NODES.values()
-    for shard in data['shards']:
+    for shard in data['shards'].itervalues():
         if len(dsi) == 0:
             dsi = STORAGE_NODES.values()
         shard['replicas']['masters'][0]['datasource_instance_id'] = dsi.pop(0)['datasource_instances'].itervalues().next()['_id']

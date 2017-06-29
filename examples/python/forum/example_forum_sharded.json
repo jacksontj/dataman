@@ -19,8 +19,8 @@
 							"field_type": "_int",
 							"name": "thread_id",
 							"relation": {
-							    "collection": "thread",
-							    "field": "_id"
+								"collection": "thread",
+								"field": "_id"
 							}
 						},
 						"created_by": {
@@ -41,13 +41,18 @@
 					"name": "data"
 				}
 			},
-			"partitions": [{
-				"shard_config": {
-					"hash_method": "cast",
+			"keyspaces": [{
+				"hash_method": "cast",
+				"shard_key": [
+					"_id"
+				],
+				"partitions": [{
+					"start_id": 1,
 					"shard_method": "mod",
-					"shard_key": "_id"
-				},
-				"start_id": 1
+					"datastore_vshard_ids": [
+						4
+					]
+				}]
 			}],
 			"indexes": {
 				"created": {
@@ -68,13 +73,18 @@
 					}
 				}
 			},
-			"partitions": [{
-				"shard_config": {
-					"hash_method": "sha256",
+			"keyspaces": [{
+				"hash_method": "sha256",
+				"shard_key": [
+					"username"
+				],
+				"partitions": [{
+					"start_id": 1,
 					"shard_method": "mod",
-					"shard_key": "username"
-				},
-				"start_id": 1
+					"datastore_vshard_ids": [
+						4
+					]
+				}]
 			}],
 			"indexes": {
 				"username": {
@@ -115,13 +125,18 @@
 					"name": "data"
 				}
 			},
-			"partitions": [{
-				"shard_config": {
-					"hash_method": "cast",
+			"keyspaces": [{
+				"hash_method": "cast",
+				"shard_key": [
+					"_id"
+				],
+				"partitions": [{
+					"start_id": 1,
 					"shard_method": "mod",
-					"shard_key": "_id"
-				},
-				"start_id": 1
+					"datastore_vshard_ids": [
+						4
+					]
+				}]
 			}],
 			"indexes": {
 				"title": {
@@ -136,10 +151,10 @@
 			}
 		}
 	},
-    "datastores": [{
+	"datastores": [{
 		"read": true,
 		"write": true,
-        "datastore_id": 54,
+		"datastore_id": 54,
 		"required": true
 	}],
 	"database_vshard": {
