@@ -72,7 +72,7 @@ type Datastore struct {
 
 	VShards map[int64]*DatastoreVShard `json:"vshards"`
 
-	// TODO: change to map of int64 -> shard
+	// TODO: change to a map of instance -> shard
 	Shards map[int64]*DatastoreShard `json:"shards"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
@@ -83,6 +83,7 @@ type DatastoreVShard struct {
 	Count int64 `json:"count"`
 	// TODO: name field?
 
+	// TODO: change to a map of instance -> shard
 	Shards []*DatastoreVShardInstance `json:"shards"`
 
 	DatabaseID int64 `json:"database_id"`
