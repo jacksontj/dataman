@@ -10,7 +10,7 @@
           "_id": 117,
           "name": "postgres1",
           "storage_node_id": 138,
-          "datasource_instance_shard_instance": {
+          "shard_instances": {
             "3437": {
               "_id": 3270,
               "name": "dbshard_example_forum_1",
@@ -38,6 +38,7 @@
         "1": {
           "_id": 1,
           "count": 2,
+          "name": "1",
           "shards": [
             {
               "_id": 1,
@@ -57,7 +58,7 @@
         }
       },
       "shards": {
-        "68": {
+        "1": {
           "_id": 68,
           "name": "datastore_test-shard1",
           "shard_instance": 1,
@@ -74,7 +75,7 @@
           },
           "provision_state": 3
         },
-        "69": {
+        "2": {
           "_id": 69,
           "name": "test-shard2",
           "shard_instance": 2,
@@ -132,7 +133,6 @@
           "write": true,
           "required": true,
           "datastore_id": 55,
-          "datastore_vshard_id": 1,
           "provision_state": 3
         }
       ],

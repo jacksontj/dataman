@@ -1,6 +1,8 @@
 package metadata
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+)
 
 func NewDatastoreSet() *DatastoreSet {
 	return &DatastoreSet{
@@ -60,7 +62,7 @@ type DatabaseDatastore struct {
 func NewDatastore(name string) *Datastore {
 	return &Datastore{
 		Name:    name,
-		VShards: make(map[int64]*DatastoreVShard),
+		VShards: make(map[string]*DatastoreVShard),
 		Shards:  make(map[int64]*DatastoreShard),
 	}
 }
@@ -70,18 +72,18 @@ type Datastore struct {
 
 	Name string `json:"name"`
 
-	VShards map[int64]*DatastoreVShard `json:"vshards"`
+	VShards map[string]*DatastoreVShard `json:"vshards"`
 
-	// TODO: change to a map of instance -> shard
+	// map of instance -> shard
 	Shards map[int64]*DatastoreShard `json:"shards"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
 type DatastoreVShard struct {
-	ID    int64 `json:"_id"`
-	Count int64 `json:"count"`
-	// TODO: name field?
+	ID    int64  `json:"_id"`
+	Count int64  `json:"count"`
+	Name  string `json:"name"`
 
 	// TODO: change to a map of instance -> shard
 	Shards []*DatastoreVShardInstance `json:"shards"`

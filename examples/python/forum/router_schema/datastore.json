@@ -1,17 +1,14 @@
 {
 	"name": "test_datastore",
 	"vshards": {
-		"1": {
-			"_id": 1,
+		"vshard1": {
 			"count": 2,
 			"shards": [{
-					"_id": 1,
 					"shard_instance": 1,
 					"datastore_shard_id": 68,
 					"provision_state": 3
 				},
 				{
-					"_id": 2,
 					"shard_instance": 2,
 					"datastore_shard_id": 69,
 					"provision_state": 3

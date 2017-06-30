@@ -374,7 +374,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 
 			datastoreShard.Replicas.AddReplica(datastoreShardReplica)
 		}
-		datastore.Shards[datastoreShard.ID] = datastoreShard
+		datastore.Shards[datastoreShard.Instance] = datastoreShard
 		meta.DatastoreShards[datastoreShard.ID] = datastoreShard
 	}
 
@@ -434,7 +434,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 			//ProvisionState: metadata.ProvisionState(datastoreVShardRecord["provision_state"].(int64)),
 		}
 
-		datastore.VShards[datastoreVShard.ID] = datastoreVShard
+		datastore.VShards[datastoreVShard.Name] = datastoreVShard
 		meta.DatastoreVShards[datastoreVShard.ID] = datastoreVShard
 	}
 
@@ -1143,6 +1143,12 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 	for _, existingDatastore := range meta.Datastore {
 		if existingDatastore.Name == datastore.Name {
 			datastore.ID = existingDatastore.ID
+			for name, existingVShard := range existingDatastore.VShards {
+				if name == vShard.Name {
+					vShard.ID = existingVShard.ID
+					break
+				}
+			}
 			// TODO: will we have the ID for the VShard? If not, then we need to get it (using w/e primary key is)
 			break
 		}
@@ -1190,7 +1196,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename string, vShardID int64) error {
+func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename, vShardName string) error {
 	meta, err := m.GetMeta()
 	if err != nil {
 		return err
@@ -1208,13 +1214,13 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename string, v
 		return nil
 	}
 
-	datastoreVShard, ok := datastore.VShards[vShardID]
+	datastoreVShard, ok := datastore.VShards[vShardName]
 	if !ok {
 		return nil
 	}
 
 	for _, datastoreVShardInstance := range datastoreVShard.Shards {
-		if err := m.EnsureDoesntExistDatastoreVShardInstance(datastorename, vShardID, datastoreVShardInstance.Instance); err != nil {
+		if err := m.EnsureDoesntExistDatastoreVShardInstance(datastorename, vShardName, datastoreVShardInstance.Instance); err != nil {
 			return err
 		}
 	}
@@ -1243,7 +1249,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 	for _, existingDatastore := range meta.Datastore {
 		if existingDatastore.Name == datastore.Name {
 			datastore.ID = existingDatastore.ID
-			if existingDatastoreVShard, ok := datastore.VShards[vShard.ID]; ok {
+			if existingDatastoreVShard, ok := datastore.VShards[vShard.Name]; ok {
 				for _, existingDatastoreVShardInstance := range existingDatastoreVShard.Shards {
 					if existingDatastoreVShardInstance.Instance == vShardInstance.Instance {
 						vShardInstance.ID = existingDatastoreVShardInstance.ID
@@ -1295,7 +1301,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename string, vShardID, datastorevshardinstance int64) error {
+func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, vShardName string, datastorevshardinstance int64) error {
 	meta, err := m.GetMeta()
 	if err != nil {
 		return err
@@ -1313,7 +1319,7 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename s
 		return nil
 	}
 
-	datastoreVShard, ok := datastore.VShards[vShardID]
+	datastoreVShard, ok := datastore.VShards[vShardName]
 	if !ok {
 		return nil
 	}
@@ -1675,10 +1681,9 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		return fmt.Errorf("Unable to remove collections, dep problem? %v", outerError)
 	}
 
-	// TODO: optional, we are going to support collection and/or database vshards
 	for _, datastoreVShard := range meta.DatastoreVShards {
 		if datastoreVShard.DatabaseID == database.ID {
-			if err := m.EnsureDoesntExistDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID].Name, datastoreVShard.ID); err != nil {
+			if err := m.EnsureDoesntExistDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID].Name, datastoreVShard.Name); err != nil {
 				return err
 			}
 		}
