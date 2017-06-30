@@ -436,6 +436,15 @@ QUERYLOOP:
 								continue
 							}
 							sortReverseList = sortReverseRawTyped
+						case []interface{}:
+							if len(sortReverseRawTyped) != len(sortList) {
+								results[i].Error = "Unable to sort_reverse must be the same len as sort"
+								continue
+							}
+							for i, sortReverseItem := range sortReverseRawTyped {
+								// TODO: handle case where it isn't a bool!
+								sortReverseList[i] = sortReverseItem.(bool)
+							}
 						}
 
 					}

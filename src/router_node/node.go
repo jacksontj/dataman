@@ -247,6 +247,8 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 
 				if sortListRaw, ok := queryArgs["sort"]; ok {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
+					// TODO: we need to support interface{} as well
+					sortList := make([]string, len(sortListRaw)
 					sortList, ok := sortListRaw.([]string)
 					if !ok {
 						results[i].Error = "Unable to sort result, invalid sort args"
@@ -271,10 +273,21 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 								continue
 							}
 							sortReverseList = sortReverseRawTyped
+						// TODO: remove? things should have a real type...
+						case []interface{}:
+							if len(sortReverseRawTyped) != len(sortList) {
+								results[i].Error = "Unable to sort_reverse must be the same len as sort"
+								continue
+							}
+							for i, sortReverseItem := range sortReverseRawTyped {
+								// TODO: handle case where it isn't a bool!
+								sortReverseList[i] = sortReverseItem.(bool)
+							}
+						default:
+							results[i].Error = "Invalid sort_reverse value"
 						}
 
 					}
-					// TODO: how do we define order?
 					results[i].Sort(sortList, sortReverseList)
 				}
 
