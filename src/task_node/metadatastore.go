@@ -1165,10 +1165,14 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 	datastoreVShardRecord := map[string]interface{}{
 		"datastore_id": datastore.ID,
 		"shard_count":  vShard.Count,
-		// TODO: add back!
-		//"database_id":  db.ID,
 		// TODO:
 		//"name": vShard.Name,
+	}
+
+	if vShard.DatabaseID == 0 {
+		datastoreVShardRecord["database_id"] = nil
+	} else {
+		datastoreVShardRecord["database_id"] = vShard.DatabaseID
 	}
 
 	if vShard.ID != 0 {
@@ -1652,36 +1656,13 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		return fmt.Errorf("Unable to remove collections, dep problem? %v", outerError)
 	}
 
+	// Unlink any associated datastore_vshards
 	for _, datastoreVShard := range meta.DatastoreVShards {
 		if datastoreVShard.DatabaseID == database.ID {
-			if err := m.EnsureDoesntExistDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID].Name, datastoreVShard.Name); err != nil {
+			datastoreVShard.DatabaseID = 0
+			if err := m.EnsureExistsDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID], datastoreVShard); err != nil {
 				return err
 			}
-		}
-	}
-
-	// Delete any associated datastore_vshards
-	datastoreVShardResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_router",
-		"shard_instance": "public",
-		"collection":     "datastore_vshard",
-		"filter": map[string]interface{}{
-			"database_id": []interface{}{"=", database.ID},
-		},
-	})
-	if datastoreVShardResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
-	}
-	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
-		datastoreVShardRecord["database_id"] = nil
-		datastoreVShardUpdateResult := m.Store.Set(map[string]interface{}{
-			"db":             "dataman_router",
-			"shard_instance": "public",
-			"collection":     "collection_keyspace_shardkey",
-			"record":         datastoreVShardRecord,
-		})
-		if datastoreVShardUpdateResult.Error != "" {
-			return fmt.Errorf("Error getting datastoreVShardUpdateResult: %v", datastoreVShardUpdateResult.Error)
 		}
 	}
 
