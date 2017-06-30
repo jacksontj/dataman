@@ -423,15 +423,17 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		}
 
 		datastoreVShard := &metadata.DatastoreVShard{
-			ID:     datastoreVShardRecord["_id"].(int64),
-			Count:  datastoreVShardRecord["shard_count"].(int64),
-			Shards: vshardInstances,
-			// TODO
-			//DatabaseID: datastoreVShardRecord["database_id"].(int64),
+			ID:          datastoreVShardRecord["_id"].(int64),
+			Count:       datastoreVShardRecord["shard_count"].(int64),
+			Shards:      vshardInstances,
 			DatastoreID: datastoreVShardRecord["datastore_id"].(int64),
 
 			// TODO
 			//ProvisionState: metadata.ProvisionState(datastoreVShardRecord["provision_state"].(int64)),
+		}
+
+		if databaseId, ok := datastoreVShardRecord["database_id"]; ok && databaseId != nil {
+			datastoreVShard.DatabaseID = databaseId.(int64)
 		}
 
 		datastore.VShards[datastoreVShard.Name] = datastoreVShard
@@ -1249,9 +1251,10 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 	for _, existingDatastore := range meta.Datastore {
 		if existingDatastore.Name == datastore.Name {
 			datastore.ID = existingDatastore.ID
-			if existingDatastoreVShard, ok := datastore.VShards[vShard.Name]; ok {
+			if existingDatastoreVShard, ok := existingDatastore.VShards[vShard.Name]; ok {
+				vShard.ID = existingDatastoreVShard.ID
 				for _, existingDatastoreVShardInstance := range existingDatastoreVShard.Shards {
-					if existingDatastoreVShardInstance.Instance == vShardInstance.Instance {
+					if vShardInstance.Instance == existingDatastoreVShardInstance.Instance {
 						vShardInstance.ID = existingDatastoreVShardInstance.ID
 						break
 					}
@@ -1265,10 +1268,13 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 	datastoreVShardInstanceRecord := map[string]interface{}{
 		"datastore_vshard_id": vShard.ID,
 		"shard_instance":      vShardInstance.Instance,
+		"datastore_shard_id":  vShardInstance.DatastoreShardID,
 	}
 
 	if vShardInstance.ID != 0 {
+		fmt.Println("setting ID", vShardInstance.ID)
 		datastoreVShardInstanceRecord["_id"] = vShardInstance.ID
+		fmt.Println("after set?", datastoreVShardInstanceRecord)
 	}
 
 	datastoreVShardInstanceResult := m.Store.Set(map[string]interface{}{
@@ -1282,21 +1288,11 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 		return fmt.Errorf("Error getting datastoreVShardInstanceResult: %v", datastoreVShardInstanceResult.Error)
 	}
 
+	fmt.Println("vShardInstance", vShardInstance)
+	fmt.Println(datastoreVShardInstanceRecord)
+	fmt.Println(vShardInstance)
+	fmt.Println(datastoreVShardInstanceResult.Return)
 	vShardInstance.ID = datastoreVShardInstanceResult.Return[0]["_id"].(int64)
-
-	// TODO:
-	// TODO: need to diff these?
-	// TODO: better -- for now we know we just need the link, so lets do an insert we don't watch
-	m.Store.Insert(map[string]interface{}{
-		"db":             "dataman_router",
-		"shard_instance": "public",
-		"collection":     "datastore_vshard_instance_datastore_shard",
-		"record": map[string]interface{}{
-			"datastore_vshard_instance_id": vShardInstance.ID,
-			"datastore_shard_id":           vShardInstance.DatastoreShardID,
-		},
-	})
-	// Check the linking tables here (DatastoreShard -- the map to datastore_shard)
 
 	return nil
 }
@@ -1332,31 +1328,6 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, 
 	}
 	if datastoreVShardInstance == nil {
 		return nil
-	}
-
-	// Delete all the datastore links
-	datastoreVShardInstanceDatastoreShardResult := m.Store.Filter(map[string]interface{}{
-		"db":             "dataman_router",
-		"shard_instance": "public",
-		"collection":     "datastore_vshard_instance_datastore_shard",
-		"filter": map[string]interface{}{
-			"datastore_vshard_instance_id": []interface{}{"=", datastoreVShardInstance.ID},
-		},
-	})
-	if datastoreVShardInstanceDatastoreShardResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardInstanceDatastoreShardResult: %v", datastoreVShardInstanceDatastoreShardResult.Error)
-	}
-
-	for _, record := range datastoreVShardInstanceDatastoreShardResult.Return {
-		datastoreVShardInstanceDatastoreShardDelete := m.Store.Delete(map[string]interface{}{
-			"db":             "dataman_router",
-			"shard_instance": "public",
-			"collection":     "datastore_vshard_instance_datastore_shard",
-			"_id":            record["_id"],
-		})
-		if datastoreVShardInstanceDatastoreShardDelete.Error != "" {
-			return fmt.Errorf("Error getting datastoreVShardInstanceDatastoreShardDelete: %v", datastoreVShardInstanceDatastoreShardDelete.Error)
-		}
 	}
 
 	// Delete database entry
@@ -1686,6 +1657,31 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 			if err := m.EnsureDoesntExistDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID].Name, datastoreVShard.Name); err != nil {
 				return err
 			}
+		}
+	}
+
+	// Delete any associated datastore_vshards
+	datastoreVShardResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "datastore_vshard",
+		"filter": map[string]interface{}{
+			"database_id": []interface{}{"=", database.ID},
+		},
+	})
+	if datastoreVShardResult.Error != "" {
+		return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
+	}
+	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
+		datastoreVShardRecord["database_id"] = nil
+		datastoreVShardUpdateResult := m.Store.Set(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "collection_keyspace_shardkey",
+			"record":         datastoreVShardRecord,
+		})
+		if datastoreVShardUpdateResult.Error != "" {
+			return fmt.Errorf("Error getting datastoreVShardUpdateResult: %v", datastoreVShardUpdateResult.Error)
 		}
 	}
 
@@ -2116,6 +2112,41 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 			}
 
 		}
+	}
+
+	// App level constraint!
+	// We can only allow a single database in a given datasource_vshard --
+	// to enforce this we'll check if a database has claimed the vshard, if so
+	// we can't use it. If not, we'll set it
+	for _, datastoreVShardID := range collectionKeyspacePartition.DatastoreVShardIDs {
+		datastoreVShardResult := m.Store.Get(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "datastore_vshard",
+			"_id":            datastoreVShardID,
+		})
+		if datastoreVShardResult.Error != "" {
+			return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
+		}
+		if datastoreVShardDatabaseIDRaw, ok := datastoreVShardResult.Return[0]["database_id"]; ok && datastoreVShardDatabaseIDRaw != nil {
+			datastoreVShardDatabaseID := datastoreVShardDatabaseIDRaw.(int64)
+			if datastoreVShardDatabaseID != db.ID {
+				return fmt.Errorf("Unable to attach db (%d) to datastore_vshard as it is already attached to another DB (%d)", db.ID, datastoreVShardDatabaseID)
+			}
+		} else {
+			datastoreVShardResult.Return[0]["database_id"] = db.ID
+			datastoreVShardUpdateResult := m.Store.Set(map[string]interface{}{
+				"db":             "dataman_router",
+				"shard_instance": "public",
+				"collection":     "datastore_vshard",
+				"record":         datastoreVShardResult.Return[0],
+			})
+
+			if datastoreVShardUpdateResult.Error != "" {
+				return fmt.Errorf("Error getting datastoreVShardUpdateResult: %v", datastoreVShardUpdateResult.Error)
+			}
+		}
+
 	}
 
 	collectionKeyspacePartitionRecord := map[string]interface{}{

@@ -381,6 +381,17 @@ const schemaJson string = `
                   "provision_state": 3
                 }
               },
+              "indexes": {
+                "TO_REVISIT": {
+                  "name": "TO_REVISIT",
+                  "fields": [
+                    "collection_keyspace_partition_id",
+                    "datastore_vshard_id"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
               "provision_state": 3
             },
             "collection_keyspace_shardkey": {
@@ -857,9 +868,10 @@ const schemaJson string = `
                 }
               },
               "indexes": {
-                "datastore_vshard_name_idx": {
-                  "name": "datastore_vshard_name_idx",
+                "datastore_vshard_datastore_id_name_idx": {
+                  "name": "datastore_vshard_datastore_id_name_idx",
                   "fields": [
+                    "datastore_id",
                     "name"
                   ],
                   "unique": true,
