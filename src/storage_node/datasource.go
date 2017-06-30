@@ -242,7 +242,7 @@ QUERYLOOP:
 					continue
 				}
 
-				if _, ok := queryArgs["join"]; ok {
+				if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
 					// TODO: remove? We can only do joins at this layer if there is only one shardInstance
 					if meta.Databases[queryArgs["db"].(string)].ShardInstances[queryArgs["shard_instance"].(string)].Count != 1 {
 						results[i] = &query.Result{Error: "Joins only supported on collections with one shardInstance"}
@@ -257,7 +257,7 @@ QUERYLOOP:
 					// TODO: handle the errors -- if this was a single shard we'd use transactions, but since this
 					// can potentially span *many* shards we need to determine what the failure modes will be
 					// Right now we'll support joins on sets by doing the set before we do the base set
-					if joinFieldList, ok := queryArgs["join"]; ok {
+					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							// Get the field we are working with
@@ -338,7 +338,7 @@ QUERYLOOP:
 
 					// TODO: move to routing layer only
 					// This only works for stuff that has a shard count of 1
-					if joinFieldList, ok := queryArgs["join"]; ok {
+					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							// If there isn't a join record-- skip
@@ -372,7 +372,7 @@ QUERYLOOP:
 					results[i] = s.Store.Filter(queryArgs)
 					// TODO: move to routing layer only
 					// This only works for stuff that has a shard count of 1
-					if joinFieldList, ok := queryArgs["join"]; ok {
+					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 							joinField := collection.GetField(joinFieldNameParts)
