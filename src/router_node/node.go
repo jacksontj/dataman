@@ -245,10 +245,9 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 			for queryType, queryArgs := range queryMap {
 				results[i] = s.handleQuery(meta, queryType, queryArgs)
 
-				if sortListRaw, ok := queryArgs["sort"]; ok {
+				if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
 					// TODO: we need to support interface{} as well
-					sortList := make([]string, len(sortListRaw)
 					sortList, ok := sortListRaw.([]string)
 					if !ok {
 						results[i].Error = "Unable to sort result, invalid sort args"
@@ -256,7 +255,7 @@ func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs
 					}
 					sortReverseList := make([]bool, len(sortList))
 
-					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok {
+					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
 						// TODO: better, seems heavy
 						for i, _ := range sortReverseList {
 							sortReverseList[i] = false

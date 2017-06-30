@@ -409,9 +409,9 @@ QUERYLOOP:
 				}
 
 				// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
-				if sortListRaw, ok := queryArgs["sort"]; ok {
+				if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
-					// TODO: we need to suppor interface{} as well
+					// TODO: we need to support interface{} as well
 					sortList, ok := sortListRaw.([]string)
 					if !ok {
 						results[i].Error = "Unable to sort result, invalid sort args"
@@ -419,7 +419,7 @@ QUERYLOOP:
 					}
 					sortReverseList := make([]bool, len(sortList))
 
-					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok {
+					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
 						// TODO: better, seems heavy
 						for i, _ := range sortReverseList {
 							sortReverseList[i] = false
@@ -436,6 +436,7 @@ QUERYLOOP:
 								continue
 							}
 							sortReverseList = sortReverseRawTyped
+						// TODO: remove? things should have a real type...
 						case []interface{}:
 							if len(sortReverseRawTyped) != len(sortList) {
 								results[i].Error = "Unable to sort_reverse must be the same len as sort"
@@ -445,6 +446,8 @@ QUERYLOOP:
 								// TODO: handle case where it isn't a bool!
 								sortReverseList[i] = sortReverseItem.(bool)
 							}
+						default:
+							results[i].Error = "Invalid sort_reverse value"
 						}
 
 					}
