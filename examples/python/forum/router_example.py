@@ -37,17 +37,14 @@ def ensure_datastore(urlbase):
 	    "provision_state": 3,
         "vshards": {
             "4": {
-                "_id": 4,
                 "count": 2,
                 "shards": [
                     {
-                        "_id": 2,
                         "shard_instance": 1,
                         "datastore_shard_id": 68,
                         "provision_state": 3
                     },
                     {
-                      "_id": 3,
                       "shard_instance": 2,
                       "datastore_shard_id": 69,
                       "provision_state": 3
