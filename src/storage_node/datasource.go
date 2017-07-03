@@ -412,13 +412,21 @@ QUERYLOOP:
 				if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
 					// TODO: parse out before doing the query, if its wrong we can't do anything
 					// TODO: we need to support interface{} as well
-					sortList, ok := sortListRaw.([]string)
-					if !ok {
+					var sortList []string
+					switch sortListTyped := sortListRaw.(type) {
+					case []interface{}:
+						sortList = make([]string, len(sortListTyped))
+						for i, sortKey := range sortListTyped {
+							sortList[i] = sortKey.(string)
+						}
+					case []string:
+						sortList = sortListTyped
+					default:
 						results[i].Error = "Unable to sort result, invalid sort args"
 						continue
 					}
-					sortReverseList := make([]bool, len(sortList))
 
+					sortReverseList := make([]bool, len(sortList))
 					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
 						// TODO: better, seems heavy
 						for i, _ := range sortReverseList {
