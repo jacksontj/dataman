@@ -84,6 +84,9 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	//router.PUT("/v1/database/:dbname/collections/:collectionname", h.updateCollection)
 	//router.DELETE("/v1/database/:dbname/collections/:collectionname", h.removeCollection)
 
+	// Sequence API
+	router.GET("/v1/sequence/:name", httputil.LoggingHandler(h.getSequence))
+
 	// TODO: options to enable/disable (or scope to just localhost)
 	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
 	router.GET("/v1/debug/pprof/cmdline", wrapHandler(http.HandlerFunc(pprof.Cmdline)))
@@ -369,6 +372,15 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 		return
+	}
+}
+
+func (h *HTTPApi) getSequence(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	if nextId, err := h.taskNode.MetaStore.GetSequence(ps.ByName("name")); err == nil {
+		w.Write([]byte(strconv.FormatInt(nextId, 10)))
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 }
 

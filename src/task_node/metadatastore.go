@@ -39,6 +39,61 @@ type MetadataStore struct {
 	Store datasource.DataInterface
 }
 
+// TODO: change to use an increment operator instead of the filter + (insert/update) thing
+// Take (name, count) return (id, error)
+func (m *MetadataStore) GetSequence(name string) (int64, error) {
+	sequenceReadResult := m.Store.Filter(map[string]interface{}{
+		"db":             "dataman_router",
+		"shard_instance": "public",
+		"collection":     "sequence",
+		"filter": map[string]interface{}{
+			"name": []interface{}{"=", name},
+		},
+	})
+	// TODO: better error handle
+	if sequenceReadResult.Error != "" {
+		return 0, fmt.Errorf("Error in getting sequenceReadResult: %v", sequenceReadResult.Error)
+	}
+	var nextId int64
+	if len(sequenceReadResult.Return) == 0 {
+		nextId = 1
+		sequenceWriteResult := m.Store.Insert(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "sequence",
+			"record": map[string]interface{}{
+				"name":    name,
+				"last_id": nextId,
+			},
+		})
+		// TODO: better error handle
+		if sequenceWriteResult.Error != "" {
+			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", sequenceWriteResult.Error)
+		}
+
+	} else {
+		lastId := sequenceReadResult.Return[0]["last_id"].(int64)
+		nextId = lastId + 1
+		sequenceReadResult.Return[0]["last_id"] = nextId
+		sequenceWriteResult := m.Store.Update(map[string]interface{}{
+			"db":             "dataman_router",
+			"shard_instance": "public",
+			"collection":     "sequence",
+			"filter": map[string]interface{}{
+				"name":    []interface{}{"=", name},
+				"last_id": []interface{}{"=", lastId},
+			},
+			"record": sequenceReadResult.Return[0],
+		})
+		// TODO: better error handle
+		if sequenceWriteResult.Error != "" {
+			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", sequenceWriteResult.Error)
+		}
+
+	}
+	return nextId, nil
+}
+
 // TODO: this should ideally load exactly *one* of any given record into a struct. This
 // will require some work to do so, and we really should probably have something to codegen
 // the record -> struct transition

@@ -1235,6 +1235,35 @@ const schemaJson string = `
               },
               "provision_state": 3
             },
+            "sequence": {
+              "name": "sequence",
+              "fields": {
+                "last_id": {
+                  "name": "last_id",
+                  "field_type": "_int",
+                  "not_null": true,
+                  "default": 0,
+                  "provision_state": 3
+                },
+                "name": {
+                  "name": "name",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "sequence_name_idx": {
+                  "name": "sequence_name_idx",
+                  "fields": [
+                    "name"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
             "storage_node": {
               "name": "storage_node",
               "fields": {
