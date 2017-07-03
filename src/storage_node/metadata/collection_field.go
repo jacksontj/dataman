@@ -40,9 +40,10 @@ func SetFieldTreeState(field *CollectionField, state ProvisionState) {
 type CollectionField struct {
 	ID int64 `json:"_id,omitempty"`
 	// TODO: remove? Need a method to link them
-	CollectionID  int64  `json:"-"`
-	ParentFieldID int64  `json:"-"`
-	Name          string `json:"name"`
+	CollectionID  int64            `json:"-"`
+	ParentFieldID int64            `json:"-"`
+	ParentField   *CollectionField `json:"-"`
+	Name          string           `json:"name"`
 	// TODO: define a type for this?
 	Type      string     `json:"field_type"`
 	FieldType *FieldType `json:"-"`
@@ -75,6 +76,14 @@ func (f *CollectionField) UnmarshalJSON(data []byte) error {
 	f.FieldType = FieldTypeRegistry.Get(f.Type)
 
 	return nil
+}
+
+func (f *CollectionField) FullName() string {
+	if f.ParentField == nil {
+		return f.Name
+	}
+
+	return f.ParentField.FullName() + "." + f.Name
 }
 
 func (f *CollectionField) Equal(o *CollectionField) bool {

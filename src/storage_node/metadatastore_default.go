@@ -872,6 +872,7 @@ func (m *DefaultMetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*met
 			if err != nil {
 				return nil, fmt.Errorf("Error getFieldByID: %v", err)
 			}
+			field.ParentField = parentField
 
 			if parentField.SubFields == nil {
 				parentField.SubFields = make(map[string]*metadata.CollectionField)
@@ -999,19 +1000,7 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 				if err != nil {
 					return nil, fmt.Errorf("Error getFieldByID: %v", err)
 				}
-				nameChain := make([]string, 0)
-				for {
-					nameChain = append([]string{indexField.Name}, nameChain...)
-					if indexField.ParentFieldID == 0 {
-						break
-					} else {
-						indexField, err = m.getFieldByID(meta, indexField.ParentFieldID)
-						if err != nil {
-							return nil, fmt.Errorf("Error getFieldByID: %v", err)
-						}
-					}
-				}
-				indexFields[i] = strings.Join(nameChain, ".")
+				indexFields[i] = indexField.FullName()
 			}
 
 			index := &metadata.CollectionIndex{
