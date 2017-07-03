@@ -91,7 +91,7 @@ class DatamanClient(object):
         raise tornado.gen.Return(response['return'])
 
     @tornado.gen.coroutine
-    def filter(self, db, collection, filter=None, sort=None):
+    def filter(self, db, collection, filter=None, sort=None, sort_order=None):
         if filter is None:
             filter = {}
         
@@ -102,6 +102,10 @@ class DatamanClient(object):
         }
         if sort is not None:
             request['sort'] = sort
+
+        if sort_order is not None:
+            request['sort_order'] = sort_order
+        print request
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
@@ -219,7 +223,7 @@ class ThreadHandler(BaseHandler):
         if not threads:
             self.redirect("/")
         else:
-            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]}, sort={'fields': ['data.created', '_id']})
+            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]}, sort=['data.created', '_id'])
             for m in messages:
                 print m
             self.render("thread.html", thread=threads[0], messages=messages)
