@@ -2,6 +2,7 @@ package query
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/mitchellh/copystructure"
@@ -25,7 +26,18 @@ func (s *singleSortTestCase) CopyData() []map[string]interface{} {
 	return d.([]map[string]interface{})
 }
 
+type projectionTestCase struct {
+	record      map[string]interface{}
+	projections [][]string
+}
+
+func (p *projectionTestCase) CopyRecord() map[string]interface{} {
+	d, _ := copystructure.Copy(p.record)
+	return d.(map[string]interface{})
+}
+
 var singleSortTestCases []*singleSortTestCase
+var projectionTestCases []*projectionTestCase
 
 func init() {
 	flattenTestCases = []*flattenTestCase{
@@ -71,6 +83,21 @@ func init() {
 			},
 		},
 	}
+
+	projectionTestCases = []*projectionTestCase{
+		&projectionTestCase{
+			record: map[string]interface{}{"a": 1, "b": 2, "c": 3, "d": map[string]interface{}{"dd": 44, "ddd": 45}},
+			projections: [][]string{
+				[]string{"a"},
+				[]string{"a", "b"},
+				[]string{"a", "b", "c"},
+				[]string{"a", "b", "c"},
+				[]string{"d.dd"},
+				[]string{"d"},
+				//[]string{"d.*"},
+			},
+		},
+	}
 }
 
 func TestFlattenResult(t *testing.T) {
@@ -110,8 +137,7 @@ func recordPermutations(arr []map[string]interface{}) [][]map[string]interface{}
 	return res
 }
 
-func TestSingle(t *testing.T) {
-
+func TestSortSingle(t *testing.T) {
 	for _, testCase := range singleSortTestCases {
 		for _, dataPerm := range recordPermutations(testCase.CopyData()) {
 			// Forward sort
@@ -130,5 +156,59 @@ func TestSingle(t *testing.T) {
 			}
 		}
 	}
+}
 
+func TestProjection(t *testing.T) {
+	for _, testCase := range projectionTestCases {
+		for _, projectionFields := range testCase.projections {
+			result := &Result{
+				Return: []map[string]interface{}{testCase.CopyRecord()},
+			}
+			result.Project(projectionFields)
+
+			flatResult := FlattenResult(result.Return[0])
+			// check that they are all valid
+			for k, _ := range flatResult {
+				found := false
+				for _, projectionKey := range projectionFields {
+					if k == projectionKey {
+						found = true
+						break
+					}
+					if strings.HasPrefix(k, projectionKey+".") {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("Found key %s which is not in list: %v", k, projectionFields)
+				}
+			}
+
+			// Check for any missing
+			for _, projectionKey := range projectionFields {
+				found := false
+				for k, _ := range flatResult {
+					if k == projectionKey {
+						found = true
+						break
+					}
+					if strings.HasPrefix(k, projectionKey+".") {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("Unable to find field %s in %v", projectionKey, flatResult)
+				}
+			}
+		}
+	}
+	/*
+		projectionTestCase = []*projectionTestCase{
+			&projectionTestCase{
+				record: map[string]interface{}{"a": 1, "b": 2, "c": 3, "d": map[string]interface{"dd": 44, "ddd": 45}},
+				projections: [][]string{
+					[]string{"a"},
+	*/
 }
