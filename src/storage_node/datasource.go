@@ -978,12 +978,17 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 	// Test the db -- if its good lets mark it as active
 	existingCollectionField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name)
 	if !field.Equal(existingCollectionField) {
-		fmt.Println("not equal")
-		fb, _ := json.Marshal(field)
-		fmt.Printf("%s\n", fb)
-		efb, _ := json.Marshal(existingCollectionField)
-		fmt.Printf("%s\n", efb)
-		return fmt.Errorf("Unable to apply collectionField change to datasource_instance")
+		// Special case for json & documents -- as they are the "same" from an export perspective
+		if field.FieldType.DatamanType == metadata.Document && existingCollectionField.FieldType.DatamanType == metadata.JSON {
+			fmt.Println("return wasn't the same, but json and document is hard")
+		} else {
+			fmt.Println("not equal")
+			fb, _ := json.Marshal(field)
+			fmt.Printf("%s\n", fb)
+			efb, _ := json.Marshal(existingCollectionField)
+			fmt.Printf("%s\n", efb)
+			return fmt.Errorf("Unable to apply collectionField change to datasource_instance")
+		}
 	}
 
 	// Since we made the database, lets update the metadata about it

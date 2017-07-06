@@ -15,6 +15,10 @@ func listInternalFieldTypes() []*FieldType {
 			DatamanType: Document,
 		},
 		&FieldType{
+			Name:        "_json",
+			DatamanType: JSON,
+		},
+		&FieldType{
 			Name:        "_int",
 			DatamanType: Int,
 		},

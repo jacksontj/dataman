@@ -14,6 +14,8 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	fieldStr := ""
 
 	switch field.FieldType.DatamanType {
+	case metadata.JSON:
+		fieldStr += "\"" + field.Name + "\" jsonb"
 	case metadata.Document:
 		fieldStr += "\"" + field.Name + "\" jsonb"
 	case metadata.String:
@@ -326,7 +328,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		case "json":
 			fallthrough
 		case "jsonb":
-			datamanType = metadata.Document
+			datamanType = metadata.JSON
 		case "boolean":
 			datamanType = metadata.Bool
 		case "text":

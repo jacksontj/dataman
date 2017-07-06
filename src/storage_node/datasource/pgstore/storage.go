@@ -159,6 +159,8 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 			fieldValues = append(fieldValues, "null")
 		default:
 			switch field.FieldType.DatamanType {
+			case metadata.JSON:
+				fallthrough
 			case metadata.Document:
 				fieldJson, err := json.Marshal(fieldValue)
 				if err != nil {
@@ -223,6 +225,8 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			fieldValues = append(fieldValues, "null")
 		default:
 			switch field.FieldType.DatamanType {
+			case metadata.JSON:
+				fallthrough
 			case metadata.Document:
 				fieldJson, err := json.Marshal(fieldValue)
 				if err != nil {
@@ -343,6 +347,10 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 		for k, v := range row {
 			if field, ok := collection.Fields[k]; ok && v != nil {
 				switch field.FieldType.DatamanType {
+				case metadata.JSON:
+					var tmp interface{}
+					json.Unmarshal(v.([]byte), &tmp)
+					row[k] = tmp
 				case metadata.Document:
 					var tmp map[string]interface{}
 					json.Unmarshal(v.([]byte), &tmp)
