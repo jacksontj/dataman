@@ -67,6 +67,30 @@ class DatamanClient(object):
         raise tornado.gen.Return(response['return'])
 
     @tornado.gen.coroutine
+    def delete(self, db, collection, pkeyrecord, filter=None):
+
+        request = {
+            'db': db,
+            'collection': collection,
+            'pkey': pkeyrecord,
+        }
+        if filter:
+            request['filter'] = filter
+
+        ret = yield self._client.fetch(
+            self.base_url+'/v1/data/raw',
+            method='POST',
+            body=json.dumps([{'delete': request}])
+        )
+        logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
+        response = json.loads(ret.body)[0]
+        if 'error' in response:
+            raise Exception(response['error'])
+        # TODO: handle errors?
+        items = []
+        raise tornado.gen.Return(response['return'])
+
+    @tornado.gen.coroutine
     def set(self, db, collection, record, join_fields=None):
 
         request = {
@@ -105,7 +129,6 @@ class DatamanClient(object):
 
         if sort_order is not None:
             request['sort_order'] = sort_order
-        print request
 
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
@@ -134,7 +157,6 @@ class DatamanClient(object):
             }}])
         )
         logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
-        print ret.body
         response = json.loads(ret.body)[0]
         if 'error' in response:
             raise Exception(response['error'])
@@ -223,8 +245,6 @@ class ThreadHandler(BaseHandler):
             self.redirect("/")
         else:
             messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]}, sort=['data.created', '_id'])
-            for m in messages:
-                print m
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
@@ -243,6 +263,15 @@ class ThreadHandler(BaseHandler):
             self.write(message_ret['error'].replace('\n', '<br>'))
         else:
             self.redirect(self.request.uri)
+
+
+class DeleteThreadHandler(BaseHandler):
+    @tornado.web.authenticated
+    @tornado.gen.coroutine
+    def get(self, thread_id):
+        # TODO: delete all messages for the thread
+        yield dataman.delete(schema.DBNAME, 'thread', {"_id": int(thread_id)}, filter={'data.created_by': ['=', self.current_user]})
+        self.redirect("/")
 
 
 class LegacyUserHandler(tornado.web.RequestHandler):
@@ -271,6 +300,7 @@ def main():
     parse_command_line()
     app = tornado.web.Application(
         [
+            (r"/threads/(.*)/delete", DeleteThreadHandler),
             (r"/threads/(.*)", ThreadHandler),
             (r"/newthread", NewThreadHandler),
             (r"/login", LoginHandler),

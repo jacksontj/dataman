@@ -6,6 +6,9 @@
   </head>
   <body>
     <h1>Thread {{thread['data']['title']}}</h1>
+    <form action="{{ request.path }}/delete" method="put" id="deletethread">
+      <input type="submit" value="Delete thread">
+    </form>
     <table id="messages">
       {% for message in messages %}
         <tr>
