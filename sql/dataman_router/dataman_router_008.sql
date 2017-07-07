@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90603
 File Encoding         : 65001
 
-Date: 2017-06-29 11:59:37
+Date: 2017-07-07 09:55:31
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4264
+ START 4372
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 4264, true);
+SELECT setval('"public"."collection__id_seq"', 4372, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 17773
+ START 18253
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 17773, true);
+SELECT setval('"public"."collection_field__id_seq"', 18253, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1276
+ START 1311
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 1276, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 1311, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 5548
+ START 5697
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 5548, true);
+SELECT setval('"public"."collection_index__id_seq"', 5697, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 61642
+ START 62356
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 61642, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 62356, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."collection_keyspace__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 79
+ START 187
  CACHE 1;
-SELECT setval('"public"."collection_keyspace__id_seq"', 79, true);
+SELECT setval('"public"."collection_keyspace__id_seq"', 187, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_item__id_seq
@@ -95,9 +95,9 @@ CREATE SEQUENCE "public"."collection_keyspace_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 276
+ START 730
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_item__id_seq"', 276, true);
+SELECT setval('"public"."collection_keyspace_item__id_seq"', 730, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition__id_seq
@@ -107,9 +107,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 57
+ START 165
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition__id_seq"', 57, true);
+SELECT setval('"public"."collection_keyspace_partition__id_seq"', 165, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition_datastore_vshard__id_seq
@@ -119,9 +119,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition_datastore_vshard__id_seq
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 238
+ START 691
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 238, true);
+SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 691, true);
 
 -- ----------------------------
 -- Sequence structure for constraint__id_seq
@@ -165,9 +165,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1477
+ START 1514
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 1477, true);
+SELECT setval('"public"."database__id_seq"', 1514, true);
 
 -- ----------------------------
 -- Sequence structure for database_datastore__id_seq
@@ -177,9 +177,9 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 1414
+ START 1451
  CACHE 1;
-SELECT setval('"public"."database_datastore__id_seq"', 1414, true);
+SELECT setval('"public"."database_datastore__id_seq"', 1451, true);
 
 -- ----------------------------
 -- Sequence structure for dataman_field_type__id_seq
@@ -261,9 +261,9 @@ CREATE SEQUENCE "public"."datasource_instance_shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3277
+ START 3347
  CACHE 1;
-SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 3277, true);
+SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 3347, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -309,9 +309,9 @@ CREATE SEQUENCE "public"."datastore_vshard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4
+ START 5
  CACHE 1;
-SELECT setval('"public"."datastore_vshard__id_seq"', 4, true);
+SELECT setval('"public"."datastore_vshard__id_seq"', 5, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_vshard_instance__id_seq
@@ -321,9 +321,9 @@ CREATE SEQUENCE "public"."datastore_vshard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4
+ START 7
  CACHE 1;
-SELECT setval('"public"."datastore_vshard_instance__id_seq"', 4, true);
+SELECT setval('"public"."datastore_vshard_instance__id_seq"', 7, true);
 
 -- ----------------------------
 -- Sequence structure for field_type__id_seq
@@ -450,7 +450,8 @@ CREATE TABLE "public"."collection_index" (
 "name" varchar(255) COLLATE "default",
 "collection_id" int4,
 "unique" bool,
-"provision_state" int4 NOT NULL
+"provision_state" int4 NOT NULL,
+"primary" bool
 )
 WITH (OIDS=FALSE)
 
@@ -699,6 +700,18 @@ WITH (OIDS=FALSE)
 ;
 
 -- ----------------------------
+-- Table structure for sequence
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."sequence";
+CREATE TABLE "public"."sequence" (
+"name" varchar(255) COLLATE "default" NOT NULL,
+"last_id" int8 DEFAULT 0 NOT NULL
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
 -- Table structure for storage_node
 -- ----------------------------
 DROP TABLE IF EXISTS "public"."storage_node";
@@ -708,6 +721,17 @@ CREATE TABLE "public"."storage_node" (
 "ip" varchar(255) COLLATE "default",
 "port" int4,
 "provision_state" int4 NOT NULL
+)
+WITH (OIDS=FALSE)
+
+;
+
+-- ----------------------------
+-- Table structure for zzz_test
+-- ----------------------------
+DROP TABLE IF EXISTS "public"."zzz_test";
+CREATE TABLE "public"."zzz_test" (
+"test" jsonb
 )
 WITH (OIDS=FALSE)
 
@@ -771,6 +795,7 @@ ALTER TABLE "public"."collection_field_relation" ADD PRIMARY KEY ("_id");
 -- Indexes structure for table collection_index
 -- ----------------------------
 CREATE UNIQUE INDEX "index_collection_index_name" ON "public"."collection_index" USING btree ("name", "collection_id");
+CREATE UNIQUE INDEX "collection_index_collection_id_primary_idx" ON "public"."collection_index" USING btree ("collection_id", "primary");
 
 -- ----------------------------
 -- Primary Key structure for table collection_index
@@ -912,7 +937,7 @@ ALTER TABLE "public"."datastore_shard_replica" ADD PRIMARY KEY ("_id");
 -- ----------------------------
 -- Indexes structure for table datastore_vshard
 -- ----------------------------
-CREATE UNIQUE INDEX "datastore_vshard_name_idx" ON "public"."datastore_vshard" USING btree ("name");
+CREATE UNIQUE INDEX "datastore_vshard_datastore_id_name_idx" ON "public"."datastore_vshard" USING btree ("datastore_id", "name");
 
 -- ----------------------------
 -- Primary Key structure for table datastore_vshard
@@ -948,6 +973,16 @@ CREATE INDEX "field_type_constraint_field_type_id_constraint_id_idx" ON "public"
 -- Primary Key structure for table field_type_constraint
 -- ----------------------------
 ALTER TABLE "public"."field_type_constraint" ADD PRIMARY KEY ("f");
+
+-- ----------------------------
+-- Indexes structure for table sequence
+-- ----------------------------
+CREATE UNIQUE INDEX "sequence_name_idx" ON "public"."sequence" USING btree ("name");
+
+-- ----------------------------
+-- Primary Key structure for table sequence
+-- ----------------------------
+ALTER TABLE "public"."sequence" ADD PRIMARY KEY ("name");
 
 -- ----------------------------
 -- Indexes structure for table storage_node
@@ -1024,8 +1059,8 @@ ALTER TABLE "public"."datasource_instance" ADD FOREIGN KEY ("datasource_id") REF
 -- ----------------------------
 -- Foreign Key structure for table "public"."datasource_instance_shard_instance"
 -- ----------------------------
-ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("datasource_instance_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("datastore_vshard_instance_id") REFERENCES "public"."datastore_vshard_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE "public"."datasource_instance_shard_instance" ADD FOREIGN KEY ("datasource_instance_id") REFERENCES "public"."datasource_instance" ("_id") ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 -- ----------------------------
 -- Foreign Key structure for table "public"."datastore_shard"
