@@ -449,6 +449,7 @@ SELECT
   idx.indrelid :: REGCLASS AS table_name,
   i.relname                AS index_name,
   idx.indisunique          AS is_unique,
+  idx.indisprimary         AS is_primary,
   am.amname                AS index_type,
   idx.indkey,
         array_to_json(ARRAY(
@@ -466,7 +467,7 @@ FROM pg_index AS idx
     ON i.relam = am.oid
   JOIN pg_namespace AS NS ON i.relnamespace = NS.OID
   JOIN pg_user AS U ON i.relowner = U.usesysid
-WHERE NOT nspname LIKE 'pg%' AND idx.indisprimary=false ; -- Excluding system tables
+WHERE NOT nspname LIKE 'pg%'; -- Excluding system tables
 `
 
 func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
@@ -488,6 +489,7 @@ func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname stri
 				Name:           string(indexEntry["index_name"].([]byte)),
 				Fields:         indexFields,
 				Unique:         indexEntry["is_unique"].(bool),
+				Primary:        indexEntry["is_primary"].(bool),
 				ProvisionState: metadata.Active,
 			}
 			// TODO: re-enable later

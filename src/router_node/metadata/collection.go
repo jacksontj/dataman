@@ -25,12 +25,38 @@ type Collection struct {
 
 	Fields  map[string]*storagenodemetadata.CollectionField `json:"fields"`
 	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
+	// Link directly to primary index (for convenience)
+	PrimaryIndex *storagenodemetadata.CollectionIndex `json:"-"`
 
 	// TODO: there will be potentially many partitions, it might be worthwhile
 	// to wrap this list in a struct to handle the searching etc.
 	Keyspaces []*CollectionKeyspace `json:"keyspaces"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (c *Collection) UnmarshalJSON(data []byte) error {
+	type Alias Collection
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	for _, index := range c.Indexes {
+		if index.Primary {
+			if c.PrimaryIndex == nil {
+				c.PrimaryIndex = index
+			} else {
+				return fmt.Errorf("Collections can only have one primary index")
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Collection) IsSharded() bool {

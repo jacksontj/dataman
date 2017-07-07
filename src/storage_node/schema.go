@@ -56,6 +56,15 @@ const schemaJson string = `
                   ],
                   "unique": true,
                   "provision_state": 3
+                },
+                "collection_pkey": {
+                  "name": "collection_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
                 }
               },
               "provision_state": 3
@@ -112,6 +121,15 @@ const schemaJson string = `
                 }
               },
               "indexes": {
+                "collection_field_pkey": {
+                  "name": "collection_field_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
+                },
                 "index_collection_field_collection_field_name": {
                   "name": "index_collection_field_collection_field_name",
                   "fields": [
@@ -160,6 +178,17 @@ const schemaJson string = `
                   "provision_state": 3
                 }
               },
+              "indexes": {
+                "collection_field_relation_pkey": {
+                  "name": "collection_field_relation_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
+                }
+              },
               "provision_state": 3
             },
             "collection_index": {
@@ -185,6 +214,11 @@ const schemaJson string = `
                   "field_type": "_string",
                   "provision_state": 3
                 },
+                "primary": {
+                  "name": "primary",
+                  "field_type": "_bool",
+                  "provision_state": 3
+                },
                 "provision_state": {
                   "name": "provision_state",
                   "field_type": "_int",
@@ -198,6 +232,15 @@ const schemaJson string = `
                 }
               },
               "indexes": {
+                "collection_index_collection_id_primary_idx": {
+                  "name": "collection_index_collection_id_primary_idx",
+                  "fields": [
+                    "collection_id",
+                    "\"primary\""
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                },
                 "collection_index_name": {
                   "name": "collection_index_name",
                   "fields": [
@@ -205,6 +248,15 @@ const schemaJson string = `
                     "collection_id"
                   ],
                   "unique": true,
+                  "provision_state": 3
+                },
+                "collection_index_pkey": {
+                  "name": "collection_index_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
                   "provision_state": 3
                 }
               },
@@ -249,6 +301,15 @@ const schemaJson string = `
                   ],
                   "unique": true,
                   "provision_state": 3
+                },
+                "collection_index_item_pkey": {
+                  "name": "collection_index_item_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
                 }
               },
               "provision_state": 3
@@ -281,6 +342,15 @@ const schemaJson string = `
                     "name"
                   ],
                   "unique": true,
+                  "provision_state": 3
+                },
+                "database_pkey": {
+                  "name": "database_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
                   "provision_state": 3
                 }
               },
@@ -315,6 +385,15 @@ const schemaJson string = `
                   ],
                   "unique": true,
                   "provision_state": 3
+                },
+                "field_type_pkey": {
+                  "name": "field_type_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
                 }
               },
               "provision_state": 3
@@ -324,7 +403,7 @@ const schemaJson string = `
               "fields": {
                 "args": {
                   "name": "args",
-                  "field_type": "_document",
+                  "field_type": "_json",
                   "provision_state": 3
                 },
                 "constraint": {
@@ -358,6 +437,15 @@ const schemaJson string = `
                     "field_type_id",
                     "\"constraint\""
                   ],
+                  "provision_state": 3
+                },
+                "field_type_constraint_pkey": {
+                  "name": "field_type_constraint_pkey",
+                  "fields": [
+                    "f"
+                  ],
+                  "unique": true,
+                  "primary": true,
                   "provision_state": 3
                 }
               },
@@ -438,6 +526,15 @@ const schemaJson string = `
                   ],
                   "unique": true,
                   "provision_state": 3
+                },
+                "shard_instance_pkey": {
+                  "name": "shard_instance_pkey",
+                  "fields": [
+                    "_id"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
                 }
               },
               "provision_state": 3
@@ -465,6 +562,10 @@ const schemaJson string = `
     "_int": {
       "name": "_int",
       "dataman_type": "int"
+    },
+    "_json": {
+      "name": "_json",
+      "dataman_type": "json"
     },
     "_string": {
       "name": "_string",

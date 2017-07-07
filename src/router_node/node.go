@@ -385,13 +385,31 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	switch queryType {
 	// TODO: change the query format for Get()
 	case query.Get:
-		// TODO: support compound shard keys
-		if !(len(keyspace.ShardKey) == 1 && keyspace.ShardKey[0] == "_id") {
-			return &query.Result{Error: "Get *must* have _id be the shard-key for now"}
-		}
-		rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
+		// TODO: have kwarg or something to allow scatter-gather, there is no
+		// requirement that the primary key be the shard key (although it will usually be the case)
+
+		rawPkeyRecord, ok := queryArgs["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key: %v", keyspace.ShardKey)}
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
+		}
+		pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("PKey must be a map[string]interface{}")}
+		}
+
+		// Ensure the pkeyRecord has the primary key in it
+		// TODO: better support dotted field names (no need to do a full flatten)
+		flattenedPKey := query.FlattenResult(pkeyRecord)
+		for _, fieldName := range collection.PrimaryIndex.Fields {
+			if _, ok := flattenedPKey[fieldName]; !ok {
+				return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
+			}
+		}
+
+		// TODO: support compound shard keys
+		rawShardKey, ok := pkeyRecord[keyspace.ShardKey[0]]
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("Get()s pkey must include the shard-key: %v", keyspace.ShardKey)}
 		}
 		shardKey, err := keyspace.HashFunc(rawShardKey)
 		if err != nil {
@@ -491,9 +509,13 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	switch queryType {
 	// Write operations
 	case query.Set:
-		// TODO: use the actual primary key instead of "_id"
-		// If there is an "_id" present, then this is just a very specific update -- so we can find our specific shard
-		if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
+		// Sets require that the shard-key be present (so we know where to send it)
+		var vshardNum int
+
+		// TODO: cleanup after default_function is in place
+		if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; !ok && keyspace.ShardKey[0] == "_id" {
+			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		} else {
 			rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
 			if !ok {
 				return &query.Result{Error: fmt.Sprintf("Set()s must include the shard-key: %v", keyspace.ShardKey)}
@@ -503,74 +525,26 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-
-			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
-
-			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-			// TODO: generate or store/read the name!
-			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-			if !ok {
-				return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
-			}
-
-			if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
-				return result
-			} else {
-				return &query.Result{Error: err.Error()}
-			}
-		} else { // Otherwise this is actually an insert, so we'll let it fall through to be handled as such
-
-			// TODO: THIS IS A DIRECT COPY-PASTE of the insert switch
-			// TODO: what do we want to do for brand new things?
-			// TODO: consolidate into a single insert method
-
-			var vshardNum int
-			// TODO: don't special case this-- but for now we will. This should be some
-			// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
-			// TODO: remove this, we just want to set all values here in the router layer and
-			// then all of this won't be necessary
-			if keyspace.ShardKey[0] == "_id" {
-				vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-			} else {
-				rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
-				if !ok {
-					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", keyspace.ShardKey)}
-				}
-				shardKey, err := keyspace.HashFunc(rawShardKey)
-				if err != nil {
-					// TODO: wrap the error
-					return &query.Result{Error: err.Error()}
-				}
-				vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-			}
-
-			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
-
-			// TODO: replicas -- add args for slave etc.
-			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-			if !ok {
-				return &query.Result{Error: "3 Unknown datasourceInstanceShardInstance"}
-			}
-
-			result, err := QuerySingle(
-				// TODO: replicas -- add args for slave etc.
-				datasourceInstance,
-				datasourceInstanceShardInstance,
-				&query.Query{queryType, queryArgs},
-			)
-
-			if err == nil {
-				return result
-			} else {
-				return &query.Result{Error: err.Error()}
-			}
+			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 		}
+		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
+
+		// TODO: replicas -- add args for slave etc.
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+
+		// TODO: generate or store/read the name!
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+		if !ok {
+			return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
+		}
+
+		if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+			return result
+		} else {
+			return &query.Result{Error: err.Error()}
+		}
+
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
 		var vshardNum int
@@ -611,8 +585,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		)
 
 		if err == nil {
+			fmt.Println("ok, ", result)
 			return result
 		} else {
+			fmt.Println("err", err)
 			return &query.Result{Error: err.Error()}
 		}
 	case query.Update:
@@ -668,11 +644,25 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
 	// current implementation won't work. Instead of doing the get/set
 	case query.Delete:
-		if keyspace.ShardKey[0] != "_id" {
-			return &query.Result{Error: "Delete *must* have _id be the shard-key for now"}
+		rawPkeyRecord, ok := queryArgs["pkey"] // TODO: better arg than pkey, maybe record?
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
+		}
+		pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("PKey must be a map[string]interface{}")}
 		}
 
-		rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
+		// Ensure the pkeyRecord has the primary key in it
+		// TODO: better support dotted field names (no need to do a full flatten)
+		flattenedPKey := query.FlattenResult(pkeyRecord)
+		for _, fieldName := range collection.PrimaryIndex.Fields {
+			if _, ok := flattenedPKey[fieldName]; !ok {
+				return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
+			}
+		}
+
+		rawShardKey, ok := pkeyRecord[keyspace.ShardKey[0]]
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key: %v", keyspace.ShardKey)}
 		}

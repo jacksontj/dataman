@@ -4,6 +4,11 @@
 		"message": {
 			"name": "message",
 			"fields": {
+                "_id": {
+                    "name": "_id",
+                    "field_type": "_int",
+                    "not_null": true
+                },
 				"data": {
 					"subfields": {
 						"content": {
@@ -58,6 +63,12 @@
 				"created": {
 					"fields": ["data.created"],
 					"name": "created"
+				},
+				"_id": {
+				    "fields": ["_id"],
+				    "unique": true,
+				    "name": "_id",
+				    "primary": true
 				}
 			}
 		},
@@ -90,13 +101,19 @@
 				"username": {
 					"fields": ["username"],
 					"unique": true,
-					"name": "username"
+					"name": "username",
+					"primary": true
 				}
 			}
 		},
 		"thread": {
 			"name": "thread",
 			"fields": {
+                "_id": {
+                    "name": "_id",
+                    "field_type": "_int",
+                    "not_null": true
+                },
 				"data": {
 					"subfields": {
 						"created": {
@@ -147,6 +164,12 @@
 				"created": {
 					"fields": ["data.created"],
 					"name": "created"
+				},
+				"_id": {
+				    "fields": ["_id"],
+				    "unique": true,
+				    "name": "_id",
+				    "primary": true
 				}
 			}
 		}

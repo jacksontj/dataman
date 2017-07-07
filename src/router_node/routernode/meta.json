@@ -192,6 +192,14 @@
             }
           },
           "indexes": {
+            "_id": {
+              "name": "_id",
+              "fields": [
+                "_id"
+              ],
+              "unique": true,
+              "primary": true
+            },
             "created": {
               "_id": 5443,
               "name": "created",
@@ -264,6 +272,14 @@
             }
           },
           "indexes": {
+            "_id": {
+              "name": "_id",
+              "fields": [
+                "_id"
+              ],
+              "unique": true,
+              "primary": true
+            },
             "created": {
               "_id": 5441,
               "name": "created",
@@ -330,6 +346,7 @@
                 "username"
               ],
               "unique": true,
+              "primary": true,
               "provision_state": 3
             }
           },

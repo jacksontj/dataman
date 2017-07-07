@@ -552,8 +552,17 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 				Fields:         indexFields,
 				ProvisionState: storagenodemetadata.ProvisionState(collectionIndexRecord["provision_state"].(int64)),
 			}
+			if primary, _ := collectionIndexRecord["primary"]; primary != nil {
+				index.Primary = primary.(bool)
+			}
 			if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
 				index.Unique = unique.(bool)
+			}
+			if index.Primary {
+				if collection.PrimaryIndex != nil {
+					return nil, fmt.Errorf("Multiple primary indexes for collection %v", collection)
+				}
+				collection.PrimaryIndex = index
 			}
 			collection.Indexes[index.Name] = index
 		}
@@ -832,7 +841,9 @@ func (m *MetadataStore) EnsureDoesntExistStorageNode(id int64) error {
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "storage_node",
-		"_id":            storageNode.ID,
+		"pkey": map[string]interface{}{
+			"_id": storageNode.ID,
+		},
 	})
 	if storagenodeDelete.Error != "" {
 		return fmt.Errorf("Error getting storagenodeDelete: %v", storagenodeDelete.Error)
@@ -931,7 +942,9 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(id int64, datasource
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance",
-		"_id":            datasourceInstance.ID,
+		"pkey": map[string]interface{}{
+			"_id": datasourceInstance.ID,
+		},
 	})
 	if datasourceInstanceDelete.Error != "" {
 		return fmt.Errorf("Error getting datasourceInstanceDelete: %v", datasourceInstanceDelete.Error)
@@ -1035,7 +1048,9 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(id int6
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance_shard_instance",
-		"_id":            datasourceInstanceShardInstance.ID,
+		"pkey": map[string]interface{}{
+			"_id": datasourceInstanceShardInstance.ID,
+		},
 	})
 	if datasourceInstanceShardInstanceDelete.Error != "" {
 		return fmt.Errorf("Error getting datasourceInstanceShardInstanceDelete: %v", datasourceInstanceShardInstanceDelete.Error)
@@ -1124,7 +1139,9 @@ func (m *MetadataStore) EnsureDoesntExistDatastore(datastorename string) error {
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore",
-		"_id":            datastore.ID,
+		"pkey": map[string]interface{}{
+			"_id": datastore.ID,
+		},
 	})
 	if datastoreDelete.Error != "" {
 		return fmt.Errorf("Error getting datastoreDelete: %v", datastoreDelete.Error)
@@ -1236,7 +1253,9 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename, vShardNa
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard",
-		"_id":            datastoreVShard.ID,
+		"pkey": map[string]interface{}{
+			"_id": datastoreVShard.ID,
+		},
 	})
 	if datastoreVShardDelete.Error != "" {
 		return fmt.Errorf("Error getting datastoreVShardDelete: %v", datastoreVShardDelete.Error)
@@ -1339,7 +1358,9 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, 
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard_instance",
-		"_id":            datastoreVShardInstance.ID,
+		"pkey": map[string]interface{}{
+			"_id": datastoreVShardInstance.ID,
+		},
 	})
 	if datastoreVShardInstanceDelete.Error != "" {
 		return fmt.Errorf("Error getting datastoreVShardInstanceDelete: %v", datastoreVShardInstanceDelete.Error)
@@ -1448,7 +1469,9 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShard(datastorename string, da
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard",
-		"_id":            datastoreShard.ID,
+		"pkey": map[string]interface{}{
+			"_id": datastoreShard.ID,
+		},
 	})
 	if datastoreShardDelete.Error != "" {
 		return fmt.Errorf("Error getting datastoreShardDelete: %v", datastoreShardDelete.Error)
@@ -1557,7 +1580,9 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(datastorename str
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard_replica",
-		"_id":            datastoreShardReplica.ID,
+		"pkey": map[string]interface{}{
+			"_id": datastoreShardReplica.ID,
+		},
 	})
 	if datastoreShardReplicaDelete.Error != "" {
 		return fmt.Errorf("Error getting datastoreShardReplicaDelete: %v", datastoreShardReplicaDelete.Error)
@@ -1671,7 +1696,9 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database",
-		"_id":            database.ID,
+		"pkey": map[string]interface{}{
+			"_id": database.ID,
+		},
 	})
 	if databaseDelete.Error != "" {
 		return fmt.Errorf("Error getting databaseDelete: %v", databaseDelete.Error)
@@ -1759,7 +1786,9 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(dbname, datastorename
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database_datastore",
-		"_id":            databaseDatastore.ID,
+		"pkey": map[string]interface{}{
+			"_id": databaseDatastore.ID,
+		},
 	})
 	if databaseDatastoreDelete.Error != "" {
 		return fmt.Errorf("Error getting databaseDatastoreDelete: %v", databaseDatastoreDelete.Error)
@@ -1920,7 +1949,9 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 		"shard_instance": "public",
 		"collection":     "collection",
 		// TODO: add internal columns to schemaman stuff
-		"_id": collection.ID,
+		"pkey": map[string]interface{}{
+			"_id": collection.ID,
+		},
 	})
 	if collectionDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionDelete: %v", collectionDelete.Error)
@@ -2050,7 +2081,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_shardkey",
-				"_id":            collectionKeyspaceShardKeyRecord["_id"],
+				"pkey": map[string]interface{}{
+					"_id": collectionKeyspaceShardKeyRecord["_id"],
+				},
 			})
 			if collectionKeyspaceShardKeyDelete.Error != "" {
 				return fmt.Errorf("Error getting collectionKeyspaceShardKeyDelete: %v", collectionKeyspaceShardKeyDelete.Error)
@@ -2062,7 +2095,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace",
-			"_id":            collectionKeyspace.ID,
+			"pkey": map[string]interface{}{
+				"_id": collectionKeyspace.ID,
+			},
 		})
 		if collectionKeyspaceDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionKeyspaceDelete: %v", collectionKeyspaceDelete.Error)
@@ -2104,7 +2139,9 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "datastore_vshard",
-			"_id":            datastoreVShardID,
+			"pkey": map[string]interface{}{
+				"_id": datastoreVShardID,
+			},
 		})
 		if datastoreVShardResult.Error != "" {
 			return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
@@ -2213,7 +2250,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 					"db":             "dataman_router",
 					"shard_instance": "public",
 					"collection":     "collection_keyspace_partition_datastore_vshard",
-					"_id":            collectionKeyspacePartitionDatastoreVShardRecord["_id"],
+					"pkey": map[string]interface{}{
+						"_id": collectionKeyspacePartitionDatastoreVShardRecord["_id"],
+					},
 				})
 
 				if collectionKeyspacePartitionDatastoreVShardDelete.Error != "" {
@@ -2226,7 +2265,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_partition",
-				"_id":            collectionKeyspacePartition.ID,
+				"pkey": map[string]interface{}{
+					"_id": collectionKeyspacePartition.ID,
+				},
 			})
 			if collectionPartitionDelete.Error != "" {
 				return fmt.Errorf("Error getting collectionPartitionDelete: %v", collectionPartitionDelete.Error)
@@ -2258,6 +2299,7 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 	}
 
 	// check that all the fields exist
+	nonNullFields := true
 	fieldIds := make([]int64, len(index.Fields))
 	for i, fieldName := range index.Fields {
 		fieldParts := strings.Split(fieldName, ".")
@@ -2265,10 +2307,12 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 		if field, ok := collection.Fields[fieldParts[0]]; !ok {
 			return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
 		} else {
+			nonNullFields = nonNullFields && field.NotNull
 			if len(fieldParts) > 1 {
 				for _, fieldPart := range fieldParts[1:] {
 					if subField, ok := field.SubFields[fieldPart]; ok {
 						field = subField
+						nonNullFields = nonNullFields && field.NotNull
 					} else {
 						return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
 					}
@@ -2278,11 +2322,27 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 		}
 	}
 
+	// If this is primary key check (1) that all the fields are not-null (2) this is the only primary index
+	if index.Primary {
+		if !nonNullFields {
+			return fmt.Errorf("Cannot create index with fields that allow for null values")
+		}
+
+		if !(collection.PrimaryIndex == nil || collection.PrimaryIndex.Name == index.Name) {
+			return fmt.Errorf("Collection already has a primary index defined!")
+		}
+	}
+
 	collectionIndexRecord := map[string]interface{}{
 		"name":            index.Name,
 		"collection_id":   collection.ID,
 		"unique":          index.Unique,
 		"provision_state": index.ProvisionState,
+	}
+	if index.Primary {
+		collectionIndexRecord["primary"] = index.Primary
+	} else {
+		collectionIndexRecord["primary"] = nil
 	}
 	if index.ID != 0 {
 		collectionIndexRecord["_id"] = index.ID
@@ -2358,7 +2418,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_index_item",
-			"_id":            collectionIndexItemRecord["_id"],
+			"pkey": map[string]interface{}{
+				"_id": collectionIndexItemRecord["_id"],
+			},
 		})
 		if collectionIndexItemDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
@@ -2370,7 +2432,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_index",
-		"_id":            collectionIndex.ID,
+		"pkey": map[string]interface{}{
+			"_id": collectionIndex.ID,
+		},
 	})
 	if collectionIndexDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
@@ -2454,6 +2518,9 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	if field.ID != 0 {
 		fieldRecord["_id"] = field.ID
 	}
+
+	// TODO: check if we are changing a field, if so we cannot change no_null
+	// if it is part of a primary index
 
 	collectionFieldResult := m.Store.Set(map[string]interface{}{
 		"db":             "dataman_router",
@@ -2548,7 +2615,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname,
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
-			"_id":            field.Relation.ID,
+			"pkey": map[string]interface{}{
+				"_id": field.Relation.ID,
+			},
 		})
 		if collectionFieldRelationDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", collectionFieldRelationDelete.Error)
@@ -2559,7 +2628,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname,
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_field",
-		"_id":            field.ID,
+		"pkey": map[string]interface{}{
+			"_id": field.ID,
+		},
 	})
 	if collectionFieldDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionFieldDelete: %v", collectionFieldDelete.Error)

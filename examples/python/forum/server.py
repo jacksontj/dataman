@@ -43,12 +43,12 @@ class DatamanClient(object):
         self.base_url = base_url
 
     @tornado.gen.coroutine
-    def get(self, db, collection, _id, join_fields=None):
+    def get(self, db, collection, pkeyrecord, join_fields=None):
 
         request = {
             'db': db,
             'collection': collection,
-            '_id': _id,
+            'pkey': pkeyrecord,
         }
         if join_fields:
             request['join'] = join_fields
@@ -155,7 +155,7 @@ class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
         users = self.get_secure_cookie("user")
         if users:
-            users = yield dataman.filter(schema.DBNAME, 'user', {'username': ['=', self.get_secure_cookie("user")]})
+            users = yield dataman.get(schema.DBNAME, 'user', {'username': self.get_secure_cookie("user")})
         if not users:
             self.current_user = None
         else:
@@ -169,8 +169,7 @@ class MainHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self):
-        # TODO: sort (ORDER BY)
-        threads = yield dataman.filter(schema.DBNAME, 'thread')
+        threads = yield dataman.filter(schema.DBNAME, 'thread', sort=['data.title', 'data.created', '_id'])
         self.render("index.html", threads=threads, username=self.current_user)
 
 
@@ -219,7 +218,7 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.get(schema.DBNAME, 'thread', int(thread_id))
+        threads = yield dataman.get(schema.DBNAME, 'thread', {"_id": int(thread_id)})
         if not threads:
             self.redirect("/")
         else:

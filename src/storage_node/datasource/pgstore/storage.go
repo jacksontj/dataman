@@ -100,8 +100,59 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 
-	selectQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s WHERE _id=%v", args["shard_instance"].(string), args["collection"], args["_id"])
-	var err error
+	rawPkeyRecord, ok := args["pkey"]
+	if !ok {
+		result.Error = "pkey record required"
+		return result
+	}
+	pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
+	if !ok {
+		result.Error = "pkey must be a map[string]interface{}"
+		return result
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	whereParts := make([]string, 0)
+	for _, fieldName := range collection.PrimaryIndex.Fields {
+		fieldNameParts := strings.Split(fieldName, ".")
+		field := collection.GetField(fieldNameParts)
+		if field == nil {
+			result.Error = "pkey " + fieldName + " missing from meta? Shouldn't be possible"
+			return result
+		}
+		fieldValue, ok := pkeyRecord[fieldName]
+		if !ok {
+			result.Error = "missing " + fieldName + " from pkey"
+			return result
+		}
+		switch field.FieldType.DatamanType {
+		case metadata.Document:
+			// TODO: recurse and add many
+			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
+				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
+			}
+		case metadata.Text:
+			fallthrough
+		case metadata.String:
+			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+		default:
+			// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
+			// This is just cheating assuming that any depth is an object-- but we'll need to do better once we support arrays etc.
+			if len(fieldNameParts) > 1 {
+				whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+			} else {
+				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
+			}
+		}
+	}
+
+	selectQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s WHERE %s", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, " AND "))
 	result.Return, err = DoQuery(s.getDB(args["db"].(string)), selectQuery)
 	if err != nil {
 		result.Error = err.Error()
@@ -281,13 +332,68 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 		},
 	}
 
-	whereClause, err := s.filterToWhere(args)
+	rawPkeyRecord, ok := args["pkey"]
+	if !ok {
+		result.Error = "pkey record required"
+		return result
+	}
+	pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
+	if !ok {
+		result.Error = "pkey must be a map[string]interface{}"
+		return result
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
 		result.Error = err.Error()
 		return result
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE _id=%v%s RETURNING *", args["shard_instance"].(string), args["collection"], args["_id"], whereClause)
+	whereParts := make([]string, 0)
+	for _, fieldName := range collection.PrimaryIndex.Fields {
+		fieldNameParts := strings.Split(fieldName, ".")
+		field := collection.GetField(fieldNameParts)
+		if field == nil {
+			result.Error = "pkey " + fieldName + " missing from meta? Shouldn't be possible"
+			return result
+		}
+		fieldValue, ok := pkeyRecord[fieldName]
+		if !ok {
+			result.Error = "missing " + fieldName + " from pkey"
+			return result
+		}
+		switch field.FieldType.DatamanType {
+		case metadata.Document:
+			// TODO: recurse and add many
+			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
+				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
+			}
+		case metadata.Text:
+			fallthrough
+		case metadata.String:
+			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+		default:
+			// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
+			// This is just cheating assuming that any depth is an object-- but we'll need to do better once we support arrays etc.
+			if len(fieldNameParts) > 1 {
+				whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+			} else {
+				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
+			}
+		}
+	}
+
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+	if whereClause != "" {
+		whereClause = " AND " + whereClause
+	}
+
+	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, ","), whereClause)
 	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()

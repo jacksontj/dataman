@@ -1,6 +1,9 @@
 package metadata
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 func NewCollection(name string) *Collection {
 	return &Collection{
@@ -19,8 +22,34 @@ type Collection struct {
 
 	// map of name -> index
 	Indexes map[string]*CollectionIndex `json:"indexes,omitempty"`
+	// Link directly to primary index (for convenience)
+	PrimaryIndex *CollectionIndex `json:"-"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (c *Collection) UnmarshalJSON(data []byte) error {
+	type Alias Collection
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	for _, index := range c.Indexes {
+		if index.Primary {
+			if c.PrimaryIndex == nil {
+				c.PrimaryIndex = index
+			} else {
+				return fmt.Errorf("Collections can only have one primary index")
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Collection) GetField(nameParts []string) *CollectionField {
@@ -105,45 +134,4 @@ func (c *Collection) ValidateRecordUpdate(record map[string]interface{}) *Valida
 		}
 	}
 	return result
-}
-
-type CollectionIndex struct {
-	ID   int64  `json:"_id,omitempty"`
-	Name string `json:"name"`
-	// TODO: use CollectionIndexItem
-	Fields []string `json:"fields"`
-	Unique bool     `json:"unique,omitempty"`
-
-	ProvisionState ProvisionState `json:"provision_state"`
-}
-
-func (c *CollectionIndex) Equal(o *CollectionIndex) bool {
-	if c.Name != o.Name {
-		return false
-	}
-
-	if len(c.Fields) != len(o.Fields) {
-		return false
-	}
-	for i, k := range c.Fields {
-		if o.Fields[i] != k {
-			return false
-		}
-	}
-
-	if c.Unique != o.Unique {
-		return false
-	}
-
-	return true
-}
-
-type CollectionIndexItem struct {
-	ID                int64 `json:"_id,omitempty"`
-	CollectionIndexID int64 `json:"collection_index_id"`
-	CollectionFieldID int64 `json:"collection_field_id"`
-
-	Field *CollectionField `json:"-"`
-
-	ProvisionState ProvisionState `json:"provision_state"`
 }

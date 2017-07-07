@@ -224,7 +224,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "database",
-		"_id":            database.ID,
+		"pkey": map[string]interface{}{
+			"_id": database.ID,
+		},
 	})
 	if databaseDelete.Error != "" {
 		return fmt.Errorf("Error getting databaseDelete: %v", databaseDelete.Error)
@@ -300,11 +302,12 @@ func (m *DefaultMetadataStore) EnsureDoesntExistShardInstance(dbname, shardname 
 	// TODO: we need real dep checking -- this is a terrible hack
 	// TODO: should do actual dep checking for this, for now we'll brute force it ;)
 	var successCount int
+	var lastError error
 	for i := 0; i < 5; i++ {
 		successCount = 0
 		// remove the associated collections
 		for _, collection := range shardInstance.Collections {
-			if err := m.EnsureDoesntExistCollection(dbname, shardname, collection.Name); err == nil {
+			if lastError = m.EnsureDoesntExistCollection(dbname, shardname, collection.Name); lastError == nil {
 				successCount++
 			}
 		}
@@ -314,7 +317,7 @@ func (m *DefaultMetadataStore) EnsureDoesntExistShardInstance(dbname, shardname 
 	}
 
 	if successCount != len(shardInstance.Collections) {
-		return fmt.Errorf("Unable to remove collections, dep problem?")
+		return fmt.Errorf("Unable to remove collections, dep problem? %v", lastError)
 	}
 
 	// Remove shard instance
@@ -322,7 +325,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistShardInstance(dbname, shardname 
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "shard_instance",
-		"_id":            shardInstance.ID,
+		"pkey": map[string]interface{}{
+			"_id": shardInstance.ID,
+		},
 	})
 	if shardInstanceResult.Error != "" {
 		return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
@@ -478,8 +483,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollection(dbname, shardinstance
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection",
-		// TODO: add internal columns to schemaman stuff
-		"_id": collection.ID,
+		"pkey": map[string]interface{}{
+			"_id": collection.ID,
+		},
 	})
 	if collectionDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionDelete: %v", collectionDelete.Error)
@@ -511,6 +517,7 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(db *metadata.Database
 	}
 
 	// check that all the fields exist
+	nonNullFields := true
 	fieldIds := make([]int64, len(index.Fields))
 	for i, fieldName := range index.Fields {
 		fieldParts := strings.Split(fieldName, ".")
@@ -518,10 +525,12 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(db *metadata.Database
 		if field, ok := collection.Fields[fieldParts[0]]; !ok {
 			return fmt.Errorf("Cannot create index as field %s doesn't exist in collection, index=%v collection=%v", fieldName, index, collection)
 		} else {
+			nonNullFields = nonNullFields && field.NotNull
 			if len(fieldParts) > 1 {
 				for _, fieldPart := range fieldParts[1:] {
 					if subField, ok := field.SubFields[fieldPart]; ok {
 						field = subField
+						nonNullFields = nonNullFields && field.NotNull
 					} else {
 						return fmt.Errorf("Missing subfield %s from %s", fieldPart, fieldName)
 					}
@@ -531,11 +540,27 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(db *metadata.Database
 		}
 	}
 
+	// If this is primary key check (1) that all the fields are not-null (2) this is the only primary index
+	if index.Primary {
+		if !nonNullFields {
+			return fmt.Errorf("Cannot create index with fields that allow for null values")
+		}
+
+		if !(collection.PrimaryIndex == nil || collection.PrimaryIndex.Name == index.Name) {
+			return fmt.Errorf("Collection already has a primary index defined!")
+		}
+	}
+
 	collectionIndexRecord := map[string]interface{}{
 		"name":            index.Name,
 		"collection_id":   collection.ID,
 		"unique":          index.Unique,
 		"provision_state": index.ProvisionState,
+	}
+	if index.Primary {
+		collectionIndexRecord["primary"] = index.Primary
+	} else {
+		collectionIndexRecord["primary"] = nil
 	}
 	if index.ID != 0 {
 		collectionIndexRecord["_id"] = index.ID
@@ -617,7 +642,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardins
 			"db":             "dataman_storage",
 			"shard_instance": "public",
 			"collection":     "collection_index_item",
-			"_id":            collectionIndexItemRecord["_id"],
+			"pkey": map[string]interface{}{
+				"_id": collectionIndexItemRecord["_id"],
+			},
 		})
 		if collectionIndexItemDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
@@ -629,7 +656,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(dbname, shardins
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection_index",
-		"_id":            collectionIndex.ID,
+		"pkey": map[string]interface{}{
+			"_id": collectionIndex.ID,
+		},
 	})
 	if collectionIndexDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
@@ -810,7 +839,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(dbname, shardins
 			"db":             "dataman_storage",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
-			"_id":            field.Relation.ID,
+			"pkey": map[string]interface{}{
+				"_id": field.Relation.ID,
+			},
 		})
 		if collectionFieldRelationDelete.Error != "" {
 			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", collectionFieldRelationDelete.Error)
@@ -821,7 +852,9 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(dbname, shardins
 		"db":             "dataman_storage",
 		"shard_instance": "public",
 		"collection":     "collection_field",
-		"_id":            field.ID,
+		"pkey": map[string]interface{}{
+			"_id": field.ID,
+		},
 	})
 	if collectionFieldDelete.Error != "" {
 		return fmt.Errorf("Error getting collectionFieldDelete: %v", collectionFieldDelete.Error)
@@ -1009,8 +1042,17 @@ func (m *DefaultMetadataStore) getCollectionByID(meta *metadata.Meta, id int64) 
 				Fields:         indexFields,
 				ProvisionState: metadata.ProvisionState(collectionIndexRecord["provision_state"].(int64)),
 			}
+			if primary, _ := collectionIndexRecord["primary"]; primary != nil {
+				index.Primary = primary.(bool)
+			}
 			if unique, ok := collectionIndexRecord["unique"]; ok && unique != nil {
 				index.Unique = unique.(bool)
+			}
+			if index.Primary {
+				if collection.PrimaryIndex != nil {
+					return nil, fmt.Errorf("Multiple primary indexes for collection %v", collection)
+				}
+				collection.PrimaryIndex = index
 			}
 			collection.Indexes[index.Name] = index
 		}
