@@ -605,7 +605,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 					return nil, fmt.Errorf("Invalid shardkey defined for collection %v", collection.Name)
 				}
 				// TODO: this needs to be something like `a.b.c.d` not just `d`
-				shardKey[j] = field.Name
+				shardKey[j] = field.FullName()
 			}
 
 			// load all the partitions
@@ -722,6 +722,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 				parentField.SubFields = make(map[string]*storagenodemetadata.CollectionField)
 			}
 			parentField.SubFields[field.Name] = field
+			field.ParentField = parentField
 		}
 
 		// If we have a relation, get it
