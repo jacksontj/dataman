@@ -9,7 +9,21 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 )
+
+func CombineKeys(keys []interface{}) interface{} {
+	if len(keys) == 0 {
+		return keys[0]
+	} else {
+		// TODO: typeswitch?
+		stringKeys := make([]string, len(keys))
+		for i, k := range keys {
+			stringKeys[i] = fmt.Sprintf("%v", k)
+		}
+		return strings.Join(stringKeys, ",")
+	}
+}
 
 // Method for taking the shard-key and returning a hashed value
 type HashFunc func(interface{}) (uint64, error)

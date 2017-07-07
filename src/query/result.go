@@ -90,13 +90,23 @@ func MergeResult(numResults int, results chan *Result) *Result {
 	return combinedResult
 }
 
-func GetValue(value map[string]interface{}, nameParts []string) interface{} {
-	val := value[nameParts[0]]
+func GetValue(value map[string]interface{}, nameParts []string) (interface{}, bool) {
+	val, ok := value[nameParts[0]]
+	if !ok {
+		return nil, ok
+	}
 
 	for _, namePart := range nameParts[1:] {
-		val = val.(map[string]interface{})[namePart]
+		typedVal, ok := val.(map[string]interface{})
+		if !ok {
+			return nil, ok
+		}
+		val, ok = typedVal[namePart]
+		if !ok {
+			return nil, ok
+		}
 	}
-	return val
+	return val, true
 }
 
 func SetValue(value map[string]interface{}, newValue interface{}, nameParts []string) interface{} {
@@ -151,8 +161,8 @@ func Sort(sortKeys []string, reverseList []bool, data []map[string]interface{}) 
 		for sortKeyIdx, keyParts := range splitSortKeys {
 			reverse = reverseList[sortKeyIdx]
 			// TODO: record could (and should) point at the CollectionFields which will tell us types
-			iVal := GetValue(data[i], keyParts)
-			jVal := GetValue(data[j], keyParts)
+			iVal, _ := GetValue(data[i], keyParts)
+			jVal, _ := GetValue(data[j], keyParts)
 			switch iValTyped := iVal.(type) {
 			case string:
 				jValTyped := jVal.(string)

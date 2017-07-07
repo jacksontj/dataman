@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
+	"github.com/jacksontj/dataman/src/router_node/sharding"
 
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -509,23 +511,31 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	switch queryType {
 	// Write operations
 	case query.Set:
+		queryRecord, ok := queryArgs["record"].(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: "Set()s must include a record"}
+		}
 		// Sets require that the shard-key be present (so we know where to send it)
 		var vshardNum int
 
 		// TODO: cleanup after default_function is in place
-		if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; !ok && keyspace.ShardKey[0] == "_id" {
+		if _, ok := queryRecord["_id"]; !ok && len(keyspace.ShardKey) == 1 && keyspace.ShardKey[0] == "_id" {
 			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		} else {
-			rawShardKey, ok := queryArgs[keyspace.ShardKey[0]]
-			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Set()s must include the shard-key: %v", keyspace.ShardKey)}
+			shardKeys := make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKey {
+				shardKeys[i], ok = query.GetValue(queryRecord, strings.Split(shardKey, "."))
+				if !ok {
+					return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+				}
 			}
-			shardKey, err := keyspace.HashFunc(rawShardKey)
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshardNum = partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 		}
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
@@ -547,6 +557,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
+		queryRecord, ok := queryArgs["record"].(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: "Insert()s must include a record"}
+		}
 		var vshardNum int
 		// TODO: don't special case this-- but for now we will. This should be some
 		// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
@@ -555,16 +569,20 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		if keyspace.ShardKey[0] == "_id" {
 			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards)) + 1
 		} else {
-			rawShardKey, ok := queryArgs["record"].(map[string]interface{})[keyspace.ShardKey[0]]
-			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key: %v", keyspace.ShardKey)}
+			shardKeys := make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKey {
+				shardKeys[i], ok = query.GetValue(queryRecord, strings.Split(shardKey, "."))
+				if !ok {
+					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+				}
 			}
-			shardKey, err := keyspace.HashFunc(rawShardKey)
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum = partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshardNum = partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		}
 
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
@@ -592,14 +610,37 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: err.Error()}
 		}
 	case query.Update:
+		filterRecord, ok := queryArgs["filter"].(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: "fitler must be a map[string]interface{}"}
+		}
+
+		hasShardKey := true
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKey {
+			tmp, ok := filterRecord[shardKey]
+			if !ok {
+				hasShardKey = false
+				break
+			}
+			filterTyped := tmp.([]interface{})
+			if filterTyped[0] == "=" {
+				shardKeys[i] = filterTyped[1]
+			} else {
+				hasShardKey = false
+				break
+			}
+		}
+
 		// If the shard_key is defined, then we can send this to a single shard
-		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[keyspace.ShardKey[0]]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
-			shardKey, err := keyspace.HashFunc(rawShardFilter.([]interface{})[1])
+		if hasShardKey {
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 			// TODO: replicas -- add args for slave etc.
 			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
@@ -662,16 +703,20 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 		}
 
-		rawShardKey, ok := pkeyRecord[keyspace.ShardKey[0]]
-		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key: %v", keyspace.ShardKey)}
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKey {
+			shardKeys[i], ok = query.GetValue(pkeyRecord, strings.Split(shardKey, "."))
+			if !ok {
+				return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key, missing %s from (%v)", shardKey, pkeyRecord)}
+			}
 		}
-		shardKey, err := keyspace.HashFunc(rawShardKey)
+		shardKey := sharding.CombineKeys(shardKeys)
+		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
-		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
