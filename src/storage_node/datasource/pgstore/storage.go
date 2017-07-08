@@ -11,6 +11,7 @@ Metadata about the storage node will be stored in a database called _dataman.sto
 */
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -213,12 +214,19 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 			case metadata.JSON:
 				fallthrough
 			case metadata.Document:
-				fieldJson, err := json.Marshal(fieldValue)
+				// TODO: make util method?
+				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+				buffer := &bytes.Buffer{}
+				encoder := json.NewEncoder(buffer)
+				encoder.SetEscapeHTML(false)
+				err := encoder.Encode(fieldValue)
 				if err != nil {
 					result.Error = err.Error()
 					return result
 				}
-				fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
+				fieldJson := buffer.Bytes()
+				// TODO: switch from string escape of ' to using args from the sql driver
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
 			case metadata.Text:
 				fallthrough
 			case metadata.String:
@@ -279,12 +287,20 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			case metadata.JSON:
 				fallthrough
 			case metadata.Document:
-				fieldJson, err := json.Marshal(fieldValue)
+				// TODO: make util method?
+				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+				buffer := &bytes.Buffer{}
+				encoder := json.NewEncoder(buffer)
+				encoder.SetEscapeHTML(false)
+				err := encoder.Encode(fieldValue)
 				if err != nil {
 					result.Error = err.Error()
 					return result
 				}
-				fieldValues = append(fieldValues, "'"+string(fieldJson)+"'")
+				fieldJson := buffer.Bytes()
+
+				// TODO: switch from string escape of ' to using args from the sql driver
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
 			case metadata.Text:
 				fallthrough
 			case metadata.String:
