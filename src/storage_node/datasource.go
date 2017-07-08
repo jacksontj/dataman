@@ -353,7 +353,7 @@ QUERYLOOP:
 									"db":             queryArgs["db"],
 									"shard_instance": queryArgs["shard_instance"].(string),
 									"collection":     joinField.Relation.Collection,
-									"_id":            rawJoinValue,
+									"pkey":           map[string]interface{}{"_id": rawJoinValue},
 								})
 
 								query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
@@ -388,7 +388,7 @@ QUERYLOOP:
 										"db":             queryArgs["db"],
 										"shard_instance": queryArgs["shard_instance"].(string),
 										"collection":     joinField.Relation.Collection,
-										"_id":            rawJoinValue,
+										"pkey":           map[string]interface{}{"_id": rawJoinValue},
 									})
 
 									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
