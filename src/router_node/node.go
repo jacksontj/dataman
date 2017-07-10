@@ -603,10 +603,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		)
 
 		if err == nil {
-			fmt.Println("ok, ", result)
 			return result
 		} else {
-			fmt.Println("err", err)
 			return &query.Result{Error: err.Error()}
 		}
 	case query.Update:
