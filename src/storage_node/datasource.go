@@ -291,8 +291,7 @@ QUERYLOOP:
 									"record":         joinRecord,
 								})
 								if joinResults.Error != "" {
-									results[i] = &query.Result{Error: joinResults.Error}
-									continue QUERYLOOP
+									results[i].Error += "\n" + joinResults.Error
 								}
 
 								// Update the value in the main record
@@ -355,6 +354,9 @@ QUERYLOOP:
 									"collection":     joinField.Relation.Collection,
 									"pkey":           map[string]interface{}{"_id": rawJoinValue},
 								})
+								if joinResults.Error != "" {
+									results[i].Error += "\n" + joinResults.Error
+								}
 
 								query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
 							}
@@ -390,6 +392,9 @@ QUERYLOOP:
 										"collection":     joinField.Relation.Collection,
 										"pkey":           map[string]interface{}{"_id": rawJoinValue},
 									})
+									if joinResults.Error != "" {
+										results[i].Error += "\n" + joinResults.Error
+									}
 
 									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
 								}
