@@ -400,18 +400,21 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 			}
 		}
 
-		// TODO: support compound shard keys
-		rawShardKey, ok := pkeyRecord[keyspace.ShardKey[0]]
-		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s pkey must include the shard-key: %v", keyspace.ShardKey)}
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKey {
+			shardKeys[i], ok = query.GetValue(pkeyRecord, strings.Split(shardKey, "."))
+			if !ok {
+				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+			}
 		}
-		shardKey, err := keyspace.HashFunc(rawShardKey)
+		shardKey := sharding.CombineKeys(shardKeys)
+		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
 			return &query.Result{Error: err.Error()}
 		}
 
-		vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 
 	case query.Filter:
