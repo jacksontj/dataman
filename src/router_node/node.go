@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"net/http"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -400,8 +399,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		}
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
-		for i, shardKey := range keyspace.ShardKey {
-			shardKeys[i], ok = query.GetValue(pkeyRecord, strings.Split(shardKey, "."))
+		for i, shardKey := range keyspace.ShardKeySplit {
+			shardKeys[i], ok = query.GetValue(pkeyRecord, shardKey)
 			if !ok {
 				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
 			}
@@ -429,8 +428,8 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 		hasShardKey := true
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
-		for i, shardKey := range keyspace.ShardKey {
-			filterValueRaw, ok := query.GetValue(filterMap, strings.Split(shardKey, "."))
+		for i, shardKey := range keyspace.ShardKeySplit {
+			filterValueRaw, ok := query.GetValue(filterMap, shardKey)
 			if !ok {
 				hasShardKey = false
 				break
@@ -556,8 +555,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		} else {
 			shardKeys := make([]interface{}, len(keyspace.ShardKey))
-			for i, shardKey := range keyspace.ShardKey {
-				shardKeys[i], ok = query.GetValue(queryRecord, strings.Split(shardKey, "."))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 				if !ok {
 					return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
 				}
@@ -603,8 +602,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards)) + 1
 		} else {
 			shardKeys := make([]interface{}, len(keyspace.ShardKey))
-			for i, shardKey := range keyspace.ShardKey {
-				shardKeys[i], ok = query.GetValue(queryRecord, strings.Split(shardKey, "."))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 				if !ok {
 					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
 				}
@@ -735,8 +734,8 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
-		for i, shardKey := range keyspace.ShardKey {
-			shardKeys[i], ok = query.GetValue(pkeyRecord, strings.Split(shardKey, "."))
+		for i, shardKey := range keyspace.ShardKeySplit {
+			shardKeys[i], ok = query.GetValue(pkeyRecord, shardKey)
 			if !ok {
 				return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key, missing %s from (%v)", shardKey, pkeyRecord)}
 			}

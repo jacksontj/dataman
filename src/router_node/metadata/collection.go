@@ -3,6 +3,7 @@ package metadata
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -112,6 +113,8 @@ type CollectionKeyspace struct {
 	Hash     sharding.HashMethod `json:"hash_method"`
 	HashFunc sharding.HashFunc   `json:"-"`
 	ShardKey []string            `json:"shard_key"`
+	// dot-split version (for perf, since we do it a LOT)
+	ShardKeySplit [][]string `json:"-"`
 
 	Partitions []*CollectionKeyspacePartition `json:"partitions"`
 }
@@ -129,6 +132,11 @@ func (c *CollectionKeyspace) UnmarshalJSON(data []byte) error {
 
 	// get the pointers to Hash and Shard func
 	c.HashFunc = c.Hash.Get()
+
+	c.ShardKeySplit = make([][]string, len(c.ShardKey))
+	for i, shardKey := range c.ShardKey {
+		c.ShardKeySplit[i] = strings.Split(shardKey, ".")
+	}
 
 	return nil
 }
