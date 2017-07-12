@@ -372,7 +372,6 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	// TODO: support multiple partitions
 	partition := keyspace.Partitions[0]
 
-	// TODO: support collection vshards -- to do this we'll probably need a combined struct?
 	var vshards []*metadata.DatastoreVShardInstance
 
 	// Depending on query type we might be able to be more specific about which vshards we go to
@@ -418,15 +417,54 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 
 	case query.Filter:
+
+		filterMapRaw, ok := queryArgs["filter"] // TODO: better arg than pkey, maybe record?
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("Filter()s must include filter map")}
+		}
+		filterMap, ok := filterMapRaw.(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: fmt.Sprintf("filter must be a map[string]interface{}")}
+		}
+
+		hasShardKey := true
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKey {
+			filterValueRaw, ok := query.GetValue(filterMap, strings.Split(shardKey, "."))
+			if !ok {
+				hasShardKey = false
+				break
+			}
+			filterComparatorRaw, ok := filterValueRaw.([]interface{})
+			if !ok {
+				hasShardKey = false
+				break
+			}
+			filterComparator, ok := filterComparatorRaw[0].(string)
+			if !ok {
+				hasShardKey = false
+				break
+			}
+			if filterComparator == "=" {
+				shardKeys[i] = filterComparatorRaw[1]
+			} else {
+				hasShardKey = false
+				break
+			}
+
+		}
 		// if there is only one partition and we have our shard key, we can be more specific
-		if rawShardFilter, ok := queryArgs["filter"].(map[string]interface{})[keyspace.ShardKey[0]]; ok && rawShardFilter.([]interface{})[0].(string) == "=" {
-			shardKey, err := keyspace.HashFunc(rawShardFilter.([]interface{})[1])
+		if hasShardKey {
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
 				return &query.Result{Error: err.Error()}
 			}
-			vshardNum := partition.ShardFunc(shardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+
+			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
+
 		} else {
 			vshards = partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
 		}
