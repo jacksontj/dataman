@@ -323,19 +323,11 @@ func (s *RouterNode) handleQuery(meta *metadata.Meta, queryType query.QueryType,
 	// Switch between read and write operations
 	switch queryType {
 	// Write operations
-	case query.Set:
-		fallthrough
-	case query.Insert:
-		fallthrough
-	case query.Update:
-		fallthrough
-	case query.Delete:
+	case query.Set, query.Insert, query.Update, query.Delete:
 		return s.handleWrite(meta, queryType, queryArgs)
 
 	// Read operations
-	case query.Get:
-		fallthrough
-	case query.Filter:
+	case query.Get, query.Filter:
 		return s.handleRead(meta, queryType, queryArgs)
 
 		// All other operations should error

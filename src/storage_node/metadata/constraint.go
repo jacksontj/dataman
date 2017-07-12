@@ -172,9 +172,7 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 			return func(v interface{}) bool {
 				return v.(int) == args["value"].(int)
 			}, nil
-		case Text:
-			fallthrough
-		case String:
+		case Text, String:
 			return func(v interface{}) bool {
 				return v.(string) == args["value"].(string)
 			}, nil
@@ -187,9 +185,7 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 			return func(v interface{}) bool {
 				return v.(int) != args["value"].(int)
 			}, nil
-		case Text:
-			fallthrough
-		case String:
+		case Text, String:
 			return func(v interface{}) bool {
 				return v.(string) != args["value"].(string)
 			}, nil

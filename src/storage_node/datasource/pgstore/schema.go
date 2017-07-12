@@ -310,24 +310,11 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 		var datamanType metadata.DatamanType
 		switch fieldEntry["data_type"] {
 		// TODO: add to dataman types
-		case "int4range":
-			fallthrough
-		case "bigint":
-			fallthrough
-		case "real":
-			fallthrough
-		case "double precision":
-			fallthrough
-		case "integer":
+		case "int4range", "bigint", "real", "double precision", "integer", "smallint":
 			datamanType = metadata.Int
 		case "character varying":
 			datamanType = metadata.String
-		// TODO: do we want to do this based on size?
-		case "smallint":
-			datamanType = metadata.Int
-		case "json":
-			fallthrough
-		case "jsonb":
+		case "json", "jsonb":
 			datamanType = metadata.JSON
 		case "boolean":
 			datamanType = metadata.Bool
