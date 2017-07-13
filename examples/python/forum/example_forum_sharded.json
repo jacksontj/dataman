@@ -23,7 +23,7 @@
 							"name": "thread_ksuid",
 							"relation": {
 								"collection": "thread",
-								"field": "_id"
+								"field": "ksuid"
 							}
 						},
 						"created_by": {
