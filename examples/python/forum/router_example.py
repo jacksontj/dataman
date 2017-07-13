@@ -41,12 +41,12 @@ def ensure_datastore(urlbase):
                 "shards": [
                     {
                         "shard_instance": 1,
-                        "datastore_shard_id": 68,
+                        "datastore_shard_id": 70,
                         "provision_state": 3
                     },
                     {
                       "shard_instance": 2,
-                      "datastore_shard_id": 69,
+                      "datastore_shard_id": 71,
                       "provision_state": 3
                     }
                 ],
