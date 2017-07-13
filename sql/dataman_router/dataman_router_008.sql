@@ -124,40 +124,6 @@ CREATE SEQUENCE "public"."collection_keyspace_partition_datastore_vshard__id_seq
 SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 1079, true);
 
 -- ----------------------------
--- Sequence structure for constraint__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."constraint__id_seq";
-CREATE SEQUENCE "public"."constraint__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 9
- CACHE 1;
-
--- ----------------------------
--- Sequence structure for constraint_args__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."constraint_args__id_seq";
-CREATE SEQUENCE "public"."constraint_args__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 2
- CACHE 1;
-
--- ----------------------------
--- Sequence structure for constraint_dataman_field_type__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."constraint_dataman_field_type__id_seq";
-CREATE SEQUENCE "public"."constraint_dataman_field_type__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 16
- CACHE 1;
-SELECT setval('"public"."constraint_dataman_field_type__id_seq"', 16, true);
-
--- ----------------------------
 -- Sequence structure for database__id_seq
 -- ----------------------------
 DROP SEQUENCE IF EXISTS "public"."database__id_seq";
@@ -182,30 +148,6 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
 SELECT setval('"public"."database_datastore__id_seq"', 1480, true);
 
 -- ----------------------------
--- Sequence structure for dataman_field_type__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."dataman_field_type__id_seq";
-CREATE SEQUENCE "public"."dataman_field_type__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 5
- CACHE 1;
-SELECT setval('"public"."dataman_field_type__id_seq"', 5, true);
-
--- ----------------------------
--- Sequence structure for dataman_field_type_datasource_field_type__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."dataman_field_type_datasource_field_type__id_seq";
-CREATE SEQUENCE "public"."dataman_field_type_datasource_field_type__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 16
- CACHE 1;
-SELECT setval('"public"."dataman_field_type_datasource_field_type__id_seq"', 16, true);
-
--- ----------------------------
 -- Sequence structure for datasource__id_seq
 -- ----------------------------
 DROP SEQUENCE IF EXISTS "public"."datasource__id_seq";
@@ -216,30 +158,6 @@ CREATE SEQUENCE "public"."datasource__id_seq"
  START 3
  CACHE 1;
 SELECT setval('"public"."datasource__id_seq"', 3, true);
-
--- ----------------------------
--- Sequence structure for datasource_field_type__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."datasource_field_type__id_seq";
-CREATE SEQUENCE "public"."datasource_field_type__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 16
- CACHE 1;
-SELECT setval('"public"."datasource_field_type__id_seq"', 16, true);
-
--- ----------------------------
--- Sequence structure for datasource_field_type_arg__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."datasource_field_type_arg__id_seq";
-CREATE SEQUENCE "public"."datasource_field_type_arg__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 1
- CACHE 1;
-SELECT setval('"public"."datasource_field_type_arg__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for datasource_instance__id_seq
@@ -347,41 +265,6 @@ CREATE SEQUENCE "public"."field_type_constraint__id_seq"
  MAXVALUE 9223372036854775807
  START 2
  CACHE 1;
-
--- ----------------------------
--- Sequence structure for field_type_constraint_arg__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."field_type_constraint_arg__id_seq";
-CREATE SEQUENCE "public"."field_type_constraint_arg__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 2
- CACHE 1;
-
--- ----------------------------
--- Sequence structure for field_type_datasource_field_type__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."field_type_datasource_field_type__id_seq";
-CREATE SEQUENCE "public"."field_type_datasource_field_type__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 3
- CACHE 1;
-SELECT setval('"public"."field_type_datasource_field_type__id_seq"', 3, true);
-
--- ----------------------------
--- Sequence structure for field_type_datasource_field_type_arg__id_seq
--- ----------------------------
-DROP SEQUENCE IF EXISTS "public"."field_type_datasource_field_type_arg__id_seq";
-CREATE SEQUENCE "public"."field_type_datasource_field_type_arg__id_seq"
- INCREMENT 1
- MINVALUE 1
- MAXVALUE 9223372036854775807
- START 1
- CACHE 1;
-SELECT setval('"public"."field_type_datasource_field_type_arg__id_seq"', 1, true);
 
 -- ----------------------------
 -- Sequence structure for storage_node_type__id_seq
