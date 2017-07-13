@@ -130,29 +130,6 @@ func (c *Collection) GetField(nameParts []string) *storagenodemetadata.Collectio
 	return field
 }
 
-// TODO: elsewhere?
-// We need to ensure that collections have all of the internal fields that we define
-// TODO: error here if one that isn't compatible is defined
-func (c *Collection) EnsureInternalFields() error {
-	for name, internalField := range storagenodemetadata.InternalFields {
-		if field, ok := c.Fields[name]; !ok {
-			// TODO: make a copy?
-			// TODO: better copy
-			newField := &storagenodemetadata.CollectionField{}
-			buf, _ := json.Marshal(internalField)
-			json.Unmarshal(buf, newField)
-			c.Fields[name] = newField
-		} else {
-			// If it exists, it must match -- if not error
-			if !internalField.Equal(field) {
-				return fmt.Errorf("The `%s` namespace for collection fields is reserved: %v", storagenodemetadata.InternalFieldPrefix, field)
-			}
-		}
-	}
-
-	return nil
-}
-
 type CollectionKeyspace struct {
 	ID       int64               `json:"_id,omitempty"`
 	Hash     sharding.HashMethod `json:"hash_method"`

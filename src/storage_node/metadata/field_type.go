@@ -9,6 +9,8 @@ import (
 	"github.com/jacksontj/dataman/src/datamantype"
 )
 
+var InternalFieldTypePrefix = "_"
+
 /*
 
 	Since field_types need to be used regardless of application, we are going to
@@ -27,7 +29,7 @@ type FieldTypeRegister struct {
 func (r *FieldTypeRegister) Add(f *FieldType) error {
 	r.l.Lock()
 	defer r.l.Unlock()
-	if strings.HasPrefix(f.Name, InternalFieldPrefix) {
+	if strings.HasPrefix(f.Name, InternalFieldTypePrefix) {
 		return fmt.Errorf("Reserved namespace!")
 	}
 	if _, ok := r.r[f.Name]; ok {
@@ -48,7 +50,7 @@ func (r *FieldTypeRegister) Merge(o *FieldTypeRegister) {
 	defer r.l.Unlock()
 
 	for name, fieldType := range o.r {
-		if strings.HasPrefix(name, InternalFieldPrefix) {
+		if strings.HasPrefix(name, InternalFieldTypePrefix) {
 			continue
 		}
 		if _, ok := r.r[name]; !ok {

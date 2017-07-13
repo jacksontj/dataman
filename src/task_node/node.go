@@ -204,9 +204,6 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Validate the schemas passed in
 	for _, collection := range db.Collections {
-		if err := collection.EnsureInternalFields(); err != nil {
-			return err
-		}
 		// TODO: we need to recurse!
 		hasRelation := false
 		for _, field := range collection.Fields {
