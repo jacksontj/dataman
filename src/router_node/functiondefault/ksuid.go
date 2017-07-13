@@ -21,7 +21,7 @@ func (u *KSUID) SupportedTypes() []datamantype.DatamanType {
 
 func (u *KSUID) GetDefault(ctx context.Context,
 	defaultType datamantype.DatamanType,
-	record map[string]interface{}) (interface{}, error) {
+) (interface{}, error) {
 
 	switch defaultType {
 	case datamantype.String, datamantype.Text:

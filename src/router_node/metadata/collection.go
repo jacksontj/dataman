@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 func NewCollection(name string) *Collection {
 	return &Collection{
-		Name:    name,
-		Indexes: make(map[string]*storagenodemetadata.CollectionIndex),
+		Name:                  name,
+		Fields:                make(map[string]*storagenodemetadata.CollectionField),
+		functionDefaultFields: make(map[string]*storagenodemetadata.CollectionField),
+		Indexes:               make(map[string]*storagenodemetadata.CollectionIndex),
 	}
 }
 
@@ -24,8 +27,11 @@ type Collection struct {
 	// TODO: this needs to be a map of datastore_id -> datastore_vshard
 	//VShard *CollectionVShard `json:"collection_vshard,omitempty"`
 
-	Fields  map[string]*storagenodemetadata.CollectionField `json:"fields"`
-	Indexes map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
+	Fields map[string]*storagenodemetadata.CollectionField `json:"fields"`
+	// TODO: more efficient!
+	// map of dotted-name to field (used just to set defaults)
+	functionDefaultFields map[string]*storagenodemetadata.CollectionField
+	Indexes               map[string]*storagenodemetadata.CollectionIndex `json:"indexes"`
 	// Link directly to primary index (for convenience)
 	PrimaryIndex *storagenodemetadata.CollectionIndex `json:"-"`
 
@@ -34,6 +40,25 @@ type Collection struct {
 	Keyspaces []*CollectionKeyspace `json:"keyspaces"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (c *Collection) FunctionDefaultRecord(record map[string]interface{}) error {
+	if c.functionDefaultFields == nil {
+		return nil
+	}
+
+	for k, field := range c.functionDefaultFields {
+		val, err := field.FunctionDefault.GetDefault(nil, field.FieldType.DatamanType)
+		if err != nil {
+			return err
+		}
+		query.SetValue(
+			record,
+			val,
+			strings.Split(k, "."),
+		)
+	}
+	return nil
 }
 
 func (c *Collection) UnmarshalJSON(data []byte) error {
@@ -56,6 +81,22 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 			}
 		}
 	}
+	var findFunctionDefaultField func(*storagenodemetadata.CollectionField)
+	findFunctionDefaultField = func(f *storagenodemetadata.CollectionField) {
+		if f.FunctionDefault != nil {
+			if c.functionDefaultFields == nil {
+				c.functionDefaultFields = map[string]*storagenodemetadata.CollectionField{f.FullName(): f}
+			}
+			if f.SubFields != nil {
+				for _, subField := range f.SubFields {
+					findFunctionDefaultField(subField)
+				}
+			}
+		}
+	}
+	for _, field := range c.Fields {
+		findFunctionDefaultField(field)
+	}
 
 	return nil
 }
@@ -73,6 +114,10 @@ func (c *Collection) IsSharded() bool {
 		}
 	}
 	return false
+}
+
+func (c *Collection) GetFieldByName(name string) *storagenodemetadata.CollectionField {
+	return c.GetField(strings.Split(name, "."))
 }
 
 func (c *Collection) GetField(nameParts []string) *storagenodemetadata.CollectionField {

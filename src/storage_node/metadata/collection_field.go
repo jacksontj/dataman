@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jacksontj/dataman/src/datamantype"
+	"github.com/jacksontj/dataman/src/router_node/functiondefault"
 )
 
 type ValidationResult struct {
@@ -54,8 +55,10 @@ type CollectionField struct {
 	// TODO: have link to the actual type struct
 
 	// Various configuration options
-	NotNull bool        `json:"not_null,omitempty"` // Should we allow NULL fields
-	Default interface{} `json:"default,omitempty"`
+	NotNull             bool                                `json:"not_null,omitempty"` // Should we allow NULL fields
+	Default             interface{}                         `json:"default,omitempty"`
+	FunctionDefaultType functiondefault.FunctionDefaultType `json:"function_default,omitempty"`
+	FunctionDefault     functiondefault.FunctionDefault     `json:"-"`
 
 	// Optional subfields
 	SubFields map[string]*CollectionField `json:"subfields,omitempty"`
@@ -78,6 +81,7 @@ func (f *CollectionField) UnmarshalJSON(data []byte) error {
 	}
 
 	f.FieldType = FieldTypeRegistry.Get(f.Type)
+	f.FunctionDefault = f.FunctionDefaultType.Get()
 
 	return nil
 }

@@ -91,6 +91,11 @@ const schemaJson string = `
                   "field_type": "_string",
                   "provision_state": 3
                 },
+                "function_default": {
+                  "name": "function_default",
+                  "field_type": "_string",
+                  "provision_state": 3
+                },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
@@ -526,8 +531,8 @@ const schemaJson string = `
                   "unique": true,
                   "provision_state": 3
                 },
-                "collection_keyspace_item_pkey": {
-                  "name": "collection_keyspace_item_pkey",
+                "collection_keyspace_shardkey_pkey": {
+                  "name": "collection_keyspace_shardkey_pkey",
                   "fields": [
                     "_id"
                   ],
@@ -1069,6 +1074,10 @@ const schemaJson string = `
                   "name": "datastore_shard_id",
                   "field_type": "_int",
                   "not_null": true,
+                  "relation": {
+                    "collection": "datastore_shard",
+                    "field": "_id"
+                  },
                   "provision_state": 3
                 },
                 "datastore_vshard_id": {

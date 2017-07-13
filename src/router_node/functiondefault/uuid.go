@@ -22,7 +22,7 @@ func (u *UUID4) SupportedTypes() []datamantype.DatamanType {
 
 func (u *UUID4) GetDefault(ctx context.Context,
 	defaultType datamantype.DatamanType,
-	record map[string]interface{}) (interface{}, error) {
+) (interface{}, error) {
 	val, err := uuid.NewV4()
 	if err != nil {
 		return nil, err

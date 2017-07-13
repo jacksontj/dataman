@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/src/datamantype"
+	"github.com/jacksontj/dataman/src/router_node/functiondefault"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	"github.com/jacksontj/dataman/src/storage_node"
@@ -709,6 +710,10 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 				return nil, err
 			}
 			field.Default = defaultVal
+		}
+		if functionDefault, ok := collectionFieldRecord["function_default"]; ok && functionDefault != nil {
+			field.FunctionDefaultType = functiondefault.FunctionDefaultType(functionDefault.(string))
+			field.FunctionDefault = field.FunctionDefaultType.Get()
 		}
 
 		// If we have a parent, mark it down for now
@@ -2516,6 +2521,9 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	}
 	if field.Default != nil {
 		fieldRecord["default"] = field.Default
+	}
+	if field.FunctionDefault != nil {
+		fieldRecord["function_default"] = field.FunctionDefaultType
 	}
 	if field.ID != 0 {
 		fieldRecord["_id"] = field.ID

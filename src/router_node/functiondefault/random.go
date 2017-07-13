@@ -21,7 +21,7 @@ func (u *Random) SupportedTypes() []datamantype.DatamanType {
 
 func (u *Random) GetDefault(ctx context.Context,
 	defaultType datamantype.DatamanType,
-	record map[string]interface{}) (interface{}, error) {
+) (interface{}, error) {
 
 	switch defaultType {
 	case datamantype.Int:

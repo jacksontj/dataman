@@ -523,10 +523,11 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 							return "", fmt.Errorf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
 						}
 					} else {
-						field, ok = field.SubFields[fieldNamePart]
+						subField, ok := field.SubFields[fieldNamePart]
 						if !ok {
 							return "", fmt.Errorf("SubField %s doesn't exist in %v.%v: %v", fieldName, args["db"], args["collection"], field.SubFields)
 						}
+						field = subField
 					}
 				}
 			}

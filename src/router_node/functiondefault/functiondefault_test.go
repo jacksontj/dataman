@@ -35,7 +35,7 @@ func testFunctionDefault(t *testing.T, fd FunctionDefault, datamanType datamanty
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	for i := 0; i < 100; i++ {
-		val, err := fd.GetDefault(ctx, datamanType, nil)
+		val, err := fd.GetDefault(ctx, datamanType)
 		if err != nil {
 			t.Fatalf("Error getting value: %v", err)
 		}

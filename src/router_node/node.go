@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -547,29 +546,40 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		if !ok {
 			return &query.Result{Error: "Set()s must include a record"}
 		}
-		// Sets require that the shard-key be present (so we know where to send it)
-		var vshardNum int
 
-		// TODO: cleanup after default_function is in place
-		if _, ok := queryRecord["_id"]; !ok && len(keyspace.ShardKey) == 1 && keyspace.ShardKey[0] == "_id" {
-			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-		} else {
-			shardKeys := make([]interface{}, len(keyspace.ShardKey))
-			for i, shardKey := range keyspace.ShardKeySplit {
-				shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
-				if !ok {
-					return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+		// Do we have the primary key?
+		// if all missing fields of the primary key are function_default, then we assume this is an insert
+		flattenedQueryRecord := query.FlattenResult(queryRecord)
+		for _, fieldName := range collection.PrimaryIndex.Fields {
+			if _, ok := flattenedQueryRecord[fieldName]; !ok {
+				// If we are missing a pkey field and that field is a function_default, we assume
+				// this is an insert, and as such we need to run *all* the function_default
+				if missingPKeyField := collection.GetFieldByName(fieldName); missingPKeyField != nil && missingPKeyField.FunctionDefault != nil {
+					if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
+						return &query.Result{Error: "Error enforcing function_default"}
+					}
+					break
+				} else {
+					return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
 				}
 			}
-			shardKey := sharding.CombineKeys(shardKeys)
-			hashedShardKey, err := keyspace.HashFunc(shardKey)
-			if err != nil {
-				// TODO: wrap the error
-				return &query.Result{Error: err.Error()}
-			}
-			vshardNum = partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-
 		}
+
+		// Sets require that the shard-key be present (so we know where to send it)
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKeySplit {
+			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
+			if !ok {
+				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+			}
+		}
+		shardKey := sharding.CombineKeys(shardKeys)
+		hashedShardKey, err := keyspace.HashFunc(shardKey)
+		if err != nil {
+			// TODO: wrap the error
+			return &query.Result{Error: err.Error()}
+		}
+		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
@@ -593,29 +603,27 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		if !ok {
 			return &query.Result{Error: "Insert()s must include a record"}
 		}
-		var vshardNum int
-		// TODO: don't special case this-- but for now we will. This should be some
-		// config on what to do when the shard-key doesn't exist (generate, RR, etc.)
-		// TODO: remove this, we just want to set all values here in the router layer and
-		// then all of this won't be necessary
-		if keyspace.ShardKey[0] == "_id" {
-			vshardNum = rand.Intn(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards)) + 1
-		} else {
-			shardKeys := make([]interface{}, len(keyspace.ShardKey))
-			for i, shardKey := range keyspace.ShardKeySplit {
-				shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
-				if !ok {
-					return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
-				}
-			}
-			shardKey := sharding.CombineKeys(shardKeys)
-			hashedShardKey, err := keyspace.HashFunc(shardKey)
-			if err != nil {
-				// TODO: wrap the error
-				return &query.Result{Error: err.Error()}
-			}
-			vshardNum = partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		// For inserts we need to ensure we have set the function_default fields
+		// this is because function_default fields will commonly be used in shardKey
+		// so we need to have it set before we do the sharding/hashing
+		if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
+			return &query.Result{Error: "Error enforcing function_default"}
 		}
+
+		shardKeys := make([]interface{}, len(keyspace.ShardKey))
+		for i, shardKey := range keyspace.ShardKeySplit {
+			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
+			if !ok {
+				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+			}
+		}
+		shardKey := sharding.CombineKeys(shardKeys)
+		hashedShardKey, err := keyspace.HashFunc(shardKey)
+		if err != nil {
+			// TODO: wrap the error
+			return &query.Result{Error: err.Error()}
+		}
+		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 

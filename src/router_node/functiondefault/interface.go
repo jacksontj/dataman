@@ -25,6 +25,6 @@ type FunctionDefault interface {
 		//db *metadata.Database,
 		//collection *metadata.Collection,
 		//field *datamantype.CollectionField,
-		record map[string]interface{},
+		//record map[string]interface{},
 	) (interface{}, error)
 }
