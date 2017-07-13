@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/datamantype"
 )
 
 type functionDefaultTestCase struct {
@@ -31,11 +31,11 @@ func init() {
 	}
 }
 
-func testFunctionDefault(t *testing.T, fd FunctionDefault, datamanType storagenodemetadata.DatamanType) {
+func testFunctionDefault(t *testing.T, fd FunctionDefault, datamanType datamantype.DatamanType) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	for i := 0; i < 100; i++ {
-		val, err := fd.GetDefault(ctx, datamanType, nil, nil, nil, nil)
+		val, err := fd.GetDefault(ctx, datamanType, nil)
 		if err != nil {
 			t.Fatalf("Error getting value: %v", err)
 		}

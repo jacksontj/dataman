@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	"github.com/jacksontj/dataman/src/storage_node"
@@ -60,7 +61,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	for _, fieldTypeRecord := range fieldTypeResult.Return {
 		fieldType := &storagenodemetadata.FieldType{
 			Name:        fieldTypeRecord["name"].(string),
-			DatamanType: storagenodemetadata.DatamanType(fieldTypeRecord["dataman_type"].(string)),
+			DatamanType: datamantype.DatamanType(fieldTypeRecord["dataman_type"].(string)),
 		}
 
 		fieldTypeConstraintResult := m.Store.Filter(map[string]interface{}{

@@ -1,12 +1,13 @@
 package metadata
 
 import "fmt"
+import "github.com/jacksontj/dataman/src/datamantype"
 
 // TODO: another idea for code setup for this
-// Constraint is a map[string]Constraint (<-- Interface)
+// Constraint is a map[string]Constraint (<-- datamantype.Interface)
 /*
    type Constraint interface{
-       GetConstraintFunc(args map[string]interface{}, inputType DatamanType)
+       GetConstraintFunc(args map[string]interface{}, inputType datamantype.DatamanType)
    }
 
    // things missing:
@@ -15,56 +16,56 @@ import "fmt"
 */
 
 // Map of constriantName -> inputType -> args
-var Constraints map[ConstraintType]map[DatamanType]map[string]DatamanType
+var Constraints map[ConstraintType]map[datamantype.DatamanType]map[string]datamantype.DatamanType
 
 func init() {
-	Constraints = map[ConstraintType]map[DatamanType]map[string]DatamanType{
-		LessThan: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+	Constraints = map[ConstraintType]map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+		LessThan: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
 		},
-		LessThanEqual: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+		LessThanEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
 		},
-		GreaterThan: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+		GreaterThan: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
 		},
-		GreaterThanEqual: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+		GreaterThanEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
 		},
-		Equal: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+		Equal: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
-			String: map[string]DatamanType{
-				"value": String,
+			datamantype.String: map[string]datamantype.DatamanType{
+				"value": datamantype.String,
 			},
-			Text: map[string]DatamanType{
-				"value": Text,
+			datamantype.Text: map[string]datamantype.DatamanType{
+				"value": datamantype.Text,
 			},
 		},
-		NotEqual: map[DatamanType]map[string]DatamanType{
-			Int: map[string]DatamanType{
-				"value": Int,
+		NotEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
+			datamantype.Int: map[string]datamantype.DatamanType{
+				"value": datamantype.Int,
 			},
-			String: map[string]DatamanType{
-				"value": String,
+			datamantype.String: map[string]datamantype.DatamanType{
+				"value": datamantype.String,
 			},
-			Text: map[string]DatamanType{
-				"value": Text,
+			datamantype.Text: map[string]datamantype.DatamanType{
+				"value": datamantype.Text,
 			},
 		},
 	}
 }
 
-func NewConstraintInstance(d DatamanType, t ConstraintType, args map[string]interface{}, validationError string) (*ConstraintInstance, error) {
+func NewConstraintInstance(d datamantype.DatamanType, t ConstraintType, args map[string]interface{}, validationError string) (*ConstraintInstance, error) {
 	f, err := t.GetConstraintFunc(args, d)
 	if err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ const (
 	NotInSet                        = "notinset"
 )
 
-func (c ConstraintType) NormalizeArgs(args map[string]interface{}, inputType DatamanType) error {
+func (c ConstraintType) NormalizeArgs(args map[string]interface{}, inputType datamantype.DatamanType) error {
 	constraintArgMap, ok := Constraints[c]
 	if !ok {
 		return fmt.Errorf("Unknown constraint")
@@ -126,13 +127,13 @@ func (c ConstraintType) NormalizeArgs(args map[string]interface{}, inputType Dat
 }
 
 // Return "validationFunc, error"
-func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType DatamanType) (ConstraintFunc, error) {
+func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType datamantype.DatamanType) (ConstraintFunc, error) {
 	c.NormalizeArgs(args, inputType)
 
 	switch c {
 	case LessThan:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) < args["value"].(int)
 			}, nil
@@ -141,7 +142,7 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		}
 	case LessThanEqual:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) <= args["value"].(int)
 			}, nil
@@ -150,7 +151,7 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		}
 	case GreaterThan:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) > args["value"].(int)
 			}, nil
@@ -159,7 +160,7 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		}
 	case GreaterThanEqual:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) >= args["value"].(int)
 			}, nil
@@ -168,11 +169,11 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		}
 	case Equal:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) == args["value"].(int)
 			}, nil
-		case Text, String:
+		case datamantype.Text, datamantype.String:
 			return func(v interface{}) bool {
 				return v.(string) == args["value"].(string)
 			}, nil
@@ -181,11 +182,11 @@ func (c ConstraintType) GetConstraintFunc(args map[string]interface{}, inputType
 		}
 	case NotEqual:
 		switch inputType {
-		case Int:
+		case datamantype.Int:
 			return func(v interface{}) bool {
 				return v.(int) != args["value"].(int)
 			}, nil
-		case Text, String:
+		case datamantype.Text, datamantype.String:
 			return func(v interface{}) bool {
 				return v.(string) != args["value"].(string)
 			}, nil

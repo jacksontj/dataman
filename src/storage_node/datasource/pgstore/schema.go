@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -14,19 +15,19 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	fieldStr := ""
 
 	switch field.FieldType.DatamanType {
-	case metadata.JSON:
+	case datamantype.JSON:
 		fieldStr += "\"" + field.Name + "\" jsonb"
-	case metadata.Document:
+	case datamantype.Document:
 		fieldStr += "\"" + field.Name + "\" jsonb"
-	case metadata.String:
+	case datamantype.String:
 		fieldStr += "\"" + field.Name + "\" character varying(255)"
-	case metadata.Text:
+	case datamantype.Text:
 		fieldStr += "\"" + field.Name + "\" text"
-	case metadata.Int:
+	case datamantype.Int:
 		fieldStr += "\"" + field.Name + "\" int"
-	case metadata.Bool:
+	case datamantype.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
-	case metadata.DateTime:
+	case datamantype.DateTime:
 		fieldStr += "\"" + field.Name + "\" timestamp without time zone"
 	default:
 		return "", fmt.Errorf("Unknown field type: %v", field.Type)
@@ -307,29 +308,29 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 	fields := make([]*metadata.CollectionField, len(fieldRecords))
 	for i, fieldEntry := range fieldRecords {
-		var datamanType metadata.DatamanType
+		var datamanType datamantype.DatamanType
 		switch fieldEntry["data_type"] {
 		// TODO: add to dataman types
 		case "int4range", "bigint", "real", "double precision", "integer", "smallint":
-			datamanType = metadata.Int
+			datamanType = datamantype.Int
 		case "character varying":
-			datamanType = metadata.String
+			datamanType = datamantype.String
 		case "json", "jsonb":
-			datamanType = metadata.JSON
+			datamanType = datamantype.JSON
 		case "boolean":
-			datamanType = metadata.Bool
+			datamanType = datamantype.Bool
 		case "text":
-			datamanType = metadata.Text
+			datamanType = datamantype.Text
 		// TODO: add to dataman types
 		case "tsrange":
 			fallthrough
 		case "timestamp without time zone":
-			datamanType = metadata.DateTime
+			datamanType = datamantype.DateTime
 		default:
 			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
 		}
 
-		fieldType := datamanType.ToFieldType()
+		fieldType := metadata.DatamanTypeToFieldType(datamanType)
 
 		// TODO: generate the datasource_field_type from the size etc.
 		field := &metadata.CollectionField{
@@ -548,7 +549,7 @@ func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metad
 			if !ok {
 				return fmt.Errorf("Index %s on unknown field %s", index.Name, fieldName)
 			}
-			if field.FieldType.DatamanType != metadata.Document {
+			if field.FieldType.DatamanType != datamantype.Document {
 				return fmt.Errorf("Nested index %s on a non-document field %s", index.Name, fieldName)
 			}
 			indexAddQuery += "(" + fieldParts[0]

@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jacksontj/dataman/src/router_node/metadata"
-	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/segmentio/ksuid"
 )
 
@@ -16,19 +15,16 @@ func (u *KSUID) Init(kwargs map[string]interface{}, instanceArgs map[string]inte
 	return nil
 }
 
-func (u *KSUID) SupportedTypes() []storagenodemetadata.DatamanType {
-	return []storagenodemetadata.DatamanType{storagenodemetadata.String, storagenodemetadata.Text}
+func (u *KSUID) SupportedTypes() []datamantype.DatamanType {
+	return []datamantype.DatamanType{datamantype.String, datamantype.Text}
 }
 
 func (u *KSUID) GetDefault(ctx context.Context,
-	defaultType storagenodemetadata.DatamanType,
-	db *metadata.Database,
-	collection *metadata.Collection,
-	field *storagenodemetadata.CollectionField,
+	defaultType datamantype.DatamanType,
 	record map[string]interface{}) (interface{}, error) {
 
 	switch defaultType {
-	case storagenodemetadata.String, storagenodemetadata.Text:
+	case datamantype.String, datamantype.Text:
 		val, err := ksuid.NewRandom()
 		if err != nil {
 			return val, err

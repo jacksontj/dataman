@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
@@ -133,12 +134,12 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 			return result
 		}
 		switch field.FieldType.DatamanType {
-		case metadata.Document:
+		case datamantype.Document:
 			// TODO: recurse and add many
 			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
 			}
-		case metadata.Text, metadata.String:
+		case datamantype.Text, datamantype.String:
 			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
 		default:
 			// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
@@ -209,7 +210,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 			fieldValues = append(fieldValues, "null")
 		default:
 			switch field.FieldType.DatamanType {
-			case metadata.JSON, metadata.Document:
+			case datamantype.JSON, datamantype.Document:
 				// TODO: make util method?
 				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
 				buffer := &bytes.Buffer{}
@@ -223,7 +224,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
-			case metadata.Text, metadata.String:
+			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
 				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
@@ -278,7 +279,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 			fieldValues = append(fieldValues, "null")
 		default:
 			switch field.FieldType.DatamanType {
-			case metadata.JSON, metadata.Document:
+			case datamantype.JSON, datamantype.Document:
 				// TODO: make util method?
 				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
 				buffer := &bytes.Buffer{}
@@ -293,7 +294,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
-			case metadata.Text, metadata.String:
+			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
 				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
@@ -370,12 +371,12 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 			return result
 		}
 		switch field.FieldType.DatamanType {
-		case metadata.Document:
+		case datamantype.Document:
 			// TODO: recurse and add many
 			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
 			}
-		case metadata.Text, metadata.String:
+		case datamantype.Text, datamantype.String:
 			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
 		default:
 			// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
@@ -457,11 +458,11 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 		for k, v := range row {
 			if field, ok := collection.Fields[k]; ok && v != nil {
 				switch field.FieldType.DatamanType {
-				case metadata.JSON:
+				case datamantype.JSON:
 					var tmp interface{}
 					json.Unmarshal(v.([]byte), &tmp)
 					row[k] = tmp
-				case metadata.Document:
+				case datamantype.Document:
 					var tmp map[string]interface{}
 					json.Unmarshal(v.([]byte), &tmp)
 					row[k] = tmp
@@ -555,12 +556,12 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 				whereParts = append(whereParts, fmt.Sprintf(" \"%s\" %s NULL", fieldName, comparator))
 			default:
 				switch field.FieldType.DatamanType {
-				case metadata.Document:
+				case datamantype.Document:
 					// TODO: recurse and add many
 					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 						whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'%s'%v'", fieldName, innerName, filterTypeToComparator(filterType), innerValue))
 					}
-				case metadata.Text, metadata.String:
+				case datamantype.Text, datamantype.String:
 					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
 				default:
 					// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so

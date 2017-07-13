@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+
+	"github.com/jacksontj/dataman/src/datamantype"
 )
 
 /*
@@ -92,10 +94,18 @@ func initFieldTypeRegistry() {
 	}
 }
 
+// TODO: have this register the type? Right now this assumes this is in-sync with field_type_internal.go (which is bad to do)
+func DatamanTypeToFieldType(f datamantype.DatamanType) *FieldType {
+	return &FieldType{
+		Name:        "_" + string(f),
+		DatamanType: f,
+	}
+}
+
 type FieldType struct {
-	Name        string                `json:"name"`
-	DatamanType DatamanType           `json:"dataman_type"`
-	Constraints []*ConstraintInstance `json:"constraints,omitempty"`
+	Name        string                  `json:"name"`
+	DatamanType datamantype.DatamanType `json:"dataman_type"`
+	Constraints []*ConstraintInstance   `json:"constraints,omitempty"`
 }
 
 // Validate and normalize

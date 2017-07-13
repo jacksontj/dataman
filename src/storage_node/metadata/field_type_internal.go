@@ -1,34 +1,36 @@
 package metadata
 
+import "github.com/jacksontj/dataman/src/datamantype"
+
 func listInternalFieldTypes() []*FieldType {
 	return []*FieldType{
 		&FieldType{
 			Name:        "_bool",
-			DatamanType: Bool,
+			DatamanType: datamantype.Bool,
 		},
 		&FieldType{
 			Name:        "_datetime",
-			DatamanType: DateTime,
+			DatamanType: datamantype.DateTime,
 		},
 		&FieldType{
 			Name:        "_document",
-			DatamanType: Document,
+			DatamanType: datamantype.Document,
 		},
 		&FieldType{
 			Name:        "_json",
-			DatamanType: JSON,
+			DatamanType: datamantype.JSON,
 		},
 		&FieldType{
 			Name:        "_int",
-			DatamanType: Int,
+			DatamanType: datamantype.Int,
 		},
 		&FieldType{
 			Name:        "_string",
-			DatamanType: String,
+			DatamanType: datamantype.String,
 		},
 		&FieldType{
 			Name:        "_text",
-			DatamanType: Text,
+			DatamanType: datamantype.Text,
 		},
 	}
 }

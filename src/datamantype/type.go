@@ -1,4 +1,4 @@
-package metadata
+package datamantype
 
 import (
 	"encoding/json"
@@ -28,14 +28,6 @@ const (
 	DateTime = "datetime"
 	JSON     = "json"
 )
-
-// TODO: have this register the type? Right now this assumes this is in-sync with field_type_internal.go (which is bad to do)
-func (f DatamanType) ToFieldType() *FieldType {
-	return &FieldType{
-		Name:        "_" + string(f),
-		DatamanType: f,
-	}
-}
 
 // Normalize the given interface into what we want/expect
 func (f DatamanType) Normalize(val interface{}) (interface{}, error) {

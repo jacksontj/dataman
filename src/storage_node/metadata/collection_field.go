@@ -1,7 +1,11 @@
 package metadata
 
-import "encoding/json"
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/jacksontj/dataman/src/datamantype"
+)
 
 type ValidationResult struct {
 	Error   string                       `json:"error,omitempty"`
@@ -105,7 +109,7 @@ func (f *CollectionField) Normalize(val interface{}) (interface{}, *ValidationRe
 	}
 
 	if f.SubFields != nil {
-		if f.FieldType.DatamanType != Document {
+		if f.FieldType.DatamanType != datamantype.Document {
 			result.Error = fmt.Sprintf("Subfields on a non-document type")
 			return normalizedVal, result
 		}

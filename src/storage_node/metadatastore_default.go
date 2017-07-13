@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -54,7 +55,7 @@ func (m *DefaultMetadataStore) GetMeta() (*metadata.Meta, error) {
 	for _, fieldTypeRecord := range fieldTypeResult.Return {
 		fieldType := &metadata.FieldType{
 			Name:        fieldTypeRecord["name"].(string),
-			DatamanType: metadata.DatamanType(fieldTypeRecord["dataman_type"].(string)),
+			DatamanType: datamantype.DatamanType(fieldTypeRecord["dataman_type"].(string)),
 		}
 
 		fieldTypeConstraintResult := m.Store.Filter(map[string]interface{}{

@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -984,7 +985,7 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 	existingCollectionField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name)
 	if !field.Equal(existingCollectionField) {
 		// Special case for json & documents -- as they are the "same" from an export perspective
-		if field.FieldType.DatamanType == metadata.Document && existingCollectionField.FieldType.DatamanType == metadata.JSON {
+		if field.FieldType.DatamanType == datamantype.Document && existingCollectionField.FieldType.DatamanType == datamantype.JSON {
 			fmt.Println("return wasn't the same, but json and document is hard")
 		} else {
 			fmt.Println("not equal")
