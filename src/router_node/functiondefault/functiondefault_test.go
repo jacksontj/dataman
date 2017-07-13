@@ -9,9 +9,8 @@ import (
 )
 
 type functionDefaultTestCase struct {
-	fdName       string
-	globalArgs   map[string]interface{}
-	instanceArgs map[string]interface{}
+	fdName string
+	args   map[string]interface{}
 }
 
 var functionDefaultTestCases []*functionDefaultTestCase
@@ -50,7 +49,7 @@ func TestFunctionDefault(t *testing.T) {
 	for _, testCase := range functionDefaultTestCases {
 		fd := FunctionDefaultType(testCase.fdName).Get()
 
-		if err := fd.Init(testCase.globalArgs, testCase.instanceArgs); err != nil {
+		if err := fd.Init(testCase.args); err != nil {
 			t.Fatalf("Error: %v", err)
 		}
 		// For each case, run something

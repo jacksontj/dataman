@@ -94,6 +94,11 @@ const schemaJson string = `
                   "field_type": "_string",
                   "provision_state": 3
                 },
+                "function_default_args": {
+                  "name": "function_default_args",
+                  "field_type": "_json",
+                  "provision_state": 3
+                },
                 "name": {
                   "name": "name",
                   "field_type": "_string",
@@ -1230,35 +1235,6 @@ const schemaJson string = `
                   ],
                   "unique": true,
                   "primary": true,
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
-            },
-            "sequence": {
-              "name": "sequence",
-              "fields": {
-                "last_id": {
-                  "name": "last_id",
-                  "field_type": "_int",
-                  "not_null": true,
-                  "default": 0,
-                  "provision_state": 3
-                },
-                "name": {
-                  "name": "name",
-                  "field_type": "_string",
-                  "not_null": true,
-                  "provision_state": 3
-                }
-              },
-              "indexes": {
-                "sequence_name_idx": {
-                  "name": "sequence_name_idx",
-                  "fields": [
-                    "name"
-                  ],
-                  "unique": true,
                   "provision_state": 3
                 }
               },

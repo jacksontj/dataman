@@ -12,7 +12,7 @@ import (
 // Implementations
 type UUID4 struct{}
 
-func (u *UUID4) Init(kwargs map[string]interface{}, instanceArgs map[string]interface{}) error {
+func (u *UUID4) Init(kwargs map[string]interface{}) error {
 	return nil
 }
 

@@ -557,7 +557,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				// this is an insert, and as such we need to run *all* the function_default
 				if missingPKeyField := collection.GetFieldByName(fieldName); missingPKeyField != nil && missingPKeyField.FunctionDefault != nil {
 					if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
-						return &query.Result{Error: "Error enforcing function_default"}
+						return &query.Result{Error: fmt.Sprintf("Error enforcing function_default: %v", err)}
 					}
 					break
 				} else {
@@ -608,7 +608,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		// this is because function_default fields will commonly be used in shardKey
 		// so we need to have it set before we do the sharding/hashing
 		if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
-			return &query.Result{Error: "Error enforcing function_default"}
+			return &query.Result{Error: fmt.Sprintf("Error enforcing function_default: %v", err)}
 		}
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))

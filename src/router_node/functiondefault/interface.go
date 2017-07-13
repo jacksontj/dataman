@@ -8,7 +8,7 @@ import (
 
 type FunctionDefault interface {
 	// Take any number of arguments from "kwargs"
-	Init(globalArgs map[string]interface{}, instanceArgs map[string]interface{}) error
+	Init(args map[string]interface{}) error
 
 	// Return a list of supported types
 	SupportedTypes() []datamantype.DatamanType

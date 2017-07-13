@@ -11,7 +11,7 @@ import (
 // Implementations
 type Random struct{}
 
-func (u *Random) Init(kwargs map[string]interface{}, instanceArgs map[string]interface{}) error {
+func (u *Random) Init(kwargs map[string]interface{}) error {
 	return nil
 }
 

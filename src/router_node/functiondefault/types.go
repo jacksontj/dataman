@@ -3,9 +3,10 @@ package functiondefault
 type FunctionDefaultType string
 
 const (
-	UUID4Type  FunctionDefaultType = "uuid4"
-	RandomType                     = "random"
-	KSUIDType                      = "ksuid"
+	UUID4Type    FunctionDefaultType = "uuid4"
+	RandomType                       = "random"
+	KSUIDType                        = "ksuid"
+	SequenceType                     = "sequence"
 )
 
 func (s FunctionDefaultType) Get() FunctionDefault {
@@ -16,6 +17,8 @@ func (s FunctionDefaultType) Get() FunctionDefault {
 		return &Random{}
 	case KSUIDType:
 		return &KSUID{}
+	case SequenceType:
+		return &Sequence{}
 	default:
 		return nil
 	}

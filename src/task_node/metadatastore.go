@@ -769,6 +769,9 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		if functionDefault, ok := collectionFieldRecord["function_default"]; ok && functionDefault != nil {
 			field.FunctionDefaultType = functiondefault.FunctionDefaultType(functionDefault.(string))
 			field.FunctionDefault = field.FunctionDefaultType.Get()
+			if functionDefaultArgs, ok := collectionFieldRecord["function_default_args"]; ok && functionDefaultArgs != nil {
+				field.FunctionDefaultArgs = functionDefaultArgs.(map[string]interface{})
+			}
 		}
 
 		// If we have a parent, mark it down for now
@@ -2581,6 +2584,9 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	}
 	if field.FunctionDefault != nil {
 		fieldRecord["function_default"] = field.FunctionDefaultType
+	}
+	if field.FunctionDefaultArgs != nil {
+		fieldRecord["function_default_args"] = field.FunctionDefaultArgs
 	}
 	if field.ID != 0 {
 		fieldRecord["_id"] = field.ID

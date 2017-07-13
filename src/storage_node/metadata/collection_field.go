@@ -59,6 +59,7 @@ type CollectionField struct {
 	Default             interface{}                         `json:"default,omitempty"`
 	FunctionDefaultType functiondefault.FunctionDefaultType `json:"function_default,omitempty"`
 	FunctionDefault     functiondefault.FunctionDefault     `json:"-"`
+	FunctionDefaultArgs map[string]interface{}              `json:"function_default_args,omitempty"`
 
 	// Optional subfields
 	SubFields map[string]*CollectionField `json:"subfields,omitempty"`
@@ -82,6 +83,12 @@ func (f *CollectionField) UnmarshalJSON(data []byte) error {
 
 	f.FieldType = FieldTypeRegistry.Get(f.Type)
 	f.FunctionDefault = f.FunctionDefaultType.Get()
+	if f.FunctionDefault != nil {
+		err := f.FunctionDefault.Init(f.FunctionDefaultArgs)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -11,7 +11,7 @@ import (
 // Implementations
 type KSUID struct{}
 
-func (u *KSUID) Init(kwargs map[string]interface{}, instanceArgs map[string]interface{}) error {
+func (u *KSUID) Init(kwargs map[string]interface{}) error {
 	return nil
 }
 

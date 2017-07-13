@@ -91,6 +91,8 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 		if f.FunctionDefault != nil {
 			if c.functionDefaultFields == nil {
 				c.functionDefaultFields = map[string]*storagenodemetadata.CollectionField{f.FullName(): f}
+			} else {
+				c.functionDefaultFields[f.FullName()] = f
 			}
 			if f.SubFields != nil {
 				for _, subField := range f.SubFields {
