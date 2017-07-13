@@ -1295,17 +1295,6 @@ const schemaJson string = `
                 }
               },
               "provision_state": 3
-            },
-            "zzz_test": {
-              "name": "zzz_test",
-              "fields": {
-                "test": {
-                  "name": "test",
-                  "field_type": "_json",
-                  "provision_state": 3
-                }
-              },
-              "provision_state": 3
             }
           },
           "provision_state": 3

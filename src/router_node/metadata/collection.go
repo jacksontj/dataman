@@ -81,6 +81,11 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 			}
 		}
 	}
+
+	if c.PrimaryIndex == nil {
+		return fmt.Errorf("Collection %s missing primary index", c.Name)
+	}
+
 	var findFunctionDefaultField func(*storagenodemetadata.CollectionField)
 	findFunctionDefaultField = func(f *storagenodemetadata.CollectionField) {
 		if f.FunctionDefault != nil {
