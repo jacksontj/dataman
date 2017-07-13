@@ -233,7 +233,7 @@ class NewThreadHandler(BaseHandler):
             #TODO: set error code
             self.write(threads['error'].replace('\n', '<br>'))
         else:
-            self.redirect(self.get_argument("next"))
+            self.redirect("/threads/"+threads['return'][0]['ksuid'])
 
 
 class ThreadHandler(BaseHandler):
