@@ -240,11 +240,15 @@ class ThreadHandler(BaseHandler):
     @tornado.web.authenticated
     @tornado.gen.coroutine
     def get(self, thread_id):
-        threads = yield dataman.get(schema.DBNAME, 'thread', {"_id": int(thread_id)})
+        threads = yield dataman.get(schema.DBNAME, 'thread', {"ksuid": thread_id})
         if not threads:
             self.redirect("/")
         else:
-            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_id': ['=', thread_id]}, sort=['data.created', '_id'])
+            messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_ksuid': ['=', thread_id]}, sort=['ksuid'])
+            try:
+                print messages[-1]
+            except:
+                pass
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
@@ -252,12 +256,13 @@ class ThreadHandler(BaseHandler):
     def post(self, thread_id):
         message = {
             'content': self.get_argument('body'),
-            'thread_id': thread_id,
+            'thread_ksuid': thread_id,
             'created': int(time.time()),
             'created_by': self.current_user,
         }
 
         message_ret = yield dataman.insert(schema.DBNAME, 'message', {'data': message})
+        print message_ret
         if 'error' in message_ret:
             #TODO: set error code
             self.write(message_ret['error'].replace('\n', '<br>'))
@@ -270,7 +275,7 @@ class DeleteThreadHandler(BaseHandler):
     @tornado.gen.coroutine
     def get(self, thread_id):
         # TODO: delete all messages for the thread
-        yield dataman.delete(schema.DBNAME, 'thread', {"_id": int(thread_id)}, filter={'data.created_by': ['=', self.current_user]})
+        yield dataman.delete(schema.DBNAME, 'thread', {"ksuid": thread_id}, filter={'data.created_by': ['=', self.current_user]})
         self.redirect("/")
 
 

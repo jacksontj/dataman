@@ -28,7 +28,7 @@
       {% for thread in threads %}
         <tr>
           <td>
-            <a href="/threads/{{thread['_id']}}">{{thread['data']["title"]}}</a>
+            <a href="/threads/{{thread['ksuid']}}">{{thread['data']["title"]}}</a>
           </td>
         </tr>
       {% end %}

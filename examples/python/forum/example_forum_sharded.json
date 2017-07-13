@@ -4,25 +4,23 @@
 		"message": {
 			"name": "message",
 			"fields": {
-                "_id": {
-                    "name": "_id",
-                    "field_type": "_int",
-                    "not_null": true
+                "ksuid": {
+                    "name": "ksuid",
+                    "not_null": true,
+                    "field_type": "_string",
+                    "function_default": "ksuid"
                 },
 				"data": {
 					"subfields": {
 						"content": {
 							"not_null": true,
 							"field_type": "_string",
-							"name": "content",
-							"type_args": {
-								"size": 255
-							}
+							"name": "content"
 						},
-						"thread_id": {
+						"thread_ksuid": {
 							"not_null": true,
-							"field_type": "_int",
-							"name": "thread_id",
+							"field_type": "_string",
+							"name": "thread_ksuid",
 							"relation": {
 								"collection": "thread",
 								"field": "_id"
@@ -31,10 +29,7 @@
 						"created_by": {
 							"not_null": true,
 							"field_type": "_string",
-							"name": "created_by",
-							"type_args": {
-								"size": 255
-							}
+							"name": "created_by"
 						},
 						"created": {
 							"not_null": true,
@@ -47,9 +42,9 @@
 				}
 			},
 			"keyspaces": [{
-				"hash_method": "cast",
+				"hash_method": "sha256",
 				"shard_key": [
-					"_id"
+					"ksuid"
 				],
 				"partitions": [{
 					"start_id": 1,
@@ -64,10 +59,10 @@
 					"fields": ["data.created"],
 					"name": "created"
 				},
-				"_id": {
-				    "fields": ["_id"],
+				"ksuid": {
+				    "fields": ["ksuid"],
 				    "unique": true,
-				    "name": "_id",
+				    "name": "ksuid",
 				    "primary": true
 				}
 			}
@@ -78,10 +73,7 @@
 				"username": {
 					"not_null": true,
 					"field_type": "_string",
-					"name": "username",
-					"type_args": {
-						"size": 128
-					}
+					"name": "username"
 				}
 			},
 			"keyspaces": [{
@@ -109,10 +101,11 @@
 		"thread": {
 			"name": "thread",
 			"fields": {
-                "_id": {
-                    "name": "_id",
-                    "field_type": "_int",
-                    "not_null": true
+                "ksuid": {
+                    "name": "ksuid",
+                    "not_null": true,
+                    "field_type": "_string",
+                    "function_default": "ksuid"
                 },
 				"data": {
 					"subfields": {
@@ -124,18 +117,12 @@
 						"created_by": {
 							"not_null": true,
 							"field_type": "_string",
-							"name": "created_by",
-							"type_args": {
-								"size": 255
-							}
+							"name": "created_by"
 						},
 						"title": {
 							"not_null": true,
 							"field_type": "_string",
-							"name": "title",
-							"type_args": {
-								"size": 255
-							}
+							"name": "title"
 						}
 					},
 					"field_type": "_document",
@@ -143,9 +130,9 @@
 				}
 			},
 			"keyspaces": [{
-				"hash_method": "cast",
+				"hash_method": "sha256",
 				"shard_key": [
-					"_id"
+					"ksuid"
 				],
 				"partitions": [{
 					"start_id": 1,
@@ -165,10 +152,10 @@
 					"fields": ["data.created"],
 					"name": "created"
 				},
-				"_id": {
-				    "fields": ["_id"],
+				"ksuid": {
+				    "fields": ["ksuid"],
 				    "unique": true,
-				    "name": "_id",
+				    "name": "ksuid",
 				    "primary": true
 				}
 			}
