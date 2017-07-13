@@ -18,6 +18,7 @@ import (
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
 )
 
 // This node is responsible for routing requests to the appropriate storage node
@@ -443,7 +444,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 				hasShardKey = false
 				break
 			}
-			if filterComparator == "=" {
+			if filterComparator == filter.Equal {
 				shardKeys[i] = filterComparatorRaw[1]
 			} else {
 				hasShardKey = false
@@ -662,7 +663,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				break
 			}
 			filterTyped := tmp.([]interface{})
-			if filterTyped[0] == "=" {
+			if filterTyped[0] == filter.Equal {
 				shardKeys[i] = filterTyped[1]
 			} else {
 				hasShardKey = false
