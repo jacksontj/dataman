@@ -340,8 +340,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 				field.Type = field.FieldType.Name
 				field.NotNull = false
 			} else {
-				// TODO: log a warning if we don't understand? Some fields (internal fields like _id) have magic
-				// next sequence things-- which we don't want to be warned about
+				// TODO: log a warning if we don't understand?
 				defaultVal, err := datamanType.Normalize(fieldEntry["column_default"])
 				if err == nil {
 					field.Default = defaultVal
