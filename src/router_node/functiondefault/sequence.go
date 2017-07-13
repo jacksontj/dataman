@@ -10,6 +10,20 @@ import (
 	"github.com/jacksontj/dataman/src/datamantype"
 )
 
+/*
+Example field using this sequence function
+	"sequence": {
+		"name": "sequence",
+		"field_type": "_int",
+		"function_default": "sequence",
+		"function_default_args": {
+			"name": "unique_sequencename",
+			"url": "http://127.0.0.1:8079/v1/sequence/"
+		}
+	},
+
+*/
+
 // TODO: add config for timeouts, batching, etc.
 type sequenceConfig struct {
 	// TODO: we probably want some mechanism to make sure people aren't colliding on sequences (at least at some level -- db/perms/etc.)
