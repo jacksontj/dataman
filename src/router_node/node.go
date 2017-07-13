@@ -610,6 +610,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
 			return &query.Result{Error: fmt.Sprintf("Error enforcing function_default: %v", err)}
 		}
+		// TODO: enforce other collection-level validations (fields, etc.)
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
 		for i, shardKey := range keyspace.ShardKeySplit {
