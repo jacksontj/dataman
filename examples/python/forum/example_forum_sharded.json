@@ -4,12 +4,12 @@
 		"message": {
 			"name": "message",
 			"fields": {
-                "ksuid": {
-                    "name": "ksuid",
-                    "not_null": true,
-                    "field_type": "_string",
-                    "function_default": "ksuid"
-                },
+				"ksuid": {
+					"name": "ksuid",
+					"not_null": true,
+					"field_type": "_string",
+					"function_default": "ksuid"
+				},
 				"data": {
 					"subfields": {
 						"content": {
