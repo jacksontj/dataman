@@ -25,6 +25,8 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		fieldStr += "\"" + field.Name + "\" text"
 	case datamantype.Int:
 		fieldStr += "\"" + field.Name + "\" int"
+	case datamantype.Serial:
+		fieldStr += "\"" + field.Name + "\" serial"
 	case datamantype.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
 	case datamantype.DateTime:
@@ -252,27 +254,13 @@ func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *m
 	return nil
 }
 
-const addSequenceTemplate = `CREATE SEQUENCE IF NOT EXISTS "%s" INCREMENT BY %d RESTART WITH %d`
-
 // TODO: some light ORM stuff would be nice here-- to handle the schema migrations
 // Template for creating tables
-const addTableTemplate = `CREATE TABLE "%s".%s
-(
-  _id int4 NOT NULL DEFAULT nextval('"%s"') PRIMARY KEY
-)
-`
+const addTableTemplate = `CREATE TABLE "%s".%s()`
 
 // Collection Changes
 func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
-	// Create the sequence
-	// TODO: method for this
-	sequenceName := fmt.Sprintf("%s_%s_seq", shardInstance.Name, collection.Name)
-	sequenceAddQuery := fmt.Sprintf(addSequenceTemplate, sequenceName, shardInstance.Count, shardInstance.Instance)
-	if _, err := DoQuery(s.getDB(db.Name), sequenceAddQuery); err != nil {
-		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
-	}
-
-	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name, sequenceName)
+	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name)
 	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
@@ -343,11 +331,21 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 		// If there is a default defined, lets attempt to load it (assuming it is a type we understand)
 		if fieldEntry["column_default"] != nil {
-			// TODO: log a warning if we don't understand? Some fields (internal fields like _id) have magic
-			// next sequence things-- which we don't want to be warned about
-			defaultVal, err := datamanType.Normalize(fieldEntry["column_default"])
-			if err == nil {
-				field.Default = defaultVal
+			if field.Name == "s" {
+				fmt.Println(fieldEntry)
+			}
+			stringDefault, ok := fieldEntry["column_default"].(string)
+			if ok && strings.HasPrefix(stringDefault, "nextval('") {
+				field.FieldType = metadata.DatamanTypeToFieldType(datamantype.Serial)
+				field.Type = field.FieldType.Name
+				field.NotNull = false
+			} else {
+				// TODO: log a warning if we don't understand? Some fields (internal fields like _id) have magic
+				// next sequence things-- which we don't want to be warned about
+				defaultVal, err := datamanType.Normalize(fieldEntry["column_default"])
+				if err == nil {
+					field.Default = defaultVal
+				}
 			}
 		}
 

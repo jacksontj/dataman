@@ -1,8 +1,11 @@
 package query
 
 import (
+	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/jacksontj/dataman/src/router_node/sharding"
 )
 
 // Encapsulate a result from the datastore
@@ -56,9 +59,14 @@ func (r *Result) Project(fields []string) {
 }
 
 // Merge multiple results together
-func MergeResult(numResults int, results chan *Result) *Result {
+func MergeResult(pkeyFields []string, numResults int, results chan *Result) *Result {
+	pkeyFieldParts := make([][]string, len(pkeyFields))
+	for i, pkeyField := range pkeyFields {
+		pkeyFieldParts[i] = strings.Split(pkeyField, ".")
+	}
+
 	// We want to make sure we don't duplicate return entries
-	ids := make(map[float64]struct{})
+	ids := make(map[uint64]struct{})
 
 	combinedResult := &Result{
 		Return: make([]map[string]interface{}, 0),
@@ -76,8 +84,22 @@ func MergeResult(numResults int, results chan *Result) *Result {
 		}
 
 		for _, resultReturn := range result.Return {
-			if _, ok := ids[resultReturn["_id"].(float64)]; !ok {
-				ids[resultReturn["_id"].(float64)] = struct{}{}
+
+			pkeyFields := make([]interface{}, len(pkeyFieldParts))
+			var ok bool
+			for i, pkeyField := range pkeyFieldParts {
+				pkeyFields[i], ok = GetValue(resultReturn, pkeyField)
+				if !ok {
+					// TODO: something else?
+					panic("Missing pkey in response!!!")
+				}
+			}
+			pkey, err := (sharding.HashMethod(sharding.SHA256).Get())(sharding.CombineKeys(pkeyFields))
+			if err != nil {
+				panic(fmt.Sprintf("MergeResult doesn't know how to hash pkey: %v", err))
+			}
+			if _, ok := ids[pkey]; !ok {
+				ids[pkey] = struct{}{}
 				combinedResult.Return = append(combinedResult.Return, resultReturn)
 			}
 		}

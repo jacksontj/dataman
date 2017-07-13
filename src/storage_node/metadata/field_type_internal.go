@@ -25,6 +25,10 @@ func listInternalFieldTypes() []*FieldType {
 			DatamanType: datamantype.Int,
 		},
 		&FieldType{
+			Name:        "_serial",
+			DatamanType: datamantype.Serial,
+		},
+		&FieldType{
 			Name:        "_string",
 			DatamanType: datamantype.String,
 		},

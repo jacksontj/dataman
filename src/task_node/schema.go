@@ -16,8 +16,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "database_id": {
@@ -68,8 +67,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_id": {
@@ -147,8 +145,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "cascade_on_delete": {
@@ -204,8 +201,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_id": {
@@ -275,8 +271,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_field_id": {
@@ -327,8 +322,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_id": {
@@ -380,8 +374,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_keyspace_id": {
@@ -438,8 +431,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_keyspace_partition_id": {
@@ -490,8 +482,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "collection_field_id": {
@@ -548,8 +539,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "name": {
@@ -590,8 +580,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "database_id": {
@@ -668,8 +657,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "name": {
@@ -704,8 +692,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "config_json": {
@@ -772,8 +759,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "datasource_instance_id": {
@@ -833,8 +819,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "name": {
@@ -875,8 +860,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "datastore_id": {
@@ -942,8 +926,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "datasource_instance_id": {
@@ -1004,8 +987,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "database_id": {
@@ -1066,8 +1048,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "datastore_shard_id": {
@@ -1124,8 +1105,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "dataman_type": {
@@ -1164,6 +1144,11 @@ const schemaJson string = `
             "field_type_constraint": {
               "name": "field_type_constraint",
               "fields": {
+                "_id": {
+                  "name": "_id",
+                  "field_type": "_serial",
+                  "provision_state": 3
+                },
                 "args": {
                   "name": "args",
                   "field_type": "_json",
@@ -1172,12 +1157,6 @@ const schemaJson string = `
                 "constraint": {
                   "name": "constraint",
                   "field_type": "_string",
-                  "not_null": true,
-                  "provision_state": 3
-                },
-                "f": {
-                  "name": "f",
-                  "field_type": "_int",
                   "not_null": true,
                   "provision_state": 3
                 },
@@ -1209,7 +1188,7 @@ const schemaJson string = `
                 "field_type_constraint_pkey": {
                   "name": "field_type_constraint_pkey",
                   "fields": [
-                    "f"
+                    "_id"
                   ],
                   "unique": true,
                   "primary": true,
@@ -1261,8 +1240,7 @@ const schemaJson string = `
               "fields": {
                 "_id": {
                   "name": "_id",
-                  "field_type": "_int",
-                  "not_null": true,
+                  "field_type": "_serial",
                   "provision_state": 3
                 },
                 "ip": {
@@ -1356,6 +1334,10 @@ const schemaJson string = `
     "_json": {
       "name": "_json",
       "dataman_type": "json"
+    },
+    "_serial": {
+      "name": "_serial",
+      "dataman_type": "serial"
     },
     "_string": {
       "name": "_string",

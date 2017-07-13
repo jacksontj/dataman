@@ -499,7 +499,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		}
 	}
 
-	return query.MergeResult(len(vshards), vshardResults)
+	return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
 }
 
 // TODO: fix
@@ -718,7 +718,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			}
 
-			return query.MergeResult(len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
+			return query.MergeResult(collection.PrimaryIndex.Fields, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
 	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
 	// current implementation won't work. Instead of doing the get/set

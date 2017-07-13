@@ -18,6 +18,7 @@ const (
 	Document DatamanType = "document"
 	String               = "string" // max len 4096
 	Text                 = "text"
+	Serial               = "serial"
 	// We should support converting anything to an int that doesn't lose data
 	Int = "int"
 	// TODO: int64
@@ -73,7 +74,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		default:
 			return nil, fmt.Errorf("Not text")
 		}
-	case Int:
+	case Int, Serial:
 		switch typedVal := val.(type) {
 		case nil:
 			return nil, nil
