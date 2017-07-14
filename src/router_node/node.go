@@ -721,8 +721,6 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 			return query.MergeResult(collection.PrimaryIndex.Fields, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
-	// TODO: to support deletes in a sharded env-- we need to have the shard-key present, if this isn't "_id" this
-	// current implementation won't work. Instead of doing the get/set
 	case query.Delete:
 		rawPkeyRecord, ok := queryArgs["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
