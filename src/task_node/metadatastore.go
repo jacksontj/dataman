@@ -1884,8 +1884,10 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 	}
 
 	// TODO: support multiple Keyspaces
-	if err := m.EnsureExistsCollectionKeyspace(db, collection, collection.Keyspaces[0]); err != nil {
-		return err
+	if collection.Keyspaces != nil && len(collection.Keyspaces) > 0 {
+		if err := m.EnsureExistsCollectionKeyspace(db, collection, collection.Keyspaces[0]); err != nil {
+			return err
+		}
 	}
 
 	// TODO: remove diff/apply stuff? Or combine into a single "update" method and just have

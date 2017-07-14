@@ -370,7 +370,8 @@ QUERYLOOP:
 									"db":             queryArgs["db"],
 									"shard_instance": queryArgs["shard_instance"].(string),
 									"collection":     joinField.Relation.Collection,
-									"pkey":           map[string]interface{}{"_id": rawJoinValue},
+									// TODO: we need to somehow support joins to collections with compound pkeys
+									"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
 								})
 								if joinResults.Error != "" {
 									results[i].Error += "\n" + joinResults.Error
@@ -408,7 +409,8 @@ QUERYLOOP:
 										"db":             queryArgs["db"],
 										"shard_instance": queryArgs["shard_instance"].(string),
 										"collection":     joinField.Relation.Collection,
-										"pkey":           map[string]interface{}{"_id": rawJoinValue},
+										// TODO: we need to somehow support joins to collections with compound pkeys
+										"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
 									})
 									if joinResults.Error != "" {
 										results[i].Error += "\n" + joinResults.Error
@@ -936,22 +938,18 @@ func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, 
 func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	// TODO: remove this restriction? _id is a magical field which we add at the creation, only
-	// because a table must have fields
-	if field.Name != "_id" {
-		if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
-			if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
-				return fmt.Errorf("Unable to ensureExistsCollectionField as DB exists in the underlying datasource_instance but not in the metadata")
+	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
+		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
+			return fmt.Errorf("Unable to ensureExistsCollectionField as DB exists in the underlying datasource_instance but not in the metadata")
+		} else {
+			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
+				return fmt.Errorf("Unable to ensureExistsCollectionField as ShardInstance exists in the underlying datasource_instance but not in the metadata")
 			} else {
-				if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
-					return fmt.Errorf("Unable to ensureExistsCollectionField as ShardInstance exists in the underlying datasource_instance but not in the metadata")
+				if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
+					return fmt.Errorf("Unable to ensureExistsCollectionField as Collection exists in the underlying datasource_instance but not in the metadata")
 				} else {
-					if existingCollection, ok := existingShardInstance.Collections[collection.Name]; !ok {
-						return fmt.Errorf("Unable to ensureExistsCollectionField as Collection exists in the underlying datasource_instance but not in the metadata")
-					} else {
-						if _, ok := existingCollection.Fields[field.Name]; !ok {
-							return fmt.Errorf("Unable to ensureExistsCollectionField as Field exists in the underlying datasource_instance but not in the metadata")
-						}
+					if _, ok := existingCollection.Fields[field.Name]; !ok {
+						return fmt.Errorf("Unable to ensureExistsCollectionField as Field exists in the underlying datasource_instance but not in the metadata")
 					}
 				}
 			}
