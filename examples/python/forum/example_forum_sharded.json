@@ -50,7 +50,7 @@
 					"start_id": 1,
 					"shard_method": "mod",
 					"datastore_vshard_ids": [
-						6
+						7
 					]
 				}]
 			}],
@@ -85,7 +85,7 @@
 					"start_id": 1,
 					"shard_method": "mod",
 					"datastore_vshard_ids": [
-						6
+						7
 					]
 				}]
 			}],
@@ -138,7 +138,7 @@
 					"start_id": 1,
 					"shard_method": "mod",
 					"datastore_vshard_ids": [
-						6
+						7
 					]
 				}]
 			}],
