@@ -3,10 +3,13 @@ package storagenode
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/armon/go-radix"
 
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
@@ -260,10 +263,40 @@ QUERYLOOP:
 					// can potentially span *many* shards we need to determine what the failure modes will be
 					// Right now we'll support joins on sets by doing the set before we do the base set
 					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
+						// Maintain a trie of prefix -> joinField for things we join in
+						// This is to allow for multiple layers of join
+						joinRadixTree := radix.New()
+
+						// TODO: sort joinFieldList shortest -> longest
+						less := func(i, j int) bool {
+							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
+						}
+						sort.Slice(joinFieldList.([]interface{}), less)
+
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-							// Get the field we are working with
-							joinField := collection.GetField(joinFieldNameParts)
+
+							var joinField *metadata.CollectionField
+							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+								joinField = m.(*metadata.CollectionField)
+								// This joinfield is the base of the name -- lets continue the path
+								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+								if err != nil {
+									// TODO: some other non-fatal error?
+									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
+									continue
+								}
+								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
+							} else {
+								joinField = collection.GetField(joinFieldNameParts)
+								// TODO: look this up before the call
+								if joinField == nil {
+									results[i].Error = "Invalid joinField " + joinFieldName.(string)
+									continue
+								}
+								joinRadixTree.Insert(joinField.FullName()+".", joinField)
+							}
+
 							// TODO: look this up before the call
 							if joinField == nil {
 								results[i] = &query.Result{Error: "Invalid joinField " + joinFieldName.(string)}
@@ -356,28 +389,57 @@ QUERYLOOP:
 					// TODO: move to routing layer only
 					// This only works for stuff that has a shard count of 1
 					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
+
+						// Maintain a trie of prefix -> joinField for things we join in
+						// This is to allow for multiple layers of join
+						joinRadixTree := radix.New()
+
+						// TODO: sort joinFieldList shortest -> longest
+						less := func(i, j int) bool {
+							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
+						}
+						sort.Slice(joinFieldList.([]interface{}), less)
+
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-							// If there isn't a join record-- skip
-							if rawJoinValue, _ := query.GetValue(results[i].Return[0], joinFieldNameParts); rawJoinValue != nil {
-								joinField := collection.GetField(joinFieldNameParts)
+
+							var joinField *metadata.CollectionField
+							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+								joinField = m.(*metadata.CollectionField)
+								// This joinfield is the base of the name -- lets continue the path
+								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+								if err != nil {
+									// TODO: some other non-fatal error?
+									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
+									continue
+								}
+								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
+							} else {
+								joinField = collection.GetField(joinFieldNameParts)
 								// TODO: look this up before the call
 								if joinField == nil {
 									results[i].Error = "Invalid joinField " + joinFieldName.(string)
 									continue
 								}
-								joinResults := s.Store.Get(map[string]interface{}{
-									"db":             queryArgs["db"],
-									"shard_instance": queryArgs["shard_instance"].(string),
-									"collection":     joinField.Relation.Collection,
-									// TODO: we need to somehow support joins to collections with compound pkeys
-									"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
-								})
-								if joinResults.Error != "" {
-									results[i].Error += "\n" + joinResults.Error
-								}
+								joinRadixTree.Insert(joinField.FullName()+".", joinField)
+							}
 
-								query.SetValue(results[i].Return[0], joinResults.Return[0], joinFieldNameParts)
+							for j, _ := range results[i].Return {
+								// If there isn't a join record-- skip
+								if rawJoinValue, _ := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
+									joinResults := s.Store.Get(map[string]interface{}{
+										"db":             queryArgs["db"],
+										"shard_instance": queryArgs["shard_instance"].(string),
+										"collection":     joinField.Relation.Collection,
+										// TODO: we need to somehow support joins to collections with compound pkeys
+										"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
+									})
+									if joinResults.Error != "" {
+										results[i].Error += "\n" + joinResults.Error
+									}
+
+									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
+								}
 							}
 						}
 					}
@@ -394,14 +456,41 @@ QUERYLOOP:
 					// TODO: move to routing layer only
 					// This only works for stuff that has a shard count of 1
 					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
+
+						// Maintain a trie of prefix -> joinField for things we join in
+						// This is to allow for multiple layers of join
+						joinRadixTree := radix.New()
+
+						// TODO: sort joinFieldList shortest -> longest
+						less := func(i, j int) bool {
+							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
+						}
+						sort.Slice(joinFieldList.([]interface{}), less)
+
 						for _, joinFieldName := range joinFieldList.([]interface{}) {
 							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-							joinField := collection.GetField(joinFieldNameParts)
-							// TODO: look this up before the call
-							if joinField == nil {
-								results[i].Error = "Invalid joinField " + joinFieldName.(string)
-								continue
+
+							var joinField *metadata.CollectionField
+							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+								joinField = m.(*metadata.CollectionField)
+								// This joinfield is the base of the name -- lets continue the path
+								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+								if err != nil {
+									// TODO: some other non-fatal error?
+									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
+									continue
+								}
+								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
+							} else {
+								joinField = collection.GetField(joinFieldNameParts)
+								// TODO: look this up before the call
+								if joinField == nil {
+									results[i].Error = "Invalid joinField " + joinFieldName.(string)
+									continue
+								}
+								joinRadixTree.Insert(joinField.FullName()+".", joinField)
 							}
+
 							for j, _ := range results[i].Return {
 								// If there isn't a join record-- skip
 								if rawJoinValue, _ := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
