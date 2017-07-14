@@ -12,6 +12,7 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
 	"github.com/rcrowley/go-metrics"
 )
 
@@ -301,19 +302,35 @@ QUERYLOOP:
 						}
 
 					}
-					// TODO: cleanup this validation of records -- we really should just split this into insert vs update methods
-					// this is a hack to unblock integrations
-					if _, ok := queryArgs["record"].(map[string]interface{})["_id"]; ok {
-						if validationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
-							results[i] = &query.Result{ValidationError: validationResultMap}
-							continue QUERYLOOP
-						}
-					} else {
-						if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
-							results[i] = &query.Result{ValidationError: validationResultMap}
+					// We need to do some validation here. Since this is an upsert -- the given
+					// item could be
+					//		1. valid as an insert or an update
+					//		3. valid as only an update
+					//		4. valid as NOTHING
+					// Before we pass down to the lower layers we need to determine what is true-- if this is 3 we need to error,
+					// if it is 2 we need to convert the underlying call to the appropriate function-- otherwise we'll pass it
+					// down to the plugin as a regular set (assuming it is valid)
+
+					// To be a valid Set() it must be okay as either an insert or an update
+					if insertValidationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
+						// If it isn't valid as an upsert, we can see if it is valid as an update only
+						if updateValidationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
+							// If it is valid as an update, then we need to convert the set request to an update
+							queryType = query.Update
+
+							filterRecord := make(map[string]interface{})
+							for _, fieldName := range collection.PrimaryIndex.Fields {
+								fieldValue, _ := query.GetValue(queryArgs["record"].(map[string]interface{}), strings.Split(fieldName, "."))
+								filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
+							}
+							queryArgs["filter"] = filterRecord
+							// TODO: remove pkey from "record"?
+						} else {
+							results[i] = &query.Result{ValidationError: updateValidationResultMap}
 							continue QUERYLOOP
 						}
 					}
+
 				case query.Insert:
 					if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
 						results[i] = &query.Result{ValidationError: validationResultMap}

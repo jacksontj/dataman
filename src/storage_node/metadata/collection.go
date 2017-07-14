@@ -85,7 +85,6 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationRe
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
-		// We don't want to enforce internal fields
 		if v, ok := record[fieldName]; ok {
 			record[fieldName], result.Fields[fieldName] = field.Normalize(v)
 		} else {
@@ -102,11 +101,10 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationRe
 
 // TODO: underlying datasources should know how to do this-- us doing it shouldn't
 // be necessary
+// For updates we want to ensure that all fields we where given are (1) valid and (2) are ones we know about
 func (c *Collection) ValidateRecordUpdate(record map[string]interface{}) *ValidationResult {
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
-	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
-		// We don't want to enforce internal fields
 		if v, ok := record[fieldName]; ok {
 			record[fieldName], result.Fields[fieldName] = field.Normalize(v)
 		}
