@@ -164,17 +164,94 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	return result
 }
 
-// TODO: move this up to the storage node layer (since this is datasource agnostic)
+// Set() is a special-case of "upsert" where we do the upsert on the primary key
 func (s *Storage) Set(args query.QueryArgs) *query.Result {
-	record := args["record"]
-	if id, ok := record.(map[string]interface{})["_id"]; ok {
-		args["filter"] = map[string]interface{}{"_id": []interface{}{filter.Equal, id}}
-		delete(record.(map[string]interface{}), "_id")
-
-		return s.Update(args)
-	} else {
-		return s.Insert(args)
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
 	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+
+	// TODO: move to a separate method
+	recordData := args["record"].(map[string]interface{})
+	fieldHeaders := make([]string, 0, len(recordData))
+	fieldValues := make([]string, 0, len(recordData))
+
+	for fieldName, fieldValue := range recordData {
+		field, ok := collection.Fields[fieldName]
+		if !ok {
+			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)
+			return result
+		}
+
+		fieldHeaders = append(fieldHeaders, "\""+fieldName+"\"")
+		switch fieldValue.(type) {
+		case nil:
+			fieldValues = append(fieldValues, "null")
+		default:
+			switch field.FieldType.DatamanType {
+			case datamantype.JSON, datamantype.Document:
+				// TODO: make util method?
+				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+				buffer := &bytes.Buffer{}
+				encoder := json.NewEncoder(buffer)
+				encoder.SetEscapeHTML(false)
+				err := encoder.Encode(fieldValue)
+				if err != nil {
+					result.Error = err.Error()
+					return result
+				}
+				fieldJson := buffer.Bytes()
+				// TODO: switch from string escape of ' to using args from the sql driver
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
+			case datamantype.Text, datamantype.String:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+			default:
+				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
+			}
+		}
+	}
+
+	pkeyHeaders := make(map[string]struct{})
+	for _, pkeyField := range collection.PrimaryIndex.Fields {
+		pkeyHeaders[`"`+pkeyField+`"`] = struct{}{}
+	}
+
+	updatePairs := make([]string, 0, len(fieldHeaders))
+	for j, header := range fieldHeaders {
+		if _, ok := pkeyHeaders[header]; ok {
+			continue
+		}
+		updatePairs = append(updatePairs, header+"="+fieldValues[j])
+	}
+
+	upsertQuery := fmt.Sprintf(`INSERT INTO "%s".%s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s RETURNING *`,
+		args["shard_instance"].(string),
+		args["collection"],
+		strings.Join(fieldHeaders, ","),
+		strings.Join(fieldValues, ","),
+		strings.Join(collection.PrimaryIndex.Fields, ","),
+		strings.Join(updatePairs, ","),
+	)
+
+	result.Return, err = DoQuery(s.getDB(args["db"].(string)), upsertQuery)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+	s.normalizeResult(args, result)
+
+	// TODO: add metadata back to the result
+	return result
 }
 
 func (s *Storage) Insert(args query.QueryArgs) *query.Result {
