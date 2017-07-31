@@ -56,10 +56,10 @@ class DatamanClient(object):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([{'get': request}])
+            body=json.dumps({'get': request})
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
-        response = json.loads(ret.body)[0]
+        response = json.loads(ret.body)
         if 'error' in response:
             raise Exception(response['error'])
         # TODO: handle errors?
@@ -80,10 +80,10 @@ class DatamanClient(object):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([{'delete': request}])
+            body=json.dumps({'delete': request})
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
-        response = json.loads(ret.body)[0]
+        response = json.loads(ret.body)
         if 'error' in response:
             raise Exception(response['error'])
         # TODO: handle errors?
@@ -104,10 +104,10 @@ class DatamanClient(object):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([{'set': request}])
+            body=json.dumps({'set': request})
         )
         logging.debug("dataman Set took (in seconds) " + str(ret.request_time))
-        response = json.loads(ret.body)[0]
+        response = json.loads(ret.body)
         if 'error' in response:
             raise Exception(response['error'])
         # TODO: handle errors?
@@ -118,7 +118,7 @@ class DatamanClient(object):
     def filter(self, db, collection, filter=None, sort=None, sort_order=None):
         if filter is None:
             filter = {}
-        
+
         request = {
             'db': db,
             'collection': collection,
@@ -133,11 +133,10 @@ class DatamanClient(object):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([
-            {'filter': request}])
+            body=json.dumps({'filter': request})
         )
         logging.debug("dataman Filter took (in seconds) " + str(ret.request_time))
-        response = json.loads(ret.body)[0]
+        response = json.loads(ret.body)
         if 'error' in response:
             raise Exception(response['error'])
         # TODO: handle errors?
@@ -149,15 +148,15 @@ class DatamanClient(object):
         ret = yield self._client.fetch(
             self.base_url+'/v1/data/raw',
             method='POST',
-            body=json.dumps([
+            body=json.dumps(
             {'insert': {
                 'db': db,
                 'collection': collection,
                 'record': record,
-            }}])
+            }})
         )
         logging.debug("dataman Insert took (in seconds) " + str(ret.request_time))
-        response = json.loads(ret.body)[0]
+        response = json.loads(ret.body)
         if 'error' in response:
             raise Exception(response['error'])
 
