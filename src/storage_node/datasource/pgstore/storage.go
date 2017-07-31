@@ -212,7 +212,7 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 				}
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
-				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -300,7 +300,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 				}
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
-				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -370,7 +370,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 				fieldJson := buffer.Bytes()
 
 				// TODO: switch from string escape of ' to using args from the sql driver
-				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `\'`, -1)+"'")
+				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
