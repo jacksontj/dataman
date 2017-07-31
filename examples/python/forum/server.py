@@ -245,10 +245,6 @@ class ThreadHandler(BaseHandler):
             self.redirect("/")
         else:
             messages = yield dataman.filter(schema.DBNAME, 'message', {'data.thread_ksuid': ['=', thread_id]}, sort=['ksuid'])
-            try:
-                print messages[-1]
-            except:
-                pass
             self.render("thread.html", thread=threads[0], messages=messages)
 
     @tornado.web.authenticated
@@ -262,7 +258,6 @@ class ThreadHandler(BaseHandler):
         }
 
         message_ret = yield dataman.insert(schema.DBNAME, 'message', {'data': message})
-        print message_ret
         if 'error' in message_ret:
             #TODO: set error code
             self.write(message_ret['error'].replace('\n', '<br>'))
