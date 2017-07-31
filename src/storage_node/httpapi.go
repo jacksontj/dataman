@@ -484,14 +484,26 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
-	var q map[query.QueryType]query.QueryArgs
+	var qMap map[query.QueryType]query.QueryArgs
 
-	if err := json.Unmarshal(bytes, &q); err != nil {
+	if err := json.Unmarshal(bytes, &qMap); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(q)
+		// If there was more than one thing, error
+		if len(qMap) != 1 {
+			// TODO: log this better?
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Otherwise, lets create the query struct to pass down
+		var q query.Query
+		for k, v := range qMap {
+			q.Type = k
+			q.Args = v
+		}
+		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(&q)
 		// Now we need to return the results
 		if bytes, err := json.Marshal(result); err != nil {
 			// TODO: log this better?
