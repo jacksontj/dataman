@@ -224,115 +224,96 @@ func (s *RouterNode) fetchMeta() (err error) {
 	return nil
 }
 
-// Handle a batch of queries
-func (s *RouterNode) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+// Handle a single query
+func (s *RouterNode) HandleQuery(queryMap map[query.QueryType]query.QueryArgs) *query.Result {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		t := metrics.GetOrRegisterTimer("handleQueries.time", s.registry)
+		t := metrics.GetOrRegisterTimer("handleQuery.time", s.registry)
 		t.Update(end.Sub(start))
 	}()
 
-	// TODO: we should actually do these in parallel (potentially with some
-	// config of *how* parallel)
-	results := make([]*query.Result, len(queries))
-
-	// We specifically want to load this once for the batch so we don't have mixed
-	// schema information across this batch of queries
 	meta := s.GetMeta()
 
-	for i, queryMap := range queries {
-		if len(queryMap) == 1 {
-			for queryType, queryArgs := range queryMap {
-				results[i] = s.handleQuery(meta, queryType, queryArgs)
+	var result *query.Result
 
-				if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
-					// TODO: parse out before doing the query, if its wrong we can't do anything
-					// TODO: we need to support interface{} as well
-					var sortList []string
-					switch sortListTyped := sortListRaw.(type) {
-					case []interface{}:
-						sortList = make([]string, len(sortListTyped))
-						for i, sortKey := range sortListTyped {
-							sortList[i] = sortKey.(string)
-						}
-					case []string:
-						sortList = sortListTyped
-					default:
-						results[i].Error = "Unable to sort result, invalid sort args"
-						continue
-					}
+	if len(queryMap) == 1 {
+		for queryType, queryArgs := range queryMap {
 
-					sortReverseList := make([]bool, len(sortList))
-					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
-						// TODO: better, seems heavy
-						for i, _ := range sortReverseList {
-							sortReverseList[i] = false
-						}
-					} else {
-						switch sortReverseRawTyped := sortReverseRaw.(type) {
-						case bool:
-							for i, _ := range sortReverseList {
-								sortReverseList[i] = sortReverseRawTyped
-							}
-						case []bool:
-							if len(sortReverseRawTyped) != len(sortList) {
-								results[i].Error = "Unable to sort_reverse must be the same len as sort"
-								continue
-							}
-							sortReverseList = sortReverseRawTyped
-						// TODO: remove? things should have a real type...
-						case []interface{}:
-							if len(sortReverseRawTyped) != len(sortList) {
-								results[i].Error = "Unable to sort_reverse must be the same len as sort"
-								continue
-							}
-							for i, sortReverseItem := range sortReverseRawTyped {
-								// TODO: handle case where it isn't a bool!
-								sortReverseList[i] = sortReverseItem.(bool)
-							}
-						default:
-							results[i].Error = "Invalid sort_reverse value"
-						}
+			// Switch between read and write operations
+			switch queryType {
+			// Write operations
+			case query.Set, query.Insert, query.Update, query.Delete:
+				result = s.handleWrite(meta, queryType, queryArgs)
 
-					}
-					results[i].Sort(sortList, sortReverseList)
-				}
+			// Read operations
+			case query.Get, query.Filter:
+				result = s.handleRead(meta, queryType, queryArgs)
+
+				// All other operations should error
+			default:
+				return &query.Result{Error: "Unknown query type: " + string(queryType)}
 			}
-		} else {
-			results[i] = &query.Result{
-				Error: fmt.Sprintf("Exactly one QueryType supported per query: %v", queryMap),
+
+			if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
+				// TODO: parse out before doing the query, if its wrong we can't do anything
+				// TODO: we need to support interface{} as well
+				var sortList []string
+				switch sortListTyped := sortListRaw.(type) {
+				case []interface{}:
+					sortList = make([]string, len(sortListTyped))
+					for i, sortKey := range sortListTyped {
+						sortList[i] = sortKey.(string)
+					}
+				case []string:
+					sortList = sortListTyped
+				default:
+					result.Error = "Unable to sort result, invalid sort args"
+					continue
+				}
+
+				sortReverseList := make([]bool, len(sortList))
+				if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
+					// TODO: better, seems heavy
+					for i, _ := range sortReverseList {
+						sortReverseList[i] = false
+					}
+				} else {
+					switch sortReverseRawTyped := sortReverseRaw.(type) {
+					case bool:
+						for i, _ := range sortReverseList {
+							sortReverseList[i] = sortReverseRawTyped
+						}
+					case []bool:
+						if len(sortReverseRawTyped) != len(sortList) {
+							result.Error = "Unable to sort_reverse must be the same len as sort"
+							continue
+						}
+						sortReverseList = sortReverseRawTyped
+					// TODO: remove? things should have a real type...
+					case []interface{}:
+						if len(sortReverseRawTyped) != len(sortList) {
+							result.Error = "Unable to sort_reverse must be the same len as sort"
+							continue
+						}
+						for i, sortReverseItem := range sortReverseRawTyped {
+							// TODO: handle case where it isn't a bool!
+							sortReverseList[i] = sortReverseItem.(bool)
+						}
+					default:
+						result.Error = "Invalid sort_reverse value"
+					}
+
+				}
+				result.Sort(sortList, sortReverseList)
 			}
 		}
+	} else {
+		return &query.Result{
+			Error: fmt.Sprintf("Exactly one QueryType supported per query: %v", queryMap),
+		}
 	}
-	return results
-}
-
-// handle a single query
-func (s *RouterNode) handleQuery(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
-	// TODO: don't have internal duplexing count
-	start := time.Now()
-	defer func() {
-		// TODO: break this out to a per database/collection/shard number?
-		end := time.Now()
-		t := metrics.GetOrRegisterTimer(fmt.Sprintf("handleQuery.%s.time", queryType), s.registry)
-		t.Update(end.Sub(start))
-	}()
-
-	// Switch between read and write operations
-	switch queryType {
-	// Write operations
-	case query.Set, query.Insert, query.Update, query.Delete:
-		return s.handleWrite(meta, queryType, queryArgs)
-
-	// Read operations
-	case query.Get, query.Filter:
-		return s.handleRead(meta, queryType, queryArgs)
-
-		// All other operations should error
-	default:
-		return &query.Result{Error: "Unknown query type: " + string(queryType)}
-	}
+	return result
 }
 
 func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
