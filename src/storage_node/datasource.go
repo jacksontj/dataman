@@ -213,377 +213,361 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
-func (s *DatasourceInstance) HandleQuery(q map[query.QueryType]query.QueryArgs) *query.Result {
-	return s.HandleQueries([]map[query.QueryType]query.QueryArgs{q})[0]
-}
-
-// TODO: we should actually do these in parallel (potentially with some config of *how* parallel)
-func (s *DatasourceInstance) HandleQueries(queries []map[query.QueryType]query.QueryArgs) []*query.Result {
+func (s *DatasourceInstance) HandleQuery(queryMap map[query.QueryType]query.QueryArgs) *query.Result {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		t := metrics.GetOrRegisterTimer("handleQueries.time", s.registry)
+		t := metrics.GetOrRegisterTimer("handleQuery.time", s.registry)
 		t.Update(end.Sub(start))
 	}()
 
-	results := make([]*query.Result, len(queries))
+	var result *query.Result
 
 	// We specifically want to load this once for the batch so we don't have mixed
 	// schema information across this batch of queries
 	meta := s.GetActiveMeta()
 
-QUERYLOOP:
-	for i, queryMap := range queries {
-		// We only allow a single method to be defined per item
-		if len(queryMap) == 1 {
-			for queryType, queryArgs := range queryMap {
+	// We only allow a single method to be defined per item
+	if len(queryMap) == 1 {
+		for queryType, queryArgs := range queryMap {
 
-				collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), queryArgs["collection"].(string))
-				// Verify that the table is within our domain
-				if err != nil {
-					results[i] = &query.Result{
-						Error: err.Error(),
-					}
-					continue
+			collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), queryArgs["collection"].(string))
+			// Verify that the table is within our domain
+			if err != nil {
+				return &query.Result{
+					Error: err.Error(),
 				}
+			}
 
+			if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
+				// TODO: remove? We can only do joins at this layer if there is only one shardInstance
+				if meta.Databases[queryArgs["db"].(string)].ShardInstances[queryArgs["shard_instance"].(string)].Count != 1 {
+					return &query.Result{Error: "Joins only supported on collections with one shardInstance"}
+				}
+			}
+
+			// If this is a write operation, do whatever schema validation is necessary
+			switch queryType {
+			case query.Set:
+				// TODO: somewhere else!
+				// TODO: handle the errors -- if this was a single shard we'd use transactions, but since this
+				// can potentially span *many* shards we need to determine what the failure modes will be
+				// Right now we'll support joins on sets by doing the set before we do the base set
 				if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
-					// TODO: remove? We can only do joins at this layer if there is only one shardInstance
-					if meta.Databases[queryArgs["db"].(string)].ShardInstances[queryArgs["shard_instance"].(string)].Count != 1 {
-						results[i] = &query.Result{Error: "Joins only supported on collections with one shardInstance"}
-						continue QUERYLOOP
+					// Maintain a trie of prefix -> joinField for things we join in
+					// This is to allow for multiple layers of join
+					joinRadixTree := radix.New()
+
+					// TODO: sort joinFieldList shortest -> longest
+					less := func(i, j int) bool {
+						return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
 					}
-				}
+					sort.Slice(joinFieldList.([]interface{}), less)
 
-				// If this is a write operation, do whatever schema validation is necessary
-				switch queryType {
-				case query.Set:
-					// TODO: somewhere else!
-					// TODO: handle the errors -- if this was a single shard we'd use transactions, but since this
-					// can potentially span *many* shards we need to determine what the failure modes will be
-					// Right now we'll support joins on sets by doing the set before we do the base set
-					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
-						// Maintain a trie of prefix -> joinField for things we join in
-						// This is to allow for multiple layers of join
-						joinRadixTree := radix.New()
+					for _, joinFieldName := range joinFieldList.([]interface{}) {
+						joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
 
-						// TODO: sort joinFieldList shortest -> longest
-						less := func(i, j int) bool {
-							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
-						}
-						sort.Slice(joinFieldList.([]interface{}), less)
-
-						for _, joinFieldName := range joinFieldList.([]interface{}) {
-							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-
-							var joinField *metadata.CollectionField
-							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
-								joinField = m.(*metadata.CollectionField)
-								// This joinfield is the base of the name -- lets continue the path
-								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
-								if err != nil {
-									// TODO: some other non-fatal error?
-									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
-									continue
-								}
-								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
-							} else {
-								joinField = collection.GetField(joinFieldNameParts)
-								// TODO: look this up before the call
-								if joinField == nil {
-									results[i].Error = "Invalid joinField " + joinFieldName.(string)
-									continue
-								}
-								joinRadixTree.Insert(joinField.FullName()+".", joinField)
+						var joinField *metadata.CollectionField
+						if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+							joinField = m.(*metadata.CollectionField)
+							// This joinfield is the base of the name -- lets continue the path
+							collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+							if err != nil {
+								// TODO: some other non-fatal error?
+								return &query.Result{Error: "Unable to find collection for joinField " + joinFieldName.(string)}
 							}
-
+							joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
+						} else {
+							joinField = collection.GetField(joinFieldNameParts)
 							// TODO: look this up before the call
 							if joinField == nil {
-								results[i] = &query.Result{Error: "Invalid joinField " + joinFieldName.(string)}
-								continue
+								return &query.Result{Error: "Invalid joinField " + joinFieldName.(string)}
 							}
-							joinRecord, _ := query.GetValue(queryArgs["record"].(map[string]interface{}), joinFieldNameParts)
+							joinRadixTree.Insert(joinField.FullName()+".", joinField)
+						}
 
+						// TODO: look this up before the call
+						if joinField == nil {
+							return &query.Result{Error: "Invalid joinField " + joinFieldName.(string)}
+						}
+						joinRecord, _ := query.GetValue(queryArgs["record"].(map[string]interface{}), joinFieldNameParts)
+
+						// If there isn't a join record-- skip
+						if joinRecord != nil {
+							actualFieldValue, _ := query.GetValue(joinRecord.(map[string]interface{}), []string{joinField.Relation.Field})
+
+							joinCollection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+							if err != nil {
+								return &query.Result{Error: err.Error()}
+							}
+
+							if validationResultMap := joinCollection.ValidateRecordUpdate(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
+								return &query.Result{ValidationError: validationResultMap}
+							}
+
+							joinResults := s.Store.Set(map[string]interface{}{
+								"db":             queryArgs["db"],
+								"shard_instance": queryArgs["shard_instance"].(string),
+								"collection":     joinField.Relation.Collection,
+								"record":         joinRecord,
+							})
+							if joinResults.Error != "" {
+								return &query.Result{Error: joinResults.Error}
+							}
+
+							// Update the value in the main record
+							query.SetValue(queryArgs["record"].(map[string]interface{}), actualFieldValue, joinFieldNameParts)
+						}
+					}
+
+				}
+				// We need to do some validation here. Since this is an upsert -- the given
+				// item could be
+				//		1. valid as an insert or an update
+				//		3. valid as only an update
+				//		4. valid as NOTHING
+				// Before we pass down to the lower layers we need to determine what is true-- if this is 3 we need to error,
+				// if it is 2 we need to convert the underlying call to the appropriate function-- otherwise we'll pass it
+				// down to the plugin as a regular set (assuming it is valid)
+
+				// To be a valid Set() it must be okay as either an insert or an update
+				if insertValidationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
+					// If it isn't valid as an upsert, we can see if it is valid as an update only
+					if updateValidationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
+						// If it is valid as an update, then we need to convert the set request to an update
+						queryType = query.Update
+
+						filterRecord := make(map[string]interface{})
+						for _, fieldName := range collection.PrimaryIndex.Fields {
+							fieldValue, _ := query.GetValue(queryArgs["record"].(map[string]interface{}), strings.Split(fieldName, "."))
+							filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
+						}
+						queryArgs["filter"] = filterRecord
+						// TODO: remove pkey from "record"?
+					} else {
+						return &query.Result{ValidationError: updateValidationResultMap}
+					}
+				}
+
+			case query.Insert:
+				if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+					return &query.Result{ValidationError: validationResultMap}
+				}
+			case query.Update:
+				// On set, if there is a schema on the table-- enforce the schema
+				// TODO: some datastores can actually do the enforcement on their own. We
+				// probably want to leave this up to lower layers, and provide some wrapper
+				// that they can call if they can't do it in the datastore itself
+				if validationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+					return &query.Result{ValidationError: validationResultMap}
+				}
+			}
+
+			// This will need to get more complex as we support multiple
+			// storage interfaces
+			switch queryType {
+			case query.Get:
+				result = s.Store.Get(queryArgs)
+
+				// TODO: move to routing layer only
+				// This only works for stuff that has a shard count of 1
+				if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
+
+					// Maintain a trie of prefix -> joinField for things we join in
+					// This is to allow for multiple layers of join
+					joinRadixTree := radix.New()
+
+					// TODO: sort joinFieldList shortest -> longest
+					less := func(i, j int) bool {
+						return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
+					}
+					sort.Slice(joinFieldList.([]interface{}), less)
+
+					for _, joinFieldName := range joinFieldList.([]interface{}) {
+						joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
+
+						var joinField *metadata.CollectionField
+						if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+							joinField = m.(*metadata.CollectionField)
+							// This joinfield is the base of the name -- lets continue the path
+							collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+							if err != nil {
+								// TODO: some other non-fatal error?
+								result.Error = "Unable to find collection for joinField " + joinFieldName.(string)
+								return result
+							}
+							joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
+						} else {
+							joinField = collection.GetField(joinFieldNameParts)
+							// TODO: look this up before the call
+							if joinField == nil {
+								result.Error = "Invalid joinField " + joinFieldName.(string)
+								return result
+							}
+							joinRadixTree.Insert(joinField.FullName()+".", joinField)
+						}
+
+						for j, _ := range result.Return {
 							// If there isn't a join record-- skip
-							if joinRecord != nil {
-								actualFieldValue, _ := query.GetValue(joinRecord.(map[string]interface{}), []string{joinField.Relation.Field})
-
-								joinCollection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
-								if err != nil {
-									results[i] = &query.Result{Error: err.Error()}
-									continue QUERYLOOP
-								}
-
-								if validationResultMap := joinCollection.ValidateRecordUpdate(joinRecord.(map[string]interface{})); !validationResultMap.IsValid() {
-									results[i] = &query.Result{ValidationError: validationResultMap}
-									continue QUERYLOOP
-								}
-
-								joinResults := s.Store.Set(map[string]interface{}{
+							if rawJoinValue, _ := query.GetValue(result.Return[j], joinFieldNameParts); rawJoinValue != nil {
+								joinResults := s.Store.Get(map[string]interface{}{
 									"db":             queryArgs["db"],
 									"shard_instance": queryArgs["shard_instance"].(string),
 									"collection":     joinField.Relation.Collection,
-									"record":         joinRecord,
+									// TODO: we need to somehow support joins to collections with compound pkeys
+									"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
 								})
 								if joinResults.Error != "" {
-									results[i].Error += "\n" + joinResults.Error
+									result.Error += "\n" + joinResults.Error
+									return result
 								}
 
-								// Update the value in the main record
-								query.SetValue(queryArgs["record"].(map[string]interface{}), actualFieldValue, joinFieldNameParts)
+								query.SetValue(result.Return[j], joinResults.Return[0], joinFieldNameParts)
 							}
 						}
-
 					}
-					// We need to do some validation here. Since this is an upsert -- the given
-					// item could be
-					//		1. valid as an insert or an update
-					//		3. valid as only an update
-					//		4. valid as NOTHING
-					// Before we pass down to the lower layers we need to determine what is true-- if this is 3 we need to error,
-					// if it is 2 we need to convert the underlying call to the appropriate function-- otherwise we'll pass it
-					// down to the plugin as a regular set (assuming it is valid)
+				}
+			case query.Set:
+				result = s.Store.Set(queryArgs)
+			case query.Insert:
+				result = s.Store.Insert(queryArgs)
+			case query.Update:
+				result = s.Store.Update(queryArgs)
+			case query.Delete:
+				result = s.Store.Delete(queryArgs)
+			case query.Filter:
+				result = s.Store.Filter(queryArgs)
+				// TODO: move to routing layer only
+				// This only works for stuff that has a shard count of 1
+				if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
 
-					// To be a valid Set() it must be okay as either an insert or an update
-					if insertValidationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
-						// If it isn't valid as an upsert, we can see if it is valid as an update only
-						if updateValidationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
-							// If it is valid as an update, then we need to convert the set request to an update
-							queryType = query.Update
+					// Maintain a trie of prefix -> joinField for things we join in
+					// This is to allow for multiple layers of join
+					joinRadixTree := radix.New()
 
-							filterRecord := make(map[string]interface{})
-							for _, fieldName := range collection.PrimaryIndex.Fields {
-								fieldValue, _ := query.GetValue(queryArgs["record"].(map[string]interface{}), strings.Split(fieldName, "."))
-								filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
+					// TODO: sort joinFieldList shortest -> longest
+					less := func(i, j int) bool {
+						return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
+					}
+					sort.Slice(joinFieldList.([]interface{}), less)
+
+					for _, joinFieldName := range joinFieldList.([]interface{}) {
+						joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
+
+						var joinField *metadata.CollectionField
+						if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
+							joinField = m.(*metadata.CollectionField)
+							// This joinfield is the base of the name -- lets continue the path
+							collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
+							if err != nil {
+								// TODO: some other non-fatal error?
+								result.Error = "Unable to find collection for joinField " + joinFieldName.(string)
+								return result
 							}
-							queryArgs["filter"] = filterRecord
-							// TODO: remove pkey from "record"?
+							joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
 						} else {
-							results[i] = &query.Result{ValidationError: updateValidationResultMap}
-							continue QUERYLOOP
+							joinField = collection.GetField(joinFieldNameParts)
+							// TODO: look this up before the call
+							if joinField == nil {
+								result.Error = "Invalid joinField " + joinFieldName.(string)
+								return result
+							}
+							joinRadixTree.Insert(joinField.FullName()+".", joinField)
 						}
-					}
 
-				case query.Insert:
-					if validationResultMap := collection.ValidateRecord(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
-						results[i] = &query.Result{ValidationError: validationResultMap}
-						continue QUERYLOOP
-					}
-				case query.Update:
-					// On set, if there is a schema on the table-- enforce the schema
-					// TODO: some datastores can actually do the enforcement on their own. We
-					// probably want to leave this up to lower layers, and provide some wrapper
-					// that they can call if they can't do it in the datastore itself
-					if validationResultMap := collection.ValidateRecordUpdate(queryArgs["record"].(map[string]interface{})); !validationResultMap.IsValid() {
-						results[i] = &query.Result{ValidationError: validationResultMap}
-						continue QUERYLOOP
+						for j, _ := range result.Return {
+							// If there isn't a join record-- skip
+							if rawJoinValue, _ := query.GetValue(result.Return[j], joinFieldNameParts); rawJoinValue != nil {
+								joinResults := s.Store.Get(map[string]interface{}{
+									"db":             queryArgs["db"],
+									"shard_instance": queryArgs["shard_instance"].(string),
+									"collection":     joinField.Relation.Collection,
+									// TODO: we need to somehow support joins to collections with compound pkeys
+									"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
+								})
+								if joinResults.Error != "" {
+									result.Error += "\n" + joinResults.Error
+								}
+
+								query.SetValue(result.Return[j], joinResults.Return[0], joinFieldNameParts)
+							}
+						}
 					}
 				}
 
-				// This will need to get more complex as we support multiple
-				// storage interfaces
-				switch queryType {
-				case query.Get:
-					results[i] = s.Store.Get(queryArgs)
-
-					// TODO: move to routing layer only
-					// This only works for stuff that has a shard count of 1
-					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
-
-						// Maintain a trie of prefix -> joinField for things we join in
-						// This is to allow for multiple layers of join
-						joinRadixTree := radix.New()
-
-						// TODO: sort joinFieldList shortest -> longest
-						less := func(i, j int) bool {
-							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
-						}
-						sort.Slice(joinFieldList.([]interface{}), less)
-
-						for _, joinFieldName := range joinFieldList.([]interface{}) {
-							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-
-							var joinField *metadata.CollectionField
-							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
-								joinField = m.(*metadata.CollectionField)
-								// This joinfield is the base of the name -- lets continue the path
-								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
-								if err != nil {
-									// TODO: some other non-fatal error?
-									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
-									continue
-								}
-								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
-							} else {
-								joinField = collection.GetField(joinFieldNameParts)
-								// TODO: look this up before the call
-								if joinField == nil {
-									results[i].Error = "Invalid joinField " + joinFieldName.(string)
-									continue
-								}
-								joinRadixTree.Insert(joinField.FullName()+".", joinField)
-							}
-
-							for j, _ := range results[i].Return {
-								// If there isn't a join record-- skip
-								if rawJoinValue, _ := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
-									joinResults := s.Store.Get(map[string]interface{}{
-										"db":             queryArgs["db"],
-										"shard_instance": queryArgs["shard_instance"].(string),
-										"collection":     joinField.Relation.Collection,
-										// TODO: we need to somehow support joins to collections with compound pkeys
-										"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
-									})
-									if joinResults.Error != "" {
-										results[i].Error += "\n" + joinResults.Error
-									}
-
-									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
-								}
-							}
-						}
-					}
-				case query.Set:
-					results[i] = s.Store.Set(queryArgs)
-				case query.Insert:
-					results[i] = s.Store.Insert(queryArgs)
-				case query.Update:
-					results[i] = s.Store.Update(queryArgs)
-				case query.Delete:
-					results[i] = s.Store.Delete(queryArgs)
-				case query.Filter:
-					results[i] = s.Store.Filter(queryArgs)
-					// TODO: move to routing layer only
-					// This only works for stuff that has a shard count of 1
-					if joinFieldList, ok := queryArgs["join"]; ok && joinFieldList != nil {
-
-						// Maintain a trie of prefix -> joinField for things we join in
-						// This is to allow for multiple layers of join
-						joinRadixTree := radix.New()
-
-						// TODO: sort joinFieldList shortest -> longest
-						less := func(i, j int) bool {
-							return strings.Count(joinFieldList.([]interface{})[i].(string), ".") < strings.Count(joinFieldList.([]interface{})[j].(string), ".")
-						}
-						sort.Slice(joinFieldList.([]interface{}), less)
-
-						for _, joinFieldName := range joinFieldList.([]interface{}) {
-							joinFieldNameParts := strings.Split(joinFieldName.(string), ".")
-
-							var joinField *metadata.CollectionField
-							if prefix, m, ok := joinRadixTree.LongestPrefix(joinFieldName.(string)); ok {
-								joinField = m.(*metadata.CollectionField)
-								// This joinfield is the base of the name -- lets continue the path
-								collection, err := meta.GetCollection(queryArgs["db"].(string), queryArgs["shard_instance"].(string), joinField.Relation.Collection)
-								if err != nil {
-									// TODO: some other non-fatal error?
-									results[i].Error = "Unable to find collection for joinField " + joinFieldName.(string)
-									continue
-								}
-								joinField = collection.GetField(strings.Split(strings.TrimPrefix(joinFieldName.(string), prefix), "."))
-							} else {
-								joinField = collection.GetField(joinFieldNameParts)
-								// TODO: look this up before the call
-								if joinField == nil {
-									results[i].Error = "Invalid joinField " + joinFieldName.(string)
-									continue
-								}
-								joinRadixTree.Insert(joinField.FullName()+".", joinField)
-							}
-
-							for j, _ := range results[i].Return {
-								// If there isn't a join record-- skip
-								if rawJoinValue, _ := query.GetValue(results[i].Return[j], joinFieldNameParts); rawJoinValue != nil {
-									joinResults := s.Store.Get(map[string]interface{}{
-										"db":             queryArgs["db"],
-										"shard_instance": queryArgs["shard_instance"].(string),
-										"collection":     joinField.Relation.Collection,
-										// TODO: we need to somehow support joins to collections with compound pkeys
-										"pkey": map[string]interface{}{joinField.Relation.Field: rawJoinValue},
-									})
-									if joinResults.Error != "" {
-										results[i].Error += "\n" + joinResults.Error
-									}
-
-									query.SetValue(results[i].Return[j], joinResults.Return[0], joinFieldNameParts)
-								}
-							}
-						}
-					}
-
-				default:
-					results[i] = &query.Result{
-						Error: "Unsupported query type " + string(queryType),
-					}
-				}
-
-				// TODO: move into the underlying datasource -- we should be doing partial selects etc.
-				if fields, ok := queryArgs["fields"]; ok {
-					results[i].Project(fields.([]string))
-				}
-
-				// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
-				if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
-					// TODO: parse out before doing the query, if its wrong we can't do anything
-					// TODO: we need to support interface{} as well
-					var sortList []string
-					switch sortListTyped := sortListRaw.(type) {
-					case []interface{}:
-						sortList = make([]string, len(sortListTyped))
-						for i, sortKey := range sortListTyped {
-							sortList[i] = sortKey.(string)
-						}
-					case []string:
-						sortList = sortListTyped
-					default:
-						results[i].Error = "Unable to sort result, invalid sort args"
-						continue
-					}
-
-					sortReverseList := make([]bool, len(sortList))
-					if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
-						// TODO: better, seems heavy
-						for i, _ := range sortReverseList {
-							sortReverseList[i] = false
-						}
-					} else {
-						switch sortReverseRawTyped := sortReverseRaw.(type) {
-						case bool:
-							for i, _ := range sortReverseList {
-								sortReverseList[i] = sortReverseRawTyped
-							}
-						case []bool:
-							if len(sortReverseRawTyped) != len(sortList) {
-								results[i].Error = "Unable to sort_reverse must be the same len as sort"
-								continue
-							}
-							sortReverseList = sortReverseRawTyped
-						// TODO: remove? things should have a real type...
-						case []interface{}:
-							if len(sortReverseRawTyped) != len(sortList) {
-								results[i].Error = "Unable to sort_reverse must be the same len as sort"
-								continue
-							}
-							for i, sortReverseItem := range sortReverseRawTyped {
-								// TODO: handle case where it isn't a bool!
-								sortReverseList[i] = sortReverseItem.(bool)
-							}
-						default:
-							results[i].Error = "Invalid sort_reverse value"
-						}
-
-					}
-					results[i].Sort(sortList, sortReverseList)
+			default:
+				return &query.Result{
+					Error: "Unsupported query type " + string(queryType),
 				}
 			}
 
-		} else {
-			results[i] = &query.Result{
-				Error: fmt.Sprintf("Only one QueryType supported per query: %v -- %v", queryMap, queries),
+			// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+			if fields, ok := queryArgs["fields"]; ok {
+				result.Project(fields.([]string))
+			}
+
+			// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
+			if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
+				// TODO: parse out before doing the query, if its wrong we can't do anything
+				// TODO: we need to support interface{} as well
+				var sortList []string
+				switch sortListTyped := sortListRaw.(type) {
+				case []interface{}:
+					sortList = make([]string, len(sortListTyped))
+					for i, sortKey := range sortListTyped {
+						sortList[i] = sortKey.(string)
+					}
+				case []string:
+					sortList = sortListTyped
+				default:
+					result.Error = "Unable to sort result, invalid sort args"
+					return result
+				}
+
+				sortReverseList := make([]bool, len(sortList))
+				if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
+					// TODO: better, seems heavy
+					for i, _ := range sortReverseList {
+						sortReverseList[i] = false
+					}
+				} else {
+					switch sortReverseRawTyped := sortReverseRaw.(type) {
+					case bool:
+						for i, _ := range sortReverseList {
+							sortReverseList[i] = sortReverseRawTyped
+						}
+					case []bool:
+						if len(sortReverseRawTyped) != len(sortList) {
+							result.Error = "Unable to sort_reverse must be the same len as sort"
+							return result
+						}
+						sortReverseList = sortReverseRawTyped
+					// TODO: remove? things should have a real type...
+					case []interface{}:
+						if len(sortReverseRawTyped) != len(sortList) {
+							result.Error = "Unable to sort_reverse must be the same len as sort"
+							return result
+						}
+						for i, sortReverseItem := range sortReverseRawTyped {
+							// TODO: handle case where it isn't a bool!
+							sortReverseList[i] = sortReverseItem.(bool)
+						}
+					default:
+						result.Error = "Invalid sort_reverse value"
+						return result
+					}
+
+				}
+				result.Sort(sortList, sortReverseList)
 			}
 		}
+
+	} else {
+		return &query.Result{
+			Error: fmt.Sprintf("Only one QueryType supported per query: %v", queryMap),
+		}
 	}
-	return results
+	return result
 }
 
 func (s *DatasourceInstance) EnsureExistsDatabase(db *metadata.Database) error {

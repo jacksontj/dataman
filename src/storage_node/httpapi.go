@@ -484,16 +484,16 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
-	var queries []map[query.QueryType]query.QueryArgs
+	var q map[query.QueryType]query.QueryArgs
 
-	if err := json.Unmarshal(bytes, &queries); err != nil {
+	if err := json.Unmarshal(bytes, &q); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		results := h.storageNode.Datasources[ps.ByName("datasource")].HandleQueries(queries)
+		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(q)
 		// Now we need to return the results
-		if bytes, err := json.Marshal(results); err != nil {
+		if bytes, err := json.Marshal(result); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
 			return

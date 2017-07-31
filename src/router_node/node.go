@@ -472,7 +472,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 			vshardResults <- &query.Result{Error: "1 Unknown datasourceInstanceShardInstance"}
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
-				if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+				if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
 					vshardResults <- result
 				} else {
 					vshardResults <- &query.Result{Error: err.Error()}
@@ -573,7 +573,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
 		}
 
-		if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
@@ -618,7 +618,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: "4 Unknown datasourceInstanceShardInstance"}
 		}
 
-		result, err := QuerySingle(
+		result, err := Query(
 			// TODO: replicas -- add args for slave etc.
 			datasourceInstance,
 			datasourceInstanceShardInstance,
@@ -673,7 +673,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 
 			// TODO: replicas -- add args for slave etc.
-			if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+			if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -691,7 +691,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				} else {
 					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 						// TODO: replicas -- add args for slave etc.
-						if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+						if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
 							vshardResults <- result
 						} else {
 							vshardResults <- &query.Result{Error: err.Error()}
@@ -748,7 +748,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 
 		// TODO: replicas -- add args for slave etc.
-		if result, err := QuerySingle(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}

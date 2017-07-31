@@ -52,22 +52,18 @@ func MultiQuerySingle(shards []*metadata.DatastoreShard, q *query.Query) (*query
 var client = &http.Client{}
 
 // Take a query and send it to a given destination
-func Query(datasource *metadata.DatasourceInstance, datasourceShard *metadata.DatasourceInstanceShardInstance, queries []*query.Query) ([]*query.Result, error) {
-	// TODO: pass in? Or options?
+func Query(datasource *metadata.DatasourceInstance, datasourceShard *metadata.DatasourceInstanceShardInstance, q *query.Query) (*query.Result, error) {
 	// TODO: these should be associated with the storage_node (since that is what we are talking through)
 
 	// TODO: better marshalling
-	queriesMap := make([]map[query.QueryType]interface{}, len(queries))
-	for i, q := range queries {
-		queryArgs := make(map[string]interface{})
-		for k, v := range q.Args {
-			queryArgs[k] = v
-		}
-		queryArgs["shard_instance"] = datasourceShard.Name
-		queriesMap[i] = map[query.QueryType]interface{}{q.Type: queryArgs}
+	queryArgs := make(map[string]interface{})
+	for k, v := range q.Args {
+		queryArgs[k] = v
 	}
+	queryArgs["shard_instance"] = datasourceShard.Name
+	queryMap := map[query.QueryType]interface{}{q.Type: queryArgs}
 
-	encQueries, err := json.Marshal(queriesMap)
+	encQueries, err := json.Marshal(queryMap)
 	if err != nil {
 		return nil, err
 	}
@@ -93,19 +89,11 @@ func Query(datasource *metadata.DatasourceInstance, datasourceShard *metadata.Da
 		return nil, err
 	}
 
-	results := make([]*query.Result, len(queries))
-	err = json.Unmarshal(body, &results)
+	var result *query.Result
+	err = json.Unmarshal(body, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	return results, nil
-}
-
-func QuerySingle(datasource *metadata.DatasourceInstance, datasourceShard *metadata.DatasourceInstanceShardInstance, q *query.Query) (*query.Result, error) {
-	if results, err := Query(datasource, datasourceShard, []*query.Query{q}); err == nil {
-		return results[0], nil
-	} else {
-		return nil, err
-	}
+	return result, nil
 }
