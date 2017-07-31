@@ -225,7 +225,7 @@ func (s *RouterNode) fetchMeta() (err error) {
 }
 
 // Handle a single query
-func (s *RouterNode) HandleQuery(queryMap map[query.QueryType]query.QueryArgs) *query.Result {
+func (s *RouterNode) HandleQuery(q *query.Query) *query.Result {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
@@ -237,93 +237,85 @@ func (s *RouterNode) HandleQuery(queryMap map[query.QueryType]query.QueryArgs) *
 
 	var result *query.Result
 
-	if len(queryMap) == 1 {
-		for queryType, queryArgs := range queryMap {
+	// Switch between read and write operations
+	switch q.Type {
+	// Write operations
+	case query.Set, query.Insert, query.Update, query.Delete:
+		result = s.handleWrite(meta, q)
 
-			// Switch between read and write operations
-			switch queryType {
-			// Write operations
-			case query.Set, query.Insert, query.Update, query.Delete:
-				result = s.handleWrite(meta, queryType, queryArgs)
+	// Read operations
+	case query.Get, query.Filter:
+		result = s.handleRead(meta, q)
 
-			// Read operations
-			case query.Get, query.Filter:
-				result = s.handleRead(meta, queryType, queryArgs)
+		// All other operations should error
+	default:
+		return &query.Result{Error: "Unknown query type: " + string(q.Type)}
+	}
 
-				// All other operations should error
+	if sortListRaw, ok := q.Args["sort"]; ok && sortListRaw != nil {
+		// TODO: parse out before doing the query, if its wrong we can't do anything
+		// TODO: we need to support interface{} as well
+		var sortList []string
+		switch sortListTyped := sortListRaw.(type) {
+		case []interface{}:
+			sortList = make([]string, len(sortListTyped))
+			for i, sortKey := range sortListTyped {
+				sortList[i] = sortKey.(string)
+			}
+		case []string:
+			sortList = sortListTyped
+		default:
+			result.Error = "Unable to sort result, invalid sort args"
+			return result
+		}
+
+		sortReverseList := make([]bool, len(sortList))
+		if sortReverseRaw, ok := q.Args["sort_reverse"]; !ok || sortReverseRaw == nil {
+			// TODO: better, seems heavy
+			for i, _ := range sortReverseList {
+				sortReverseList[i] = false
+			}
+		} else {
+			switch sortReverseRawTyped := sortReverseRaw.(type) {
+			case bool:
+				for i, _ := range sortReverseList {
+					sortReverseList[i] = sortReverseRawTyped
+				}
+			case []bool:
+				if len(sortReverseRawTyped) != len(sortList) {
+					result.Error = "Unable to sort_reverse must be the same len as sort"
+					return result
+				}
+				sortReverseList = sortReverseRawTyped
+			// TODO: remove? things should have a real type...
+			case []interface{}:
+				if len(sortReverseRawTyped) != len(sortList) {
+					result.Error = "Unable to sort_reverse must be the same len as sort"
+					return result
+				}
+				for i, sortReverseItem := range sortReverseRawTyped {
+					// TODO: handle case where it isn't a bool!
+					sortReverseList[i] = sortReverseItem.(bool)
+				}
 			default:
-				return &query.Result{Error: "Unknown query type: " + string(queryType)}
+				result.Error = "Invalid sort_reverse value"
+				return result
 			}
 
-			if sortListRaw, ok := queryArgs["sort"]; ok && sortListRaw != nil {
-				// TODO: parse out before doing the query, if its wrong we can't do anything
-				// TODO: we need to support interface{} as well
-				var sortList []string
-				switch sortListTyped := sortListRaw.(type) {
-				case []interface{}:
-					sortList = make([]string, len(sortListTyped))
-					for i, sortKey := range sortListTyped {
-						sortList[i] = sortKey.(string)
-					}
-				case []string:
-					sortList = sortListTyped
-				default:
-					result.Error = "Unable to sort result, invalid sort args"
-					continue
-				}
-
-				sortReverseList := make([]bool, len(sortList))
-				if sortReverseRaw, ok := queryArgs["sort_reverse"]; !ok || sortReverseRaw == nil {
-					// TODO: better, seems heavy
-					for i, _ := range sortReverseList {
-						sortReverseList[i] = false
-					}
-				} else {
-					switch sortReverseRawTyped := sortReverseRaw.(type) {
-					case bool:
-						for i, _ := range sortReverseList {
-							sortReverseList[i] = sortReverseRawTyped
-						}
-					case []bool:
-						if len(sortReverseRawTyped) != len(sortList) {
-							result.Error = "Unable to sort_reverse must be the same len as sort"
-							continue
-						}
-						sortReverseList = sortReverseRawTyped
-					// TODO: remove? things should have a real type...
-					case []interface{}:
-						if len(sortReverseRawTyped) != len(sortList) {
-							result.Error = "Unable to sort_reverse must be the same len as sort"
-							continue
-						}
-						for i, sortReverseItem := range sortReverseRawTyped {
-							// TODO: handle case where it isn't a bool!
-							sortReverseList[i] = sortReverseItem.(bool)
-						}
-					default:
-						result.Error = "Invalid sort_reverse value"
-					}
-
-				}
-				result.Sort(sortList, sortReverseList)
-			}
 		}
-	} else {
-		return &query.Result{
-			Error: fmt.Sprintf("Exactly one QueryType supported per query: %v", queryMap),
-		}
+		result.Sort(sortList, sortReverseList)
 	}
 	return result
 }
 
-func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
-	database, ok := meta.Databases[queryArgs["db"].(string)]
+func (s *RouterNode) handleRead(meta *metadata.Meta, q *query.Query) *query.Result {
+	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
 	}
-	collection, ok := database.Collections[queryArgs["collection"].(string)]
+	collection, ok := database.Collections[q.Args["collection"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
 	}
 
 	// Once we have the metadata all found we need to do the following:
@@ -355,13 +347,13 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 	var vshards []*metadata.DatastoreVShardInstance
 
 	// Depending on query type we might be able to be more specific about which vshards we go to
-	switch queryType {
+	switch q.Type {
 	// TODO: change the query format for Get()
 	case query.Get:
 		// TODO: have kwarg or something to allow scatter-gather, there is no
 		// requirement that the primary key be the shard key (although it will usually be the case)
 
-		rawPkeyRecord, ok := queryArgs["pkey"] // TODO: better arg than pkey, maybe record?
+		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
 		}
@@ -383,7 +375,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(pkeyRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
@@ -398,7 +390,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 
 	case query.Filter:
 
-		filterMapRaw, ok := queryArgs["filter"] // TODO: better arg than pkey, maybe record?
+		filterMapRaw, ok := q.Args["filter"] // TODO: better arg than pkey, maybe record?
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Filter()s must include filter map")}
 		}
@@ -450,12 +442,12 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 		}
 
 	default:
-		return &query.Result{Error: "Unknown read query type " + string(queryType)}
+		return &query.Result{Error: "Unknown read query type " + string(q.Type)}
 
 	}
 
 	// Query all of the vshards
-	logrus.Debugf("Query %s %v", queryType, queryArgs)
+	logrus.Debugf("Query %s %v", q.Type, q.Args)
 
 	// TODO: switch to channels or something (since we can get them in parallel
 	vshardResults := make(chan *query.Result, len(vshards))
@@ -472,7 +464,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 			vshardResults <- &query.Result{Error: "1 Unknown datasourceInstanceShardInstance"}
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
-				if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+				if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
 					vshardResults <- result
 				} else {
 					vshardResults <- &query.Result{Error: err.Error()}
@@ -485,14 +477,14 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, queryType query.QueryType, 
 }
 
 // TODO: fix
-func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType, queryArgs query.QueryArgs) *query.Result {
-	database, ok := meta.Databases[queryArgs["db"].(string)]
+func (s *RouterNode) handleWrite(meta *metadata.Meta, q *query.Query) *query.Result {
+	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown db " + queryArgs["db"].(string)}
+		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
 	}
-	collection, ok := database.Collections[queryArgs["collection"].(string)]
+	collection, ok := database.Collections[q.Args["collection"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown collection " + queryArgs["collection"].(string)}
+		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
 	}
 
 	// Once we have the metadata all found we need to do the following:
@@ -521,10 +513,10 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 	// TODO: eventually we'll want to be more sophisticated and do this same thing if there
 	// are a set of id's we can derive from the original query, so we can do a limited
 	// scatter-gather. For now we'll either know the specific shard, or not (for ease of implementation)
-	switch queryType {
+	switch q.Type {
 	// Write operations
 	case query.Set:
-		queryRecord, ok := queryArgs["record"].(map[string]interface{})
+		queryRecord, ok := q.Args["record"].(map[string]interface{})
 		if !ok {
 			return &query.Result{Error: "Set()s must include a record"}
 		}
@@ -552,7 +544,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
@@ -573,7 +565,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
 		}
 
-		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
@@ -581,7 +573,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		queryRecord, ok := queryArgs["record"].(map[string]interface{})
+		queryRecord, ok := q.Args["record"].(map[string]interface{})
 		if !ok {
 			return &query.Result{Error: "Insert()s must include a record"}
 		}
@@ -597,7 +589,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, queryArgs["record"])}
+				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
@@ -622,7 +614,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			// TODO: replicas -- add args for slave etc.
 			datasourceInstance,
 			datasourceInstanceShardInstance,
-			&query.Query{queryType, queryArgs},
+			&query.Query{q.Type, q.Args},
 		)
 
 		if err == nil {
@@ -631,7 +623,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return &query.Result{Error: err.Error()}
 		}
 	case query.Update:
-		filterRecord, ok := queryArgs["filter"].(map[string]interface{})
+		filterRecord, ok := q.Args["filter"].(map[string]interface{})
 		if !ok {
 			return &query.Result{Error: "fitler must be a map[string]interface{}"}
 		}
@@ -673,7 +665,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			}
 
 			// TODO: replicas -- add args for slave etc.
-			if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+			if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -691,7 +683,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 				} else {
 					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 						// TODO: replicas -- add args for slave etc.
-						if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+						if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
 							vshardResults <- result
 						} else {
 							vshardResults <- &query.Result{Error: err.Error()}
@@ -704,7 +696,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 			return query.MergeResult(collection.PrimaryIndex.Fields, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
 	case query.Delete:
-		rawPkeyRecord, ok := queryArgs["pkey"] // TODO: better arg than pkey, maybe record?
+		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
 		}
@@ -748,7 +740,7 @@ func (s *RouterNode) handleWrite(meta *metadata.Meta, queryType query.QueryType,
 		}
 
 		// TODO: replicas -- add args for slave etc.
-		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{queryType, queryArgs}); err == nil {
+		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
