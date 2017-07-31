@@ -430,9 +430,9 @@ func (s *Storage) RemoveCollectionField(dbname, shardinstance, collectionname, f
 var listIndexQuery = `
 SELECT
   U.usename                AS user_name,
-  ns.nspname               AS schema_name,
-  idx.indrelid :: REGCLASS AS table_name,
-  i.relname                AS index_name,
+  CAST(ns.nspname AS varchar)               AS schema_name,
+  trim(both '"' from CAST(idx.indrelid :: REGCLASS AS varchar)) AS table_name,
+  CAST(i.relname AS varchar)                AS index_name,
   idx.indisunique          AS is_unique,
   idx.indisprimary         AS is_primary,
   am.amname                AS index_type,
@@ -464,14 +464,14 @@ func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname stri
 	indexes := make([]*metadata.CollectionIndex, 0, len(indexEntries))
 
 	for _, indexEntry := range indexEntries {
-		schemaName := string(indexEntry["schema_name"].([]byte))
-		tableName := string(indexEntry["table_name"].([]byte))
+		schemaName := indexEntry["schema_name"].(string)
+		tableName := indexEntry["table_name"].(string)
 
 		if schemaName == shardInstance && tableName == collectionname {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			index := &metadata.CollectionIndex{
-				Name:           string(indexEntry["index_name"].([]byte)),
+				Name:           indexEntry["index_name"].(string),
 				Fields:         indexFields,
 				Unique:         indexEntry["is_unique"].(bool),
 				Primary:        indexEntry["is_primary"].(bool),
