@@ -24,6 +24,6 @@ type DatasourceInstanceTransport struct {
 }
 
 // TODO: use context
-func (d *DatasourceInstanceTransport) DoQueries(ctx context.Context, q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
-	return d.dsi.HandleQueries(q), nil
+func (d *DatasourceInstanceTransport) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
+	return d.dsi.HandleQuery(q), nil
 }

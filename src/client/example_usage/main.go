@@ -16,19 +16,23 @@ import (
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
-func doExamples(client *datamanclient.Client) {
-	ret, err := client.DoQuery(
-		map[query.QueryType]query.QueryArgs{
-			query.Filter: map[string]interface{}{
-				"db":             "example_forum",
-				"collection":     "user",
-				"shard_instance": "dbshard_example_forum_2",
-				"filter":         map[string]interface{}{},
-			},
+func doExamples(client *datamanclient.Client) error {
+	q := &query.Query{
+		query.Filter,
+		map[string]interface{}{
+			"db":             "example_forum",
+			"collection":     "user",
+			"shard_instance": "dbshard_example_forum_7_1",
+			"filter":         map[string]interface{}{},
 		},
-	)
+	}
 
-	fmt.Println(ret, err)
+	ret, err := client.DoQuery(q)
+
+	if err != nil {
+		fmt.Println(ret, err)
+	}
+	return err
 }
 
 func direct() {
@@ -69,7 +73,11 @@ func direct() {
 	}
 
 	client := &datamanclient.Client{Transport: transport}
-	doExamples(client)
+	if err := doExamples(client); err != nil {
+		fmt.Println("error with direct")
+	} else {
+		fmt.Println("direct success")
+	}
 
 }
 
@@ -80,7 +88,11 @@ func http() {
 	}
 
 	client := &datamanclient.Client{Transport: transport}
-	doExamples(client)
+	if err := doExamples(client); err != nil {
+		fmt.Println("error with http")
+	} else {
+		fmt.Println("http success")
+	}
 
 }
 

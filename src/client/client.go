@@ -24,23 +24,15 @@ type Client struct {
    Delete(query.QueryArgs) *query.Result
 */
 
-func (d *Client) DoQuery(q map[query.QueryType]query.QueryArgs) (*query.Result, error) {
-	timeout := time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func (d *Client) DoQuery(q *query.Query) (*query.Result, error) {
+	// TODO: timeout should come from config
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel() // Cancel ctx as soon as handleSearch returns.
 
-	results, err := d.Transport.DoQueries(ctx, []map[query.QueryType]query.QueryArgs{q})
+	results, err := d.Transport.DoQuery(ctx, q)
 	if err != nil {
 		return nil, err
 	} else {
-		return results[0], err
+		return results, err
 	}
-}
-
-func (d *Client) DoQueries(q []map[query.QueryType]query.QueryArgs) ([]*query.Result, error) {
-	timeout := time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel() // Cancel ctx as soon as handleSearch returns.
-
-	return d.Transport.DoQueries(ctx, q)
 }

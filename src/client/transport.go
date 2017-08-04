@@ -13,5 +13,5 @@ type DatamanClientTransport interface {
 	// we might want this to be some sort of update channel (since the transport would know best how to determine
 	// if there is an update
 
-	DoQueries(context.Context, []map[query.QueryType]query.QueryArgs) ([]*query.Result, error)
+	DoQuery(context.Context, *query.Query) (*query.Result, error)
 }

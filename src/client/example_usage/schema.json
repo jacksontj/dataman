@@ -2,129 +2,128 @@
 
     "databases": {
         "example_forum": {
-            "_id": 1506,
+            "_id": 1560,
             "name": "example_forum",
             "shard_instances": {
-                "dbshard_example_forum_2": {
-                    "_id": 1512,
-                    "name": "dbshard_example_forum_2",
-                    "count": 2,
-                    "instance": 2,
+                "dbshard_example_forum_7_1": {
+                    "_id": 1618,
+                    "name": "dbshard_example_forum_7_1",
+                    "count": 1,
+                    "instance": 1,
                     "collections": {
                         "message": {
-                            "_id": 4534,
+                            "_id": 4822,
                             "name": "message",
                             "fields": {
-                                "_id": {
-                                    "_id": 18274,
-                                    "name": "_id",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
                                 "data": {
-                                    "_id": 18275,
+                                    "_id": 19554,
                                     "name": "data",
                                     "field_type": "_document",
                                     "subfields": {
                                         "content": {
-                                            "_id": 18278,
+                                            "_id": 19555,
                                             "name": "content",
                                             "field_type": "_string",
                                             "not_null": true,
                                             "provision_state": 3
                                         },
                                         "created": {
-                                            "_id": 18279,
+                                            "_id": 19556,
                                             "name": "created",
                                             "field_type": "_int",
                                             "not_null": true,
                                             "provision_state": 3
                                         },
                                         "created_by": {
-                                            "_id": 18280,
+                                            "_id": 19557,
                                             "name": "created_by",
                                             "field_type": "_string",
                                             "not_null": true,
+                                            "relation": {
+                                                "_id": 1419,
+                                                "field_id": 19548,
+                                                "collection": "user",
+                                                "field": "username"
+                                            },
                                             "provision_state": 3
                                         },
-                                        "inner_created_default": {
-                                            "_id": 18276,
-                                            "name": "inner_created_default",
-                                            "field_type": "_int",
-                                            "not_null": true,
-                                            "default": 100,
-                                            "provision_state": 3
-                                        },
-                                        "thread_id": {
-                                            "_id": 18277,
-                                            "name": "thread_id",
-                                            "field_type": "_int",
+                                        "thread_ksuid": {
+                                            "_id": 19558,
+                                            "name": "thread_ksuid",
+                                            "field_type": "_string",
                                             "not_null": true,
                                             "relation": {
-                                                "_id": 1314,
-                                                "field_id": 18273,
+                                                "_id": 1420,
+                                                "field_id": 19553,
                                                 "collection": "thread",
-                                                "field": "_id"
+                                                "field": "ksuid"
                                             },
                                             "provision_state": 3
                                         }
                                     },
                                     "provision_state": 3
                                 },
-                                "outer_created_default": {
-                                    "_id": 18281,
-                                    "name": "outer_created_default",
-                                    "field_type": "_int",
+                                "ksuid": {
+                                    "_id": 19559,
+                                    "name": "ksuid",
+                                    "field_type": "_string",
                                     "not_null": true,
-                                    "default": 100,
                                     "provision_state": 3
                                 }
                             },
                             "indexes": {
                                 "created": {
-                                    "_id": 5756,
+                                    "_id": 6184,
                                     "name": "created",
                                     "fields": [
                                         "data.created"
                                     ],
+                                    "provision_state": 3
+                                },
+                                "ksuid": {
+                                    "_id": 6183,
+                                    "name": "ksuid",
+                                    "fields": [
+                                        "ksuid"
+                                    ],
+                                    "unique": true,
+                                    "primary": true,
                                     "provision_state": 3
                                 }
                             },
                             "provision_state": 3
                         },
                         "thread": {
-                            "_id": 4533,
+                            "_id": 4821,
                             "name": "thread",
                             "fields": {
-                                "_id": {
-                                    "_id": 18273,
-                                    "name": "_id",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
                                 "data": {
-                                    "_id": 18269,
+                                    "_id": 19549,
                                     "name": "data",
                                     "field_type": "_document",
                                     "subfields": {
                                         "created": {
-                                            "_id": 18271,
+                                            "_id": 19550,
                                             "name": "created",
                                             "field_type": "_int",
                                             "not_null": true,
                                             "provision_state": 3
                                         },
                                         "created_by": {
-                                            "_id": 18272,
+                                            "_id": 19551,
                                             "name": "created_by",
                                             "field_type": "_string",
                                             "not_null": true,
+                                            "relation": {
+                                                "_id": 1418,
+                                                "field_id": 19548,
+                                                "collection": "user",
+                                                "field": "username"
+                                            },
                                             "provision_state": 3
                                         },
                                         "title": {
-                                            "_id": 18270,
+                                            "_id": 19552,
                                             "name": "title",
                                             "field_type": "_string",
                                             "not_null": true,
@@ -132,19 +131,36 @@
                                         }
                                     },
                                     "provision_state": 3
+                                },
+                                "ksuid": {
+                                    "_id": 19553,
+                                    "name": "ksuid",
+                                    "field_type": "_string",
+                                    "not_null": true,
+                                    "provision_state": 3
                                 }
                             },
                             "indexes": {
                                 "created": {
-                                    "_id": 5754,
+                                    "_id": 6180,
                                     "name": "created",
                                     "fields": [
                                         "data.created"
                                     ],
                                     "provision_state": 3
                                 },
+                                "ksuid": {
+                                    "_id": 6181,
+                                    "name": "ksuid",
+                                    "fields": [
+                                        "ksuid"
+                                    ],
+                                    "unique": true,
+                                    "primary": true,
+                                    "provision_state": 3
+                                },
                                 "title": {
-                                    "_id": 5755,
+                                    "_id": 6182,
                                     "name": "title",
                                     "fields": [
                                         "data.title"
@@ -156,18 +172,11 @@
                             "provision_state": 3
                         },
                         "user": {
-                            "_id": 4532,
+                            "_id": 4820,
                             "name": "user",
                             "fields": {
-                                "_id": {
-                                    "_id": 18267,
-                                    "name": "_id",
-                                    "field_type": "_int",
-                                    "not_null": true,
-                                    "provision_state": 3
-                                },
                                 "username": {
-                                    "_id": 18268,
+                                    "_id": 19548,
                                     "name": "username",
                                     "field_type": "_string",
                                     "not_null": true,
@@ -176,12 +185,13 @@
                             },
                             "indexes": {
                                 "username": {
-                                    "_id": 5753,
+                                    "_id": 6179,
                                     "name": "username",
                                     "fields": [
                                         "username"
                                     ],
                                     "unique": true,
+                                    "primary": true,
                                     "provision_state": 3
                                 }
                             },
@@ -211,6 +221,14 @@
             "name": "_int",
             "dataman_type": "int"
         },
+        "_json": {
+            "name": "_json",
+            "dataman_type": "json"
+        },
+        "_serial": {
+            "name": "_serial",
+            "dataman_type": "serial"
+        },
         "_string": {
             "name": "_string",
             "dataman_type": "string"
@@ -218,23 +236,6 @@
         "_text": {
             "name": "_text",
             "dataman_type": "text"
-        },
-        "age": {
-            "name": "age",
-            "dataman_type": "int",
-            "constraints": [
-                {
-                    "constraint_type": "lt",
-                    "args": {
-                        "value": 200
-                    },
-                    "validation_error": "Age too large!"
-                }
-            ]
-        },
-        "phone number": {
-            "name": "phone number",
-            "dataman_type": "string"
         }
     }
 
