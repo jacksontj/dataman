@@ -24,12 +24,12 @@ type Client struct {
    Delete(query.QueryArgs) *query.Result
 */
 
-func (d *Client) DoQuery(q *query.Query) (*query.Result, error) {
+func (d *Client) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
 	// TODO: timeout should come from config
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	c, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel() // Cancel ctx as soon as handleSearch returns.
 
-	results, err := d.Transport.DoQuery(ctx, q)
+	results, err := d.Transport.DoQuery(c, q)
 	if err != nil {
 		return nil, err
 	} else {

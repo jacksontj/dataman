@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -27,7 +28,7 @@ func doExamples(client *datamanclient.Client) error {
 		},
 	}
 
-	ret, err := client.DoQuery(q)
+	ret, err := client.DoQuery(context.Background(), q)
 
 	if err != nil {
 		fmt.Println(ret, err)
