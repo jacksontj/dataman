@@ -15,6 +15,7 @@ import (
 	"github.com/rcrowley/go-metrics"
 
 	"github.com/jacksontj/dataman/src/query"
+	"github.com/jacksontj/dataman/src/router_node/client_manager"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 
@@ -26,6 +27,8 @@ import (
 // This is also responsible for maintaining schema, indexes, etc. from the metadata store
 type RouterNode struct {
 	Config *Config
+
+	clientManager clientmanager.ClientManager
 
 	// All metadata
 	meta atomic.Value
@@ -42,8 +45,9 @@ type RouterNode struct {
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
 	node := &RouterNode{
-		Config:   config,
-		syncChan: make(chan chan error),
+		Config:        config,
+		clientManager: &clientmanager.HTTPClientManager{},
+		syncChan:      make(chan chan error),
 		// TODO: have config (or something) optionally pass in a parent register
 		// Set up metrics
 		// TODO: differentiate namespace on something in config (that has to be process-wide unique)
@@ -349,11 +353,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 
 	// Depending on query type we might be able to be more specific about which vshards we go to
 	switch q.Type {
-	// TODO: change the query format for Get()
 	case query.Get:
-		// TODO: have kwarg or something to allow scatter-gather, there is no
-		// requirement that the primary key be the shard key (although it will usually be the case)
-
 		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
@@ -390,7 +390,6 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 
 	case query.Filter:
-
 		filterMapRaw, ok := q.Args["filter"] // TODO: better arg than pkey, maybe record?
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Filter()s must include filter map")}
@@ -465,7 +464,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 			vshardResults <- &query.Result{Error: "1 Unknown datasourceInstanceShardInstance"}
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
-				if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
+				if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 					vshardResults <- result
 				} else {
 					vshardResults <- &query.Result{Error: err.Error()}
@@ -566,7 +565,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
 		}
 
-		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
+		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
@@ -611,18 +610,12 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			return &query.Result{Error: "4 Unknown datasourceInstanceShardInstance"}
 		}
 
-		result, err := Query(
-			// TODO: replicas -- add args for slave etc.
-			datasourceInstance,
-			datasourceInstanceShardInstance,
-			&query.Query{q.Type, q.Args},
-		)
-
-		if err == nil {
+		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
 		}
+
 	case query.Update:
 		filterRecord, ok := q.Args["filter"].(map[string]interface{})
 		if !ok {
@@ -666,7 +659,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			}
 
 			// TODO: replicas -- add args for slave etc.
-			if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
+			if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 				return result
 			} else {
 				return &query.Result{Error: err.Error()}
@@ -684,7 +677,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 				} else {
 					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 						// TODO: replicas -- add args for slave etc.
-						if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
+						if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 							vshardResults <- result
 						} else {
 							vshardResults <- &query.Result{Error: err.Error()}
@@ -696,6 +689,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 			return query.MergeResult(collection.PrimaryIndex.Fields, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
+
 	case query.Delete:
 		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
@@ -741,7 +735,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		}
 
 		// TODO: replicas -- add args for slave etc.
-		if result, err := Query(datasourceInstance, datasourceInstanceShardInstance, &query.Query{q.Type, q.Args}); err == nil {
+		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
 			return &query.Result{Error: err.Error()}
