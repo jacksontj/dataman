@@ -23,12 +23,7 @@ type HTTPDatamanClient struct {
 }
 
 func (d *HTTPDatamanClient) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
-	// TODO: better marshalling
-	queryArgs := make(map[string]interface{})
-	for k, v := range q.Args {
-		queryArgs[k] = v
-	}
-	queryMap := map[query.QueryType]interface{}{q.Type: queryArgs}
+	queryMap := map[query.QueryType]interface{}{q.Type: q.Args}
 
 	encQueries, err := json.Marshal(queryMap)
 	if err != nil {
@@ -47,7 +42,7 @@ func (d *HTTPDatamanClient) DoQuery(ctx context.Context, q *query.Query) (*query
 	}
 
 	// Pass the context on
-	req.WithContext(ctx)
+	req = req.WithContext(ctx)
 
 	resp, err := d.client.Do(req)
 	if err != nil {
