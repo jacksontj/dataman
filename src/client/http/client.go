@@ -32,11 +32,7 @@ func (d *HTTPDatamanClient) DoQuery(ctx context.Context, q *query.Query) (*query
 	bodyReader := bytes.NewReader(encQueries)
 
 	// send task to node
-	req, err := http.NewRequest(
-		"POST",
-		d.destination+"data/raw",
-		bodyReader,
-	)
+	req, err := http.NewRequest("POST", d.destination, bodyReader)
 	if err != nil {
 		return nil, err
 	}
