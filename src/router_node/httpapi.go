@@ -80,6 +80,9 @@ func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httpro
 */
 // TODO: implement
 func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
+	// TODO: read here should cancel if the ctx closes (client disconnects etc.)
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -102,7 +105,8 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 			q.Type = k
 			q.Args = v
 		}
-		results := h.routerNode.HandleQuery(&q)
+
+		results := h.routerNode.HandleQuery(ctx, &q)
 		// Now we need to return the results
 		if bytes, err := json.Marshal(results); err != nil {
 			// TODO: log this better?

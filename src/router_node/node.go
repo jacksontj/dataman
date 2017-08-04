@@ -1,6 +1,7 @@
 package routernode
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -225,7 +226,7 @@ func (s *RouterNode) fetchMeta() (err error) {
 }
 
 // Handle a single query
-func (s *RouterNode) HandleQuery(q *query.Query) *query.Result {
+func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Result {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
@@ -241,11 +242,11 @@ func (s *RouterNode) HandleQuery(q *query.Query) *query.Result {
 	switch q.Type {
 	// Write operations
 	case query.Set, query.Insert, query.Update, query.Delete:
-		result = s.handleWrite(meta, q)
+		result = s.handleWrite(ctx, meta, q)
 
 	// Read operations
 	case query.Get, query.Filter:
-		result = s.handleRead(meta, q)
+		result = s.handleRead(ctx, meta, q)
 
 		// All other operations should error
 	default:
@@ -308,7 +309,7 @@ func (s *RouterNode) HandleQuery(q *query.Query) *query.Result {
 	return result
 }
 
-func (s *RouterNode) handleRead(meta *metadata.Meta, q *query.Query) *query.Result {
+func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *query.Query) *query.Result {
 	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
 		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
@@ -477,7 +478,7 @@ func (s *RouterNode) handleRead(meta *metadata.Meta, q *query.Query) *query.Resu
 }
 
 // TODO: fix
-func (s *RouterNode) handleWrite(meta *metadata.Meta, q *query.Query) *query.Result {
+func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *query.Query) *query.Result {
 	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
 		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
