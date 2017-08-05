@@ -12,6 +12,7 @@ Metadata about the storage node will be stored in a database called _dataman.sto
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -90,7 +91,7 @@ func (s *Storage) GetMeta() *metadata.Meta {
 }
 
 // Do a single item get
-func (s *Storage) Get(args query.QueryArgs) *query.Result {
+func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -153,7 +154,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 	}
 
 	selectQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s WHERE %s", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, " AND "))
-	result.Return, err = DoQuery(s.getDB(args["db"].(string)), selectQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), selectQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -165,7 +166,7 @@ func (s *Storage) Get(args query.QueryArgs) *query.Result {
 }
 
 // Set() is a special-case of "upsert" where we do the upsert on the primary key
-func (s *Storage) Set(args query.QueryArgs) *query.Result {
+func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -243,7 +244,7 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 		strings.Join(updatePairs, ","),
 	)
 
-	result.Return, err = DoQuery(s.getDB(args["db"].(string)), upsertQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), upsertQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -254,7 +255,7 @@ func (s *Storage) Set(args query.QueryArgs) *query.Result {
 	return result
 }
 
-func (s *Storage) Insert(args query.QueryArgs) *query.Result {
+func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -312,7 +313,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	// TODO: re-add
 	// insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
 	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES (%s) RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
-	result.Return, err = DoQuery(s.getDB(args["db"].(string)), insertQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), insertQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -323,7 +324,7 @@ func (s *Storage) Insert(args query.QueryArgs) *query.Result {
 	return result
 }
 
-func (s *Storage) Update(args query.QueryArgs) *query.Result {
+func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -396,7 +397,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	//updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET _updated='now',%s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING *", args["shard_instance"].(string), args["collection"], setClause, whereClause)
 
-	result.Return, err = DoQuery(s.getDB(args["db"].(string)), updateQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), updateQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -407,7 +408,7 @@ func (s *Storage) Update(args query.QueryArgs) *query.Result {
 	return result
 }
 
-func (s *Storage) Delete(args query.QueryArgs) *query.Result {
+func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -476,7 +477,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 	}
 
 	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, ","), whereClause)
-	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
+	rows, err := DoQuery(ctx, s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result
@@ -488,7 +489,7 @@ func (s *Storage) Delete(args query.QueryArgs) *query.Result {
 
 }
 
-func (s *Storage) Filter(args query.QueryArgs) *query.Result {
+func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
@@ -510,7 +511,7 @@ func (s *Storage) Filter(args query.QueryArgs) *query.Result {
 		sqlQuery += " WHERE " + whereClause
 	}
 
-	rows, err := DoQuery(s.getDB(args["db"].(string)), sqlQuery)
+	rows, err := DoQuery(ctx, s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
 		result.Error = err.Error()
 		return result

@@ -168,7 +168,7 @@ func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps http
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsDatabase(&database); err != nil {
+		if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsDatabase(r.Context(), &database); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 			return
@@ -183,7 +183,7 @@ func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps http
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistDatabase(dbname); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistDatabase(r.Context(), dbname); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -217,7 +217,7 @@ func (h *HTTPApi) ensureShardInstance(w http.ResponseWriter, r *http.Request, ps
 	} else {
 		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
-			if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsShardInstance(db, &shardInstance); err != nil {
+			if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsShardInstance(r.Context(), db, &shardInstance); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(err.Error()))
 				return
@@ -263,7 +263,7 @@ func (h *HTTPApi) removeShardInstance(w http.ResponseWriter, r *http.Request, ps
 	// TODO: there is a race condition here, as we are checking the meta -- unless we do lots of locking
 	// we'll leave this in place for now, until we have some more specific errors that we can type
 	// switch around to give meaningful error messages
-	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistShardInstance(r.Context(), dbname, shardinstance); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -294,7 +294,7 @@ func (h *HTTPApi) ensureCollection(w http.ResponseWriter, r *http.Request, ps ht
 		meta := h.storageNode.Datasources[ps.ByName("datasource")].GetMeta()
 		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 			if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
-				if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollection(db, shardInstance, &collection); err != nil {
+				if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollection(r.Context(), db, shardInstance, &collection); err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					w.Write([]byte(err.Error()))
 					return
@@ -375,7 +375,7 @@ func (h *HTTPApi) updateCollection(w http.ResponseWriter, r *http.Request, ps ht
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeCollection(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollection(ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname")); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollection(r.Context(), ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname")); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -443,7 +443,7 @@ func (h *HTTPApi) ensureIndex(w http.ResponseWriter, r *http.Request, ps httprou
 		if db, ok := meta.Databases[ps.ByName("dbname")]; ok {
 			if shardInstance, ok := db.ShardInstances[ps.ByName("shardinstance")]; ok {
 				if collection, ok := shardInstance.Collections[ps.ByName("collectionname")]; ok {
-					if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollectionIndex(db, shardInstance, collection, &index); err != nil {
+					if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureExistsCollectionIndex(r.Context(), db, shardInstance, collection, &index); err != nil {
 						w.WriteHeader(http.StatusInternalServerError)
 						w.Write([]byte(err.Error()))
 						return
@@ -473,7 +473,7 @@ func (h *HTTPApi) ensureIndex(w http.ResponseWriter, r *http.Request, ps httprou
 
 // Add database that we have in the metadata store
 func (h *HTTPApi) removeIndex(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollectionIndex(ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname"), ps.ByName("indexname")); err != nil {
+	if err := h.storageNode.Datasources[ps.ByName("datasource")].EnsureDoesntExistCollectionIndex(r.Context(), ps.ByName("dbname"), ps.ByName("shardinstance"), ps.ByName("collectionname"), ps.ByName("indexname")); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 	}
@@ -481,6 +481,8 @@ func (h *HTTPApi) removeIndex(w http.ResponseWriter, r *http.Request, ps httprou
 
 // TODO: streaming parser
 func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -503,7 +505,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 			q.Type = k
 			q.Args = v
 		}
-		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(&q)
+		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(ctx, &q)
 		// Now we need to return the results
 		if bytes, err := json.Marshal(result); err != nil {
 			// TODO: log this better?

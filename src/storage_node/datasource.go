@@ -1,6 +1,7 @@
 package storagenode
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -146,14 +147,16 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 		}
 	}()
 
-	if meta, err := s.MetaStore.GetMeta(); err == nil {
+	ctx := context.Background()
+
+	if meta, err := s.MetaStore.GetMeta(ctx); err == nil {
 		s.meta.Store(meta)
 	} else {
 		return err
 	}
 
 	// TODO: filter only active things
-	meta, err := s.MetaStore.GetMeta()
+	meta, err := s.MetaStore.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -213,7 +216,7 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 }
 
 // TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
-func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
+func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *query.Result {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
@@ -301,7 +304,7 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 						return &query.Result{ValidationError: validationResultMap}
 					}
 
-					joinResults := s.Store.Set(map[string]interface{}{
+					joinResults := s.Store.Set(ctx, map[string]interface{}{
 						"db":             q.Args["db"],
 						"shard_instance": q.Args["shard_instance"].(string),
 						"collection":     joinField.Relation.Collection,
@@ -363,7 +366,7 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 	// storage interfaces
 	switch q.Type {
 	case query.Get:
-		result = s.Store.Get(q.Args)
+		result = s.Store.Get(ctx, q.Args)
 
 		// TODO: move to routing layer only
 		// This only works for stuff that has a shard count of 1
@@ -406,7 +409,7 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 				for j, _ := range result.Return {
 					// If there isn't a join record-- skip
 					if rawJoinValue, _ := query.GetValue(result.Return[j], joinFieldNameParts); rawJoinValue != nil {
-						joinResults := s.Store.Get(map[string]interface{}{
+						joinResults := s.Store.Get(ctx, map[string]interface{}{
 							"db":             q.Args["db"],
 							"shard_instance": q.Args["shard_instance"].(string),
 							"collection":     joinField.Relation.Collection,
@@ -424,15 +427,15 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 			}
 		}
 	case query.Set:
-		result = s.Store.Set(q.Args)
+		result = s.Store.Set(ctx, q.Args)
 	case query.Insert:
-		result = s.Store.Insert(q.Args)
+		result = s.Store.Insert(ctx, q.Args)
 	case query.Update:
-		result = s.Store.Update(q.Args)
+		result = s.Store.Update(ctx, q.Args)
 	case query.Delete:
-		result = s.Store.Delete(q.Args)
+		result = s.Store.Delete(ctx, q.Args)
 	case query.Filter:
-		result = s.Store.Filter(q.Args)
+		result = s.Store.Filter(ctx, q.Args)
 		// TODO: move to routing layer only
 		// This only works for stuff that has a shard count of 1
 		if joinFieldList, ok := q.Args["join"]; ok && joinFieldList != nil {
@@ -474,7 +477,7 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 				for j, _ := range result.Return {
 					// If there isn't a join record-- skip
 					if rawJoinValue, _ := query.GetValue(result.Return[j], joinFieldNameParts); rawJoinValue != nil {
-						joinResults := s.Store.Get(map[string]interface{}{
+						joinResults := s.Store.Get(ctx, map[string]interface{}{
 							"db":             q.Args["db"],
 							"shard_instance": q.Args["shard_instance"].(string),
 							"collection":     joinField.Relation.Collection,
@@ -559,14 +562,14 @@ func (s *DatasourceInstance) HandleQuery(q *query.Query) *query.Result {
 	return result
 }
 
-func (s *DatasourceInstance) EnsureExistsDatabase(db *metadata.Database) error {
+func (s *DatasourceInstance) EnsureExistsDatabase(ctx context.Context, db *metadata.Database) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureExistsDatabase(db); err != nil {
+	if err := s.ensureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -575,10 +578,10 @@ func (s *DatasourceInstance) EnsureExistsDatabase(db *metadata.Database) error {
 	return nil
 }
 
-func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
+func (s *DatasourceInstance) ensureExistsDatabase(ctx context.Context, db *metadata.Database) error {
 	// If the actual database exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingDB := s.StoreSchema.GetDatabase(db.Name); existingDB != nil {
+	if existingDB := s.StoreSchema.GetDatabase(ctx, db.Name); existingDB != nil {
 		if _, ok := s.GetMeta().Databases[db.Name]; !ok {
 			return fmt.Errorf("Unable to ensureExistsDatabase as it exists in the underlying datasource_instance but not in the metadata")
 		}
@@ -599,53 +602,53 @@ func (s *DatasourceInstance) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Add it to the metadata so we know we where working on it
 	db.ProvisionState = metadata.Provision
-	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
 	// Change the actual datasource_instance
-	if existingDB := s.StoreSchema.GetDatabase(db.Name); existingDB == nil {
-		if err := s.StoreSchema.AddDatabase(db); err != nil {
+	if existingDB := s.StoreSchema.GetDatabase(ctx, db.Name); existingDB == nil {
+		if err := s.StoreSchema.AddDatabase(ctx, db); err != nil {
 			return err
 		}
 	}
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate
-	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
 	// Now lets follow the tree down
 	for _, shardInstance := range db.ShardInstances {
-		if err := s.ensureExistsShardInstance(db, shardInstance); err != nil {
+		if err := s.ensureExistsShardInstance(ctx, db, shardInstance); err != nil {
 			return err
 		}
 	}
 
 	// Test the db -- if its good lets mark it as active
-	existingDB := s.StoreSchema.GetDatabase(db.Name)
+	existingDB := s.StoreSchema.GetDatabase(ctx, db.Name)
 	if !db.Equal(existingDB) {
 		return fmt.Errorf("Unable to apply database change to datasource_instance")
 	}
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Active
-	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureDoesntExistDatabase(dbname string) error {
+func (s *DatasourceInstance) EnsureDoesntExistDatabase(ctx context.Context, dbname string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureDoesntExistDatabase(dbname); err != nil {
+	if err := s.ensureDoesntExistDatabase(ctx, dbname); err != nil {
 		return err
 	}
 
@@ -655,7 +658,7 @@ func (s *DatasourceInstance) EnsureDoesntExistDatabase(dbname string) error {
 
 }
 
-func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
+func (s *DatasourceInstance) ensureDoesntExistDatabase(ctx context.Context, dbname string) error {
 	db, ok := s.GetMeta().Databases[dbname]
 	if !ok {
 		return nil
@@ -663,7 +666,7 @@ func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
 
 	// Set the state as deallocate
 	db.ProvisionState = metadata.Deallocate
-	if err := s.MutableMetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -671,26 +674,26 @@ func (s *DatasourceInstance) ensureDoesntExistDatabase(dbname string) error {
 	s.refreshMeta()
 
 	// Remove from the datastore
-	if err := s.StoreSchema.RemoveDatabase(dbname); err != nil {
+	if err := s.StoreSchema.RemoveDatabase(ctx, dbname); err != nil {
 		return err
 	}
 
 	// Remove from meta
-	if err := s.MutableMetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistDatabase(ctx, dbname); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureExistsShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+func (s *DatasourceInstance) EnsureExistsShardInstance(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.ensureExistsShardInstance(ctx, db, shardInstance); err != nil {
 		return err
 	}
 
@@ -699,10 +702,10 @@ func (s *DatasourceInstance) EnsureExistsShardInstance(db *metadata.Database, sh
 	return nil
 }
 
-func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+func (s *DatasourceInstance) ensureExistsShardInstance(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	// If the actual shardInstance exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance != nil {
+	if existingShardInstance := s.StoreSchema.GetShardInstance(ctx, db.Name, shardInstance.Name); existingShardInstance != nil {
 		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
 			return fmt.Errorf("Unable to ensureExistsShardInstance as it exists in the underlying datasource_instance but not in the metadata")
 		} else {
@@ -729,51 +732,51 @@ func (s *DatasourceInstance) ensureExistsShardInstance(db *metadata.Database, sh
 
 	// Add it to the metadata so we know we where working on it
 	shardInstance.ProvisionState = metadata.Provision
-	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(ctx, db, shardInstance); err != nil {
 		return err
 	}
 
 	// Change the actual datasource_instance
-	if existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name); existingShardInstance == nil {
-		if err := s.StoreSchema.AddShardInstance(db, shardInstance); err != nil {
+	if existingShardInstance := s.StoreSchema.GetShardInstance(ctx, db.Name, shardInstance.Name); existingShardInstance == nil {
+		if err := s.StoreSchema.AddShardInstance(ctx, db, shardInstance); err != nil {
 			return err
 		}
 	}
 
 	// Since we made the database, lets update the metadata about it
 	shardInstance.ProvisionState = metadata.Validate
-	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(ctx, db, shardInstance); err != nil {
 		return err
 	}
 
 	// Now lets follow the tree down
 	for _, collection := range shardInstance.Collections {
-		if err := s.ensureExistsCollection(db, shardInstance, collection); err != nil {
+		if err := s.ensureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 			return err
 		}
 	}
 
 	// Test the db -- if its good lets mark it as active
-	existingShardInstance := s.StoreSchema.GetShardInstance(db.Name, shardInstance.Name)
+	existingShardInstance := s.StoreSchema.GetShardInstance(ctx, db.Name, shardInstance.Name)
 	if !shardInstance.Equal(existingShardInstance) {
 		return fmt.Errorf("Unable to apply shardInstance change to datasource_instance")
 	}
 
 	shardInstance.ProvisionState = metadata.Active
-	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(ctx, db, shardInstance); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureDoesntExistShardInstance(dbname string, shardinstance string) error {
+func (s *DatasourceInstance) EnsureDoesntExistShardInstance(ctx context.Context, dbname string, shardinstance string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+	if err := s.ensureDoesntExistShardInstance(ctx, dbname, shardinstance); err != nil {
 		return err
 	}
 
@@ -782,7 +785,7 @@ func (s *DatasourceInstance) EnsureDoesntExistShardInstance(dbname string, shard
 	return nil
 }
 
-func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shardinstance string) error {
+func (s *DatasourceInstance) ensureDoesntExistShardInstance(ctx context.Context, dbname string, shardinstance string) error {
 	db, ok := s.GetMeta().Databases[dbname]
 	if !ok {
 		return nil
@@ -795,7 +798,7 @@ func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shard
 
 	// Set the state as deallocate
 	shardInstance.ProvisionState = metadata.Deallocate
-	if err := s.MutableMetaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsShardInstance(ctx, db, shardInstance); err != nil {
 		return err
 	}
 
@@ -803,26 +806,26 @@ func (s *DatasourceInstance) ensureDoesntExistShardInstance(dbname string, shard
 	s.refreshMeta()
 
 	// Remove from the datastore
-	if err := s.StoreSchema.RemoveShardInstance(dbname, shardinstance); err != nil {
+	if err := s.StoreSchema.RemoveShardInstance(ctx, dbname, shardinstance); err != nil {
 		return err
 	}
 
 	// Remove from meta
-	if err := s.MutableMetaStore.EnsureDoesntExistShardInstance(dbname, shardinstance); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistShardInstance(ctx, dbname, shardinstance); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureExistsCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+func (s *DatasourceInstance) EnsureExistsCollection(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.ensureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -831,10 +834,10 @@ func (s *DatasourceInstance) EnsureExistsCollection(db *metadata.Database, shard
 	return nil
 }
 
-func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+func (s *DatasourceInstance) ensureExistsCollection(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection != nil {
+	if existingCollection := s.StoreSchema.GetCollection(ctx, db.Name, shardInstance.Name, collection.Name); existingCollection != nil {
 		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
 			return fmt.Errorf("Unable to ensureExistsCollection as it exists in the underlying datasource_instance but not in the metadata")
 		} else {
@@ -867,7 +870,7 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 
 	// Add it to the metadata so we know we where working on it
 	collection.ProvisionState = metadata.Provision
-	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -879,7 +882,7 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 			// TODO: better? We don't need to make the whole collection-- just the field
 			// But we'll do it for now
 			if relationCollection, ok := shardInstance.Collections[field.Relation.Collection]; ok {
-				if err := s.ensureExistsCollection(db, shardInstance, relationCollection); err != nil {
+				if err := s.ensureExistsCollection(ctx, db, shardInstance, relationCollection); err != nil {
 					return err
 				}
 			}
@@ -887,15 +890,15 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 	}
 
 	// Ensure that the collection exists
-	if existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name); existingCollection == nil {
-		if err := s.StoreSchema.AddCollection(db, shardInstance, collection); err != nil {
+	if existingCollection := s.StoreSchema.GetCollection(ctx, db.Name, shardInstance.Name, collection.Name); existingCollection == nil {
+		if err := s.StoreSchema.AddCollection(ctx, db, shardInstance, collection); err != nil {
 			return err
 		}
 	}
 
 	// Since we made the database, lets update the metadata about it
 	collection.ProvisionState = metadata.Validate
-	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -903,37 +906,37 @@ func (s *DatasourceInstance) ensureExistsCollection(db *metadata.Database, shard
 
 	// Ensure all the fields
 	for _, field := range collection.Fields {
-		if err := s.ensureExistsCollectionField(db, shardInstance, collection, field); err != nil {
+		if err := s.ensureExistsCollectionField(ctx, db, shardInstance, collection, field); err != nil {
 			return err
 		}
 	}
 
 	// Ensure all the indexes
 	for _, index := range collection.Indexes {
-		if err := s.ensureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+		if err := s.ensureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 			return err
 		}
 	}
 	// Test the db -- if its good lets mark it as active
-	existingCollection := s.StoreSchema.GetCollection(db.Name, shardInstance.Name, collection.Name)
+	existingCollection := s.StoreSchema.GetCollection(ctx, db.Name, shardInstance.Name, collection.Name)
 	if !collection.Equal(existingCollection) {
 		return fmt.Errorf("Unable to apply collection change to datasource_instance")
 	}
 
 	collection.ProvisionState = metadata.Active
-	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 		return err
 	}
 	return nil
 }
-func (s *DatasourceInstance) EnsureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
+func (s *DatasourceInstance) EnsureDoesntExistCollection(ctx context.Context, dbname, shardinstance, collectionname string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
+	if err := s.ensureDoesntExistCollection(ctx, dbname, shardinstance, collectionname); err != nil {
 		return err
 	}
 
@@ -942,7 +945,7 @@ func (s *DatasourceInstance) EnsureDoesntExistCollection(dbname, shardinstance, 
 	return nil
 }
 
-func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, collectionname string) error {
+func (s *DatasourceInstance) ensureDoesntExistCollection(ctx context.Context, dbname, shardinstance, collectionname string) error {
 	db, ok := s.GetMeta().Databases[dbname]
 	if !ok {
 		return nil
@@ -960,7 +963,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, 
 
 	// Set the state as deallocate
 	collection.ProvisionState = metadata.Deallocate
-	if err := s.MutableMetaStore.EnsureExistsCollection(db, shardInstance, collection); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollection(ctx, db, shardInstance, collection); err != nil {
 		return err
 	}
 
@@ -968,26 +971,26 @@ func (s *DatasourceInstance) ensureDoesntExistCollection(dbname, shardinstance, 
 	s.refreshMeta()
 
 	// Remove from the datastore
-	if err := s.StoreSchema.RemoveCollection(dbname, shardinstance, collectionname); err != nil {
+	if err := s.StoreSchema.RemoveCollection(ctx, dbname, shardinstance, collectionname); err != nil {
 		return err
 	}
 
 	// Remove from meta
-	if err := s.MutableMetaStore.EnsureDoesntExistCollection(dbname, shardinstance, collectionname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollection(ctx, dbname, shardinstance, collectionname); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
+func (s *DatasourceInstance) EnsureExistsCollectionField(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureExistsCollectionField(db, shardInstance, collection, field); err != nil {
+	if err := s.ensureExistsCollectionField(ctx, db, shardInstance, collection, field); err != nil {
 		return err
 	}
 
@@ -997,10 +1000,10 @@ func (s *DatasourceInstance) EnsureExistsCollectionField(db *metadata.Database, 
 }
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionField() on it
-func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
+func (s *DatasourceInstance) ensureExistsCollectionField(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
+	if existingField := s.StoreSchema.GetCollectionField(ctx, db.Name, shardInstance.Name, collection.Name, field.Name); existingField != nil {
 		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
 			return fmt.Errorf("Unable to ensureExistsCollectionField as DB exists in the underlying datasource_instance but not in the metadata")
 		} else {
@@ -1039,24 +1042,24 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 
 	// Add it to the metadata so we know we where working on it
 	metadata.SetFieldTreeState(field, metadata.Provision)
-	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(ctx, db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
 	// Change the actual datasource_instance
-	if existingField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
-		if err := s.StoreSchema.AddCollectionField(db, shardInstance, collection, field); err != nil {
+	if existingField := s.StoreSchema.GetCollectionField(ctx, db.Name, shardInstance.Name, collection.Name, field.Name); existingField == nil {
+		if err := s.StoreSchema.AddCollectionField(ctx, db, shardInstance, collection, field); err != nil {
 			return err
 		}
 	}
 
 	metadata.SetFieldTreeState(field, metadata.Validate)
-	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(ctx, db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
 	// Test the db -- if its good lets mark it as active
-	existingCollectionField := s.StoreSchema.GetCollectionField(db.Name, shardInstance.Name, collection.Name, field.Name)
+	existingCollectionField := s.StoreSchema.GetCollectionField(ctx, db.Name, shardInstance.Name, collection.Name, field.Name)
 	if !field.Equal(existingCollectionField) {
 		// Special case for json & documents -- as they are the "same" from an export perspective
 		if field.FieldType.DatamanType == datamantype.Document && existingCollectionField.FieldType.DatamanType == datamantype.JSON {
@@ -1073,20 +1076,20 @@ func (s *DatasourceInstance) ensureExistsCollectionField(db *metadata.Database, 
 
 	// Since we made the database, lets update the metadata about it
 	metadata.SetFieldTreeState(field, metadata.Active)
-	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(ctx, db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
 	return nil
 }
-func (s *DatasourceInstance) EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+func (s *DatasourceInstance) EnsureDoesntExistCollectionField(ctx context.Context, dbname, shardinstance, collectionname, fieldname string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+	if err := s.ensureDoesntExistCollectionField(ctx, dbname, shardinstance, collectionname, fieldname); err != nil {
 		return err
 	}
 
@@ -1095,7 +1098,7 @@ func (s *DatasourceInstance) EnsureDoesntExistCollectionField(dbname, shardinsta
 	return nil
 }
 
-func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname string) error {
+func (s *DatasourceInstance) ensureDoesntExistCollectionField(ctx context.Context, dbname, shardinstance, collectionname, fieldname string) error {
 	db, ok := s.GetMeta().Databases[dbname]
 	if !ok {
 		return nil
@@ -1118,7 +1121,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinsta
 
 	// Set the state as deallocate
 	field.ProvisionState = metadata.Deallocate
-	if err := s.MutableMetaStore.EnsureExistsCollectionField(db, shardInstance, collection, field, nil); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionField(ctx, db, shardInstance, collection, field, nil); err != nil {
 		return err
 	}
 
@@ -1126,26 +1129,26 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionField(dbname, shardinsta
 	s.refreshMeta()
 
 	// Remove from the datastore
-	if err := s.StoreSchema.RemoveCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+	if err := s.StoreSchema.RemoveCollectionField(ctx, dbname, shardinstance, collectionname, fieldname); err != nil {
 		return err
 	}
 
 	// Remove from meta
-	if err := s.MutableMetaStore.EnsureDoesntExistCollectionField(dbname, shardinstance, collectionname, fieldname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollectionField(ctx, dbname, shardinstance, collectionname, fieldname); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *DatasourceInstance) EnsureExistsCollectionIndex(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.ensureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1155,10 +1158,10 @@ func (s *DatasourceInstance) EnsureExistsCollectionIndex(db *metadata.Database, 
 }
 
 // TODO: this needs to check for it not matching, and if so call UpdateCollectionIndex() on it
-func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *DatasourceInstance) ensureExistsCollectionIndex(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	// If the actual collection exists we need to see if we know about it -- if not
 	// then its not for us to mess with
-	if existingField := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingField != nil {
+	if existingField := s.StoreSchema.GetCollectionIndex(ctx, db.Name, shardInstance.Name, collection.Name, index.Name); existingField != nil {
 		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
 			return fmt.Errorf("Unable to ensureExistsCollectionIndex as it exists in the underlying datasource_instance but not in the metadata")
 		} else {
@@ -1197,45 +1200,45 @@ func (s *DatasourceInstance) ensureExistsCollectionIndex(db *metadata.Database, 
 
 	// Add it to the metadata so we know we where working on it
 	index.ProvisionState = metadata.Provision
-	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
 	// Change the actual datasource_instance
-	if existingIndex := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
-		if err := s.StoreSchema.AddCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if existingIndex := s.StoreSchema.GetCollectionIndex(ctx, db.Name, shardInstance.Name, collection.Name, index.Name); existingIndex == nil {
+		if err := s.StoreSchema.AddCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 			return err
 		}
 	}
 
 	index.ProvisionState = metadata.Validate
-	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
 	// Test the db -- if its good lets mark it as active
-	existingIndex := s.StoreSchema.GetCollectionIndex(db.Name, shardInstance.Name, collection.Name, index.Name)
+	existingIndex := s.StoreSchema.GetCollectionIndex(ctx, db.Name, shardInstance.Name, collection.Name, index.Name)
 	if !index.Equal(existingIndex) {
 		return fmt.Errorf("Unable to apply collectionIndex change to datasource_instance")
 	}
 
 	// Since we made the database, lets update the metadata about it
 	index.ProvisionState = metadata.Active
-	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *DatasourceInstance) EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+func (s *DatasourceInstance) EnsureDoesntExistCollectionIndex(ctx context.Context, dbname, shardinstance, collectionname, indexname string) error {
 	if s.StoreSchema == nil {
 		return fmt.Errorf("store doesn't support schema modification")
 	}
 
 	s.schemaLock.Lock()
 	defer s.schemaLock.Unlock()
-	if err := s.ensureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+	if err := s.ensureDoesntExistCollectionIndex(ctx, dbname, shardinstance, collectionname, indexname); err != nil {
 		return err
 	}
 
@@ -1244,7 +1247,7 @@ func (s *DatasourceInstance) EnsureDoesntExistCollectionIndex(dbname, shardinsta
 	return nil
 }
 
-func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(ctx context.Context, dbname, shardinstance, collectionname, indexname string) error {
 	db, ok := s.GetMeta().Databases[dbname]
 	if !ok {
 		return nil
@@ -1267,7 +1270,7 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinsta
 
 	// Set the state as deallocate
 	index.ProvisionState = metadata.Deallocate
-	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(db, shardInstance, collection, index); err != nil {
+	if err := s.MutableMetaStore.EnsureExistsCollectionIndex(ctx, db, shardInstance, collection, index); err != nil {
 		return err
 	}
 
@@ -1275,12 +1278,12 @@ func (s *DatasourceInstance) ensureDoesntExistCollectionIndex(dbname, shardinsta
 	s.refreshMeta()
 
 	// Remove from the datastore
-	if err := s.StoreSchema.RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+	if err := s.StoreSchema.RemoveCollectionIndex(ctx, dbname, shardinstance, collectionname, indexname); err != nil {
 		return err
 	}
 
 	// Remove from meta
-	if err := s.MutableMetaStore.EnsureDoesntExistCollectionIndex(dbname, shardinstance, collectionname, indexname); err != nil {
+	if err := s.MutableMetaStore.EnsureDoesntExistCollectionIndex(ctx, dbname, shardinstance, collectionname, indexname); err != nil {
 		return err
 	}
 

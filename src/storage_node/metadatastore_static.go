@@ -1,6 +1,7 @@
 package storagenode
 
 import (
+	"context"
 	"sync"
 
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
@@ -26,7 +27,7 @@ func (s *StaticMetadataStore) SetMeta(m *metadata.Meta) {
 
 // Interface methods
 
-func (s *StaticMetadataStore) GetMeta() (*metadata.Meta, error) {
+func (s *StaticMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 	s.l.RLock()
 	defer s.l.RUnlock()
 	return s.m, nil

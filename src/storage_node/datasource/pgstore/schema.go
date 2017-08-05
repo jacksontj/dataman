@@ -1,6 +1,7 @@
 package pgstorage
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -46,27 +47,27 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	return fieldStr, nil
 }
 
-func (s *Storage) ListDatabase() []*metadata.Database {
-	if dbRecords, err := DoQuery(s.db, "SELECT datname FROM pg_database WHERE datistemplate = false"); err == nil {
+func (s *Storage) ListDatabase(ctx context.Context) []*metadata.Database {
+	if dbRecords, err := DoQuery(ctx, s.db, "SELECT datname FROM pg_database WHERE datistemplate = false"); err == nil {
 		dbs := make([]*metadata.Database, len(dbRecords))
 		for i, dbRecord := range dbRecords {
-			dbs[i] = s.GetDatabase(dbRecord["datname"].(string))
+			dbs[i] = s.GetDatabase(ctx, dbRecord["datname"].(string))
 		}
 		return dbs
 	}
 	return nil
 }
 
-func (s *Storage) GetDatabase(dbname string) *metadata.Database {
+func (s *Storage) GetDatabase(ctx context.Context, dbname string) *metadata.Database {
 	dbQuery := fmt.Sprintf("SELECT datname FROM pg_database WHERE datistemplate = false AND datname='%s'", dbname)
-	dbRecords, err := DoQuery(s.db, dbQuery)
+	dbRecords, err := DoQuery(ctx, s.db, dbQuery)
 	// TODO: log fatal? or return an actual error
 	if err != nil || len(dbRecords) != 1 {
 		return nil
 	}
 	database := metadata.NewDatabase(dbname)
 	database.ProvisionState = metadata.Active
-	shardInstances := s.ListShardInstance(dbname)
+	shardInstances := s.ListShardInstance(ctx, dbname)
 
 	if shardInstances != nil {
 		for _, shardInstance := range shardInstances {
@@ -78,9 +79,9 @@ func (s *Storage) GetDatabase(dbname string) *metadata.Database {
 }
 
 // Database changes
-func (s *Storage) AddDatabase(db *metadata.Database) error {
+func (s *Storage) AddDatabase(ctx context.Context, db *metadata.Database) error {
 	// Create the database
-	if _, err := DoQuery(s.db, fmt.Sprintf("CREATE DATABASE \"%s\"", db.Name)); err != nil {
+	if _, err := DoQuery(ctx, s.db, fmt.Sprintf("CREATE DATABASE \"%s\"", db.Name)); err != nil {
 		return fmt.Errorf("Unable to create database: %v", err)
 	}
 
@@ -96,7 +97,7 @@ func (s *Storage) AddDatabase(db *metadata.Database) error {
 
 const dropDatabaseTemplate = `DROP DATABASE IF EXISTS "%s";`
 
-func (s *Storage) RemoveDatabase(dbname string) error {
+func (s *Storage) RemoveDatabase(ctx context.Context, dbname string) error {
 	// Close the connection we have (so people don't do queries)
 	if conn, ok := s.dbMap[dbname]; ok {
 		if err := conn.Close(); err != nil {
@@ -108,7 +109,7 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	// if there are people using the connection-- that is itself concerning
 	// Revoke perms to connect?     REVOKE CONNECT ON DATABASE TARGET_DB FROM public;
 	// Close any outstanding connecitons (so we can drop the DB)
-	_, err := DoQuery(s.db, fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
+	_, err := DoQuery(ctx, s.db, fmt.Sprintf(`SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
         WHERE pg_stat_activity.datname = '%s';`, dbname))
 	if err != nil {
@@ -116,15 +117,15 @@ func (s *Storage) RemoveDatabase(dbname string) error {
 	}
 
 	// Remove the database
-	if _, err := DoQuery(s.db, fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
+	if _, err := DoQuery(ctx, s.db, fmt.Sprintf(dropDatabaseTemplate, dbname)); err != nil {
 		return fmt.Errorf("Unable to drop db: %v", err)
 	}
 
 	return nil
 }
 
-func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
-	schemas, err := DoQuery(s.getDB(dbname), "SELECT * from information_schema.schemata")
+func (s *Storage) ListShardInstance(ctx context.Context, dbname string) []*metadata.ShardInstance {
+	schemas, err := DoQuery(ctx, s.getDB(dbname), "SELECT * from information_schema.schemata")
 	if err != nil {
 		logrus.Fatalf("Unable to get shard list for db %s: %v", dbname, err)
 	}
@@ -147,7 +148,7 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 			shardInstance.Count = 1
 			shardInstance.Instance = 1
 
-			collections := s.ListCollection(dbname, schemaName)
+			collections := s.ListCollection(ctx, dbname, schemaName)
 			for _, collection := range collections {
 				shardInstance.Collections[collection.Name] = collection
 			}
@@ -158,9 +159,9 @@ func (s *Storage) ListShardInstance(dbname string) []*metadata.ShardInstance {
 	return shardInstances
 }
 
-func (s *Storage) GetShardInstance(dbname, shardinstance string) *metadata.ShardInstance {
+func (s *Storage) GetShardInstance(ctx context.Context, dbname, shardinstance string) *metadata.ShardInstance {
 	// TODO: better
-	shardInstances := s.ListShardInstance(dbname)
+	shardInstances := s.ListShardInstance(ctx, dbname)
 	if shardInstances == nil {
 		return nil
 	}
@@ -173,18 +174,18 @@ func (s *Storage) GetShardInstance(dbname, shardinstance string) *metadata.Shard
 	return nil
 }
 
-func (s *Storage) AddShardInstance(db *metadata.Database, shardInstance *metadata.ShardInstance) error {
+func (s *Storage) AddShardInstance(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance) error {
 	// Create the database
 	// TODO: error if exists already?
-	if _, err := DoQuery(s.getDB(db.Name), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", shardInstance.Name)); err != nil {
+	if _, err := DoQuery(ctx, s.getDB(db.Name), fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS \"%s\"", shardInstance.Name)); err != nil {
 		return fmt.Errorf("Unable to create schema: %v", err)
 	}
 
 	return nil
 }
 
-func (s *Storage) RemoveShardInstance(dbname, shardInstance string) error {
-	if _, err := DoQuery(s.getDB(dbname), fmt.Sprintf("DROP SCHEMA IF EXISTS \"%s\"", shardInstance)); err != nil {
+func (s *Storage) RemoveShardInstance(ctx context.Context, dbname, shardInstance string) error {
+	if _, err := DoQuery(ctx, s.getDB(dbname), fmt.Sprintf("DROP SCHEMA IF EXISTS \"%s\"", shardInstance)); err != nil {
 		return fmt.Errorf("Unable to drop schema: %v", err)
 	}
 	return nil
@@ -209,10 +210,10 @@ WHERE x.table_schema = '%s' AND x.table_name = '%s'
 `
 
 // TODO: nicer, this works but is way more work than necessary
-func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Collection {
+func (s *Storage) ListCollection(ctx context.Context, dbname, shardinstance string) []*metadata.Collection {
 	query := fmt.Sprintf("SELECT table_name FROM information_schema.tables WHERE table_schema='%s' ORDER BY table_schema,table_name;", shardinstance)
 
-	tables, err := DoQuery(s.getDB(dbname), query)
+	tables, err := DoQuery(ctx, s.getDB(dbname), query)
 	if err != nil {
 		logrus.Fatalf("Unable to get table list for db %s: %v", dbname, err)
 	}
@@ -224,12 +225,12 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 		collection.ProvisionState = metadata.Active
 
 		collection.Fields = make(map[string]*metadata.CollectionField)
-		for _, field := range s.ListCollectionField(dbname, shardinstance, collection.Name) {
+		for _, field := range s.ListCollectionField(ctx, dbname, shardinstance, collection.Name) {
 			collection.Fields[field.Name] = field
 		}
 
 		collection.Indexes = make(map[string]*metadata.CollectionIndex)
-		for _, index := range s.ListCollectionIndex(dbname, shardinstance, collection.Name) {
+		for _, index := range s.ListCollectionIndex(ctx, dbname, shardinstance, collection.Name) {
 			collection.Indexes[index.Name] = index
 		}
 
@@ -239,10 +240,10 @@ func (s *Storage) ListCollection(dbname, shardinstance string) []*metadata.Colle
 	return collections
 }
 
-func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *metadata.Collection {
+func (s *Storage) GetCollection(ctx context.Context, dbname, shardinstance, collectionname string) *metadata.Collection {
 
 	// TODO: better
-	collections := s.ListCollection(dbname, shardinstance)
+	collections := s.ListCollection(ctx, dbname, shardinstance)
 	if collections == nil {
 		return nil
 	}
@@ -259,9 +260,9 @@ func (s *Storage) GetCollection(dbname, shardinstance, collectionname string) *m
 const addTableTemplate = `CREATE TABLE "%s".%s()`
 
 // Collection Changes
-func (s *Storage) AddCollection(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
+func (s *Storage) AddCollection(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection) error {
 	tableAddQuery := fmt.Sprintf(addTableTemplate, shardInstance.Name, collection.Name)
-	if _, err := DoQuery(s.getDB(db.Name), tableAddQuery); err != nil {
+	if _, err := DoQuery(ctx, s.getDB(db.Name), tableAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection %s: %v", collection.Name, err)
 	}
 
@@ -272,7 +273,7 @@ const removeTableTemplate = `DROP TABLE %s.%s`
 
 // TODO: use db listing to remove things
 // TODO: remove indexes on removal
-func (s *Storage) RemoveCollection(dbname, shardinstance, collectionname string) error {
+func (s *Storage) RemoveCollection(ctx context.Context, dbname, shardinstance, collectionname string) error {
 	tableRemoveQuery := fmt.Sprintf(removeTableTemplate, shardinstance, collectionname)
 	if _, err := s.dbMap[dbname].Query(tableRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableRemoveQuery%s: %v", collectionname, err)
@@ -287,9 +288,9 @@ FROM INFORMATION_SCHEMA.COLUMNS
 WHERE table_schema = ($1) AND table_name = ($2)
 `
 
-func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname string) []*metadata.CollectionField {
+func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance, collectionname string) []*metadata.CollectionField {
 	// Get the fields for the collection
-	fieldRecords, err := DoQuery(s.getDB(dbname), listColumnTemplate, shardinstance, collectionname)
+	fieldRecords, err := DoQuery(ctx, s.getDB(dbname), listColumnTemplate, shardinstance, collectionname)
 	if err != nil {
 		logrus.Fatalf("Unable to get fields for db=%s table=%s: %v", dbname, collectionname, err)
 	}
@@ -350,7 +351,7 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 
 		queryTemplate := listRelationQuery + " AND x.column_name = '%s'"
 
-		relationEntries, err := DoQuery(s.getDB(dbname), fmt.Sprintf(queryTemplate, shardinstance, collectionname, field.Name))
+		relationEntries, err := DoQuery(ctx, s.getDB(dbname), fmt.Sprintf(queryTemplate, shardinstance, collectionname, field.Name))
 		if err != nil {
 			logrus.Fatalf("Unable to get relation %s from %s: %v", field.Name, dbname, err)
 		}
@@ -367,8 +368,8 @@ func (s *Storage) ListCollectionField(dbname, shardinstance, collectionname stri
 }
 
 // TODO: better
-func (s *Storage) GetCollectionField(dbname, shardinstance, collectionname, fieldname string) *metadata.CollectionField {
-	fields := s.ListCollectionField(dbname, shardinstance, collectionname)
+func (s *Storage) GetCollectionField(ctx context.Context, dbname, shardinstance, collectionname, fieldname string) *metadata.CollectionField {
+	fields := s.ListCollectionField(ctx, dbname, shardinstance, collectionname)
 	for _, field := range fields {
 		if field.Name == fieldname {
 			return field
@@ -388,10 +389,10 @@ ALTER TABLE "%s".%s ADD CONSTRAINT %s FOREIGN KEY (%s)
       REFERENCES public.collection_field (_id) MATCH SIMPLE
       ON UPDATE NO ACTION ON DELETE NO ACTION
 */
-func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
+func (s *Storage) AddCollectionField(ctx context.Context, db *metadata.Database, shardinstance *metadata.ShardInstance, collection *metadata.Collection, field *metadata.CollectionField) error {
 	if fieldStr, err := fieldToSchema(field); err == nil {
 		// Add the actual field
-		if _, err := DoQuery(s.dbMap[db.Name], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance.Name, collection.Name, fieldStr)); err != nil {
+		if _, err := DoQuery(ctx, s.dbMap[db.Name], fmt.Sprintf("ALTER TABLE %s.%s ADD %s", shardinstance.Name, collection.Name, fieldStr)); err != nil {
 			return err
 		}
 	} else {
@@ -410,7 +411,7 @@ func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metad
 			field.Relation.Collection,
 			field.Relation.Field,
 		)
-		if _, err := DoQuery(s.dbMap[db.Name], query); err != nil {
+		if _, err := DoQuery(ctx, s.dbMap[db.Name], query); err != nil {
 			return err
 		}
 	}
@@ -418,8 +419,8 @@ func (s *Storage) AddCollectionField(db *metadata.Database, shardinstance *metad
 	return nil
 }
 
-func (s *Storage) RemoveCollectionField(dbname, shardinstance, collectionname, fieldName string) error {
-	if _, err := DoQuery(s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s DROP \"%s\"", shardinstance, collectionname, fieldName)); err != nil {
+func (s *Storage) RemoveCollectionField(ctx context.Context, dbname, shardinstance, collectionname, fieldName string) error {
+	if _, err := DoQuery(ctx, s.dbMap[dbname], fmt.Sprintf("ALTER TABLE %s.%s DROP \"%s\"", shardinstance, collectionname, fieldName)); err != nil {
 		return fmt.Errorf("Unable to remove old field: %v", err)
 	}
 
@@ -455,8 +456,8 @@ FROM pg_index AS idx
 WHERE NOT nspname LIKE 'pg%'; -- Excluding system tables
 `
 
-func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
-	indexEntries, err := DoQuery(s.dbMap[dbname], listIndexQuery)
+func (s *Storage) ListCollectionIndex(ctx context.Context, dbname, shardInstance, collectionname string) []*metadata.CollectionIndex {
+	indexEntries, err := DoQuery(ctx, s.dbMap[dbname], listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to list indexes for %s.%s: %v", dbname, collectionname, err)
 	}
@@ -488,8 +489,8 @@ func (s *Storage) ListCollectionIndex(dbname, shardInstance, collectionname stri
 
 }
 
-func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
-	indexEntries, err := DoQuery(s.dbMap[dbname], listIndexQuery)
+func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
+	indexEntries, err := DoQuery(ctx, s.dbMap[dbname], listIndexQuery)
 	if err != nil {
 		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
 	}
@@ -521,7 +522,7 @@ func (s *Storage) GetCollectionIndex(dbname, shardinstance, collectionname, inde
 }
 
 // Index changes
-func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
+func (s *Storage) AddCollectionIndex(ctx context.Context, db *metadata.Database, shardInstance *metadata.ShardInstance, collection *metadata.Collection, index *metadata.CollectionIndex) error {
 	if index.Fields == nil || len(index.Fields) == 0 {
 		return fmt.Errorf("Indexes must have fields defined")
 	}
@@ -560,7 +561,7 @@ func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metad
 		}
 	}
 	indexAddQuery += ")"
-	if _, err := DoQuery(s.dbMap[db.Name], indexAddQuery); err != nil {
+	if _, err := DoQuery(ctx, s.dbMap[db.Name], indexAddQuery); err != nil {
 		return fmt.Errorf("Unable to add collection index %s to %s.%s: %v", index.Name, db.Name, collection.Name, err)
 	}
 
@@ -570,7 +571,7 @@ func (s *Storage) AddCollectionIndex(db *metadata.Database, shardInstance *metad
 const removeTableIndexTemplate = `DROP INDEX "%s.idx_%s_%s"`
 
 // TODO: index names have to be unique across the whole DB?
-func (s *Storage) RemoveCollectionIndex(dbname, shardinstance, collectionname, indexname string) error {
+func (s *Storage) RemoveCollectionIndex(ctx context.Context, dbname, shardinstance, collectionname, indexname string) error {
 	tableIndexRemoveQuery := fmt.Sprintf(removeTableIndexTemplate, shardinstance, collectionname, indexname)
 	if _, err := s.dbMap[dbname].Query(tableIndexRemoveQuery); err != nil {
 		return fmt.Errorf("Unable to run tableIndexRemoveQuery %s: %v", indexname, err)

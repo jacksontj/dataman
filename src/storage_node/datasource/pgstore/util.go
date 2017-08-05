@@ -1,13 +1,14 @@
 package pgstorage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 )
 
-func DoQuery(db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
-	rows, err := db.Query(query, args...)
+func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query=%s Err=%v", query, err)
 	}
