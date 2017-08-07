@@ -155,6 +155,8 @@ func (h *HTTPApi) viewStorageNode(w http.ResponseWriter, r *http.Request, ps htt
 // TODO: return should be the loaded storage_node (so we can get the id)
 // Add a storage_node
 func (h *HTTPApi) ensureStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -165,7 +167,7 @@ func (h *HTTPApi) ensureStorageNode(w http.ResponseWriter, r *http.Request, ps h
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.taskNode.MetaStore.EnsureExistsStorageNode(&storageNode); err != nil {
+		if err := h.taskNode.MetaStore.EnsureExistsStorageNode(ctx, &storageNode); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
@@ -187,6 +189,8 @@ func (h *HTTPApi) ensureStorageNode(w http.ResponseWriter, r *http.Request, ps h
 
 // Delete a specific storage node
 func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	storageNodeId, err := strconv.ParseInt(ps.ByName("id"), 10, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -194,7 +198,7 @@ func (h *HTTPApi) deleteStorageNode(w http.ResponseWriter, r *http.Request, ps h
 		return
 	}
 
-	if err := h.taskNode.MetaStore.EnsureDoesntExistStorageNode(storageNodeId); err != nil {
+	if err := h.taskNode.MetaStore.EnsureDoesntExistStorageNode(ctx, storageNodeId); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -246,6 +250,8 @@ func (h *HTTPApi) viewDatastore(w http.ResponseWriter, r *http.Request, ps httpr
 // TODO: return should be the loaded storage_node (so we can get the id)
 // Add a storage_node
 func (h *HTTPApi) ensureDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -256,7 +262,7 @@ func (h *HTTPApi) ensureDatastore(w http.ResponseWriter, r *http.Request, ps htt
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.taskNode.MetaStore.EnsureExistsDatastore(&datastore); err != nil {
+		if err := h.taskNode.MetaStore.EnsureExistsDatastore(ctx, &datastore); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
@@ -278,7 +284,9 @@ func (h *HTTPApi) ensureDatastore(w http.ResponseWriter, r *http.Request, ps htt
 
 // Delete a specific storage node
 func (h *HTTPApi) deleteDatastore(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if err := h.taskNode.MetaStore.EnsureDoesntExistDatastore(ps.ByName("name")); err != nil {
+	ctx := r.Context()
+
+	if err := h.taskNode.MetaStore.EnsureDoesntExistDatastore(ctx, ps.ByName("name")); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -322,6 +330,8 @@ func (h *HTTPApi) viewDatabase(w http.ResponseWriter, r *http.Request, ps httpro
 }
 
 func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	ctx := r.Context()
+
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
@@ -332,7 +342,7 @@ func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps http
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		if err := h.taskNode.EnsureExistsDatabase(db); err != nil {
+		if err := h.taskNode.EnsureExistsDatabase(ctx, db); err != nil {
 			// TODO: log this better?
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
@@ -342,7 +352,9 @@ func (h *HTTPApi) ensureDatabase(w http.ResponseWriter, r *http.Request, ps http
 }
 
 func (h *HTTPApi) removeDatabase(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if err := h.taskNode.EnsureDoesntExistDatabase(ps.ByName("dbname")); err != nil {
+	ctx := r.Context()
+
+	if err := h.taskNode.EnsureDoesntExistDatabase(ctx, ps.ByName("dbname")); err != nil {
 		// TODO: log this better?
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -376,7 +388,8 @@ func (h *HTTPApi) viewCollection(w http.ResponseWriter, r *http.Request, ps http
 }
 
 func (h *HTTPApi) getSequence(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	if nextId, err := h.taskNode.MetaStore.GetSequence(ps.ByName("name")); err == nil {
+	ctx := r.Context()
+	if nextId, err := h.taskNode.MetaStore.GetSequence(ctx, ps.ByName("name")); err == nil {
 		w.Write([]byte(strconv.FormatInt(nextId, 10)))
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)

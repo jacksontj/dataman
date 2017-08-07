@@ -2,6 +2,7 @@ package tasknode
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -143,7 +144,7 @@ func (t *TaskNode) fetchMeta() (err error) {
 	// TODO: lots of error handling required
 
 	// TODO: support errors
-	meta, err := t.MetaStore.GetMeta()
+	meta, err := t.MetaStore.GetMeta(context.Background())
 	if err != nil {
 		return err
 	}
@@ -158,7 +159,7 @@ func (t *TaskNode) fetchMeta() (err error) {
 	return nil
 }
 
-func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) (err error) {
+func (t *TaskNode) EnsureExistsDatabase(ctx context.Context, db *metadata.Database) (err error) {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
@@ -182,7 +183,7 @@ func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) (err error) {
 	// TODO: restructure so the lock isn't so weird :/
 	t.schemaLock.Lock()
 	defer t.schemaLock.Unlock()
-	if err = t.ensureExistsDatabase(db); err != nil {
+	if err = t.ensureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -196,7 +197,7 @@ func (t *TaskNode) EnsureExistsDatabase(db *metadata.Database) (err error) {
 // what shards they need to add etc. For a POC I'm going to implement it all as
 // serial synchronous provisioning-- which is definitely not what we want long-term
 // Add a database
-func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
+func (t *TaskNode) ensureExistsDatabase(ctx context.Context, db *metadata.Database) error {
 	meta := t.GetMeta()
 
 	// for keeping track of all datastores we have vshard mappings for
@@ -270,7 +271,7 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Add it to the metadata so we know we where working on it
 	db.ProvisionState = metadata.Provision
-	if err := t.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := t.MetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -330,7 +331,7 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 							}
 
 							// Add entry to datasource_instance_shard_instance
-							if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
+							if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(ctx, datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 								return err
 							}
 
@@ -412,7 +413,7 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 		// remove entry from datasource_instance_shard_instance
 		for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
 			datasourceInstanceShardInstance.ProvisionState = metadata.Active
-			if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
+			if err := t.MetaStore.EnsureExistsDatasourceInstanceShardInstance(ctx, datasourceInstance.StorageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 				return err
 			}
 		}
@@ -423,7 +424,7 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate
-	if err := t.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := t.MetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -448,14 +449,14 @@ func (t *TaskNode) ensureExistsDatabase(db *metadata.Database) error {
 		databaseDatastore.ProvisionState = metadata.Active
 	}
 
-	if err := t.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := t.MetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (t *TaskNode) EnsureDoesntExistDatabase(dbname string) (err error) {
+func (t *TaskNode) EnsureDoesntExistDatabase(ctx context.Context, dbname string) (err error) {
 	start := time.Now()
 	defer func() {
 		end := time.Now()
@@ -479,7 +480,7 @@ func (t *TaskNode) EnsureDoesntExistDatabase(dbname string) (err error) {
 	// TODO: restructure so the lock isn't so weird :/
 	t.schemaLock.Lock()
 	defer t.schemaLock.Unlock()
-	if err = t.ensureDoesntExistDatabase(dbname); err != nil {
+	if err = t.ensureDoesntExistDatabase(ctx, dbname); err != nil {
 		return err
 	}
 
@@ -488,7 +489,7 @@ func (t *TaskNode) EnsureDoesntExistDatabase(dbname string) (err error) {
 	return nil
 }
 
-func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
+func (t *TaskNode) ensureDoesntExistDatabase(ctx context.Context, dbname string) error {
 	meta := t.GetMeta()
 
 	db, ok := meta.Databases[dbname]
@@ -498,7 +499,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 
 	// Add it to the metadata so we know we where working on it
 	db.ProvisionState = metadata.Deallocate
-	if err := t.MetaStore.EnsureExistsDatabase(db); err != nil {
+	if err := t.MetaStore.EnsureExistsDatabase(ctx, db); err != nil {
 		return err
 	}
 
@@ -554,7 +555,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 		// TODO: Update entry to datasource_instance_shard_instance (saying it is ready)
 		// remove entry from datasource_instance_shard_instance
 		for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
-			if err := t.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
+			if err := t.MetaStore.EnsureDoesntExistDatasourceInstanceShardInstance(ctx, datasourceInstance.StorageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
 				return err
 			}
 		}
@@ -564,7 +565,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(dbname string) error {
 	// TODO: Follow the tree down
 
 	// Since we made the database, lets update the metadata about it
-	if err := t.MetaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+	if err := t.MetaStore.EnsureDoesntExistDatabase(ctx, dbname); err != nil {
 		return err
 	}
 	return nil

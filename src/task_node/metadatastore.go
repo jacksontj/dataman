@@ -1,7 +1,7 @@
 package tasknode
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net"
 	"strings"
@@ -41,8 +41,8 @@ type MetadataStore struct {
 
 // TODO: change to use an increment operator instead of the filter + (insert/update) thing
 // Take (name, count) return (id, error)
-func (m *MetadataStore) GetSequence(name string) (int64, error) {
-	sequenceReadResult := m.Store.Filter(map[string]interface{}{
+func (m *MetadataStore) GetSequence(ctx context.Context, name string) (int64, error) {
+	sequenceReadResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "sequence",
@@ -57,7 +57,7 @@ func (m *MetadataStore) GetSequence(name string) (int64, error) {
 	var nextId int64
 	if len(sequenceReadResult.Return) == 0 {
 		nextId = 1
-		sequenceWriteResult := m.Store.Insert(map[string]interface{}{
+		sequenceWriteResult := m.Store.Insert(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "sequence",
@@ -75,7 +75,7 @@ func (m *MetadataStore) GetSequence(name string) (int64, error) {
 		lastId := sequenceReadResult.Return[0]["last_id"].(int64)
 		nextId = lastId + 1
 		sequenceReadResult.Return[0]["last_id"] = nextId
-		sequenceWriteResult := m.Store.Update(map[string]interface{}{
+		sequenceWriteResult := m.Store.Update(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "sequence",
@@ -99,11 +99,11 @@ func (m *MetadataStore) GetSequence(name string) (int64, error) {
 // the record -> struct transition
 // TODO: split into get/list for each item?
 // TODO: have error?
-func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
+func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 	meta := metadata.NewMeta()
 
 	// Add all field_types
-	fieldTypeResult := m.Store.Filter(map[string]interface{}{
+	fieldTypeResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "field_type",
@@ -120,7 +120,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 			DatamanType: datamantype.DatamanType(fieldTypeRecord["dataman_type"].(string)),
 		}
 
-		fieldTypeConstraintResult := m.Store.Filter(map[string]interface{}{
+		fieldTypeConstraintResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "field_type_constraint",
@@ -152,7 +152,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	}
 
 	// Add all nodes
-	storageNodeResult := m.Store.Filter(map[string]interface{}{
+	storageNodeResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "storage_node",
@@ -181,7 +181,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	}
 
 	// Load all of the datasource_instances
-	datasourceInstanceResult := m.Store.Filter(map[string]interface{}{
+	datasourceInstanceResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance",
@@ -199,7 +199,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 		datasourceInstance.StorageNode.DatasourceInstances[datasourceInstance.Name] = datasourceInstance
 
 		// Load all of the shard instances associated with this datasource_instance
-		datasourceInstanceShardInstanceResult := m.Store.Filter(map[string]interface{}{
+		datasourceInstanceShardInstanceResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "datasource_instance_shard_instance",
@@ -228,7 +228,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	}
 
 	// Load all of the datastores
-	datastoreResult := m.Store.Filter(map[string]interface{}{
+	datastoreResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore",
@@ -240,7 +240,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 
 	// for each database load the database + collections etc.
 	for _, datastoreRecord := range datastoreResult.Return {
-		datastore, err := m.getDatastoreById(meta, datastoreRecord["_id"].(int64))
+		datastore, err := m.getDatastoreById(ctx, meta, datastoreRecord["_id"].(int64))
 		if err != nil {
 			return nil, fmt.Errorf("Error getDatastoreById: %v", err)
 		}
@@ -248,7 +248,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 	}
 
 	// Get all databases
-	databaseResult := m.Store.Filter(map[string]interface{}{
+	databaseResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database",
@@ -265,14 +265,14 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 		database.ProvisionState = metadata.ProvisionState(databaseRecord["provision_state"].(int64))
 
 		var err error
-		database.DatastoreSet, err = m.getDatastoreSetByDatabaseId(meta, databaseRecord["_id"].(int64))
+		database.DatastoreSet, err = m.getDatastoreSetByDatabaseId(ctx, meta, databaseRecord["_id"].(int64))
 		if err != nil {
 			return nil, fmt.Errorf("Error getDatastoreSetByDatabaseId: %v", err)
 		}
 		database.Datastores = database.DatastoreSet.ToSlice()
 
 		// Load all collections for the DB
-		collectionResult := m.Store.Filter(map[string]interface{}{
+		collectionResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection",
@@ -283,7 +283,7 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 		}
 
 		for _, collectionRecord := range collectionResult.Return {
-			collection, err := m.getCollectionByID(meta, collectionRecord["_id"].(int64))
+			collection, err := m.getCollectionByID(ctx, meta, collectionRecord["_id"].(int64))
 			if err != nil {
 				return nil, fmt.Errorf("Error getCollectionByID: %v", err)
 			}
@@ -298,11 +298,11 @@ func (m *MetadataStore) GetMeta() (*metadata.Meta, error) {
 }
 
 // Here we want to query the database_datastore, and then get the datastores themselves
-func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, database_id int64) (*metadata.DatastoreSet, error) {
+func (m *MetadataStore) getDatastoreSetByDatabaseId(ctx context.Context, meta *metadata.Meta, database_id int64) (*metadata.DatastoreSet, error) {
 	set := metadata.NewDatastoreSet()
 
 	// Get the datastore record
-	databaseDatastoreResult := m.Store.Filter(map[string]interface{}{
+	databaseDatastoreResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database_datastore",
@@ -321,7 +321,7 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 
 	for _, databaseDatastoreRecord := range databaseDatastoreResult.Return {
 		var err error
-		datastore, err := m.getDatastoreById(meta, databaseDatastoreRecord["datastore_id"].(int64))
+		datastore, err := m.getDatastoreById(ctx, meta, databaseDatastoreRecord["datastore_id"].(int64))
 		if err != nil {
 			return nil, fmt.Errorf("Error getDatastoreById: %v", err)
 		}
@@ -356,11 +356,11 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(meta *metadata.Meta, databas
 }
 
 // Get a single datastore by id
-func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64) (*metadata.Datastore, error) {
+func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Meta, datastore_id int64) (*metadata.Datastore, error) {
 	if datastore, ok := meta.Datastore[datastore_id]; ok {
 		return datastore, nil
 	}
-	datastoreResult := m.Store.Filter(map[string]interface{}{
+	datastoreResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore",
@@ -380,7 +380,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 
 	// TODO: order
 	// Now load all the shards
-	datastoreShardResult := m.Store.Filter(map[string]interface{}{
+	datastoreShardResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard",
@@ -406,7 +406,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 		}
 
 		// load all of the replicas
-		datastoreShardReplicaResult := m.Store.Filter(map[string]interface{}{
+		datastoreShardReplicaResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "datastore_shard_replica",
@@ -436,7 +436,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 	}
 
 	// TODO: Now load all the vshards
-	datastoreVShardResult := m.Store.Filter(map[string]interface{}{
+	datastoreVShardResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard",
@@ -451,7 +451,7 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 	}
 	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
 		// Load all vshard instances for the vshard
-		datastoreVShardInstanceResult := m.Store.Filter(map[string]interface{}{
+		datastoreVShardInstanceResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "datastore_vshard_instance",
@@ -501,12 +501,12 @@ func (m *MetadataStore) getDatastoreById(meta *metadata.Meta, datastore_id int64
 	return datastore, nil
 }
 
-func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metadata.Collection, error) {
+func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Meta, id int64) (*metadata.Collection, error) {
 	collection, ok := meta.Collections[id]
 	if !ok {
 
 		// Load all collections for the DB
-		collectionResult := m.Store.Filter(map[string]interface{}{
+		collectionResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection",
@@ -525,7 +525,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 		collection.ProvisionState = metadata.ProvisionState(collectionRecord["provision_state"].(int64))
 
 		// Load fields
-		collectionFieldResult := m.Store.Filter(map[string]interface{}{
+		collectionFieldResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field",
@@ -542,7 +542,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 
 		collection.Fields = make(map[string]*storagenodemetadata.CollectionField)
 		for _, collectionFieldRecord := range collectionFieldResult.Return {
-			field, err := m.getFieldByID(meta, collectionFieldRecord["_id"].(int64))
+			field, err := m.getFieldByID(ctx, meta, collectionFieldRecord["_id"].(int64))
 			if err != nil {
 				return nil, fmt.Errorf("Error getFieldByID: %v", err)
 			}
@@ -553,7 +553,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 		}
 
 		// Now load all the indexes for the collection
-		collectionIndexResult := m.Store.Filter(map[string]interface{}{
+		collectionIndexResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_index",
@@ -567,7 +567,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 
 		for _, collectionIndexRecord := range collectionIndexResult.Return {
 			// Load the index fields
-			collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+			collectionIndexItemResult := m.Store.Filter(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_index_item",
@@ -584,7 +584,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			// works for now, but we'll need to come up with a better method later
 			indexFields := make([]string, len(collectionIndexItemResult.Return))
 			for i, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-				indexField, err := m.getFieldByID(meta, collectionIndexItemRecord["collection_field_id"].(int64))
+				indexField, err := m.getFieldByID(ctx, meta, collectionIndexItemRecord["collection_field_id"].(int64))
 				if err != nil {
 					return nil, fmt.Errorf("Error getFieldByID: %v", err)
 				}
@@ -594,7 +594,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 					if indexField.ParentFieldID == 0 {
 						break
 					} else {
-						indexField, err = m.getFieldByID(meta, indexField.ParentFieldID)
+						indexField, err = m.getFieldByID(ctx, meta, indexField.ParentFieldID)
 						if err != nil {
 							return nil, fmt.Errorf("Error getFieldByID: %v", err)
 						}
@@ -625,7 +625,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 		}
 
 		// Load the keyspaces
-		collectionKeyspaceResult := m.Store.Filter(map[string]interface{}{
+		collectionKeyspaceResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace",
@@ -642,7 +642,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 
 		for i, collectionKeyspaceRecord := range collectionKeyspaceResult.Return {
 			// get the shard keys
-			collectionKeyspaceShardKeyResult := m.Store.Filter(map[string]interface{}{
+			collectionKeyspaceShardKeyResult := m.Store.Filter(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_shardkey",
@@ -657,7 +657,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			}
 			shardKey := make([]string, len(collectionKeyspaceShardKeyResult.Return))
 			for j, collectionKeyspaceShardKeyRecord := range collectionKeyspaceShardKeyResult.Return {
-				field, err := m.getFieldByID(meta, collectionKeyspaceShardKeyRecord["collection_field_id"].(int64))
+				field, err := m.getFieldByID(ctx, meta, collectionKeyspaceShardKeyRecord["collection_field_id"].(int64))
 				if err != nil {
 					return nil, fmt.Errorf("Invalid shardkey defined for collection %v", collection.Name)
 				}
@@ -666,7 +666,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			}
 
 			// load all the partitions
-			collectionKeyspacePartitionResult := m.Store.Filter(map[string]interface{}{
+			collectionKeyspacePartitionResult := m.Store.Filter(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_partition",
@@ -680,7 +680,7 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 			}
 			partitions := make([]*metadata.CollectionKeyspacePartition, len(collectionKeyspacePartitionResult.Return))
 			for k, collectionKeyspacePartitionRecord := range collectionKeyspacePartitionResult.Return {
-				collectionKeyspacePartitionDatastoreVShardResult := m.Store.Filter(map[string]interface{}{
+				collectionKeyspacePartitionDatastoreVShardResult := m.Store.Filter(ctx, map[string]interface{}{
 					"db":             "dataman_router",
 					"shard_instance": "public",
 					"collection":     "collection_keyspace_partition_datastore_vshard",
@@ -731,11 +731,11 @@ func (m *MetadataStore) getCollectionByID(meta *metadata.Meta, id int64) (*metad
 	return collection, nil
 }
 
-func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenodemetadata.CollectionField, error) {
+func (m *MetadataStore) getFieldByID(ctx context.Context, meta *metadata.Meta, id int64) (*storagenodemetadata.CollectionField, error) {
 	field, ok := meta.Fields[id]
 	if !ok {
 		// Load field
-		collectionFieldResult := m.Store.Filter(map[string]interface{}{
+		collectionFieldResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field",
@@ -777,7 +777,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		// If we have a parent, mark it down for now
 		if parentFieldID, _ := collectionFieldRecord["parent_collection_field_id"].(int64); parentFieldID != 0 {
 			field.ParentFieldID = parentFieldID
-			parentField, err := m.getFieldByID(meta, field.ParentFieldID)
+			parentField, err := m.getFieldByID(ctx, meta, field.ParentFieldID)
 			if err != nil {
 				return nil, fmt.Errorf("Error getFieldByID: %v", err)
 			}
@@ -790,7 +790,7 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		}
 
 		// If we have a relation, get it
-		collectionFieldRelationResult := m.Store.Filter(map[string]interface{}{
+		collectionFieldRelationResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
@@ -804,11 +804,11 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 		if len(collectionFieldRelationResult.Return) == 1 {
 			collectionFieldRelationRecord := collectionFieldRelationResult.Return[0]
 
-			relatedField, err := m.getFieldByID(meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
+			relatedField, err := m.getFieldByID(ctx, meta, collectionFieldRelationRecord["relation_collection_field_id"].(int64))
 			if err != nil {
 				return nil, fmt.Errorf("Error getFieldByID: %v", err)
 			}
-			relatedCollection, err := m.getCollectionByID(meta, relatedField.CollectionID)
+			relatedCollection, err := m.getCollectionByID(ctx, meta, relatedField.CollectionID)
 			if err != nil {
 				return nil, fmt.Errorf("Error getCollectionByID: %v", err)
 			}
@@ -826,21 +826,10 @@ func (m *MetadataStore) getFieldByID(meta *metadata.Meta, id int64) (*storagenod
 	return field, nil
 }
 
-func structToRecord(item interface{}) map[string]interface{} {
-	// TODO: better -- just don't want to spend all the time/space to do the conversions for now
-	var record map[string]interface{}
-	buf, _ := json.Marshal(item)
-	json.Unmarshal(buf, &record)
-	if _, ok := record["_id"]; ok {
-		delete(record, "_id")
-	}
-	return record
-}
-
 // Below here are all the write methods for the metadata
 
-func (m *MetadataStore) EnsureExistsStorageNode(storageNode *metadata.StorageNode) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsStorageNode(ctx context.Context, storageNode *metadata.StorageNode) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -862,7 +851,7 @@ func (m *MetadataStore) EnsureExistsStorageNode(storageNode *metadata.StorageNod
 		storagenodeRecord["_id"] = storageNode.ID
 	}
 
-	storagenodeResult := m.Store.Set(map[string]interface{}{
+	storagenodeResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "storage_node",
@@ -876,7 +865,7 @@ func (m *MetadataStore) EnsureExistsStorageNode(storageNode *metadata.StorageNod
 	storageNode.ID = storagenodeResult.Return[0]["_id"].(int64)
 
 	for _, datasourceInstance := range storageNode.DatasourceInstances {
-		if err := m.EnsureExistsDatasourceInstance(storageNode, datasourceInstance); err != nil {
+		if err := m.EnsureExistsDatasourceInstance(ctx, storageNode, datasourceInstance); err != nil {
 			return err
 		}
 	}
@@ -884,8 +873,8 @@ func (m *MetadataStore) EnsureExistsStorageNode(storageNode *metadata.StorageNod
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistStorageNode(id int64) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistStorageNode(ctx context.Context, id int64) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -896,13 +885,13 @@ func (m *MetadataStore) EnsureDoesntExistStorageNode(id int64) error {
 	}
 
 	for _, datasourceInstance := range storageNode.DatasourceInstances {
-		if err := m.EnsureDoesntExistDatasourceInstance(storageNode.ID, datasourceInstance.Name); err != nil {
+		if err := m.EnsureDoesntExistDatasourceInstance(ctx, storageNode.ID, datasourceInstance.Name); err != nil {
 			return err
 		}
 	}
 
 	// Delete database entry
-	storagenodeDelete := m.Store.Delete(map[string]interface{}{
+	storagenodeDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "storage_node",
@@ -917,8 +906,8 @@ func (m *MetadataStore) EnsureDoesntExistStorageNode(id int64) error {
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatasourceInstance(storageNode *metadata.StorageNode, datasourceInstance *metadata.DatasourceInstance) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatasourceInstance(ctx context.Context, storageNode *metadata.StorageNode, datasourceInstance *metadata.DatasourceInstance) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -958,7 +947,7 @@ func (m *MetadataStore) EnsureExistsDatasourceInstance(storageNode *metadata.Sto
 		datasourceInstanceRecord["_id"] = datasourceInstance.ID
 	}
 
-	datasourceInstanceResult := m.Store.Set(map[string]interface{}{
+	datasourceInstanceResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance",
@@ -972,7 +961,7 @@ func (m *MetadataStore) EnsureExistsDatasourceInstance(storageNode *metadata.Sto
 	datasourceInstance.ID = datasourceInstanceResult.Return[0]["_id"].(int64)
 
 	for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
-		if err := m.EnsureExistsDatasourceInstanceShardInstance(storageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
+		if err := m.EnsureExistsDatasourceInstanceShardInstance(ctx, storageNode, datasourceInstance, datasourceInstanceShardInstance); err != nil {
 			return err
 		}
 	}
@@ -980,8 +969,8 @@ func (m *MetadataStore) EnsureExistsDatasourceInstance(storageNode *metadata.Sto
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(id int64, datasourceinstance string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(ctx context.Context, id int64, datasourceinstance string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -997,13 +986,13 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(id int64, datasource
 	}
 
 	for _, datasourceInstanceShardInstance := range datasourceInstance.ShardInstances {
-		if err := m.EnsureDoesntExistDatasourceInstanceShardInstance(storageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
+		if err := m.EnsureDoesntExistDatasourceInstanceShardInstance(ctx, storageNode.ID, datasourceInstance.Name, datasourceInstanceShardInstance.Name); err != nil {
 			return err
 		}
 	}
 
 	// Delete database entry
-	datasourceInstanceDelete := m.Store.Delete(map[string]interface{}{
+	datasourceInstanceDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance",
@@ -1020,8 +1009,8 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(id int64, datasource
 
 // TODO this one is a bit odd since it needs to check the existance of vshards etc.
 // we'll pick this back up after database / schema manipulation is in
-func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(storageNode *metadata.StorageNode, datasourceInstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(ctx context.Context, storageNode *metadata.StorageNode, datasourceInstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1065,7 +1054,7 @@ func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(storageNode 
 		datasourceInstanceShardInstanceRecord["_id"] = datasourceInstanceShardInstance.ID
 	}
 
-	datasourceInstanceShardInstanceResult := m.Store.Set(map[string]interface{}{
+	datasourceInstanceShardInstanceResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance_shard_instance",
@@ -1081,8 +1070,8 @@ func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(storageNode 
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(id int64, datasourceinstance, datasourceinstanceshardinstance string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(ctx context.Context, id int64, datasourceinstance, datasourceinstanceshardinstance string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1109,7 +1098,7 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(id int6
 	}
 
 	// Delete database entry
-	datasourceInstanceShardInstanceDelete := m.Store.Delete(map[string]interface{}{
+	datasourceInstanceShardInstanceDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datasource_instance_shard_instance",
@@ -1124,8 +1113,8 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(id int6
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatastore(datastore *metadata.Datastore) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatastore(ctx context.Context, datastore *metadata.Datastore) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1147,7 +1136,7 @@ func (m *MetadataStore) EnsureExistsDatastore(datastore *metadata.Datastore) err
 		datastoreRecord["_id"] = datastore.ID
 	}
 
-	datastoreResult := m.Store.Set(map[string]interface{}{
+	datastoreResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore",
@@ -1161,13 +1150,13 @@ func (m *MetadataStore) EnsureExistsDatastore(datastore *metadata.Datastore) err
 	datastore.ID = datastoreResult.Return[0]["_id"].(int64)
 
 	for _, datastoreShard := range datastore.Shards {
-		if err := m.EnsureExistsDatastoreShard(datastore, datastoreShard); err != nil {
+		if err := m.EnsureExistsDatastoreShard(ctx, datastore, datastoreShard); err != nil {
 			return err
 		}
 	}
 
 	for _, datastoreVShard := range datastore.VShards {
-		if err := m.EnsureExistsDatastoreVShard(datastore, datastoreVShard); err != nil {
+		if err := m.EnsureExistsDatastoreVShard(ctx, datastore, datastoreVShard); err != nil {
 			return err
 		}
 	}
@@ -1175,8 +1164,8 @@ func (m *MetadataStore) EnsureExistsDatastore(datastore *metadata.Datastore) err
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastore(datastorename string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatastore(ctx context.Context, datastorename string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1194,13 +1183,13 @@ func (m *MetadataStore) EnsureDoesntExistDatastore(datastorename string) error {
 	}
 
 	for _, datastoreShard := range datastore.Shards {
-		if err := m.EnsureDoesntExistDatastoreShard(datastorename, datastoreShard.Instance); err != nil {
+		if err := m.EnsureDoesntExistDatastoreShard(ctx, datastorename, datastoreShard.Instance); err != nil {
 			return err
 		}
 	}
 
 	// Delete database entry
-	datastoreDelete := m.Store.Delete(map[string]interface{}{
+	datastoreDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore",
@@ -1217,8 +1206,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastore(datastorename string) error {
 
 // One for the top-level, and one for the instances as well!
 //func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastore, datastoreVShard *metadata.DatabaseVShard) error {
-func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastore /*db *metadata.Database,*/, vShard *metadata.DatastoreVShard) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatastoreVShard(ctx context.Context, datastore *metadata.Datastore /*db *metadata.Database,*/, vShard *metadata.DatastoreVShard) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1261,7 +1250,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 		datastoreVShardRecord["_id"] = vShard.ID
 	}
 
-	datastoreVShardResult := m.Store.Set(map[string]interface{}{
+	datastoreVShardResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard",
@@ -1276,7 +1265,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 
 	// TODO: diff the numbers we have-- we want to make sure the numbers are correct
 	for _, datastoreVShardInstance := range vShard.Shards {
-		if err := m.EnsureExistsDatastoreVShardInstance(datastore, vShard, datastoreVShardInstance); err != nil {
+		if err := m.EnsureExistsDatastoreVShardInstance(ctx, datastore, vShard, datastoreVShardInstance); err != nil {
 			return err
 		}
 	}
@@ -1284,8 +1273,8 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(datastore *metadata.Datastor
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename, vShardName string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(ctx context.Context, datastorename, vShardName string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1308,13 +1297,13 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename, vShardNa
 	}
 
 	for _, datastoreVShardInstance := range datastoreVShard.Shards {
-		if err := m.EnsureDoesntExistDatastoreVShardInstance(datastorename, vShardName, datastoreVShardInstance.Instance); err != nil {
+		if err := m.EnsureDoesntExistDatastoreVShardInstance(ctx, datastorename, vShardName, datastoreVShardInstance.Instance); err != nil {
 			return err
 		}
 	}
 
 	// Delete database entry
-	datastoreVShardDelete := m.Store.Delete(map[string]interface{}{
+	datastoreVShardDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard",
@@ -1329,8 +1318,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(datastorename, vShardNa
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.Datastore, vShard *metadata.DatastoreVShard, vShardInstance *metadata.DatastoreVShardInstance) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(ctx context.Context, datastore *metadata.Datastore, vShard *metadata.DatastoreVShard, vShardInstance *metadata.DatastoreVShardInstance) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1365,7 +1354,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 		fmt.Println("after set?", datastoreVShardInstanceRecord)
 	}
 
-	datastoreVShardInstanceResult := m.Store.Set(map[string]interface{}{
+	datastoreVShardInstanceResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard_instance",
@@ -1385,8 +1374,8 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(datastore *metadata.
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, vShardName string, datastorevshardinstance int64) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(ctx context.Context, datastorename, vShardName string, datastorevshardinstance int64) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1419,7 +1408,7 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, 
 	}
 
 	// Delete database entry
-	datastoreVShardInstanceDelete := m.Store.Delete(map[string]interface{}{
+	datastoreVShardInstanceDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_vshard_instance",
@@ -1434,8 +1423,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(datastorename, 
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatastoreShard(datastore *metadata.Datastore, datastoreShard *metadata.DatastoreShard) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatastoreShard(ctx context.Context, datastore *metadata.Datastore, datastoreShard *metadata.DatastoreShard) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1467,7 +1456,7 @@ func (m *MetadataStore) EnsureExistsDatastoreShard(datastore *metadata.Datastore
 		datastoreShardRecord["_id"] = datastoreShard.ID
 	}
 
-	datastoreShardResult := m.Store.Set(map[string]interface{}{
+	datastoreShardResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard",
@@ -1482,7 +1471,7 @@ func (m *MetadataStore) EnsureExistsDatastoreShard(datastore *metadata.Datastore
 
 	if datastoreShard.Replicas != nil {
 		for datastoreShardReplica := range datastoreShard.Replicas.IterReplica() {
-			if err := m.EnsureExistsDatastoreShardReplica(datastore, datastoreShard, datastoreShardReplica); err != nil {
+			if err := m.EnsureExistsDatastoreShardReplica(ctx, datastore, datastoreShard, datastoreShardReplica); err != nil {
 				return err
 			}
 		}
@@ -1491,8 +1480,8 @@ func (m *MetadataStore) EnsureExistsDatastoreShard(datastore *metadata.Datastore
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreShard(datastorename string, datastoreshardinstance int64) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatastoreShard(ctx context.Context, datastorename string, datastoreshardinstance int64) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1523,14 +1512,14 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShard(datastorename string, da
 
 	if datastoreShard.Replicas != nil {
 		for datastoreShardReplica := range datastoreShard.Replicas.IterReplica() {
-			if err := m.EnsureDoesntExistDatastoreShardReplica(datastorename, datastoreshardinstance, datastoreShardReplica.ID); err != nil {
+			if err := m.EnsureDoesntExistDatastoreShardReplica(ctx, datastorename, datastoreshardinstance, datastoreShardReplica.ID); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Delete database entry
-	datastoreShardDelete := m.Store.Delete(map[string]interface{}{
+	datastoreShardDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard",
@@ -1545,8 +1534,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShard(datastorename string, da
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Datastore, datastoreShard *metadata.DatastoreShard, datastoreShardReplica *metadata.DatastoreShardReplica) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatastoreShardReplica(ctx context.Context, datastore *metadata.Datastore, datastoreShard *metadata.DatastoreShard, datastoreShardReplica *metadata.DatastoreShardReplica) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1583,7 +1572,7 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Da
 		datastoreShardReplicaRecord["_id"] = datastoreShardReplica.ID
 	}
 
-	datastoreShardReplicaResult := m.Store.Set(map[string]interface{}{
+	datastoreShardReplicaResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard_replica",
@@ -1599,8 +1588,8 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(datastore *metadata.Da
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(datastorename string, datastoreshardinstance int64, datasourceinstanceid int64) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(ctx context.Context, datastorename string, datastoreshardinstance int64, datasourceinstanceid int64) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1641,7 +1630,7 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(datastorename str
 	}
 
 	// Delete database entry
-	datastoreShardReplicaDelete := m.Store.Delete(map[string]interface{}{
+	datastoreShardReplicaDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "datastore_shard_replica",
@@ -1656,8 +1645,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(datastorename str
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatabase(ctx context.Context, db *metadata.Database) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1675,7 +1664,7 @@ func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 		databaseRecord["_id"] = db.ID
 	}
 
-	databaseResult := m.Store.Set(map[string]interface{}{
+	databaseResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database",
@@ -1692,13 +1681,13 @@ func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 	// Go down the trees
 	// datastores -- just the linking
 	for _, datastore := range db.Datastores {
-		if err := m.EnsureExistsDatabaseDatastore(db, datastore); err != nil {
+		if err := m.EnsureExistsDatabaseDatastore(ctx, db, datastore); err != nil {
 			return err
 		}
 	}
 	// collections
 	for _, collection := range db.Collections {
-		if err := m.EnsureExistsCollection(db, collection); err != nil {
+		if err := m.EnsureExistsCollection(ctx, db, collection); err != nil {
 			return err
 		}
 	}
@@ -1706,8 +1695,8 @@ func (m *MetadataStore) EnsureExistsDatabase(db *metadata.Database) error {
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatabase(ctx context.Context, dbname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1718,7 +1707,7 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 	}
 
 	for _, datastore := range database.Datastores {
-		if err := m.EnsureDoesntExistDatabaseDatastore(dbname, datastore.Datastore.Name); err != nil {
+		if err := m.EnsureDoesntExistDatabaseDatastore(ctx, dbname, datastore.Datastore.Name); err != nil {
 			return err
 		}
 	}
@@ -1731,7 +1720,7 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 		successCount = 0
 		// remove the associated collections
 		for _, collection := range database.Collections {
-			if err := m.EnsureDoesntExistCollection(dbname, collection.Name); err == nil {
+			if err := m.EnsureDoesntExistCollection(ctx, dbname, collection.Name); err == nil {
 				successCount++
 			} else {
 				outerError = err
@@ -1750,14 +1739,14 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 	for _, datastoreVShard := range meta.DatastoreVShards {
 		if datastoreVShard.DatabaseID == database.ID {
 			datastoreVShard.DatabaseID = 0
-			if err := m.EnsureExistsDatastoreVShard(meta.Datastore[datastoreVShard.DatastoreID], datastoreVShard); err != nil {
+			if err := m.EnsureExistsDatastoreVShard(ctx, meta.Datastore[datastoreVShard.DatastoreID], datastoreVShard); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Delete database entry
-	databaseDelete := m.Store.Delete(map[string]interface{}{
+	databaseDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database",
@@ -1772,8 +1761,8 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(dbname string) error {
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsDatabaseDatastore(db *metadata.Database, databaseDatastore *metadata.DatabaseDatastore) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsDatabaseDatastore(ctx context.Context, db *metadata.Database, databaseDatastore *metadata.DatabaseDatastore) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1807,7 +1796,7 @@ func (m *MetadataStore) EnsureExistsDatabaseDatastore(db *metadata.Database, dat
 		databaseDatastoreRecord["_id"] = databaseDatastore.ID
 	}
 
-	databaseDatastoreResult := m.Store.Set(map[string]interface{}{
+	databaseDatastoreResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database_datastore",
@@ -1823,8 +1812,8 @@ func (m *MetadataStore) EnsureExistsDatabaseDatastore(db *metadata.Database, dat
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(dbname, datastorename string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(ctx context.Context, dbname, datastorename string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1847,7 +1836,7 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(dbname, datastorename
 	}
 
 	// Delete database entry
-	databaseDatastoreDelete := m.Store.Delete(map[string]interface{}{
+	databaseDatastoreDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "database_datastore",
@@ -1863,9 +1852,9 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(dbname, datastorename
 }
 
 // Collection Changes
-func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection *metadata.Collection) error {
+func (m *MetadataStore) EnsureExistsCollection(ctx context.Context, db *metadata.Database, collection *metadata.Collection) error {
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta, err := m.GetMeta()
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1888,7 +1877,7 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 			// TODO: better? We don't need to make the whole collection-- just the field
 			// But we'll do it for now
 			if relationCollection, ok := db.Collections[field.Relation.Collection]; ok {
-				if err := m.EnsureExistsCollection(db, relationCollection); err != nil {
+				if err := m.EnsureExistsCollection(ctx, db, relationCollection); err != nil {
 					return err
 				}
 			}
@@ -1922,7 +1911,7 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 	}
 
 	// Add the collection
-	collectionResult := m.Store.Set(map[string]interface{}{
+	collectionResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection",
@@ -1936,14 +1925,14 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 
 	// Ensure all the fields in the collection
 	for _, field := range collection.Fields {
-		if err := m.EnsureExistsCollectionField(db, collection, field, nil); err != nil {
+		if err := m.EnsureExistsCollectionField(ctx, db, collection, field, nil); err != nil {
 			return err
 		}
 	}
 
 	// TODO: support multiple Keyspaces
 	if collection.Keyspaces != nil && len(collection.Keyspaces) > 0 {
-		if err := m.EnsureExistsCollectionKeyspace(db, collection, collection.Keyspaces[0]); err != nil {
+		if err := m.EnsureExistsCollectionKeyspace(ctx, db, collection, collection.Keyspaces[0]); err != nil {
 			return err
 		}
 	}
@@ -1953,7 +1942,7 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 	// If a collection has indexes defined, lets take care of that
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := m.EnsureExistsCollectionIndex(db, collection, index); err != nil {
+			if err := m.EnsureExistsCollectionIndex(ctx, db, collection, index); err != nil {
 				return err
 			}
 		}
@@ -1963,8 +1952,8 @@ func (m *MetadataStore) EnsureExistsCollection(db *metadata.Database, collection
 }
 
 // TODO: to change
-func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistCollection(ctx context.Context, dbname, collectionname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -1979,14 +1968,14 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 	}
 
 	// Delete collection keyspace
-	if err := m.EnsureDoesntExistCollectionKeyspace(dbname, collectionname); err != nil {
+	if err := m.EnsureDoesntExistCollectionKeyspace(ctx, dbname, collectionname); err != nil {
 		return err
 	}
 
 	// Delete collection_index_items
 	if collection.Indexes != nil {
 		for _, index := range collection.Indexes {
-			if err := m.EnsureDoesntExistCollectionIndex(dbname, collectionname, index.Name); err != nil {
+			if err := m.EnsureDoesntExistCollectionIndex(ctx, dbname, collectionname, index.Name); err != nil {
 				return err
 			}
 		}
@@ -1997,7 +1986,7 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 	for i := 0; i < 10; i++ {
 		successCount = 0
 		for _, field := range collection.Fields {
-			if err := m.EnsureDoesntExistCollectionField(dbname, collectionname, field.Name); err == nil {
+			if err := m.EnsureDoesntExistCollectionField(ctx, dbname, collectionname, field.Name); err == nil {
 				successCount++
 			}
 		}
@@ -2011,7 +2000,7 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 	}
 
 	// Delete collection
-	collectionDelete := m.Store.Delete(map[string]interface{}{
+	collectionDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection",
@@ -2027,8 +2016,8 @@ func (m *MetadataStore) EnsureDoesntExistCollection(dbname, collectionname strin
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsCollectionKeyspace(db *metadata.Database, collection *metadata.Collection, collectionKeyspace *metadata.CollectionKeyspace) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsCollectionKeyspace(ctx context.Context, db *metadata.Database, collection *metadata.Collection, collectionKeyspace *metadata.CollectionKeyspace) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2067,7 +2056,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(db *metadata.Database, co
 		collectionKeyspaceRecord["_id"] = collectionKeyspace.ID
 	}
 
-	collectionKeyspaceResult := m.Store.Set(map[string]interface{}{
+	collectionKeyspaceResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_keyspace",
@@ -2086,7 +2075,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(db *metadata.Database, co
 
 	// Now that we have the base, we need to insert the shard key
 	for i, shardKeyID := range shardKeyIDs {
-		m.Store.Set(map[string]interface{}{
+		m.Store.Set(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace_shardkey",
@@ -2101,7 +2090,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(db *metadata.Database, co
 
 	// Insert children
 	for _, collectionKeyspacePartition := range collectionKeyspace.Partitions {
-		if err := m.EnsureExistsCollectionKeyspacePartition(db, collection, collectionKeyspace, collectionKeyspacePartition); err != nil {
+		if err := m.EnsureExistsCollectionKeyspacePartition(ctx, db, collection, collectionKeyspace, collectionKeyspacePartition); err != nil {
 			return err
 		}
 	}
@@ -2110,8 +2099,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(db *metadata.Database, co
 }
 
 // TODO: change once we support more keyspaces
-func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(ctx context.Context, dbname, collectionname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2127,12 +2116,12 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 	}
 
 	// Delete children
-	if err := m.EnsureDoesntExistCollectionKeyspacePartition(dbname, collectionname); err != nil {
+	if err := m.EnsureDoesntExistCollectionKeyspacePartition(ctx, dbname, collectionname); err != nil {
 		return err
 	}
 
 	for _, collectionKeyspace := range collection.Keyspaces {
-		collectionKeyspaceShardKeyResult := m.Store.Filter(map[string]interface{}{
+		collectionKeyspaceShardKeyResult := m.Store.Filter(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace_shardkey",
@@ -2144,7 +2133,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 			return fmt.Errorf("Error getting collectionKeyspaceShardKeyResult: %v", collectionKeyspaceShardKeyResult.Error)
 		}
 		for _, collectionKeyspaceShardKeyRecord := range collectionKeyspaceShardKeyResult.Return {
-			collectionKeyspaceShardKeyDelete := m.Store.Delete(map[string]interface{}{
+			collectionKeyspaceShardKeyDelete := m.Store.Delete(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_shardkey",
@@ -2158,7 +2147,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 		}
 
 		// Delete database entry
-		collectionKeyspaceDelete := m.Store.Delete(map[string]interface{}{
+		collectionKeyspaceDelete := m.Store.Delete(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace",
@@ -2174,8 +2163,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(dbname, collectionna
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Database, collection *metadata.Collection, collectionKeyspace *metadata.CollectionKeyspace, collectionKeyspacePartition *metadata.CollectionKeyspacePartition) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Context, db *metadata.Database, collection *metadata.Collection, collectionKeyspace *metadata.CollectionKeyspace, collectionKeyspacePartition *metadata.CollectionKeyspacePartition) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2202,7 +2191,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 	// to enforce this we'll check if a database has claimed the vshard, if so
 	// we can't use it. If not, we'll set it
 	for _, datastoreVShardID := range collectionKeyspacePartition.DatastoreVShardIDs {
-		datastoreVShardResult := m.Store.Get(map[string]interface{}{
+		datastoreVShardResult := m.Store.Get(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "datastore_vshard",
@@ -2220,7 +2209,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 			}
 		} else {
 			datastoreVShardResult.Return[0]["database_id"] = db.ID
-			datastoreVShardUpdateResult := m.Store.Set(map[string]interface{}{
+			datastoreVShardUpdateResult := m.Store.Set(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "datastore_vshard",
@@ -2245,7 +2234,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 		collectionKeyspacePartitionRecord["_id"] = collectionKeyspacePartition.ID
 	}
 
-	collectionKeyspacePartitionResult := m.Store.Set(map[string]interface{}{
+	collectionKeyspacePartitionResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_keyspace_partition",
@@ -2265,7 +2254,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 	// TODO: better?
 	// TODO: diff -- we should only have the ones defined in this list!
 	for _, datastoreVShardID := range collectionKeyspacePartition.DatastoreVShardIDs {
-		m.Store.Set(map[string]interface{}{
+		m.Store.Set(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_keyspace_partition_datastore_vshard",
@@ -2281,8 +2270,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(db *metadata.Dat
 }
 
 // TODO: change once we support more partitions
-func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, collectionname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context.Context, dbname, collectionname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2300,7 +2289,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 	for _, collectionKeyspace := range collection.Keyspaces {
 		for _, collectionKeyspacePartition := range collectionKeyspace.Partitions {
 			// Delete all links to datastores
-			collectionKeyspacePartitionDatastoreVShardResult := m.Store.Filter(map[string]interface{}{
+			collectionKeyspacePartitionDatastoreVShardResult := m.Store.Filter(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_partition_datastore_vshard",
@@ -2313,7 +2302,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 			}
 
 			for _, collectionKeyspacePartitionDatastoreVShardRecord := range collectionKeyspacePartitionDatastoreVShardResult.Return {
-				collectionKeyspacePartitionDatastoreVShardDelete := m.Store.Delete(map[string]interface{}{
+				collectionKeyspacePartitionDatastoreVShardDelete := m.Store.Delete(ctx, map[string]interface{}{
 					"db":             "dataman_router",
 					"shard_instance": "public",
 					"collection":     "collection_keyspace_partition_datastore_vshard",
@@ -2328,7 +2317,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 			}
 
 			// Delete keyspace partition
-			collectionPartitionDelete := m.Store.Delete(map[string]interface{}{
+			collectionPartitionDelete := m.Store.Delete(ctx, map[string]interface{}{
 				"db":             "dataman_router",
 				"shard_instance": "public",
 				"collection":     "collection_keyspace_partition",
@@ -2346,8 +2335,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(dbname, col
 }
 
 // Index changes
-func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, collection *metadata.Collection, index *storagenodemetadata.CollectionIndex) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureExistsCollectionIndex(ctx context.Context, db *metadata.Database, collection *metadata.Collection, index *storagenodemetadata.CollectionIndex) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2415,7 +2404,7 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 		collectionIndexRecord["_id"] = index.ID
 	}
 
-	collectionIndexResult := m.Store.Set(map[string]interface{}{
+	collectionIndexResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_index",
@@ -2429,7 +2418,7 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 	// insert all of the field links
 
 	for _, fieldID := range fieldIds {
-		collectionIndexItemResult := m.Store.Insert(map[string]interface{}{
+		collectionIndexItemResult := m.Store.Insert(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_index_item",
@@ -2447,8 +2436,8 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(db *metadata.Database, colle
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname, indexname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Context, dbname, collectionname, indexname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2468,7 +2457,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 	}
 
 	// Remove the index items
-	collectionIndexItemResult := m.Store.Filter(map[string]interface{}{
+	collectionIndexItemResult := m.Store.Filter(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_index_item",
@@ -2481,7 +2470,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 	}
 
 	for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-		collectionIndexItemDelete := m.Store.Delete(map[string]interface{}{
+		collectionIndexItemDelete := m.Store.Delete(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_index_item",
@@ -2495,7 +2484,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 
 	}
 
-	collectionIndexDelete := m.Store.Delete(map[string]interface{}{
+	collectionIndexDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_index",
@@ -2510,7 +2499,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(dbname, collectionname,
 	return nil
 }
 
-func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.CollectionField) error {
+func (m *MetadataStore) EnsureExistsCollectionField(ctx context.Context, db *metadata.Database, collection *metadata.Collection, field, parentField *storagenodemetadata.CollectionField) error {
 
 	// Recursively search to see if a field exists that matches
 	var findField func(*storagenodemetadata.CollectionField, *storagenodemetadata.CollectionField)
@@ -2542,7 +2531,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	}
 
 	// TODO: need upsert -- ideally this would be taken care of down in the dataman layers
-	meta, err := m.GetMeta()
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2595,7 +2584,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	// TODO: check if we are changing a field, if so we cannot change no_null
 	// if it is part of a primary index
 
-	collectionFieldResult := m.Store.Set(map[string]interface{}{
+	collectionFieldResult := m.Store.Set(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_field",
@@ -2608,7 +2597,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 
 	if field.SubFields != nil {
 		for _, subField := range field.SubFields {
-			if err := m.EnsureExistsCollectionField(db, collection, subField, field); err != nil {
+			if err := m.EnsureExistsCollectionField(ctx, db, collection, subField, field); err != nil {
 				return err
 			}
 		}
@@ -2626,7 +2615,7 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 		if field.Relation.ID != 0 {
 			fieldRelationRecord["_id"] = field.Relation.ID
 		}
-		collectionFieldRelationResult := m.Store.Set(map[string]interface{}{
+		collectionFieldRelationResult := m.Store.Set(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
@@ -2641,8 +2630,8 @@ func (m *MetadataStore) EnsureExistsCollectionField(db *metadata.Database, colle
 	return nil
 }
 
-func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname, fieldname string) error {
-	meta, err := m.GetMeta()
+func (m *MetadataStore) EnsureDoesntExistCollectionField(ctx context.Context, dbname, collectionname, fieldname string) error {
+	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
 	}
@@ -2676,7 +2665,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname,
 	// Run this for any subfields
 	if field.SubFields != nil {
 		for _, subField := range field.SubFields {
-			if err := m.EnsureDoesntExistCollectionField(dbname, collectionname, fieldname+"."+subField.Name); err != nil {
+			if err := m.EnsureDoesntExistCollectionField(ctx, dbname, collectionname, fieldname+"."+subField.Name); err != nil {
 				return err
 			}
 		}
@@ -2684,7 +2673,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname,
 
 	// If we have a relation, remove it
 	if field.Relation != nil {
-		collectionFieldRelationDelete := m.Store.Delete(map[string]interface{}{
+		collectionFieldRelationDelete := m.Store.Delete(ctx, map[string]interface{}{
 			"db":             "dataman_router",
 			"shard_instance": "public",
 			"collection":     "collection_field_relation",
@@ -2697,7 +2686,7 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(dbname, collectionname,
 		}
 	}
 
-	collectionFieldDelete := m.Store.Delete(map[string]interface{}{
+	collectionFieldDelete := m.Store.Delete(ctx, map[string]interface{}{
 		"db":             "dataman_router",
 		"shard_instance": "public",
 		"collection":     "collection_field",
