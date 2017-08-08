@@ -83,7 +83,7 @@ func (c *Collection) ListIndexes() []string {
 	return indexes
 }
 
-func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationResult {
+func (c *Collection) ValidateRecordInsert(record map[string]interface{}) *ValidationResult {
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {

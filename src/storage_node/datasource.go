@@ -330,7 +330,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// down to the plugin as a regular set (assuming it is valid)
 
 		// To be a valid Set() it must be okay as either an insert or an update
-		if insertValidationResultMap := collection.ValidateRecord(q.Args["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
+		if insertValidationResultMap := collection.ValidateRecordInsert(q.Args["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
 			// If it isn't valid as an upsert, we can see if it is valid as an update only
 			if updateValidationResultMap := collection.ValidateRecordUpdate(q.Args["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
 				// If it is valid as an update, then we need to convert the set request to an update
@@ -349,7 +349,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 
 	case query.Insert:
-		if validationResultMap := collection.ValidateRecord(q.Args["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+		if validationResultMap := collection.ValidateRecordInsert(q.Args["record"].(map[string]interface{})); !validationResultMap.IsValid() {
 			return &query.Result{ValidationError: validationResultMap}
 		}
 	case query.Update:
