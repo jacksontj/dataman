@@ -12,8 +12,8 @@
                         "message": {
                             "name": "message",
                             "fields": {
-                                "_id": {
-                                    "name": "_id",
+                                "id": {
+                                    "name": "id",
                                     "field_type": "_int",
                                     "not_null": true
                                 },
@@ -43,13 +43,21 @@
                                             "relation": {
                                                 "field_id": 18343,
                                                 "collection": "thread",
-                                                "field": "_id"
+                                                "field": "id"
                                             }
                                         }
                                     }
                                 }
                             },
                             "indexes": {
+                                "id": {
+                                   "name": "id",
+                                   "fields": [
+                                     "id"
+                                   ],
+                                  "unique": true,
+                                  "primary": true
+                                },
                                 "created": {
                                     "name": "created",
                                     "fields": [
@@ -61,8 +69,8 @@
                         "thread": {
                             "name": "thread",
                             "fields": {
-                                "_id": {
-                                    "name": "_id",
+                                "id": {
+                                    "name": "id",
                                     "field_type": "_int",
                                     "not_null": true
                                 },
@@ -89,6 +97,14 @@
                                 }
                             },
                             "indexes": {
+                                "id": {
+                                   "name": "id",
+                                   "fields": [
+                                     "id"
+                                   ],
+                                  "unique": true,
+                                  "primary": true
+                                },
                                 "created": {
                                     "name": "created",
                                     "fields": [
@@ -107,8 +123,8 @@
                         "user": {
                             "name": "user",
                             "fields": {
-                                "_id": {
-                                    "name": "_id",
+                                "id": {
+                                    "name": "id",
                                     "field_type": "_int",
                                     "not_null": true
                                 },
@@ -119,6 +135,14 @@
                                 }
                             },
                             "indexes": {
+                                "id": {
+                                   "name": "id",
+                                   "fields": [
+                                     "id"
+                                   ],
+                                  "unique": true,
+                                  "primary": true
+                                },
                                 "username": {
                                     "name": "username",
                                     "fields": [
@@ -153,6 +177,14 @@
         "_string": {
             "name": "_string",
             "dataman_type": "string"
+        },
+        "_json": {
+            "name": "_json",
+            "dataman_type": "json"
+        },
+        "_serial": {
+            "name": "_serial",
+            "dataman_type": "serial"
         },
         "_text": {
             "name": "_text",

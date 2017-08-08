@@ -14,6 +14,7 @@ import (
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
 
 	"gopkg.in/yaml.v2"
 )
@@ -109,7 +110,7 @@ func TestDatasource_ShardInstance(t *testing.T) {
 	// set the DB id -- so the compare works
 	testMeta.Databases["example_forum"].ID = db.ID
 
-	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_8_1"]
+	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_2"]
 
 	// Ensure the shardInstance
 	if err := datasourceInstance.EnsureExistsShardInstance(context.Background(), db, shardInstance); err != nil {
@@ -178,6 +179,20 @@ func TestDatasource_DataAccess(t *testing.T) {
 								Type:      "_string",
 								FieldType: metadata.DatamanTypeToFieldType(datamantype.String),
 							},
+							"id": &metadata.CollectionField{
+								Name:      "id",
+								NotNull:   true,
+								Type:      "_serial",
+								FieldType: metadata.DatamanTypeToFieldType(datamantype.Serial),
+							},
+						},
+						Indexes: map[string]*metadata.CollectionIndex{
+							"id": &metadata.CollectionIndex{
+								Name:    "id",
+								Fields:  []string{"id"},
+								Unique:  true,
+								Primary: true,
+							},
 						},
 					},
 				},
@@ -215,8 +230,11 @@ func TestDatasource_DataAccess(t *testing.T) {
 	if result.Error != "" {
 		t.Fatalf("Error when adding a valid document: %v", result.Error)
 	}
-	fmt.Println(result.Return[0])
-	insertedId := result.Return[0]["_id"].(int64)
+	if result.ValidationError != nil {
+		b, _ := json.Marshal(result.ValidationError)
+		t.Fatalf("Error when adding a valid document: %v", string(b))
+	}
+	insertedId := result.Return[0]["id"].(int64)
 
 	badRowTmp, _ := copystructure.Copy(row)
 	badRow := badRowTmp.(map[string]interface{})
@@ -238,7 +256,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 
 	conflictingRowTmp, _ := copystructure.Copy(row)
 	conflictingRow := conflictingRowTmp.(map[string]interface{})
-	conflictingRow["_id"] = insertedId
+	conflictingRow["id"] = insertedId
 	result = datasourceInstance.HandleQuery(context.Background(),
 		&query.Query{
 			Type: query.Insert,
@@ -264,7 +282,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"_id":            -1,
+				"id":             -1,
 			},
 		},
 	)
@@ -278,7 +296,9 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"_id":            insertedId,
+				"pkey": map[string]interface{}{
+					"id": insertedId,
+				},
 			},
 		},
 	)
@@ -299,7 +319,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": -1},
+				"filter":         map[string]interface{}{"id": []interface{}{filter.Equal, -1}},
 				"record":         map[string]interface{}{"name": "bar"},
 			},
 		},
@@ -315,7 +335,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": insertedId},
+				"filter":         map[string]interface{}{"id": []interface{}{filter.Equal, -1}},
 				"record":         badRow,
 			},
 		},
@@ -334,7 +354,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": insertedId},
+				"filter":         map[string]interface{}{"id": []interface{}{filter.Equal, -1}},
 				"record":         invalidColumnRow,
 			},
 		},
@@ -351,7 +371,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}},
+				"filter":         map[string]interface{}{"id": []interface{}{"=", insertedId}},
 				"record":         map[string]interface{}{"name": "tester2"},
 			},
 		},
@@ -394,7 +414,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"record":         map[string]interface{}{"_id": insertedId, "name": "bar"},
+				"record":         map[string]interface{}{"id": insertedId, "name": "bar"},
 			},
 		},
 	)
@@ -443,7 +463,10 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"notthere": []interface{}{"=", -1}, "name": []interface{}{"=", "bar"}},
+				"filter": map[string]interface{}{
+					"notthere": []interface{}{"=", -1},
+					"name":     []interface{}{"=", "bar"},
+				},
 			},
 		},
 	)
@@ -459,7 +482,10 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+				"filter": map[string]interface{}{
+					"id":   []interface{}{"=", insertedId},
+					"name": []interface{}{"=", "bar"},
+				},
 			},
 		},
 	)
@@ -469,7 +495,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 
 	//  fields
 	requestFields := []string{
-		"_id",
+		"id",
 		"data.lastName",
 	}
 	result = datasourceInstance.HandleQuery(context.Background(),
@@ -479,8 +505,11 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
-				"fields":         requestFields,
+				"filter": map[string]interface{}{
+					"id":   []interface{}{"=", insertedId},
+					"name": []interface{}{"=", "bar"},
+				},
+				"fields": requestFields,
 			},
 		},
 	)
@@ -494,7 +523,17 @@ func TestDatasource_DataAccess(t *testing.T) {
 	for k, _ := range flatResult {
 		resultFields = append(resultFields, k)
 	}
-	if !reflect.DeepEqual(requestFields, resultFields) {
+	// check that the fields came back as expected (projected)
+	match := true
+	if len(flatResult) != len(requestFields) {
+		match = false
+	}
+	for _, k := range requestFields {
+		if _, ok := flatResult[k]; !ok {
+			match = false
+		}
+	}
+	if !match {
 		t.Fatalf("Error, got back different fields expected=%v actual=%v", requestFields, resultFields)
 	}
 
@@ -508,7 +547,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"_id":            -1,
+				"id":             -1,
 			},
 		},
 	)
@@ -523,7 +562,9 @@ func TestDatasource_DataAccess(t *testing.T) {
 				"db":             databaseAdd.Name,
 				"shard_instance": "shard1",
 				"collection":     "item",
-				"_id":            insertedId,
+				"pkey": map[string]interface{}{
+					"id": insertedId,
+				},
 			},
 		},
 	)
