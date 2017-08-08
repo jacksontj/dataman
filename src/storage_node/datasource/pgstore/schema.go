@@ -332,14 +332,11 @@ func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance
 
 		// If there is a default defined, lets attempt to load it (assuming it is a type we understand)
 		if fieldEntry["column_default"] != nil {
-			if field.Name == "s" {
-				fmt.Println(fieldEntry)
-			}
 			stringDefault, ok := fieldEntry["column_default"].(string)
 			if ok && strings.HasPrefix(stringDefault, "nextval('") {
 				field.FieldType = metadata.DatamanTypeToFieldType(datamantype.Serial)
 				field.Type = field.FieldType.Name
-				field.NotNull = false
+				field.NotNull = true
 			} else {
 				// TODO: log a warning if we don't understand?
 				defaultVal, err := datamanType.Normalize(fieldEntry["column_default"])
