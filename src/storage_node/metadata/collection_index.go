@@ -13,6 +13,9 @@ type CollectionIndex struct {
 }
 
 func (c *CollectionIndex) Equal(o *CollectionIndex) bool {
+	if o == nil {
+		return false
+	}
 	if c.Name != o.Name {
 		return false
 	}
