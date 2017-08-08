@@ -1,6 +1,7 @@
 package storagenode
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"testing"
@@ -33,13 +34,13 @@ func getMetaStore() (MutableStorageMetadataStore, error) {
 }
 
 func resetMetaStore(metaStore MutableStorageMetadataStore) error {
-	meta, err := metaStore.GetMeta()
+	meta, err := metaStore.GetMeta(context.Background())
 	if err != nil {
 		return err
 	}
 
 	for dbname, _ := range meta.Databases {
-		if err := metaStore.EnsureDoesntExistDatabase(dbname); err != nil {
+		if err := metaStore.EnsureDoesntExistDatabase(context.Background(), dbname); err != nil {
 			return err
 		}
 	}
@@ -97,12 +98,12 @@ func TestMetaStore_Database(t *testing.T) {
 	}
 
 	// Insert the meta -- here the provision state is all 0
-	if err := metaStore.EnsureExistsDatabase(testMeta.Databases["example_forum"]); err != nil {
+	if err := metaStore.EnsureExistsDatabase(context.Background(), testMeta.Databases["example_forum"]); err != nil {
 		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
 	// Ensure that the one we had and the one stored are the same
-	meta, _ := metaStore.GetMeta()
+	meta, _ := metaStore.GetMeta(context.Background())
 	if !metaEqual(testMeta, meta) {
 		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
@@ -110,18 +111,18 @@ func TestMetaStore_Database(t *testing.T) {
 	// Now lets update the provision state for stuff
 	db := meta.Databases["example_forum"]
 	db.ProvisionState = metadata.Provision
-	if err := metaStore.EnsureExistsDatabase(db); err != nil {
+	if err := metaStore.EnsureExistsDatabase(context.Background(), db); err != nil {
 		t.Fatalf("Error ensuring DB 2: %v", err)
 	}
 
 	// Make sure it changed
-	meta, _ = metaStore.GetMeta()
+	meta, _ = metaStore.GetMeta(context.Background())
 	if !metaEqual(db, meta.Databases["example_forum"]) {
 		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Remove it all
-	if err := metaStore.EnsureDoesntExistDatabase("example_forum"); err != nil {
+	if err := metaStore.EnsureDoesntExistDatabase(context.Background(), "example_forum"); err != nil {
 		t.Fatalf("Error EnsureDoesntExistDatabase: %v", err)
 	}
 
@@ -145,7 +146,7 @@ func TestMetaStore_ShardInstance(t *testing.T) {
 
 	db := &metadata.Database{Name: "example_forum"}
 	// Insert the db
-	if err := metaStore.EnsureExistsDatabase(db); err != nil {
+	if err := metaStore.EnsureExistsDatabase(context.Background(), db); err != nil {
 		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
@@ -155,30 +156,30 @@ func TestMetaStore_ShardInstance(t *testing.T) {
 	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_2"]
 
 	// Ensure the shardInstance
-	if err := metaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := metaStore.EnsureExistsShardInstance(context.Background(), db, shardInstance); err != nil {
 		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
 	// Check
-	meta, _ := metaStore.GetMeta()
+	meta, _ := metaStore.GetMeta(context.Background())
 	if !metaEqual(testMeta, meta) {
 		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Update the shardInstance
 	shardInstance.ProvisionState = metadata.Provision
-	if err := metaStore.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := metaStore.EnsureExistsShardInstance(context.Background(), db, shardInstance); err != nil {
 		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
 	// Check
-	meta, _ = metaStore.GetMeta()
+	meta, _ = metaStore.GetMeta(context.Background())
 	if !metaEqual(testMeta, meta) {
 		t.Fatalf("not equal %v != %v", testMeta, meta)
 	}
 
 	// Remove the shardInstance
-	if err := metaStore.EnsureDoesntExistShardInstance(db.Name, shardInstance.Name); err != nil {
+	if err := metaStore.EnsureDoesntExistShardInstance(context.Background(), db.Name, shardInstance.Name); err != nil {
 		t.Fatalf("Error EnsureDoesntExistShardInstance: %v", err)
 	}
 

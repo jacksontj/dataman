@@ -1,6 +1,7 @@
 package storagenode
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +11,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/mitchellh/copystructure"
 
+	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 
@@ -40,7 +42,7 @@ func resetDatasourceInstance(datasourceInstance *DatasourceInstance) error {
 	meta := datasourceInstance.GetMeta()
 
 	for dbname, _ := range meta.Databases {
-		if err := datasourceInstance.EnsureDoesntExistDatabase(dbname); err != nil {
+		if err := datasourceInstance.EnsureDoesntExistDatabase(context.Background(), dbname); err != nil {
 			return err
 		}
 	}
@@ -64,7 +66,7 @@ func TestDatasource_Database(t *testing.T) {
 	}
 
 	// Insert the meta -- here the provision state is all 0
-	if err := datasourceInstance.EnsureExistsDatabase(testMeta.Databases["example_forum"]); err != nil {
+	if err := datasourceInstance.EnsureExistsDatabase(context.Background(), testMeta.Databases["example_forum"]); err != nil {
 		b, _ := json.Marshal(testMeta.Databases["example_forum"])
 		fmt.Printf("%s\n", b)
 		t.Fatalf("Error ensuring DB: %v", err)
@@ -76,7 +78,7 @@ func TestDatasource_Database(t *testing.T) {
 	}
 
 	// Remove it all
-	if err := datasourceInstance.EnsureDoesntExistDatabase("example_forum"); err != nil {
+	if err := datasourceInstance.EnsureDoesntExistDatabase(context.Background(), "example_forum"); err != nil {
 		t.Fatalf("Error EnsureDoesntExistDatabase: %v", err)
 	}
 
@@ -100,17 +102,17 @@ func TestDatasource_ShardInstance(t *testing.T) {
 
 	db := &metadata.Database{Name: "example_forum"}
 	// Insert the db
-	if err := datasourceInstance.EnsureExistsDatabase(db); err != nil {
+	if err := datasourceInstance.EnsureExistsDatabase(context.Background(), db); err != nil {
 		t.Fatalf("Error ensuring DB: %v", err)
 	}
 
 	// set the DB id -- so the compare works
 	testMeta.Databases["example_forum"].ID = db.ID
 
-	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_2"]
+	shardInstance := testMeta.Databases["example_forum"].ShardInstances["dbshard_example_forum_8_1"]
 
 	// Ensure the shardInstance
-	if err := datasourceInstance.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := datasourceInstance.EnsureExistsShardInstance(context.Background(), db, shardInstance); err != nil {
 		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
@@ -122,7 +124,7 @@ func TestDatasource_ShardInstance(t *testing.T) {
 
 	// Update the shardInstance
 	shardInstance.ProvisionState = metadata.Provision
-	if err := datasourceInstance.EnsureExistsShardInstance(db, shardInstance); err != nil {
+	if err := datasourceInstance.EnsureExistsShardInstance(context.Background(), db, shardInstance); err != nil {
 		t.Fatalf("Error ensuring shardInstance: %v", err)
 	}
 
@@ -137,7 +139,7 @@ func TestDatasource_ShardInstance(t *testing.T) {
 	}
 
 	// Remove the shardInstance
-	if err := datasourceInstance.EnsureDoesntExistShardInstance(db.Name, shardInstance.Name); err != nil {
+	if err := datasourceInstance.EnsureDoesntExistShardInstance(context.Background(), db.Name, shardInstance.Name); err != nil {
 		t.Fatalf("Error EnsureDoesntExistShardInstance: %v", err)
 	}
 
@@ -169,12 +171,12 @@ func TestDatasource_DataAccess(t *testing.T) {
 							"data": &metadata.CollectionField{
 								Name:      "data",
 								Type:      "_document",
-								FieldType: metadata.Document.ToFieldType(),
+								FieldType: metadata.DatamanTypeToFieldType(datamantype.Document),
 							},
 							"name": &metadata.CollectionField{
 								Name:      "name",
 								Type:      "_string",
-								FieldType: metadata.DatamanType(metadata.String).ToFieldType(),
+								FieldType: metadata.DatamanTypeToFieldType(datamantype.String),
 							},
 						},
 					},
@@ -184,7 +186,7 @@ func TestDatasource_DataAccess(t *testing.T) {
 	}
 
 	// Add the database
-	if err := datasourceInstance.EnsureExistsDatabase(databaseAdd); err != nil {
+	if err := datasourceInstance.EnsureExistsDatabase(context.Background(), databaseAdd); err != nil {
 		t.Fatalf("Error adding database: %v", err)
 	}
 
@@ -199,30 +201,37 @@ func TestDatasource_DataAccess(t *testing.T) {
 	//	- add a valid row
 	//	- add an invalid row
 	//	- add a conflicting row
-	result := datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Insert: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         row,
+	result := datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Insert,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         row,
+			},
 		},
-	})
+	)
 	if result.Error != "" {
 		t.Fatalf("Error when adding a valid document: %v", result.Error)
 	}
+	fmt.Println(result.Return[0])
 	insertedId := result.Return[0]["_id"].(int64)
 
 	badRowTmp, _ := copystructure.Copy(row)
 	badRow := badRowTmp.(map[string]interface{})
 	badRow["notacolumn"] = "bar"
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Insert: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         badRow,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Insert,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         badRow,
+			},
 		},
-	})
+	)
 	if result.Error == "" {
 		t.Fatalf("No error when adding an invalid document")
 	}
@@ -230,14 +239,17 @@ func TestDatasource_DataAccess(t *testing.T) {
 	conflictingRowTmp, _ := copystructure.Copy(row)
 	conflictingRow := conflictingRowTmp.(map[string]interface{})
 	conflictingRow["_id"] = insertedId
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Insert: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         conflictingRow,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Insert,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         conflictingRow,
+			},
 		},
-	})
+	)
 	if result.Error == "" {
 		t.Fatalf("No error when adding a conflicting row")
 	}
@@ -245,25 +257,31 @@ func TestDatasource_DataAccess(t *testing.T) {
 	//Get
 	//	- get an item which doesn't exist
 	//	- get an item which does exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Get: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"_id":            -1,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Get,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"_id":            -1,
+			},
 		},
-	})
+	)
 	if len(result.Return) != 0 {
 		t.Fatalf("Found a non-existant item")
 	}
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Get: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"_id":            insertedId,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Get,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"_id":            insertedId,
+			},
 		},
-	})
+	)
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to find inserted item!")
 	}
@@ -274,28 +292,34 @@ func TestDatasource_DataAccess(t *testing.T) {
 	//	- update a single column
 	//		-- vaid type
 	//		-- invalid type
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Update: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": -1},
-			"record":         map[string]interface{}{"name": "bar"},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Update,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": -1},
+				"record":         map[string]interface{}{"name": "bar"},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 0 {
 		t.Fatalf("Updated %d rows for a non-existant row?", len(result.Return))
 	}
 
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Update: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": insertedId},
-			"record":         badRow,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Update,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": insertedId},
+				"record":         badRow,
+			},
 		},
-	})
+	)
 	if result.Error == "" {
 		t.Fatalf("No error when updating a row with invalid record")
 	}
@@ -303,29 +327,35 @@ func TestDatasource_DataAccess(t *testing.T) {
 	invalidColumnRowTmp, _ := copystructure.Copy(row)
 	invalidColumnRow := invalidColumnRowTmp.(map[string]interface{})
 	invalidColumnRow["name"] = 100
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Update: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": insertedId},
-			"record":         invalidColumnRow,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Update,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": insertedId},
+				"record":         invalidColumnRow,
+			},
 		},
-	})
+	)
 	// TODO: need to do actual type checking down in the storageinterface
 	if result.Error == "" && false {
 		t.Fatalf("No error when updating a row with invalid column type: %v", result)
 	}
 
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Update: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}},
-			"record":         map[string]interface{}{"name": "tester2"},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Update,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}},
+				"record":         map[string]interface{}{"name": "tester2"},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 1 {
 		t.Fatalf("Update found nothing: %v", result)
 	}
@@ -341,80 +371,98 @@ func TestDatasource_DataAccess(t *testing.T) {
 	//  - update a row (does/doesn't exist)
 	//  - create a row (valid, invalid)
 	// Update something which doesn't exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Set: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         map[string]interface{}{"notthere": -1, "name": "bar"},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Set,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         map[string]interface{}{"notthere": -1, "name": "bar"},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 0 {
 		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
 	}
 
 	// Update something which *does* exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Set: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         map[string]interface{}{"_id": insertedId, "name": "bar"},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Set,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         map[string]interface{}{"_id": insertedId, "name": "bar"},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to set row for an existing row: %v", result)
 	}
 
 	// create a valid row
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Set: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         map[string]interface{}{"name": "setname"},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Set,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         map[string]interface{}{"name": "setname"},
+			},
 		},
-	})
+	)
 	if result.Error != "" {
 		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
 	}
 
 	// create a invalid row
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Set: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"record":         badRow,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Set,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"record":         badRow,
+			},
 		},
-	})
+	)
 	if result.Error == "" {
 		t.Fatalf("No error when set-ing a row with invalid record")
 	}
 
 	// Filter
 	//  - Get a row that doesn't exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Filter: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"notthere": []interface{}{"=", -1}, "name": []interface{}{"=", "bar"}},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Filter,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"notthere": []interface{}{"=", -1}, "name": []interface{}{"=", "bar"}},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 0 {
 		t.Fatalf("Filter %d rows for a non-existant row?", len(result.Return))
 	}
 
 	//  - Get a row that does exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Filter: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Filter,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+			},
 		},
-	})
+	)
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to filter row for an existing row: %v", result)
 	}
@@ -424,15 +472,18 @@ func TestDatasource_DataAccess(t *testing.T) {
 		"_id",
 		"data.lastName",
 	}
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Filter: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
-			"fields":         requestFields,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Filter,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"filter":         map[string]interface{}{"_id": []interface{}{"=", insertedId}, "name": []interface{}{"=", "bar"}},
+				"fields":         requestFields,
+			},
 		},
-	})
+	)
 	if result.Error != "" {
 		t.Fatalf("Error when setting (creating) a valid row: %s", result.Error)
 	}
@@ -450,26 +501,32 @@ func TestDatasource_DataAccess(t *testing.T) {
 	//Delete
 	//	- delete an item which doesn't exist
 	//	- an item that does exist
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Delete: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"_id":            -1,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Delete,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"_id":            -1,
+			},
 		},
-	})
+	)
 	if len(result.Return) != 0 {
 		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
 	}
 
-	result = datasourceInstance.HandleQuery(map[query.QueryType]query.QueryArgs{
-		query.Delete: map[string]interface{}{
-			"db":             databaseAdd.Name,
-			"shard_instance": "shard1",
-			"collection":     "item",
-			"_id":            insertedId,
+	result = datasourceInstance.HandleQuery(context.Background(),
+		&query.Query{
+			Type: query.Delete,
+			Args: map[string]interface{}{
+				"db":             databaseAdd.Name,
+				"shard_instance": "shard1",
+				"collection":     "item",
+				"_id":            insertedId,
+			},
 		},
-	})
+	)
 	if len(result.Return) != 1 {
 		t.Fatalf("Unable to delete a row?! %v", result)
 	}
