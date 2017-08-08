@@ -3,6 +3,8 @@ package metadata
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/jacksontj/dataman/src/datamantype"
 )
 
 func NewCollection(name string) *Collection {
@@ -85,15 +87,20 @@ func (c *Collection) ValidateRecord(record map[string]interface{}) *ValidationRe
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	// TODO: We need to check that we where given no more than the Fields we know about
 	for fieldName, field := range c.Fields {
-		if v, ok := record[fieldName]; ok {
-			record[fieldName], result.Fields[fieldName] = field.Normalize(v)
-		} else {
-			if field.NotNull && field.Default == nil {
-				result.Fields[fieldName] = &ValidationResult{
-					Error: fmt.Sprintf("Missing required field %s %v", fieldName, field.Default),
+		switch field.FieldType.DatamanType {
+		case datamantype.Serial:
+			// TODO: check the serial type
+		default:
+			if v, ok := record[fieldName]; ok {
+				record[fieldName], result.Fields[fieldName] = field.Normalize(v)
+			} else {
+				if field.NotNull && field.Default == nil {
+					result.Fields[fieldName] = &ValidationResult{
+						Error: fmt.Sprintf("Missing required field %s %v", fieldName, field.Default),
+					}
 				}
+				// TODO: include an empty result? Not sure if an empty one is any good (also-- check for subfields?)
 			}
-			// TODO: include an empty result? Not sure if an empty one is any good (also-- check for subfields?)
 		}
 	}
 	return result
