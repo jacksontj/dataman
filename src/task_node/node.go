@@ -239,7 +239,7 @@ func (t *TaskNode) ensureExistsDatabase(ctx context.Context, db *metadata.Databa
 			return fmt.Errorf("Unknown datastore (missing ID): %v", databaseDatastore)
 		}
 		if datastore, ok := meta.Datastore[databaseDatastore.DatastoreID]; !ok {
-			return fmt.Errorf("Unknown datastore (ID %d not found): %v", databaseDatastore.Datastore.ID, databaseDatastore)
+			return fmt.Errorf("Unknown datastore (ID %d not found): %v", databaseDatastore.DatastoreID, databaseDatastore)
 		} else {
 			databaseDatastore.Datastore = datastore
 		}

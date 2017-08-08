@@ -1349,9 +1349,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(ctx context.Context,
 	}
 
 	if vShardInstance.ID != 0 {
-		fmt.Println("setting ID", vShardInstance.ID)
 		datastoreVShardInstanceRecord["_id"] = vShardInstance.ID
-		fmt.Println("after set?", datastoreVShardInstanceRecord)
 	}
 
 	datastoreVShardInstanceResult := m.Store.Set(ctx, map[string]interface{}{
@@ -1365,10 +1363,6 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(ctx context.Context,
 		return fmt.Errorf("Error getting datastoreVShardInstanceResult: %v", datastoreVShardInstanceResult.Error)
 	}
 
-	fmt.Println("vShardInstance", vShardInstance)
-	fmt.Println(datastoreVShardInstanceRecord)
-	fmt.Println(vShardInstance)
-	fmt.Println(datastoreVShardInstanceResult.Return)
 	vShardInstance.ID = datastoreVShardInstanceResult.Return[0]["_id"].(int64)
 
 	return nil
