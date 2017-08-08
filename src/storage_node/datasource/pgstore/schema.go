@@ -496,13 +496,9 @@ func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance,
 	}
 
 	for _, indexEntry := range indexEntries {
-		schemaName := string(indexEntry["schema_name"].([]byte))
-		pgIndexName := string(indexEntry["index_name"].([]byte))
-		tableName := string(indexEntry["table_name"].([]byte))
-
-		if tableName[0] == '"' && tableName[len(tableName)-1] == '"' {
-			tableName = tableName[1 : len(tableName)-1]
-		}
+		schemaName := indexEntry["schema_name"].(string)
+		pgIndexName := indexEntry["index_name"].(string)
+		tableName := strings.Replace(indexEntry["table_name"].(string), `"`, "", -1)
 
 		if schemaName == shardinstance && ((tableName == shardinstance+"."+collectionname) || (tableName == shardinstance+".\""+collectionname+"\"")) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
 			var indexFields []string
@@ -511,7 +507,7 @@ func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance,
 				indexFields[i] = normalizeFieldName(indexField)
 			}
 			return &metadata.CollectionIndex{
-				Name:           strings.Replace(string(indexEntry["index_name"].([]byte)), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
+				Name:           strings.Replace(indexEntry["index_name"].(string), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
 				Fields:         indexFields,
 				Unique:         indexEntry["is_unique"].(bool),
 				ProvisionState: metadata.Active,
