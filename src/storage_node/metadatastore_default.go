@@ -545,7 +545,7 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(ctx context.Context, 
 	// If this is primary key check (1) that all the fields are not-null (2) this is the only primary index
 	if index.Primary {
 		if !nonNullFields {
-			return fmt.Errorf("Cannot create index with fields that allow for null values")
+			return fmt.Errorf("Cannot create primary index with fields that allow for null values")
 		}
 
 		if !(collection.PrimaryIndex == nil || collection.PrimaryIndex.Name == index.Name) {
