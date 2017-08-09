@@ -38,7 +38,10 @@ func (r *Result) Project(fields []string) {
 		projectedResult := make(map[string]interface{})
 		for _, fieldNameParts := range projectionFields {
 			if len(fieldNameParts) == 1 {
-				projectedResult[fieldNameParts[0]] = returnRow[fieldNameParts[0]]
+				tmpVal, ok := returnRow[fieldNameParts[0]]
+				if ok {
+					projectedResult[fieldNameParts[0]] = tmpVal
+				}
 			} else {
 				dstTmp := projectedResult
 				srcTmp := returnRow
@@ -51,7 +54,10 @@ func (r *Result) Project(fields []string) {
 					srcTmp = srcTmp[fieldNamePart].(map[string]interface{})
 				}
 				// Now we are on the last hop-- just copy the value over
-				dstTmp[fieldNameParts[len(fieldNameParts)-1]] = srcTmp[fieldNameParts[len(fieldNameParts)-1]]
+				tmpVal, ok := srcTmp[fieldNameParts[len(fieldNameParts)-1]]
+				if ok {
+					dstTmp[fieldNameParts[len(fieldNameParts)-1]] = tmpVal
+				}
 			}
 		}
 		r.Return[i] = projectedResult
