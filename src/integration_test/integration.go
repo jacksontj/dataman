@@ -93,8 +93,9 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			}
 		}
 	}
+	testsDir := path.Join("tests", testDir, "/")
 
-	walkFunc := func(filepath string, info os.FileInfo, err error) error {
+	walkFunc := func(fpath string, info os.FileInfo, err error) error {
 		// If its a directory, skip it-- we'll let something else grab it
 		if !info.IsDir() {
 			return nil
@@ -103,7 +104,7 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 		// if this is a test directory it must have a query.json file
 		// Load the query
 		q := &query.Query{}
-		queryBytes, err := ioutil.ReadFile(path.Join(filepath, "query.json"))
+		queryBytes, err := ioutil.ReadFile(path.Join(fpath, "query.json"))
 		if err != nil {
 			if os.IsNotExist(err) {
 				return nil
@@ -113,7 +114,12 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 		if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
 			t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
 		}
-		t.Run(info.Name(), func(t *testing.T) {
+
+		relFilePath, err := filepath.Rel(testsDir, fpath)
+		if err != nil {
+			t.Fatalf("Error getting relative path? Shouldn't be possible: %v", err)
+		}
+		t.Run(relFilePath, func(t *testing.T) {
 
 			// Run the query
 			result := router.HandleQuery(context.Background(), q)
@@ -121,12 +127,12 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			// Check result
 
 			// write out results
-			resultPath := path.Join(filepath, "result.json")
+			resultPath := path.Join(fpath, "result.json")
 			resultBytes, _ := json.MarshalIndent(result, "", "  ")
 			ioutil.WriteFile(resultPath, resultBytes, 0644)
 
 			// compare against baseline if it exists
-			baselinePath := path.Join(filepath, "baseline.json")
+			baselinePath := path.Join(fpath, "baseline.json")
 			baselineResultBytes, err := ioutil.ReadFile(baselinePath)
 			if err != nil {
 				t.Skip("No baseline.json found, skipping comparison")
@@ -141,7 +147,7 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 		return nil
 	}
 
-	if err := filepath.Walk(path.Join("tests", testDir, "/"), walkFunc); err != nil {
+	if err := filepath.Walk(testsDir, walkFunc); err != nil {
 		t.Errorf("Error walking: %v", err)
 	}
 
