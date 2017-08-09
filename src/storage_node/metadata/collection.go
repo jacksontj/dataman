@@ -3,6 +3,7 @@ package metadata
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/jacksontj/dataman/src/datamantype"
 )
@@ -55,6 +56,10 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+func (c *Collection) GetFieldByName(name string) *CollectionField {
+	return c.GetField(strings.Split(name, "."))
 }
 
 func (c *Collection) GetField(nameParts []string) *CollectionField {

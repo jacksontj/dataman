@@ -240,6 +240,43 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 
 	meta := s.GetMeta()
 
+	// TODO: pass down database + collection
+	database, ok := meta.Databases[q.Args["db"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
+	}
+	collection, ok := database.Collections[q.Args["collection"].(string)]
+	if !ok {
+		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
+	}
+
+	var fieldList []string
+	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+	if fields, ok := q.Args["fields"]; ok {
+		switch fieldsTyped := fields.(type) {
+		case []string:
+			fieldList = fields.([]string)
+		case []interface{}:
+			fieldList = make([]string, len(fieldsTyped))
+			var ok bool
+			for i, f := range fieldsTyped {
+				fieldList[i], ok = f.(string)
+				if !ok {
+					return &query.Result{Error: `"fields" must be a list of strings`}
+				}
+			}
+		default:
+			return &query.Result{Error: `"fields" must be a list of strings`}
+		}
+
+		// Check that the fields exist (or at least are subfields of things that exist)
+		for _, field := range fieldList {
+			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+				return &query.Result{Error: "invalid projection field " + field}
+			}
+		}
+	}
+
 	var result *query.Result
 
 	// Switch between read and write operations
@@ -257,28 +294,8 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		return &query.Result{Error: "Unknown query type: " + string(q.Type)}
 	}
 
-	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
-	if fields, ok := q.Args["fields"]; ok {
-		var fieldList []string
-		switch fieldsTyped := fields.(type) {
-		case []string:
-			fieldList = fields.([]string)
-		case []interface{}:
-			fieldList = make([]string, len(fieldsTyped))
-			var ok bool
-			for i, f := range fieldsTyped {
-				fieldList[i], ok = f.(string)
-				if !ok {
-					result.Error = `"fields" must be a list of strings`
-					return result
-				}
-			}
-		default:
-			result.Error = `"fields" must be a list of strings`
-			return result
-		}
-		// TODO: disallow fieldList to include fields that aren't in the collection
-		// we'll need a special case for sub-fields (as we might not know *all* the schema)
+	// Apply projection
+	if fieldList != nil {
 		result.Project(fieldList)
 	}
 

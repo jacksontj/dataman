@@ -238,6 +238,33 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 	}
 
+	var fieldList []string
+	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+	if fields, ok := q.Args["fields"]; ok {
+		switch fieldsTyped := fields.(type) {
+		case []string:
+			fieldList = fields.([]string)
+		case []interface{}:
+			fieldList = make([]string, len(fieldsTyped))
+			var ok bool
+			for i, f := range fieldsTyped {
+				fieldList[i], ok = f.(string)
+				if !ok {
+					return &query.Result{Error: `"fields" must be a list of strings`}
+				}
+			}
+		default:
+			return &query.Result{Error: `"fields" must be a list of strings`}
+		}
+
+		// Check that the fields exist (or at least are subfields of things that exist)
+		for _, field := range fieldList {
+			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+				return &query.Result{Error: "invalid projection field " + field}
+			}
+		}
+	}
+
 	if joinFieldList, ok := q.Args["join"]; ok && joinFieldList != nil {
 		// TODO: remove? We can only do joins at this layer if there is only one shardInstance
 		if meta.Databases[q.Args["db"].(string)].ShardInstances[q.Args["shard_instance"].(string)].Count != 1 {
@@ -501,25 +528,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	}
 
 	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
-	if fields, ok := q.Args["fields"]; ok {
-		var fieldList []string
-		switch fieldsTyped := fields.(type) {
-		case []string:
-			fieldList = fields.([]string)
-		case []interface{}:
-			fieldList = make([]string, len(fieldsTyped))
-			var ok bool
-			for i, f := range fieldsTyped {
-				fieldList[i], ok = f.(string)
-				if !ok {
-					result.Error = `"fields" must be a list of strings`
-					return result
-				}
-			}
-		default:
-			result.Error = `"fields" must be a list of strings`
-			return result
-		}
+	if fieldList != nil {
 		// TODO: only need to do this if the request came from a router (for deduping purposes)
 		// Ensure that fieldList has all the pkeys in it
 		for _, pkeyFieldName := range collection.PrimaryIndex.Fields {
