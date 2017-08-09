@@ -1,6 +1,7 @@
 {
   "return": [
     {
+      "doc": null,
       "firstname": "foofirst",
       "lastname": "foolast",
       "username": "foo"

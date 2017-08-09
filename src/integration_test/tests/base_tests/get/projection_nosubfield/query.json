@@ -4,6 +4,6 @@
         "db": "test1",
         "collection": "user",
         "pkey": {"username": "foo"},
-        "fields": ["nofield"]
+        "fields": ["doc.a"]
     }
 }

@@ -5,6 +5,10 @@
 		    "user": {
 			    "name": "user",
 			    "fields": {
+			        "doc": {
+			            "field_type": "_document",
+			            "name": "doc"
+			        },
 				    "username": {
 					    "not_null": true,
 					    "field_type": "_string",
