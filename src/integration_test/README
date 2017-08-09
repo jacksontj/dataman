@@ -1,0 +1,21 @@
+/tests/
+    test1/
+        schema.json
+            - schema file of the database schema + shard count required 
+                (database_vshard.shard_count)
+
+        data.json
+            - file containing initial data for the schema defined
+                {
+                    "databasename": {
+                        "collectionName": [
+                            {record1},
+                            {record2},
+                            ...
+                        ]
+                    }
+                }
+        
+        queries.json
+            - file containing queries and expected responses
+
