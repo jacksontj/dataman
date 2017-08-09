@@ -502,7 +502,42 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 
 	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
 	if fields, ok := q.Args["fields"]; ok {
-		result.Project(fields.([]string))
+		var fieldList []string
+		switch fieldsTyped := fields.(type) {
+		case []string:
+			fieldList = fields.([]string)
+		case []interface{}:
+			fieldList = make([]string, len(fieldsTyped))
+			var ok bool
+			for i, f := range fieldsTyped {
+				fieldList[i], ok = f.(string)
+				if !ok {
+					result.Error = `"fields" must be a list of strings`
+					return result
+				}
+			}
+		default:
+			result.Error = `"fields" must be a list of strings`
+			return result
+		}
+		// TODO: only need to do this if the request came from a router (for deduping purposes)
+		// Ensure that fieldList has all the pkeys in it
+		for _, pkeyFieldName := range collection.PrimaryIndex.Fields {
+			found := false
+			for _, fieldListItem := range fieldList {
+				if pkeyFieldName == fieldListItem {
+					found = true
+					break
+				}
+			}
+			if !found {
+				fieldList = append(fieldList, pkeyFieldName)
+			}
+		}
+		// TODO: disallow fieldList to include fields that aren't in the collection
+		// we'll need a special case for sub-fields (as we might not know *all* the schema)
+		result.Project(fieldList)
+
 	}
 
 	// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
