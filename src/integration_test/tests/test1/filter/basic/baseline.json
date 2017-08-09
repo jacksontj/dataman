@@ -1,0 +1,19 @@
+{
+  "return": [
+    {
+      "username": "bar"
+    },
+    {
+      "username": "baz"
+    },
+    {
+      "username": "foo"
+    },
+    {
+      "username": "qux"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

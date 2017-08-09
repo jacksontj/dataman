@@ -1,10 +1,15 @@
 package integrationtest
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
+	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/jacksontj/dataman/src/query"
@@ -16,6 +21,8 @@ import (
 
 type Data map[string]map[string][]map[string]interface{}
 
+type Queries []*query.Query
+
 // For this we assume these are empty and we can do whatever we want to them!
 func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
 
@@ -26,19 +33,24 @@ func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routerno
 	}
 
 	for _, file := range files {
+		if !file.IsDir() {
+			continue
+		}
 		// TODO: subtest stuff
-		runIntegrationTest(file.Name(), t, task, router, datasource)
+		t.Run(file.Name(), func(t *testing.T) {
+			runIntegrationTest(file.Name(), t, task, router, datasource)
+		})
 	}
 }
 
 func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
 	// Load the various files
 	schema := make(map[string]*metadata.Database)
-	schemaString, err := ioutil.ReadFile("tests/" + testDir + "/schema.json")
+	schemaBytes, err := ioutil.ReadFile(path.Join("tests", testDir, "/schema.json"))
 	if err != nil {
 		t.Fatalf("Unable to read schema for test %s: %v", testDir, err)
 	}
-	if err := json.Unmarshal([]byte(schemaString), &schema); err != nil {
+	if err := json.Unmarshal(schemaBytes, &schema); err != nil {
 		t.Fatalf("Unable to load schema for test %s: %v", testDir, err)
 	}
 
@@ -48,13 +60,13 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			t.Fatalf("Unable to ensureSchema in test %s for database %s: %v", testDir, database.Name, err)
 		}
 	}
-	
+
 	// Block the router waiting on an update from the tasknode
 	router.FetchMeta()
 
 	// Load data
 	data := make(Data)
-	dataString, err := ioutil.ReadFile("tests/" + testDir + "/data.json")
+	dataString, err := ioutil.ReadFile(path.Join("tests", testDir, "/data.json"))
 	if err != nil {
 		t.Fatalf("Unable to read data for test %s: %v", testDir, err)
 	}
@@ -81,6 +93,56 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 				}
 			}
 		}
+	}
+
+	walkFunc := func(filepath string, info os.FileInfo, err error) error {
+		// If its a directory, skip it-- we'll let something else grab it
+		if !info.IsDir() {
+			return nil
+		}
+
+		// if this is a test directory it must have a query.json file
+		// Load the query
+		q := &query.Query{}
+		queryBytes, err := ioutil.ReadFile(path.Join(filepath, "query.json"))
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			t.Fatalf("Unable to read queryBytes for test %s.%s: %v", testDir, info.Name(), err)
+		}
+		if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
+			t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
+		}
+		t.Run(info.Name(), func(t *testing.T) {
+
+			// Run the query
+			result := router.HandleQuery(context.Background(), q)
+			fmt.Println(result)
+
+			// Check result
+
+			// write out results
+			resultPath := path.Join(filepath, "result.json")
+			resultBytes, _ := json.MarshalIndent(result, "", "  ")
+			ioutil.WriteFile(resultPath, resultBytes, 0644)
+
+			// compare against baseline if it exists
+			baselinePath := path.Join(filepath, "baseline.json")
+			baselineResultBytes, err := ioutil.ReadFile(baselinePath)
+			if err == nil {
+				baselineResultBytes = bytes.TrimSpace(baselineResultBytes)
+				resultBytes = bytes.TrimSpace(resultBytes)
+				if !bytes.Equal(baselineResultBytes, resultBytes) {
+					t.Fatalf("Mismatch of results and baseline!")
+				}
+			}
+		})
+		return nil
+	}
+
+	if err := filepath.Walk(path.Join("tests", testDir, "/"), walkFunc); err != nil {
+		t.Errorf("Error walking: %v", err)
 	}
 
 }
