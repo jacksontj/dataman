@@ -839,13 +839,13 @@ func (s *DatasourceInstance) ensureExistsCollection(ctx context.Context, db *met
 	// then its not for us to mess with
 	if existingCollection := s.StoreSchema.GetCollection(ctx, db.Name, shardInstance.Name, collection.Name); existingCollection != nil {
 		if existingDB, ok := s.GetMeta().Databases[db.Name]; !ok {
-			return fmt.Errorf("Unable to ensureExistsCollection as it exists in the underlying datasource_instance but not in the metadata")
+			return fmt.Errorf("Unable to ensureExistsCollection as the database exists in the underlying datasource_instance but not in the metadata")
 		} else {
 			if existingShardInstance, ok := existingDB.ShardInstances[shardInstance.Name]; !ok {
-				return fmt.Errorf("Unable to ensureExistsCollection as it exists in the underlying datasource_instance but not in the metadata")
+				return fmt.Errorf("Unable to ensureExistsCollection as the shardInstance exists in the underlying datasource_instance but not in the metadata")
 			} else {
 				if _, ok := existingShardInstance.Collections[collection.Name]; !ok {
-					return fmt.Errorf("Unable to ensureExistsCollection as it exists in the underlying datasource_instance but not in the metadata")
+					return fmt.Errorf("Unable to ensureExistsCollection as the collection exists in the underlying datasource_instance but not in the metadata")
 				}
 			}
 		}
