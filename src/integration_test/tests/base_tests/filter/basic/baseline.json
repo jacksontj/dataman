@@ -1,0 +1,27 @@
+{
+  "return": [
+    {
+      "firstname": "barfirst",
+      "lastname": "barlast",
+      "username": "bar"
+    },
+    {
+      "firstname": "bazfirst",
+      "lastname": "bazlast",
+      "username": "baz"
+    },
+    {
+      "firstname": "foofirst",
+      "lastname": "foolast",
+      "username": "foo"
+    },
+    {
+      "firstname": "quxfirst",
+      "lastname": "quxlast",
+      "username": "qux"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

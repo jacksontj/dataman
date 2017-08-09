@@ -1,0 +1,10 @@
+{
+    "test1": {
+        "user": [
+            {"username": "foo", "firstname": "foofirst", "lastname": "foolast"},
+            {"username": "bar", "firstname": "barfirst", "lastname": "barlast"},
+            {"username": "baz", "firstname": "bazfirst", "lastname": "bazlast"},
+            {"username": "qux", "firstname": "quxfirst", "lastname": "quxlast"}
+        ]
+    }
+}

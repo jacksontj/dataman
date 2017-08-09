@@ -1,0 +1,4 @@
+{
+  "return": null,
+  "error": "Get()s must include the primary-key: [username]"
+}
