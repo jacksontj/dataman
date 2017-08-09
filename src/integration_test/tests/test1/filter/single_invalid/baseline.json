@@ -1,7 +1,0 @@
-{
-  "return": [],
-  "error": "\nField notthere doesn't exist in test1.user\nField notthere doesn't exist in test1.user",
-  "meta": {
-    "datasource": "postgres"
-  }
-}

@@ -1,9 +1,0 @@
-{
-    "type": "filter",
-    "args": {
-        "db": "test1",
-        "collection": "user",
-        "filter": {},
-        "sort": ["username"]
-    }
-}

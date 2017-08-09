@@ -42,6 +42,46 @@
 					    "primary": true
 				    }
 			    }
+		    },
+		    "email": {
+			    "name": "email",
+			    "fields": {
+				    "username": {
+					    "not_null": true,
+					    "field_type": "_string",
+					    "name": "username",
+					    "relation": {
+							"collection": "user",
+							"field": "username"
+						}
+				    },
+				    "email": {
+				        "not_null": true,
+				        "field_type": "_string",
+				        "name": "email"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "username"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    8
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "username": {
+					    "fields": ["username"],
+					    "unique": true,
+					    "name": "username",
+					    "primary": true
+				    }
+			    }
 		    }
 	    },
 	    "datastores": [{
