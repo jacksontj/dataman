@@ -1,0 +1,4 @@
+{
+  "return": null,
+  "error": "filter must be a map[string]interface{}"
+}

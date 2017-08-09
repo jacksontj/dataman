@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -118,7 +117,6 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 
 			// Run the query
 			result := router.HandleQuery(context.Background(), q)
-			fmt.Println(result)
 
 			// Check result
 
@@ -130,7 +128,9 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			// compare against baseline if it exists
 			baselinePath := path.Join(filepath, "baseline.json")
 			baselineResultBytes, err := ioutil.ReadFile(baselinePath)
-			if err == nil {
+			if err != nil {
+				t.Skip("No baseline.json found, skipping comparison")
+			} else {
 				baselineResultBytes = bytes.TrimSpace(baselineResultBytes)
 				resultBytes = bytes.TrimSpace(resultBytes)
 				if !bytes.Equal(baselineResultBytes, resultBytes) {
