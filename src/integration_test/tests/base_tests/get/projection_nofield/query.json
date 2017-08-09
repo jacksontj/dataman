@@ -1,0 +1,9 @@
+{
+    "type": "get",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "pkey": {"username": "foo"},
+        "fields": ["fieldthatdoesntexist"]
+    }
+}

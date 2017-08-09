@@ -1,0 +1,13 @@
+{
+  "return": [
+    {
+      "firstname": "foofirst",
+      "lastname": "foolast",
+      "username": "foo"
+    }
+  ],
+  "error": "\"fields\" must be a list of strings",
+  "meta": {
+    "datasource": "postgres"
+  }
+}
