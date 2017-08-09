@@ -257,6 +257,31 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		return &query.Result{Error: "Unknown query type: " + string(q.Type)}
 	}
 
+	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+	if fields, ok := q.Args["fields"]; ok {
+		var fieldList []string
+		switch fieldsTyped := fields.(type) {
+		case []string:
+			fieldList = fields.([]string)
+		case []interface{}:
+			fieldList = make([]string, len(fieldsTyped))
+			var ok bool
+			for i, f := range fieldsTyped {
+				fieldList[i], ok = f.(string)
+				if !ok {
+					result.Error = `"fields" must be a list of strings`
+					return result
+				}
+			}
+		default:
+			result.Error = `"fields" must be a list of strings`
+			return result
+		}
+		// TODO: disallow fieldList to include fields that aren't in the collection
+		// we'll need a special case for sub-fields (as we might not know *all* the schema)
+		result.Project(fieldList)
+	}
+
 	if sortListRaw, ok := q.Args["sort"]; ok && sortListRaw != nil {
 		// TODO: parse out before doing the query, if its wrong we can't do anything
 		// TODO: we need to support interface{} as well
