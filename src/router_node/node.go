@@ -534,7 +534,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 					}
 					break
 				} else {
-					return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
+					return &query.Result{Error: fmt.Sprintf("record must include the primary key, missing %s", fieldName)}
 				}
 			}
 		}
