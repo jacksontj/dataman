@@ -612,6 +612,10 @@ func (s *DatasourceInstance) ensureExistsDatabase(ctx context.Context, db *metad
 			return err
 		}
 	}
+	// TODO: remove? Right now if the DB is created all collections created afterwards fail since the DB
+	// doesn't exist. To fix this we either need to update the meta (which this does) or we need to
+	// create a copy of meta that we are working from in out context or something
+	s.refreshMeta()
 
 	// Since we made the database, lets update the metadata about it
 	db.ProvisionState = metadata.Validate
