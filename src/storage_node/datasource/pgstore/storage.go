@@ -483,6 +483,11 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 		return result
 	}
 
+	if len(rows) == 0 {
+		result.Error = "Unable to find record with given pkey"
+		return result
+	}
+
 	result.Return = rows
 	s.normalizeResult(args, result)
 	return result
@@ -612,7 +617,7 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 
 			fieldFilter, ok := fieldFilterRaw.([]interface{})
 			if !ok {
-				return "", fmt.Errorf(`"filter" must be a list not %v`, fieldFilterRaw)
+				return "", fmt.Errorf(`filter must be a list`)
 			}
 
 			filterTypeString, ok := fieldFilter[0].(string)
