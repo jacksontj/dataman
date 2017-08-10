@@ -1,5 +1,5 @@
-/tests/
-    test1/
+test_directory/
+    test_suite_1/
         schema.json
             - schema file of the database schema + shard count required 
                 (database_vshard.shard_count)
@@ -16,6 +16,18 @@
                     }
                 }
         
-        queries.json
-            - file containing queries and expected responses
+        testcase/
+            query.json
+                - file containing query to run
+            baseline.json
+                - file containing expected output from the test run
+            result.json
+                - file containing output from the last test run
 
+            subtestcase/
+                query.json
+                    - file containing query to run
+                baseline.json
+                    - file containing expected output from the test run
+                result.json
+                    - file containing output from the last test run
