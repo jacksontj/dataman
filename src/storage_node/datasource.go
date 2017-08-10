@@ -361,6 +361,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 			// If it isn't valid as an upsert, we can see if it is valid as an update only
 			if updateValidationResultMap := collection.ValidateRecordUpdate(q.Args["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
 				// If it is valid as an update, then we need to convert the set request to an update
+
 				q.Type = query.Update
 
 				filterRecord := make(map[string]interface{})
@@ -370,6 +371,13 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 				}
 				q.Args["filter"] = filterRecord
 				// TODO: remove pkey from "record"?
+
+				result = s.Store.Update(ctx, q.Args)
+				if len(result.Return) != 1 {
+					return &query.Result{Error: "Set unable to update non-existing record"}
+				}
+				return result
+
 			} else {
 				return &query.Result{ValidationError: updateValidationResultMap}
 			}
