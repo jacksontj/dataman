@@ -97,7 +97,11 @@ func (c *Collection) ValidateRecordInsert(record map[string]interface{}) *Valida
 			// TODO: check the serial type
 		default:
 			if v, ok := record[fieldName]; ok {
-				record[fieldName], result.Fields[fieldName] = field.Normalize(v)
+				normalizedValue, normalizationResult := field.Normalize(v)
+				result.Fields[fieldName] = normalizationResult
+				if normalizationResult.IsValid() {
+					record[fieldName] = normalizedValue
+				}
 			} else {
 				if field.NotNull && field.Default == nil {
 					result.Fields[fieldName] = &ValidationResult{
@@ -118,7 +122,11 @@ func (c *Collection) ValidateRecordUpdate(record map[string]interface{}) *Valida
 	result := &ValidationResult{Fields: make(map[string]*ValidationResult)}
 	for fieldName, field := range c.Fields {
 		if v, ok := record[fieldName]; ok {
-			record[fieldName], result.Fields[fieldName] = field.Normalize(v)
+			normalizedValue, normalizationResult := field.Normalize(v)
+			result.Fields[fieldName] = normalizationResult
+			if normalizationResult.IsValid() {
+				record[fieldName] = normalizedValue
+			}
 		}
 	}
 	return result
