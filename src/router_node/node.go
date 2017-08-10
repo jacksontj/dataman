@@ -680,7 +680,10 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 				hasShardKey = false
 				break
 			}
-			filterTyped := tmp.([]interface{})
+			filterTyped, ok := tmp.([]interface{})
+			if !ok {
+				return &query.Result{Error: "fitler values must be a list of [comparator, args]"}
+			}
 			if filterTyped[0] == filter.Equal {
 				shardKeys[i] = filterTyped[1]
 			} else {

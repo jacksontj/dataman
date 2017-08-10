@@ -615,7 +615,11 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 				return "", fmt.Errorf(`"filter" must be a list not %v`, fieldFilterRaw)
 			}
 
-			filterType := filter.FilterType(fieldFilter[0].(string))
+			filterTypeString, ok := fieldFilter[0].(string)
+			if !ok {
+				return "", fmt.Errorf("Invalid comparator %v", fieldFilter[0])
+			}
+			filterType := filter.FilterType(filterTypeString)
 
 			fieldValue := fieldFilter[1]
 
