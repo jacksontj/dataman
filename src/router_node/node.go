@@ -558,9 +558,13 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	switch q.Type {
 	// Write operations
 	case query.Set:
-		queryRecord, ok := q.Args["record"].(map[string]interface{})
+		queryRecordRaw, ok := q.Args["record"]
 		if !ok {
 			return &query.Result{Error: "Set()s must include a record"}
+		}
+		queryRecord, ok := queryRecordRaw.(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: "Set()s record must be a map"}
 		}
 
 		// Do we have the primary key?
@@ -615,9 +619,13 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
-		queryRecord, ok := q.Args["record"].(map[string]interface{})
+		queryRecordRaw, ok := q.Args["record"]
 		if !ok {
 			return &query.Result{Error: "Insert()s must include a record"}
+		}
+		queryRecord, ok := queryRecordRaw.(map[string]interface{})
+		if !ok {
+			return &query.Result{Error: "Insert()s record must be a map"}
 		}
 		// For inserts we need to ensure we have set the function_default fields
 		// this is because function_default fields will commonly be used in shardKey
