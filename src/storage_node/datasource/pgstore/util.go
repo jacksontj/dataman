@@ -15,10 +15,13 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 
 	results := make([]map[string]interface{}, 0)
 
+	// Get the list of column names
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
 	// If there aren't any rows, we return a nil result
 	for rows.Next() {
-		// Get the list of column names
-		cols, _ := rows.Columns()
 		columns := make([]interface{}, len(cols))
 		columnPointers := make([]interface{}, len(cols))
 		for i, _ := range columns {
@@ -37,7 +40,6 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 			val := columnPointers[i].(*interface{})
 			data[colName] = *val
 		}
-
 		results = append(results, data)
 	}
 	return results, nil
