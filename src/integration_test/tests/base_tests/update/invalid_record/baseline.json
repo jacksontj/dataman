@@ -1,0 +1,7 @@
+{
+  "return": null,
+  "error": "CollectionField nonexistantfield doesn't exist in test1.user",
+  "meta": {
+    "datasource": "postgres"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "return": [],
+  "error": "\nInvalid comparator []\nInvalid comparator []",
+  "meta": {
+    "datasource": "postgres"
+  }
+}
