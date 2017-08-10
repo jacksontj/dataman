@@ -105,7 +105,7 @@ func (c *Collection) ValidateRecordInsert(record map[string]interface{}) *Valida
 			} else {
 				if field.NotNull && field.Default == nil {
 					result.Fields[fieldName] = &ValidationResult{
-						Error: fmt.Sprintf("Missing required field %s %v", fieldName, field.Default),
+						Error: fmt.Sprintf("Missing required field %s", fieldName),
 					}
 				}
 				// TODO: include an empty result? Not sure if an empty one is any good (also-- check for subfields?)
