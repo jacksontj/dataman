@@ -1,0 +1,12 @@
+{
+    "type": "insert",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "record": {
+            "username": "2_insert",
+            "firstname": "2_insert",
+            "lastname": "2_insert"
+        }
+    }
+}
