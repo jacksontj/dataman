@@ -1,6 +1,8 @@
 package metadata
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync/atomic"
 )
 
@@ -78,6 +80,36 @@ type Datastore struct {
 	Shards map[int64]*DatastoreShard `json:"shards"`
 
 	ProvisionState ProvisionState `json:"provision_state"`
+}
+
+func (d *Datastore) UnmarshalJSON(data []byte) error {
+	type Alias Datastore
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(d),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// all datastoreshards we have
+	datastoreShardIds := make(map[int64]struct{})
+	for _, shard := range d.Shards {
+		datastoreShardIds[shard.ID] = struct{}{}
+	}
+
+	// Check that all the vshards point at shards in this datastore
+	for _, vshard := range d.VShards {
+		for _, shard := range vshard.Shards {
+			if _, ok := datastoreShardIds[shard.DatastoreShardID]; !ok {
+				return fmt.Errorf("Datastore vshard %d pointing at datastore_shard %d which isnt in this datastore", vshard.ID, shard.DatastoreShardID)
+			}
+		}
+	}
+	return nil
+
 }
 
 type DatastoreVShard struct {
