@@ -1,0 +1,22 @@
+{
+    "type": "filter",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "filter": [
+            [
+                {"username": ["=", "foo"]},
+                "AND",
+                {"firstname": ["=", "foofirst"]}
+            ],
+            "OR",
+            [
+                {"username": ["=", "bar"]},
+                "AND",
+                {"firstname": ["=", "barfirst"]}
+            ]
+            
+        ],
+        "sort": ["username"]
+    }
+}

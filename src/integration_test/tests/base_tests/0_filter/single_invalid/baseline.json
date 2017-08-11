@@ -1,6 +1,6 @@
 {
   "return": [],
-  "error": "\nField notthere doesn't exist in test1.user\nField notthere doesn't exist in test1.user",
+  "error": "\nField notthere doesn't exist in user\nField notthere doesn't exist in user",
   "meta": {
     "datasource": "postgres"
   }

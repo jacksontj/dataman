@@ -1,4 +1,7 @@
 {
-  "return": null,
-  "error": "filter must be a map[string]interface{}"
+  "return": [],
+  "error": "\nFilters must have a map or a list at the top level\nFilters must have a map or a list at the top level",
+  "meta": {
+    "datasource": "postgres"
+  }
 }
