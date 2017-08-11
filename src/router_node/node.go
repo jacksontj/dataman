@@ -436,36 +436,41 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		if !ok {
 			return &query.Result{Error: fmt.Sprintf("Filter()s must include filter map")}
 		}
-		filterMap, ok := filterMapRaw.(map[string]interface{})
-		if !ok {
-			return &query.Result{Error: fmt.Sprintf("filter must be a map[string]interface{}")}
-		}
 
 		hasShardKey := true
-		shardKeys := make([]interface{}, len(keyspace.ShardKey))
-		for i, shardKey := range keyspace.ShardKeySplit {
-			filterValueRaw, ok := query.GetValue(filterMap, shardKey)
-			if !ok {
-				hasShardKey = false
-				break
-			}
-			filterComparatorRaw, ok := filterValueRaw.([]interface{})
-			if !ok {
-				hasShardKey = false
-				break
-			}
-			filterComparator, ok := filterComparatorRaw[0].(string)
-			if !ok {
-				hasShardKey = false
-				break
-			}
-			if filterComparator == filter.Equal {
-				shardKeys[i] = filterComparatorRaw[1]
-			} else {
-				hasShardKey = false
-				break
-			}
 
+		filterMap, ok := filterMapRaw.(map[string]interface{})
+		if !ok {
+			hasShardKey = false
+		}
+
+		var shardKeys []interface{}
+		if hasShardKey {
+			shardKeys = make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				filterValueRaw, ok := query.GetValue(filterMap, shardKey)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparatorRaw, ok := filterValueRaw.([]interface{})
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparator, ok := filterComparatorRaw[0].(string)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				if filterComparator == filter.Equal {
+					shardKeys[i] = filterComparatorRaw[1]
+				} else {
+					hasShardKey = false
+					break
+				}
+
+			}
 		}
 		// if there is only one partition and we have our shard key, we can be more specific
 		if hasShardKey {

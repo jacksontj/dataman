@@ -578,20 +578,76 @@ func filterTypeToComparator(f filter.FilterType) string {
 func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 	whereClause := ""
 	if rawFilter, ok := args["filter"]; ok && rawFilter != nil {
-		filterData := rawFilter.(map[string]interface{})
 		meta := s.GetMeta()
 		collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 		if err != nil {
 			return "", err
 		}
+		switch rawFilter.(type) {
+		case []interface{}, map[string]interface{}:
+			whereClause, err = s.filterToWhereInner(collection, rawFilter)
+		default:
+			return "", fmt.Errorf("Filters must have a map or a list at the top level")
+		}
+		if err != nil {
+			return "", err
+		}
+	}
+	return whereClause, nil
+}
 
+// TODO: refactor to be less... ugly
+func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interface{}) (string, error) {
+	switch filterData := f.(type) {
+	// If this is simply an operator
+	case string:
+		switch strings.ToUpper(filterData) {
+		// TODO: use them from the filter package
+		case "AND":
+			return string(filter.And), nil
+		case "OR":
+			return string(filter.Or), nil
+		default:
+			return "", fmt.Errorf("Invalid operator %s", filterData)
+		}
+	case []interface{}:
+		if len(filterData) != 3 {
+			return "", fmt.Errorf("where lists need to be A op B")
+		}
+		operatorRaw, ok := filterData[1].(string)
+		if !ok {
+			return "", fmt.Errorf("Operator must be a string")
+		}
+		upperOperator := strings.ToUpper(operatorRaw)
+		var operator string
+		switch upperOperator {
+		case "AND":
+			operator = upperOperator
+		case "OR":
+			operator = upperOperator
+		default:
+			return "", fmt.Errorf("Invalid operator %s", filterData)
+		}
+
+		first, err := s.filterToWhereInner(collection, filterData[0])
+		if err != nil {
+			return "", err
+		}
+		last, err := s.filterToWhereInner(collection, filterData[2])
+		if err != nil {
+			return "", err
+		}
+
+		return "(" + first + " " + operator + " " + last + ")", nil
+
+	case map[string]interface{}:
 		whereParts := make([]string, 0)
 		for rawFieldName, fieldFilterRaw := range filterData {
 			fieldNameParts := strings.Split(rawFieldName, ".")
 
 			field, ok := collection.Fields[fieldNameParts[0]]
 			if !ok {
-				return "", fmt.Errorf("Field %s doesn't exist in %v.%v", fieldNameParts[0], args["db"], args["collection"])
+				return "", fmt.Errorf("Field %s doesn't exist in %s", fieldNameParts[0], collection.Name)
 			}
 
 			fieldName := `"` + fieldNameParts[0] + `"`
@@ -603,12 +659,12 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 					if field == nil {
 						field, ok = collection.Fields[fieldNameParts[0]]
 						if !ok {
-							return "", fmt.Errorf("Field %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
+							return "", fmt.Errorf("Field %s doesn't exist in %s", fieldName, collection.Name)
 						}
 					} else {
 						subField, ok := field.SubFields[fieldNamePart]
 						if !ok {
-							return "", fmt.Errorf("SubField %s doesn't exist in %v.%v: %v", fieldName, args["db"], args["collection"], field.SubFields)
+							return "", fmt.Errorf("SubField %s doesn't exist in %s: %v", fieldName, collection.Name, field.SubFields)
 						}
 						field = subField
 					}
@@ -661,11 +717,10 @@ func (s *Storage) filterToWhere(args map[string]interface{}) (string, error) {
 					}
 				}
 			}
-
 		}
-		if len(whereParts) > 0 {
-			whereClause += strings.Join(whereParts, " AND ")
-		}
+		return strings.Join(whereParts, " AND "), nil
 	}
-	return whereClause, nil
+	// TODO: better error message
+	return "", fmt.Errorf("Unknown where clause!")
+
 }
