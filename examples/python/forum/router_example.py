@@ -37,6 +37,7 @@ def ensure_datastore(urlbase):
 	    "provision_state": 3,
         "vshards": {
             "4": {
+                "name": "example_forum_vshard",
                 "count": 2,
                 "shards": [
                     {

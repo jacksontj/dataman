@@ -2,6 +2,7 @@
 	"name": "test_datastore",
 	"vshards": {
 		"vshard1": {
+			"name": "example_forum_vshard",
 			"count": 2,
 			"shards": [{
 					"shard_instance": 1,
