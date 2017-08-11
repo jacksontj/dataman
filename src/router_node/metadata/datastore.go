@@ -94,17 +94,11 @@ func (d *Datastore) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// all datastoreshards we have
-	datastoreShardIds := make(map[int64]struct{})
-	for _, shard := range d.Shards {
-		datastoreShardIds[shard.ID] = struct{}{}
-	}
-
 	// Check that all the vshards point at shards in this datastore
 	for _, vshard := range d.VShards {
 		for _, shard := range vshard.Shards {
-			if _, ok := datastoreShardIds[shard.DatastoreShardID]; !ok {
-				return fmt.Errorf("Datastore vshard %d pointing at datastore_shard %d which isnt in this datastore", vshard.ID, shard.DatastoreShardID)
+			if _, ok := d.Shards[shard.DatastoreShardInstance]; !ok {
+				return fmt.Errorf("Datastore vshard %d pointing at datastore_shard %d which isnt in this datastore", vshard.ID, shard.DatastoreShardInstance)
 			}
 		}
 	}
@@ -131,11 +125,8 @@ type DatastoreVShardInstance struct {
 	ID       int64 `json:"_id"`
 	Instance int64 `json:"shard_instance"`
 
-	DatastoreShardID int64           `json:"datastore_shard_id"`
-	DatastoreShard   *DatastoreShard `json:"-"`
-	// TODO: use this too?
-	// This way we can define the shards and vshards in one go
-	DatastoreShardInstance int64 `json:"datastore_shard_instance,omitempty"`
+	DatastoreShardInstance int64           `json:"datastore_shard_instance"`
+	DatastoreShard         *DatastoreShard `json:"-"`
 
 	// Internal fields
 	DatastoreVShardID int64          `json:"-"`

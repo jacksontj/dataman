@@ -110,7 +110,7 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 			m.DatastoreVShards[datastoreVShard.ID] = datastoreVShard
 			for _, datastoreVShardInstance := range datastoreVShard.Shards {
 				datastoreVShardInstance.DatastoreVShardID = datastoreVShard.ID
-				datastoreVShardInstance.DatastoreShard = m.DatastoreShards[datastoreVShardInstance.DatastoreShardID]
+				datastoreVShardInstance.DatastoreShard = datastore.Shards[datastoreVShardInstance.DatastoreShardInstance]
 				m.DatastoreVShardInstances[datastoreVShardInstance.ID] = datastoreVShardInstance
 			}
 		}

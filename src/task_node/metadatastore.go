@@ -467,16 +467,19 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 
 		vshardInstances := make([]*metadata.DatastoreVShardInstance, len(datastoreVShardInstanceResult.Return))
 		for i, datastoreVShardInstanceRecord := range datastoreVShardInstanceResult.Return {
+			datastoreShard := meta.DatastoreShards[datastoreVShardInstanceRecord["datastore_shard_id"].(int64)]
+			if datastoreShard.DatastoreID != datastore_id {
+				return nil, fmt.Errorf("datastoreVShardInstance %d is linked to a datastoreShard (%d) in another datastore", datastoreVShardInstanceRecord["_id"], datastoreVShardInstanceRecord["datastore_shard_id"])
+			}
 			vshardInstances[i] = &metadata.DatastoreVShardInstance{
-				ID:                datastoreVShardInstanceRecord["_id"].(int64),
-				Instance:          datastoreVShardInstanceRecord["shard_instance"].(int64),
-				DatastoreShardID:  datastoreVShardInstanceRecord["datastore_shard_id"].(int64),
-				DatastoreVShardID: datastoreVShardInstanceRecord["datastore_vshard_id"].(int64),
+				ID:                     datastoreVShardInstanceRecord["_id"].(int64),
+				Instance:               datastoreVShardInstanceRecord["shard_instance"].(int64),
+				DatastoreShardInstance: datastoreShard.Instance,
+				DatastoreShard:         datastoreShard,
+				DatastoreVShardID:      datastoreVShardInstanceRecord["datastore_vshard_id"].(int64),
 				// TODO
 				//ProvisionState:       metadata.ProvisionState(datastoreVShardInstanceRecord["provision_state"].(int64)),
 			}
-
-			vshardInstances[i].DatastoreShard = meta.DatastoreShards[vshardInstances[i].DatastoreShardID]
 		}
 
 		datastoreVShard := &metadata.DatastoreVShard{
@@ -1345,7 +1348,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(ctx context.Context,
 	datastoreVShardInstanceRecord := map[string]interface{}{
 		"datastore_vshard_id": vShard.ID,
 		"shard_instance":      vShardInstance.Instance,
-		"datastore_shard_id":  vShardInstance.DatastoreShardID,
+		"datastore_shard_id":  datastore.Shards[vShardInstance.DatastoreShardInstance].ID,
 	}
 
 	if vShardInstance.ID != 0 {
