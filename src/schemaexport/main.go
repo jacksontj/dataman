@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -56,7 +57,7 @@ func main() {
 	storeSchema := store.(datasource.SchemaInterface)
 
 	for _, databasename := range opts.Databases {
-		meta.Databases[databasename] = storeSchema.GetDatabase(databasename)
+		meta.Databases[databasename] = storeSchema.GetDatabase(context.Background(), databasename)
 	}
 
 	// TODO: sort? it'd be nice to have the files not change if there was no schema change
