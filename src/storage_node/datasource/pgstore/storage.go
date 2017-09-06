@@ -671,18 +671,23 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 				}
 			}
 
-			fieldFilter, ok := fieldFilterRaw.([]interface{})
-			if !ok {
+			var filterType filter.FilterType
+			var fieldValue interface{}
+
+			switch fieldFilterTyped := fieldFilterRaw.(type) {
+			case []interface{}:
+				filterTypeString, ok := fieldFilterTyped[0].(string)
+				if !ok {
+					return "", fmt.Errorf("Invalid comparator %v", fieldFilterTyped[0])
+				}
+				filterType = filter.FilterType(filterTypeString)
+				fieldValue = fieldFilterTyped[1]
+			case []string:
+				filterType = filter.FilterType(fieldFilterTyped[0])
+				fieldValue = fieldFilterTyped[1]
+			default:
 				return "", fmt.Errorf(`filter must be a list`)
 			}
-
-			filterTypeString, ok := fieldFilter[0].(string)
-			if !ok {
-				return "", fmt.Errorf("Invalid comparator %v", fieldFilter[0])
-			}
-			filterType := filter.FilterType(filterTypeString)
-
-			fieldValue := fieldFilter[1]
 
 			switch fieldValue.(type) {
 			// SQL treats nulls completely differently-- so we need to do that
