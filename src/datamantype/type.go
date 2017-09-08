@@ -111,6 +111,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		}
 	case DateTime:
 		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
 		case time.Time:
 			return val, nil
 		case string:
