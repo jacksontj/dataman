@@ -1,0 +1,47 @@
+{
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+		    "timeseries": {
+			    "name": "timeseries",
+			    "fields": {
+				    "created": {
+				        "not_null": true,
+					    "field_type": "_datetime",
+					    "name": "created"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "created"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    8
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "created": {
+					    "fields": ["created"],
+					    "unique": true,
+					    "name": "created",
+					    "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 58,
+		    "required": true
+	    }],
+	    "database_vshard": {
+		    "shard_count": 1
+	    }
+    }
+}

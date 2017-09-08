@@ -1,0 +1,10 @@
+{
+    "type": "insert",
+    "args": {
+        "db": "test1",
+        "collection": "timeseries",
+        "record": {
+            "created": "2017-09-07 14:44:02"
+        }
+    }
+}

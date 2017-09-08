@@ -1,0 +1,10 @@
+{
+    "type": "insert",
+    "args": {
+        "db": "test1",
+        "collection": "timeseries",
+        "record": {
+            "created": 1504906926
+        }
+    }
+}
