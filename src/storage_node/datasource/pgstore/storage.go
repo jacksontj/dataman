@@ -214,6 +214,8 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.DateTime:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -302,6 +304,8 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.DateTime:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -372,6 +376,8 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.DateTime:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
