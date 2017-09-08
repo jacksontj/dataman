@@ -558,6 +558,8 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 					var tmp map[string]interface{}
 					json.Unmarshal(v.([]byte), &tmp)
 					row[k] = tmp
+				case datamantype.DateTime:
+					row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
 				default:
 					continue
 				}
