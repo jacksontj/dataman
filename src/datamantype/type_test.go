@@ -1,6 +1,9 @@
 package datamantype
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // TODO: add negative cases
 var validValues map[DatamanType][]interface{}
@@ -26,9 +29,13 @@ func init() {
 			false,
 		},
 		// TODO:
-		//DateTime: []interface{}{
-		//
-		//},
+		DateTime: []interface{}{
+			"2017-09-08 14:44:02.622944",
+			"2017-09-08 14:44:02",
+			1504906926.612214,
+			1504906926,
+			time.Now(),
+		},
 	}
 }
 

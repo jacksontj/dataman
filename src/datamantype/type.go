@@ -3,8 +3,10 @@ package datamantype
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
+	"time"
 )
 
 // TODO: rename to SchemaMan Type?
@@ -107,9 +109,26 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		default:
 			return nil, fmt.Errorf("Not a bool")
 		}
-	// TODO: implement
 	case DateTime:
-		return nil, fmt.Errorf("DateTime currently unimplemented")
+		switch typedVal := val.(type) {
+		case time.Time:
+			return val, nil
+		case string:
+			formatStr := "2006-01-02 15:04:05"
+			return time.Parse(formatStr, typedVal)
+		case int:
+			i, err := strconv.ParseInt("1405544146", 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			return time.Unix(i, 0), nil
+		case float64:
+			seconds, ns := math.Modf(typedVal)
+			return time.Unix(int64(seconds), int64(ns)), nil
+
+		default:
+			return nil, fmt.Errorf("Unknown datetime type: %s", reflect.TypeOf(val))
+		}
 	case JSON:
 		// TODO: we need JSON type coercion a little-- basically we just need to
 		// check that the type is json-able, for now we'll do that by encoding it
