@@ -713,7 +713,7 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 				default:
 					comparator = filterTypeToComparator(filterType)
 				}
-				whereParts = append(whereParts, fmt.Sprintf(" \"%s\" %s NULL", fieldName, comparator))
+				whereParts = append(whereParts, fmt.Sprintf(" %s %s NULL", fieldName, comparator))
 			default:
 				switch field.FieldType.DatamanType {
 				case datamantype.Document:
