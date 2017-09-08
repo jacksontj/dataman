@@ -151,4 +151,14 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 		t.Errorf("Error walking: %v", err)
 	}
 
+	// Assuming we finished properly, lets remove the things we added
+	for _, database := range schema {
+		if err := task.EnsureDoesntExistDatabase(context.Background(), database.Name); err != nil {
+			t.Fatalf("Unable to remove in test %s for database %s: %v", testDir, database.Name, err)
+		}
+	}
+
+	// Block the router waiting on an update from the tasknode
+	router.FetchMeta()
+
 }
