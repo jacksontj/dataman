@@ -1,0 +1,51 @@
+{
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+            "task": {
+                "name": "task",
+                "fields": {
+                    "name": {
+                        "not_null": true,
+                        "field_type": "_string",
+                        "name": "name"
+                    },
+                    "started": {
+                        "field_type": "_datetime",
+                        "name": "started"
+                    }
+                },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "name"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    8
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "name": {
+					    "fields": ["name"],
+					    "unique": true,
+					    "name": "name",
+					    "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 58,
+		    "required": true
+	    }],
+	    "database_vshard": {
+		    "shard_count": 2
+	    }
+    }
+}
