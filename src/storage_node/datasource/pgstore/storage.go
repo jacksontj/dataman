@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"
@@ -215,7 +216,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.DateTime:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -305,7 +306,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.DateTime:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -377,7 +378,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.DateTime:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
@@ -460,6 +461,8 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
 			}
+		case datamantype.DateTime:
+			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 		case datamantype.Text, datamantype.String:
 			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
 		default:
@@ -716,6 +719,8 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 						whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'%s'%v'", fieldName, innerName, filterTypeToComparator(filterType), innerValue))
 					}
+				case datamantype.DateTime:
+					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 				case datamantype.Text, datamantype.String:
 					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
 				default:

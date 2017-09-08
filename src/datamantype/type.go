@@ -32,6 +32,8 @@ const (
 	JSON     = "json"
 )
 
+const DateTimeFormatStr = "2006-01-02 15:04:05"
+
 // Normalize the given interface into what we want/expect
 func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 	switch f {
@@ -116,8 +118,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case time.Time:
 			return val, nil
 		case string:
-			formatStr := "2006-01-02 15:04:05"
-			return time.Parse(formatStr, typedVal)
+			return time.Parse(DateTimeFormatStr, typedVal)
 		case int:
 			i, err := strconv.ParseInt("1405544146", 10, 64)
 			if err != nil {
