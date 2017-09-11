@@ -1,6 +1,6 @@
 {
   "return": [],
-  "error": "\nInvalid comparator []\nInvalid comparator []",
+  "error": "\nInvalid filter type []\nInvalid filter type []",
   "meta": {
     "datasource": "postgres"
   }

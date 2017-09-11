@@ -571,9 +571,9 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 func filterTypeToComparator(f filter.FilterType) string {
 	switch f {
 	case filter.In:
-		return "IN"
+		return " IN "
 	case filter.NotIn:
-		return "NOT IN"
+		return " NOT IN "
 	default:
 		return string(f)
 	}
@@ -684,17 +684,24 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 
 			var filterType filter.FilterType
 			var fieldValue interface{}
+			var err error
 
 			switch fieldFilterTyped := fieldFilterRaw.(type) {
 			case []interface{}:
 				filterTypeString, ok := fieldFilterTyped[0].(string)
 				if !ok {
-					return "", fmt.Errorf("Invalid comparator %v", fieldFilterTyped[0])
+					return "", fmt.Errorf("Invalid filter type %v", fieldFilterTyped[0])
 				}
-				filterType = filter.FilterType(filterTypeString)
+				filterType, err = filter.StringToFilterType(filterTypeString)
+				if err != nil {
+				    return "", err
+				}
 				fieldValue = fieldFilterTyped[1]
 			case []string:
-				filterType = filter.FilterType(fieldFilterTyped[0])
+				filterType, err = filter.StringToFilterType(fieldFilterTyped[0])
+				if err != nil {
+				    return "", err
+				}
 				fieldValue = fieldFilterTyped[1]
 			default:
 				return "", fmt.Errorf(`filter must be a list`)
