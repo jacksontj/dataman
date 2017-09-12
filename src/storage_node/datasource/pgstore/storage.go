@@ -694,13 +694,13 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 				}
 				filterType, err = filter.StringToFilterType(filterTypeString)
 				if err != nil {
-				    return "", err
+					return "", err
 				}
 				fieldValue = fieldFilterTyped[1]
 			case []string:
 				filterType, err = filter.StringToFilterType(fieldFilterTyped[0])
 				if err != nil {
-				    return "", err
+					return "", err
 				}
 				fieldValue = fieldFilterTyped[1]
 			default:
@@ -728,17 +728,39 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 						whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'%s'%v'", fieldName, innerName, filterTypeToComparator(filterType), innerValue))
 					}
-				case datamantype.DateTime:
-					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
-				case datamantype.Text, datamantype.String:
-					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
 				default:
-					// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
-					// This is just cheating assuming that any depth is an object-- but we'll need to do better once we support arrays etc.
-					if len(fieldNameParts) > 1 {
-						whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'", fieldName, filterTypeToComparator(filterType), fieldValue))
-					} else {
-						whereParts = append(whereParts, fmt.Sprintf(" %s%s%v", fieldName, filterTypeToComparator(filterType), fieldValue))
+					switch filterType {
+					case filter.In, filter.NotIn:
+						var items []string
+						switch typedFieldValue := fieldValue.(type) {
+						case []interface{}:
+							items = make([]string, len(typedFieldValue))
+							for i, rawItem := range typedFieldValue {
+								if item, err := serializeValue(field.FieldType.DatamanType, rawItem); err == nil {
+									items[i] = item
+								} else {
+									return "", err
+								}
+							}
+						case []string:
+							items = make([]string, len(typedFieldValue))
+							for i, rawItem := range typedFieldValue {
+								if item, err := serializeValue(field.FieldType.DatamanType, rawItem); err == nil {
+									items[i] = item
+								} else {
+									return "", err
+								}
+							}
+						default:
+							return "", fmt.Errorf("Value of %s must be a list", filterType)
+						}
+						whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", fieldName, filterTypeToComparator(filterType), "("+strings.Join(items, ",")+")"))
+					default:
+						if v, err := serializeValue(field.FieldType.DatamanType, fieldValue); err == nil {
+							whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", fieldName, filterTypeToComparator(filterType), v))
+						} else {
+							return "", err
+						}
 					}
 				}
 			}
@@ -747,5 +769,4 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 	}
 	// TODO: better error message
 	return "", fmt.Errorf("Unknown where clause!")
-
 }

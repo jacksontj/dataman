@@ -4,7 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
 	"strings"
+
+	"github.com/jacksontj/dataman/src/datamantype"
 )
 
 func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -67,4 +71,13 @@ func normalizeFieldName(in string) string {
 	}
 
 	return output
+}
+
+func serializeValue(t datamantype.DatamanType, v interface{}) (string, error) {
+	switch t {
+	case datamantype.DateTime:
+		return fmt.Sprintf("'%v'", v.(time.Time).Format(datamantype.DateTimeFormatStr)), nil
+	default:
+		return fmt.Sprintf("'%v'", v), nil
+	}
 }
