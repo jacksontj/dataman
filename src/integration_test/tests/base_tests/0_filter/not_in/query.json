@@ -4,7 +4,7 @@
 		"db": "test1",
 		"collection": "user",
 		"filter": {
-			"username": ["NOTIN", ["foo", "bar"]]
+			"username": ["NOTIN", ["foo", "bar", "qux"]]
 		}
 	}
 }

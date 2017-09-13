@@ -5,12 +5,6 @@
       "firstname": "bazfirst",
       "lastname": "bazlast",
       "username": "baz"
-    },
-    {
-      "doc": null,
-      "firstname": "quxfirst",
-      "lastname": "quxlast",
-      "username": "qux"
     }
   ],
   "meta": {
