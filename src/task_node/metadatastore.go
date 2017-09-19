@@ -487,6 +487,7 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 			Count:       datastoreVShardRecord["shard_count"].(int64),
 			Shards:      vshardInstances,
 			DatastoreID: datastoreVShardRecord["datastore_id"].(int64),
+			Name:        datastoreVShardRecord["name"].(string),
 
 			// TODO
 			//ProvisionState: metadata.ProvisionState(datastoreVShardRecord["provision_state"].(int64)),
@@ -1240,7 +1241,7 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(ctx context.Context, datasto
 		"datastore_id": datastore.ID,
 		"shard_count":  vShard.Count,
 		// TODO:
-		//"name": vShard.Name,
+		"name": vShard.Name,
 	}
 
 	if vShard.DatabaseID == 0 {
