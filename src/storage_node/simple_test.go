@@ -46,10 +46,10 @@ func (s *StoreTestResult) Compare(r *query.Result) error {
 			for k, v := range ret {
 				actualValue, ok := r.Return[i][k]
 				if !ok {
-					fmt.Errorf("Missing expected key %v", k)
+					return fmt.Errorf("Missing expected key %v", k)
 				}
 				if !reflect.DeepEqual(v, actualValue) {
-					fmt.Errorf("Mismatched values expected=%v actual=%v", v, actualValue)
+					return fmt.Errorf("Mismatched values expected=%v actual=%v", v, actualValue)
 				}
 			}
 		}
