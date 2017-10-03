@@ -26,6 +26,8 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		fieldStr += "\"" + field.Name + "\" text"
 	case datamantype.Int:
 		fieldStr += "\"" + field.Name + "\" int"
+	case datamantype.Float:
+		fieldStr += "\"" + field.Name + "\" double precision"
 	case datamantype.Serial:
 		fieldStr += "\"" + field.Name + "\" serial"
 	case datamantype.Bool:
@@ -300,8 +302,10 @@ func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance
 		var datamanType datamantype.DatamanType
 		switch fieldEntry["data_type"] {
 		// TODO: add to dataman types
-		case "int4range", "bigint", "real", "double precision", "integer", "smallint":
+		case "int4range", "bigint", "real", "integer", "smallint":
 			datamanType = datamantype.Int
+		case "double precision", "money":
+			datamanType = datamantype.Float
 		case "character varying":
 			datamanType = datamantype.String
 		case "json", "jsonb":

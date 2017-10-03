@@ -24,6 +24,14 @@ func init() {
 			float64(123),
 			"1234",
 		},
+		Float: []interface{}{
+			1,
+			100,
+			float64(123),
+			"1234",
+			1.0,
+			"1.0",
+		},
 		Bool: []interface{}{
 			true,
 			false,

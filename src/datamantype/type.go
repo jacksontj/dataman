@@ -26,7 +26,8 @@ const (
 	// TODO: int64
 	// TODO: uint
 	// TODO: uint64
-	Bool = "bool"
+	Float = "float"
+	Bool  = "bool"
 	// TODO: actually implement
 	DateTime = "datetime"
 	JSON     = "json"
@@ -82,9 +83,9 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		switch typedVal := val.(type) {
 		case nil:
 			return nil, nil
-		// TODO: remove? Or error if we would lose precision
 		case int32:
 			return int(typedVal), nil
+		// TODO: remove? Or error if we would lose precision
 		case int64:
 			return int(typedVal), nil
 		case int:
@@ -99,6 +100,29 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			}
 		default:
 			return nil, fmt.Errorf("Unknown Int type: %s", reflect.TypeOf(val))
+		}
+	case Float:
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case int32:
+			return float32(typedVal), nil
+		// TODO: remove? Or error if we would lose precision
+		case int64:
+			return int(typedVal), nil
+		case int:
+			return float32(typedVal), nil
+		case float64:
+			return float32(typedVal), nil
+		case string:
+			if typedVal == "" {
+				return nil, nil
+			} else {
+				f, err := strconv.ParseFloat(typedVal, 32)
+				return f, err
+			}
+		default:
+			return nil, fmt.Errorf("Unknown Float type: %s", reflect.TypeOf(val))
 		}
 	case Bool:
 		switch typedVal := val.(type) {
