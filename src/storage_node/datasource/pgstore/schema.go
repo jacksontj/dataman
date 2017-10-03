@@ -313,7 +313,10 @@ func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance
 		// TODO: add to dataman types
 		case "tsrange":
 			fallthrough
+		// TODO: more careful with type determination once we have a time-zone datetime
 		case "timestamp without time zone":
+			datamanType = datamantype.DateTime
+		case "date":
 			datamanType = datamantype.DateTime
 		default:
 			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
