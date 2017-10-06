@@ -53,7 +53,7 @@ func (s *Storage) ListDatabase(ctx context.Context) []*metadata.Database {
 	if dbRecords, err := DoQuery(ctx, s.db, "SELECT datname FROM pg_database WHERE datistemplate = false"); err == nil {
 		dbs := make([]*metadata.Database, len(dbRecords))
 		for i, dbRecord := range dbRecords {
-			dbs[i] = s.GetDatabase(ctx, dbRecord["datname"].(string))
+			dbs[i] = s.GetDatabase(ctx, string(dbRecord["datname"].([]byte)))
 		}
 		return dbs
 	}

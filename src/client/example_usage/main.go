@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/client"
 	"github.com/jacksontj/dataman/src/client/direct"
 	"github.com/jacksontj/dataman/src/client/http"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -36,15 +35,10 @@ func doExamples(client *datamanclient.Client) error {
 	return err
 }
 
-func direct() {
-	config := &storagenode.Config{}
-	configBytes, err := ioutil.ReadFile("../../storage_node/storagenode/config.yaml")
+func directStatic() {
+	config, err := storagenode.DatasourceInstanceConfigFromFile("datasourceinstance.yaml")
 	if err != nil {
 		logrus.Fatalf("Error loading config: %v", err)
-	}
-	err = yaml.Unmarshal([]byte(configBytes), &config)
-	if err != nil {
-		logrus.Fatalf("Error unmarshaling config: %v", err)
 	}
 	logrus.Infof("config: %v", config)
 
@@ -59,25 +53,53 @@ func direct() {
 		logrus.Fatalf("Error loading meta: %v", err)
 	}
 
-	var datasourceInstanceConfig *storagenode.DatasourceInstanceConfig
-	for _, v := range config.Datasources {
-		datasourceInstanceConfig = v
-		break
-	}
-
 	// TODO: remove
-	datasourceInstanceConfig.SkipProvisionTrim = true
+	config.SkipProvisionTrim = true
 
-	transport, err := datamandirect.NewStaticDatasourceInstanceTransport(datasourceInstanceConfig, meta)
+	transport, err := datamandirect.NewStaticDatasourceInstanceTransport(config, meta)
 	if err != nil {
 		logrus.Fatalf("Error NewStaticDatasourceInstanceClient: %v", err)
 	}
 
 	client := &datamanclient.Client{Transport: transport}
 	if err := doExamples(client); err != nil {
-		fmt.Println("error with direct")
+		fmt.Println("error with directStatic")
 	} else {
-		fmt.Println("direct success")
+		fmt.Println("directStatic success")
+	}
+
+}
+
+func directDynamic() {
+	config, err := storagenode.DatasourceInstanceConfigFromFile("datasourceinstance.yaml")
+	if err != nil {
+		logrus.Fatalf("Error loading config: %v", err)
+	}
+	logrus.Infof("config: %v", config)
+
+	// TODO: remove
+	config.SkipProvisionTrim = true
+
+	meta := metadata.NewMeta()
+	// Note: since we are soely doing schema *export* we don't define a meta func
+	// this means that all writes will fail as there is no schema to compare to
+	store, err := config.GetStore(nil)
+	storeSchema := store.(datasource.SchemaInterface)
+
+	for _, database := range storeSchema.ListDatabase(context.Background()) {
+		meta.Databases[database.Name] = database
+	}
+
+	transport, err := datamandirect.NewStaticDatasourceInstanceTransport(config, meta)
+	if err != nil {
+		logrus.Fatalf("Error NewStaticDatasourceInstanceClient: %v", err)
+	}
+
+	client := &datamanclient.Client{Transport: transport}
+	if err := doExamples(client); err != nil {
+		fmt.Println("error with directDynamic")
+	} else {
+		fmt.Println("directDynamic success")
 	}
 
 }
@@ -98,6 +120,7 @@ func http() {
 }
 
 func main() {
-	direct()
+	directStatic()
+	directDynamic()
 	http()
 }
