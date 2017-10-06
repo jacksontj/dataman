@@ -83,7 +83,7 @@ func direct() {
 }
 
 func http() {
-	transport, err := datamanhttp.NewHTTPDatamanClient("http://127.0.0.1:8080/v1/")
+	transport, err := datamanhttp.NewHTTPDatamanClient("http://127.0.0.1:8080/v1/data/raw")
 	if err != nil {
 		logrus.Fatalf("Error NewHTTPDatamanClient: %v", err)
 	}
