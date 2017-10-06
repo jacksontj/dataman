@@ -1,0 +1,12 @@
+# Dataman Client
+This package contains the client for dataman. 
+
+The client is modeled loosely after the golang http client, specifically that 
+there is a client and a transport layer. This allows us to have consistent 
+metrics/configs/etc with a single unified client, but allow us flexibility in
+how we connect to dataman through the transport layer.
+
+
+# Examples
+There is a sub-package of "example_usage" with good examples of how to use 
+these clients in golang.
