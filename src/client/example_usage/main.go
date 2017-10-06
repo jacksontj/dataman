@@ -35,6 +35,7 @@ func doExamples(client *datamanclient.Client) error {
 	return err
 }
 
+// Example of using direct with a static config file
 func directStatic() {
 	config, err := storagenode.DatasourceInstanceConfigFromFile("datasourceinstance.yaml")
 	if err != nil {
@@ -70,6 +71,7 @@ func directStatic() {
 
 }
 
+// Example of using direct with dynamically finding the schema on startup
 func directDynamic() {
 	config, err := storagenode.DatasourceInstanceConfigFromFile("datasourceinstance.yaml")
 	if err != nil {
