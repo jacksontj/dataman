@@ -1,0 +1,82 @@
+{
+	"type": "set",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"record": {
+          "thread.data.created_by": [
+            {
+              "data": {
+                "created": 5,
+                "created_by": "user1",
+                "title": "thread3"
+              },
+              "ksuid": "3",
+              "message.data.thread_ksuid": []
+            },
+            {
+              "data": {
+                "created": 2,
+                "created_by": "user1",
+                "created_by.": [
+                  {
+                    "username": "user1"
+                  }
+                ],
+                "title": "thread1"
+              },
+              "ksuid": "1",
+              "message.data.thread_ksuid": [
+                {
+                  "data": {
+                    "content": "post2",
+                    "created": 3,
+                    "created_by": "user1",
+                    "thread_ksuid": "1"
+                  },
+                  "ksuid": "2"
+                },
+                {
+                  "data": {
+                    "content": "post3",
+                    "created": 3,
+                    "created_by": "user2",
+                    "thread_ksuid": "1"
+                  },
+                  "ksuid": "3"
+                },
+                {
+                  "data": {
+                    "content": "post4",
+                    "created": 4,
+                    "created_by": "user2",
+                    "thread_ksuid": "1"
+                  },
+                  "ksuid": "4"
+                },
+                {
+                  "data": {
+                    "content": "post5",
+                    "created": 5,
+                    "created_by": "user3",
+                    "thread_ksuid": "1"
+                  },
+                  "ksuid": "5"
+                },
+                {
+                  "data": {
+                    "content": "post11",
+                    "created": 1,
+                    "created_by": "user1",
+                    "thread_ksuid": "1"
+                  },
+                  "ksuid": "1"
+                }
+              ]
+            }
+          ],
+          "username": "user1"
+        },
+		"join": ["thread.data.created_by", "message.data.thread_ksuid"]
+	}
+}

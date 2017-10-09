@@ -11,7 +11,8 @@ import (
 // Encapsulate a result from the datastore
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
-	Error  string                   `json:"error,omitempty"`
+	// TODO: make a list of errors!
+	Error string `json:"error,omitempty"`
 	// TODO: pointer to the right thing
 	ValidationError interface{}            `json:"validation_error,omitempty"`
 	Meta            map[string]interface{} `json:"meta,omitempty"`
@@ -152,6 +153,44 @@ func SetValue(value map[string]interface{}, newValue interface{}, nameParts []st
 	val.(map[string]interface{})[nameParts[len(nameParts)-1]] = newValue
 
 	return val
+}
+
+func DelValue(value map[string]interface{}, nameParts []string) bool {
+	var val interface{}
+	if len(nameParts) > 1 {
+		val = value[nameParts[0]]
+		for _, namePart := range nameParts[1 : len(nameParts)-1] {
+			val = val.(map[string]interface{})[namePart]
+		}
+
+	} else {
+		val = value
+	}
+
+	_, ok := val.(map[string]interface{})[nameParts[len(nameParts)-1]]
+	if ok {
+		delete(val.(map[string]interface{}), nameParts[len(nameParts)-1])
+	}
+	return ok
+}
+
+func PopValue(value map[string]interface{}, nameParts []string) (interface{}, bool) {
+	var val interface{}
+	if len(nameParts) > 1 {
+		val = value[nameParts[0]]
+		for _, namePart := range nameParts[1 : len(nameParts)-1] {
+			val = val.(map[string]interface{})[namePart]
+		}
+
+	} else {
+		val = value
+	}
+
+	tmp, ok := val.(map[string]interface{})[nameParts[len(nameParts)-1]]
+	if ok {
+		delete(val.(map[string]interface{}), nameParts[len(nameParts)-1])
+	}
+	return tmp, ok
 }
 
 func FlattenResult(m map[string]interface{}) map[string]interface{} {

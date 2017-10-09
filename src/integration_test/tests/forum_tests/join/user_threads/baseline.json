@@ -1,0 +1,28 @@
+{
+  "return": [
+    {
+      "thread.data.created_by": [
+        {
+          "data": {
+            "created": 1,
+            "created_by": "user1",
+            "title": "thread1"
+          },
+          "ksuid": "1"
+        },
+        {
+          "data": {
+            "created": 3,
+            "created_by": "user1",
+            "title": "thread3"
+          },
+          "ksuid": "3"
+        }
+      ],
+      "username": "user1"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

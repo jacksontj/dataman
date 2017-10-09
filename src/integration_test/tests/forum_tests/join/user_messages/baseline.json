@@ -1,0 +1,30 @@
+{
+  "return": [
+    {
+      "message.data.created_by": [
+        {
+          "data": {
+            "content": "post1",
+            "created": 1,
+            "created_by": "user1",
+            "thread_ksuid": "1"
+          },
+          "ksuid": "1"
+        },
+        {
+          "data": {
+            "content": "post2",
+            "created": 2,
+            "created_by": "user1",
+            "thread_ksuid": "1"
+          },
+          "ksuid": "2"
+        }
+      ],
+      "username": "user1"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

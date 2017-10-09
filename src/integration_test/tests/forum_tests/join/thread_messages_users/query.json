@@ -1,0 +1,11 @@
+{
+	"type": "filter",
+	"args": {
+		"db": "test1",
+		"collection": "thread",
+		"filter": {
+	        "ksuid": ["=", "1"]
+	    },
+		"join": ["message.data.thread_ksuid"]
+	}
+}

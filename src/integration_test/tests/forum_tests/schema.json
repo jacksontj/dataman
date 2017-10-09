@@ -1,0 +1,178 @@
+{ 
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+		    "message": {
+			    "name": "message",
+			    "fields": {
+				    "ksuid": {
+					    "name": "ksuid",
+					    "not_null": true,
+					    "field_type": "_string"
+				    },
+				    "data": {
+					    "subfields": {
+						    "content": {
+							    "not_null": true,
+							    "field_type": "_string",
+							    "name": "content"
+						    },
+						    "thread_ksuid": {
+							    "not_null": true,
+							    "field_type": "_string",
+							    "name": "thread_ksuid",
+							    "relation": {
+								    "collection": "thread",
+								    "field": "ksuid"
+							    }
+						    },
+						    "created_by": {
+							    "not_null": true,
+							    "field_type": "_string",
+							    "name": "created_by",
+							    "relation": {
+								    "collection": "user",
+								    "field": "username"
+							    }
+						    },
+						    "created": {
+							    "not_null": true,
+							    "field_type": "_int",
+							    "name": "created"
+						    }
+					    },
+					    "field_type": "_document",
+					    "name": "data"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "ksuid"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "created": {
+					    "fields": ["data.created"],
+					    "name": "created"
+				    },
+				    "ksuid": {
+				        "fields": ["ksuid"],
+				        "unique": true,
+				        "name": "ksuid",
+				        "primary": true
+				    }
+			    }
+		    },
+		    "user": {
+			    "name": "user",
+			    "fields": {
+				    "username": {
+					    "not_null": true,
+					    "field_type": "_string",
+					    "name": "username"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "username"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "username": {
+					    "fields": ["username"],
+					    "unique": true,
+					    "name": "username",
+					    "primary": true
+				    }
+			    }
+		    },
+		    "thread": {
+			    "name": "thread",
+			    "fields": {
+                    "ksuid": {
+                        "name": "ksuid",
+                        "not_null": true,
+                        "field_type": "_string"
+                    },
+				    "data": {
+					    "subfields": {
+						    "created": {
+							    "not_null": true,
+							    "field_type": "_int",
+							    "name": "created"
+						    },
+						    "created_by": {
+							    "not_null": true,
+							    "field_type": "_string",
+							    "name": "created_by",
+							    "relation": {
+								    "collection": "user",
+								    "field": "username"
+							    }
+						    },
+						    "title": {
+							    "not_null": true,
+							    "field_type": "_string",
+							    "name": "title"
+						    }
+					    },
+					    "field_type": "_document",
+					    "name": "data"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "ksuid"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "title": {
+					    "fields": ["data.title"],
+					    "unique": true,
+					    "name": "title"
+				    },
+				    "created": {
+					    "fields": ["data.created"],
+					    "name": "created"
+				    },
+				    "ksuid": {
+				        "fields": ["ksuid"],
+				        "unique": true,
+				        "name": "ksuid",
+				        "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 57,
+		    "required": true
+	    }]
+    }
+}

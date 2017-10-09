@@ -31,6 +31,10 @@ type Collection struct {
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
+func (c *Collection) GetName() string {
+	return c.Name
+}
+
 func (c *Collection) UnmarshalJSON(data []byte) error {
 	type Alias Collection
 	aux := &struct {

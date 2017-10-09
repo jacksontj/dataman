@@ -1,0 +1,22 @@
+{
+    "type": "set",
+    "args": {
+        "db": "test1",
+        "collection": "message",
+        "record": {
+          "data": {
+            "content": "post11",
+            "created": 1,
+            "created_by": "user1",
+            "created_by.": [
+              {
+                "username": "user1"
+              }
+            ],
+            "thread_ksuid": "1"
+          },
+          "ksuid": "1"
+        },
+        "join": [".data.created_by"]
+    }
+}

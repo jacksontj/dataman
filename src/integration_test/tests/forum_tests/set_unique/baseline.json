@@ -1,0 +1,7 @@
+{
+  "return": null,
+  "error": "Error running query: Err=pq: duplicate key value violates unique constraint \"dbshard_test1_9_1.idx_thread_title\" query=INSERT INTO \"dbshard_test1_9_1\".thread (\"data\",\"ksuid\") VALUES ('{\"created\":1,\"created_by\":\"user1\",\"title\":\"thread1\"}\n','100') ON CONFLICT (ksuid) DO UPDATE SET \"data\"='{\"created\":1,\"created_by\":\"user1\",\"title\":\"thread1\"}\n',\"ksuid\"='100' RETURNING * ",
+  "meta": {
+    "datasource": "postgres"
+  }
+}

@@ -1,0 +1,34 @@
+{
+	"type": "set",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"record": {
+          "thread.data.created_by": [
+            {
+              "data": {
+                "created": 222,
+                "created_by": "user1",
+                "title": "thread3"
+              },
+              "ksuid": "3"
+            },
+            {
+              "data": {
+                "created": 222,
+                "created_by": "user1",
+                "created_by.": [
+                  {
+                    "username": "user1"
+                  }
+                ],
+                "title": "thread1"
+              },
+              "ksuid": "1"
+            }
+          ],
+          "username": "user1"
+        },
+		"join": ["thread.data.created_by"]
+	}
+}
