@@ -66,6 +66,9 @@ func (c *Collection) GetField(nameParts []string) *CollectionField {
 	field := c.Fields[nameParts[0]]
 
 	for _, part := range nameParts[1:] {
+	    if field == nil {
+	        return field
+	    }
 		field = field.SubFields[part]
 	}
 
