@@ -24,6 +24,9 @@ type Client struct {
    Delete(query.QueryArgs) *query.Result
 */
 
+// DoQuery will execute a given query. This will return a (result, error) -- where the
+// error is any transport level error (NOTE: any response errors due to the query will *not*
+// be reported in this error, they will be in the normal Result.Error location)
 func (d *Client) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
 	// TODO: timeout should come from config
 	c, cancel := context.WithTimeout(ctx, time.Second)
