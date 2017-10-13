@@ -232,9 +232,6 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 
 	updatePairs := make([]string, 0, len(fieldHeaders))
 	for j, header := range fieldHeaders {
-		if _, ok := pkeyHeaders[header]; ok {
-			continue
-		}
 		updatePairs = append(updatePairs, header+"="+fieldValues[j])
 	}
 
