@@ -81,3 +81,17 @@ func serializeValue(t datamantype.DatamanType, v interface{}) (string, error) {
 		return fmt.Sprintf("'%v'", v), nil
 	}
 }
+
+// Take a path to an object and convert it to postgres json addressing
+func collectionFieldToSelector(path []string) string {
+	switch len(path) {
+	case 1:
+		return path[0]
+	case 2:
+		return path[0] + "->>'" + path[1] + "'"
+	default:
+		fieldChain := path[1:len(path)]
+		return path[0] + "->'" + strings.Join(fieldChain[:len(fieldChain)-1], "'->'") + "'->>'" + path[len(path)-1] + "'"
+	}
+
+}

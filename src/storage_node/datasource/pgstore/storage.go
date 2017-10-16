@@ -23,6 +23,7 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
+	"github.com/jacksontj/dataman/src/storage_node/metadata/recordop"
 	_ "github.com/lib/pq"
 )
 
@@ -235,6 +236,25 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		updatePairs = append(updatePairs, header+"="+fieldValues[j])
 	}
 
+	recordValues, err := s.recordOpDo(args, recordData, collection)
+	if err != nil {
+		fmt.Println("err?", err)
+		result.Error = err.Error()
+		return result
+	}
+	if recordValues != nil {
+		// Apply recordValues (assuming they exist
+		for k, v := range recordValues {
+			fmt.Println("kv", k, v)
+			if _, ok := recordData[k]; ok {
+				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
+				return result
+			}
+
+			updatePairs = append(updatePairs, fmt.Sprintf("\"%s\"=%s.%v", k, collection.Name, v))
+		}
+	}
+
 	upsertQuery := fmt.Sprintf(`INSERT INTO "%s".%s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s RETURNING *`,
 		args["shard_instance"].(string),
 		args["collection"],
@@ -381,6 +401,23 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 			default:
 				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
 			}
+		}
+	}
+
+	recordValues, err := s.recordOpDo(args, recordData, collection)
+	if err != nil {
+		result.Error = err.Error()
+		return result
+	}
+	if recordValues != nil {
+		// Apply recordValues (assuming they exist
+		for k, v := range recordValues {
+			if _, ok := recordData[k]; ok {
+				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
+				return result
+			}
+			fieldHeaders = append(fieldHeaders, k)
+			fieldValues = append(fieldValues, v)
 		}
 	}
 
@@ -766,4 +803,95 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 	}
 	// TODO: better error message
 	return "", fmt.Errorf("Unknown where clause!")
+}
+
+func (s *Storage) recordOpDo(args map[string]interface{}, recordData map[string]interface{}, collection *metadata.Collection) (map[string]string, error) {
+	recordOpRaw, ok := args["record_op"]
+	if !ok {
+		return nil, nil
+	}
+	recordOpMap, ok := recordOpRaw.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("record_op must be a map[string]interface{}")
+	}
+
+	// Return map of header -> value
+	opValues := make(map[string]string)
+
+	for fieldAddr, fieldOpList := range recordOpMap {
+		var opType recordop.RecordOp
+		var opValue interface{}
+		var err error
+
+		switch fieldOpTyped := fieldOpList.(type) {
+		case []interface{}:
+			opTypeString, ok := fieldOpTyped[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("Invalid op type %v", fieldOpTyped[0])
+			}
+			opType, err = recordop.StringToRecordOp(opTypeString)
+			if err != nil {
+				return nil, err
+			}
+			opValue = fieldOpTyped[1]
+		case []string:
+			opType, err = recordop.StringToRecordOp(fieldOpTyped[0])
+			if err != nil {
+				return nil, err
+			}
+			opValue = fieldOpTyped[1]
+		default:
+			return nil, fmt.Errorf("record_op must be a list")
+		}
+
+		fieldAddrParts := strings.Split(fieldAddr, ".")
+
+		if len(fieldAddrParts) == 1 {
+			// If the value is in recordData we don't allow it (for now)
+			if _, ok := recordData[fieldAddr]; ok {
+				return nil, fmt.Errorf("Already have value in record for %s can't also have in record_op", fieldAddr)
+			}
+
+			// If the field doesn't exist -- don't do it
+			if collection.GetFieldByName(fieldAddr) == nil {
+				return nil, fmt.Errorf("record_op field %s doesn't exist in collection", fieldAddr)
+			}
+
+			opValues[fieldAddr] = fmt.Sprintf("%s %s %v", fieldAddr, opType, opValue)
+
+		} else {
+			// If the value is in recordData we don't allow it (for now)
+			if _, ok := recordData[fieldAddrParts[0]]; ok {
+				return nil, fmt.Errorf("Already have value in record for %s can't also have in record_op", fieldAddr)
+			}
+
+			opField := collection.GetFieldByName(fieldAddr)
+			// If the field doesn't exist -- don't do it
+			if opField == nil {
+				return nil, fmt.Errorf("record_op field %s doesn't exist in collection", fieldAddr)
+			}
+
+			jsonbSetTemplate := `jsonb_set(%s, '{%s}', (COALESCE(%s,'0')::int %s %v)::text::jsonb)`
+
+			// If we already had an op to this top-level key, then we need to nest
+			if baseValue, ok := opValues[fieldAddrParts[0]]; ok {
+				opValues[fieldAddrParts[0]] = fmt.Sprintf(jsonbSetTemplate,
+					baseValue,
+					strings.Join(fieldAddrParts[1:], ","),
+					collectionFieldToSelector(fieldAddrParts),
+					opType,
+					opValue,
+				)
+			} else {
+				opValues[fieldAddrParts[0]] = fmt.Sprintf(jsonbSetTemplate,
+					fieldAddrParts[0],
+					strings.Join(fieldAddrParts[1:], ","),
+					collectionFieldToSelector(fieldAddrParts),
+					opType,
+					opValue,
+				)
+			}
+		}
+	}
+	return opValues, nil
 }
