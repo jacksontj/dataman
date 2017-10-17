@@ -1,0 +1,15 @@
+{
+  "return": [
+    {
+      "data": {
+        "innervalue": 14,
+        "innervalue2": 7
+      },
+      "key": "1",
+      "value": 5
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "return": null,
+  "error": "record_op field nokey doesn't exist in collection",
+  "meta": {
+    "datasource": "postgres"
+  }
+}

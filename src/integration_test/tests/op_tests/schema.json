@@ -1,0 +1,69 @@
+{ 
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+		    "data": {
+			    "name": "data",
+			    "fields": {
+				    "key": {
+					    "name": "key",
+					    "not_null": true,
+					    "field_type": "_string"
+				    },
+				    "value": {
+					    "name": "value",
+					    "not_null": true,
+					    "field_type": "_int",
+					    "default": 0
+				    },
+				    "data": {
+					    "subfields": {
+						    "innervalue": {
+							    "not_null": true,
+							    "field_type": "_int",
+							    "name": "innervalue",
+        					    "default": 0
+						    },
+						    "innervalue2": {
+							    "not_null": true,
+							    "field_type": "_int",
+							    "name": "innervalue2",
+        					    "default": 0
+						    }
+					    },
+					    "field_type": "_document",
+					    "name": "data"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "key"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "ksuid": {
+				        "fields": ["key"],
+				        "unique": true,
+				        "name": "key",
+				        "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 57,
+		    "required": true
+	    }]
+    }
+}
+

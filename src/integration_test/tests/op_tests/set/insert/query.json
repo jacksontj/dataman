@@ -1,0 +1,13 @@
+{
+    "type": "set",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "record": {
+            "key": "new_insert"
+        },
+        "record_op": {
+            "value": ["+", 5]
+        }
+    }
+}

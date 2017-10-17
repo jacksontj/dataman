@@ -1,0 +1,12 @@
+{
+  "return": [
+    {
+      "data": null,
+      "key": "new_insert",
+      "value": 5
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

@@ -1,0 +1,14 @@
+{
+    "type": "update",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {
+            "key": ["=", "1"]
+        },
+        "record": {},
+        "record_op": {
+            "data.innervalue": ["+", 7]
+        }
+    }
+}
