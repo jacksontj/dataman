@@ -251,7 +251,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 				return result
 			}
 
-			updatePairs = append(updatePairs, fmt.Sprintf("\"%s\"=%s.%v", k, collection.Name, v))
+			updatePairs = append(updatePairs, fmt.Sprintf("\"%s\"=%v", k, v))
 		}
 	}
 
@@ -416,7 +416,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
 				return result
 			}
-			fieldHeaders = append(fieldHeaders, k)
+			fieldHeaders = append(fieldHeaders, `"`+k+`"`)
 			fieldValues = append(fieldValues, v)
 		}
 	}
@@ -857,7 +857,7 @@ func (s *Storage) recordOpDo(args map[string]interface{}, recordData map[string]
 				return nil, fmt.Errorf("record_op field %s doesn't exist in collection", fieldAddr)
 			}
 
-			opValues[fieldAddr] = fmt.Sprintf("%s %s %v", fieldAddr, opType, opValue)
+			opValues[fieldAddr] = fmt.Sprintf("%s.%s %s %v", collection.Name, fieldAddr, opType, opValue)
 
 		} else {
 			// If the value is in recordData we don't allow it (for now)
@@ -878,15 +878,15 @@ func (s *Storage) recordOpDo(args map[string]interface{}, recordData map[string]
 				opValues[fieldAddrParts[0]] = fmt.Sprintf(jsonbSetTemplate,
 					baseValue,
 					strings.Join(fieldAddrParts[1:], ","),
-					collectionFieldToSelector(fieldAddrParts),
+					collection.Name+"."+collectionFieldToSelector(fieldAddrParts),
 					opType,
 					opValue,
 				)
 			} else {
 				opValues[fieldAddrParts[0]] = fmt.Sprintf(jsonbSetTemplate,
-					fieldAddrParts[0],
+					collection.Name+"."+fieldAddrParts[0],
 					strings.Join(fieldAddrParts[1:], ","),
-					collectionFieldToSelector(fieldAddrParts),
+					collection.Name+"."+collectionFieldToSelector(fieldAddrParts),
 					opType,
 					opValue,
 				)
