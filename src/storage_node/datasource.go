@@ -523,7 +523,12 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 							result.Error += "\n" + joinResults.Error
 						}
 
-						query.SetValue(result.Return[j], joinResults.Return[0], joinFieldNameParts)
+						// If there where no results, don't panic, we'll just return an empty list
+						if len(joinResults.Return) > 0 {
+							query.SetValue(result.Return[j], joinResults.Return[0], joinFieldNameParts)
+						} else {
+							query.SetValue(result.Return[j], []interface{}{}, joinFieldNameParts)
+						}
 					}
 				}
 			}
