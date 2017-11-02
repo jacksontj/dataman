@@ -32,6 +32,8 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 		fieldStr += "\"" + field.Name + "\" serial"
 	case datamantype.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
+	case datamantype.Date:
+		fieldStr += "\"" + field.Name + "\" date"
 	case datamantype.DateTime:
 		fieldStr += "\"" + field.Name + "\" timestamp without time zone"
 	default:
@@ -321,7 +323,7 @@ func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance
 		case "timestamp without time zone":
 			datamanType = datamantype.DateTime
 		case "date":
-			datamanType = datamantype.DateTime
+			datamanType = datamantype.Date
 		default:
 			logrus.Fatalf("Unknown postgres data_type %s in %s.%s %v", fieldEntry["data_type"], dbname, collectionname, fieldEntry)
 		}

@@ -9,6 +9,10 @@ func listInternalFieldTypes() []*FieldType {
 			DatamanType: datamantype.Bool,
 		},
 		&FieldType{
+			Name:        "_date",
+			DatamanType: datamantype.Date,
+		},
+		&FieldType{
 			Name:        "_datetime",
 			DatamanType: datamantype.DateTime,
 		},

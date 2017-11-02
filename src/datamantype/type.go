@@ -29,10 +29,12 @@ const (
 	Float = "float"
 	Bool  = "bool"
 	// TODO: actually implement
+	Date = "date"
 	DateTime = "datetime"
 	JSON     = "json"
 )
 
+const DateFormatStr = "2006-01-02"
 const DateTimeFormatStr = "2006-01-02 15:04:05"
 
 // Normalize the given interface into what we want/expect
@@ -134,6 +136,27 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return strconv.ParseBool(typedVal)
 		default:
 			return nil, fmt.Errorf("Not a bool")
+		}
+	case Date:
+		switch typedVal := val.(type) {
+		case nil:
+			return nil, nil
+		case time.Time:
+			return val, nil
+		case string:
+			return time.Parse(DateFormatStr, typedVal)
+		case int:
+			i, err := strconv.ParseInt("1405544146", 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			return time.Unix(i, 0), nil
+		case float64:
+			seconds, ns := math.Modf(typedVal)
+			return time.Unix(int64(seconds), int64(ns)), nil
+
+		default:
+			return nil, fmt.Errorf("Unknown date type: %s", reflect.TypeOf(val))
 		}
 	case DateTime:
 		switch typedVal := val.(type) {
