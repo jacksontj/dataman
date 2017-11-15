@@ -1,0 +1,11 @@
+{
+    "type": "set",
+    "args": {
+        "db": "test1",
+        "collection": "jsontable",
+        "record": {
+            "key": "setfoo",
+            "value": "{\"a\": \"value\"}"
+        }
+    }
+}

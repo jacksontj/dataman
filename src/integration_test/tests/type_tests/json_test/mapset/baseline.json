@@ -1,0 +1,13 @@
+{
+  "return": [
+    {
+      "key": "setfoo",
+      "value": {
+        "map": "value"
+      }
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

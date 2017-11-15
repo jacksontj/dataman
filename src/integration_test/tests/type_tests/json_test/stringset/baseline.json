@@ -1,0 +1,11 @@
+{
+  "return": [
+    {
+      "key": "setfoo",
+      "value": "stringvalue"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

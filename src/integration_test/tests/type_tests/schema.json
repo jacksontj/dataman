@@ -1,0 +1,51 @@
+{
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+            "jsontable": {
+                "name": "jsontable",
+                "fields": {
+                    "key": {
+                        "not_null": true,
+                        "field_type": "_string",
+                        "name": "key"
+                    },
+                    "value": {
+                        "field_type": "_json",
+                        "name": "value"
+                    }
+                },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "key"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    8
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "key": {
+					    "fields": ["key"],
+					    "unique": true,
+					    "name": "key",
+					    "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 57,
+		    "required": true
+	    }],
+	    "database_vshard": {
+		    "shard_count": 2
+	    }
+    }
+}
