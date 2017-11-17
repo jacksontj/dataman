@@ -216,6 +216,8 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.Date:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateFormatStr)))
 			case datamantype.DateTime:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
@@ -322,6 +324,8 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 				fieldJson := buffer.Bytes()
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.Date:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateFormatStr)))
 			case datamantype.DateTime:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
@@ -394,6 +398,8 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 
 				// TODO: switch from string escape of ' to using args from the sql driver
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+			case datamantype.Date:
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateFormatStr)))
 			case datamantype.DateTime:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 			case datamantype.Text, datamantype.String:
@@ -495,6 +501,8 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
 				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
 			}
+		case datamantype.Date:
+			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue.(time.Time).Format(datamantype.DateFormatStr)))
 		case datamantype.DateTime:
 			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
 		case datamantype.Text, datamantype.String:
@@ -592,6 +600,8 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 					var tmp map[string]interface{}
 					json.Unmarshal(v.([]byte), &tmp)
 					row[k] = tmp
+				case datamantype.Date:
+					row[k] = v.(time.Time).Format(datamantype.DateFormatStr)
 				case datamantype.DateTime:
 					row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
 				default:

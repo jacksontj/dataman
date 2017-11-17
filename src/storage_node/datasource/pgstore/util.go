@@ -75,6 +75,8 @@ func normalizeFieldName(in string) string {
 
 func serializeValue(t datamantype.DatamanType, v interface{}) (string, error) {
 	switch t {
+	case datamantype.Date:
+		return fmt.Sprintf("'%v'", v.(time.Time).Format(datamantype.DateFormatStr)), nil
 	case datamantype.DateTime:
 		return fmt.Sprintf("'%v'", v.(time.Time).Format(datamantype.DateTimeFormatStr)), nil
 	default:

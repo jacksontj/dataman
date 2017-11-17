@@ -36,7 +36,11 @@ func init() {
 			true,
 			false,
 		},
-		// TODO:
+		Date: []interface{}{
+			"2017-09-08",
+			time.Now(),
+			nil,
+		},// TODO:
 		DateTime: []interface{}{
 			"2017-09-08 14:44:02.622944",
 			"2017-09-08 14:44:02",
