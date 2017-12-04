@@ -2,7 +2,6 @@ package datamanclient
 
 import (
 	"context"
-	"time"
 
 	"github.com/jacksontj/dataman/src/query"
 )
@@ -12,7 +11,7 @@ import (
 // pointer to it in the context -- which would require implementing one ourself
 type Client struct {
 	Transport DatamanClientTransport
-	// TODO: config
+	// TODO: config (timeout, etc).
 }
 
 // TODO: add these convenience methods
@@ -28,8 +27,7 @@ type Client struct {
 // error is any transport level error (NOTE: any response errors due to the query will *not*
 // be reported in this error, they will be in the normal Result.Error location)
 func (d *Client) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
-	// TODO: timeout should come from config
-	c, cancel := context.WithTimeout(ctx, time.Second)
+	c, cancel := context.WithCancel(ctx)
 	defer cancel() // Cancel ctx as soon as handleSearch returns.
 
 	results, err := d.Transport.DoQuery(c, q)
