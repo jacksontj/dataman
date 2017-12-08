@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
 )
 

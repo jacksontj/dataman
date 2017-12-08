@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/router_node"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/task_node"

@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
 
 	"github.com/jacksontj/dataman/src/storage_node"

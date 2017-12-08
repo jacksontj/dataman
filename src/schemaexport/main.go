@@ -15,7 +15,7 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"

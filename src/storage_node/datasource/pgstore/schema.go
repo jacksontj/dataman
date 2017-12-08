@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
