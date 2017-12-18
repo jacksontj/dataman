@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
+	"github.com/sirupsen/logrus"
 )
 
 type SchemamanAction string

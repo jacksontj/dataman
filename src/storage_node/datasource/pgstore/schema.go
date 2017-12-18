@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
+	"github.com/sirupsen/logrus"
 )
 
 func fieldToSchema(field *metadata.CollectionField) (string, error) {

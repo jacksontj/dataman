@@ -5,8 +5,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/sirupsen/logrus"
 	"github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jacksontj/dataman/src/task_node"
 )

@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rcrowley/go-metrics"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node"

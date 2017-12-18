@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/mitchellh/copystructure"
+	"github.com/sirupsen/logrus"
 
 	"github.com/jacksontj/dataman/src/datamantype"
 	"github.com/jacksontj/dataman/src/query"

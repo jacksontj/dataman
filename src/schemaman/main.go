@@ -5,9 +5,9 @@ package main
 import (
 	"io/ioutil"
 
-	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )
 

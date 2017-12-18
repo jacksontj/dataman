@@ -15,11 +15,11 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/sirupsen/logrus"
 	"github.com/jacksontj/dataman/src/storage_node"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/sirupsen/logrus"
 )
 
 var opts struct {
