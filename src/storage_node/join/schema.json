@@ -1,1 +1,244 @@
-{"databases":{"test1":{"_id":2313,"name":"test1","shard_instances":{"dbshard_test1_9_1":{"_id":2766,"name":"dbshard_test1_9_1","count":1,"instance":1,"collections":{"message":{"_id":7166,"name":"message","fields":{"data":{"_id":27135,"name":"data","field_type":"_document","subfields":{"content":{"_id":27136,"name":"content","field_type":"_string","not_null":true,"provision_state":3},"created":{"_id":27137,"name":"created","field_type":"_int","not_null":true,"provision_state":3},"created_by":{"_id":27138,"name":"created_by","field_type":"_string","not_null":true,"relation":{"_id":2699,"field_id":27129,"collection":"user","field":"username"},"provision_state":3},"thread_ksuid":{"_id":27139,"name":"thread_ksuid","field_type":"_string","not_null":true,"relation":{"_id":2700,"field_id":27134,"collection":"thread","field":"ksuid"},"provision_state":3}},"provision_state":3},"ksuid":{"_id":27140,"name":"ksuid","field_type":"_string","not_null":true,"provision_state":3}},"indexes":{"created":{"_id":9658,"name":"created","fields":["data.created"],"provision_state":3},"ksuid":{"_id":9659,"name":"ksuid","fields":["ksuid"],"unique":true,"primary":true,"provision_state":3}},"provision_state":3},"thread":{"_id":7165,"name":"thread","fields":{"data":{"_id":27130,"name":"data","field_type":"_document","subfields":{"created":{"_id":27132,"name":"created","field_type":"_int","not_null":true,"provision_state":3},"created_by":{"_id":27133,"name":"created_by","field_type":"_string","not_null":true,"relation":{"_id":2698,"field_id":27129,"collection":"user","field":"username"},"provision_state":3},"title":{"_id":27131,"name":"title","field_type":"_string","not_null":true,"provision_state":3}},"provision_state":3},"ksuid":{"_id":27134,"name":"ksuid","field_type":"_string","not_null":true,"provision_state":3}},"indexes":{"created":{"_id":9655,"name":"created","fields":["data.created"],"provision_state":3},"ksuid":{"_id":9656,"name":"ksuid","fields":["ksuid"],"unique":true,"primary":true,"provision_state":3},"title":{"_id":9657,"name":"title","fields":["data.title"],"unique":true,"provision_state":3}},"provision_state":3},"user":{"_id":7164,"name":"user","fields":{"username":{"_id":27129,"name":"username","field_type":"_string","not_null":true,"provision_state":3}},"indexes":{"username":{"_id":9654,"name":"username","fields":["username"],"unique":true,"primary":true,"provision_state":3}},"provision_state":3}},"provision_state":3}},"provision_state":3}},"field_types":{"_bool":{"name":"_bool","dataman_type":"bool"},"_datetime":{"name":"_datetime","dataman_type":"datetime"},"_document":{"name":"_document","dataman_type":"document"},"_float":{"name":"_float","dataman_type":"float"},"_int":{"name":"_int","dataman_type":"int"},"_json":{"name":"_json","dataman_type":"json"},"_serial":{"name":"_serial","dataman_type":"serial"},"_string":{"name":"_string","dataman_type":"string"},"_text":{"name":"_text","dataman_type":"text"}}}
+{
+  "databases": {
+    "test1": {
+      "_id": 2313,
+      "name": "test1",
+      "shard_instances": {
+        "dbshard_test1_9_1": {
+          "_id": 2766,
+          "name": "dbshard_test1_9_1",
+          "count": 1,
+          "instance": 1,
+          "collections": {
+            "message": {
+              "_id": 7166,
+              "name": "message",
+              "fields": {
+                "data": {
+                  "_id": 27135,
+                  "name": "data",
+                  "field_type": "_document",
+                  "subfields": {
+                    "content": {
+                      "_id": 27136,
+                      "name": "content",
+                      "field_type": "_string",
+                      "not_null": true,
+                      "provision_state": 3
+                    },
+                    "created": {
+                      "_id": 27137,
+                      "name": "created",
+                      "field_type": "_int",
+                      "not_null": true,
+                      "provision_state": 3
+                    },
+                    "created_by": {
+                      "_id": 27138,
+                      "name": "created_by",
+                      "field_type": "_string",
+                      "not_null": true,
+                      "relation": {
+                        "_id": 2699,
+                        "field_id": 27129,
+                        "collection": "user",
+                        "field": "username"
+                      },
+                      "provision_state": 3
+                    },
+                    "thread_ksuid": {
+                      "_id": 27139,
+                      "name": "thread_ksuid",
+                      "field_type": "_string",
+                      "not_null": true,
+                      "relation": {
+                        "_id": 2700,
+                        "field_id": 27134,
+                        "collection": "thread",
+                        "field": "ksuid"
+                      },
+                      "provision_state": 3
+                    }
+                  },
+                  "provision_state": 3
+                },
+                "ksuid": {
+                  "_id": 27140,
+                  "name": "ksuid",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "created": {
+                  "_id": 9658,
+                  "name": "created",
+                  "fields": [
+                    "data.created"
+                  ],
+                  "provision_state": 3
+                },
+                "ksuid": {
+                  "_id": 9659,
+                  "name": "ksuid",
+                  "fields": [
+                    "ksuid"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
+            "thread": {
+              "_id": 7165,
+              "name": "thread",
+              "fields": {
+                "data": {
+                  "_id": 27130,
+                  "name": "data",
+                  "field_type": "_document",
+                  "subfields": {
+                    "created": {
+                      "_id": 27132,
+                      "name": "created",
+                      "field_type": "_int",
+                      "not_null": true,
+                      "provision_state": 3
+                    },
+                    "created_by": {
+                      "_id": 27133,
+                      "name": "created_by",
+                      "field_type": "_string",
+                      "not_null": true,
+                      "relation": {
+                        "_id": 2698,
+                        "field_id": 27129,
+                        "collection": "user",
+                        "field": "username"
+                      },
+                      "provision_state": 3
+                    },
+                    "title": {
+                      "_id": 27131,
+                      "name": "title",
+                      "field_type": "_string",
+                      "not_null": true,
+                      "provision_state": 3
+                    }
+                  },
+                  "provision_state": 3
+                },
+                "ksuid": {
+                  "_id": 27134,
+                  "name": "ksuid",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "created": {
+                  "_id": 9655,
+                  "name": "created",
+                  "fields": [
+                    "data.created"
+                  ],
+                  "provision_state": 3
+                },
+                "ksuid": {
+                  "_id": 9656,
+                  "name": "ksuid",
+                  "fields": [
+                    "ksuid"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
+                },
+                "title": {
+                  "_id": 9657,
+                  "name": "title",
+                  "fields": [
+                    "data.title"
+                  ],
+                  "unique": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            },
+            "user": {
+              "_id": 7164,
+              "name": "user",
+              "fields": {
+                "username": {
+                  "_id": 27129,
+                  "name": "username",
+                  "field_type": "_string",
+                  "not_null": true,
+                  "provision_state": 3
+                }
+              },
+              "indexes": {
+                "username": {
+                  "_id": 9654,
+                  "name": "username",
+                  "fields": [
+                    "username"
+                  ],
+                  "unique": true,
+                  "primary": true,
+                  "provision_state": 3
+                }
+              },
+              "provision_state": 3
+            }
+          },
+          "provision_state": 3
+        }
+      },
+      "provision_state": 3
+    }
+  },
+  "field_types": {
+    "_bool": {
+      "name": "_bool",
+      "dataman_type": "bool"
+    },
+    "_datetime": {
+      "name": "_datetime",
+      "dataman_type": "datetime"
+    },
+    "_document": {
+      "name": "_document",
+      "dataman_type": "document"
+    },
+    "_float": {
+      "name": "_float",
+      "dataman_type": "float"
+    },
+    "_int": {
+      "name": "_int",
+      "dataman_type": "int"
+    },
+    "_json": {
+      "name": "_json",
+      "dataman_type": "json"
+    },
+    "_serial": {
+      "name": "_serial",
+      "dataman_type": "serial"
+    },
+    "_string": {
+      "name": "_string",
+      "dataman_type": "string"
+    },
+    "_text": {
+      "name": "_text",
+      "dataman_type": "text"
+    }
+  }
+}

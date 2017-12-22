@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	//radix "github.com/armon/go-radix"
 	"github.com/jacksontj/dataman/src/client"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"

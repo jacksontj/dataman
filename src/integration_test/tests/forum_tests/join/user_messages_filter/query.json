@@ -1,0 +1,13 @@
+{
+	"type": "filter",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"filter": {
+		    "username": ["=", "user1"]
+		},
+		"join": {
+		    "message.data.created_by": {"ksuid": ["=", "1"]}
+	    }
+	}
+}
