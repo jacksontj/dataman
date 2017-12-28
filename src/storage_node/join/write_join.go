@@ -118,8 +118,7 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 			})
 
 		} else {
-			fmt.Println(forwardJoin.Key, record)
-			panic("unable to find key")
+			return nil, nil, fmt.Errorf("WriteJoin unable to find key %s in %v", forwardJoin.Key, record)
 		}
 
 	}
@@ -197,8 +196,7 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 				Value: replacementSubRecords,
 			})
 		} else {
-			fmt.Println(reverseJoin.Key, record)
-			panic("unable to find key")
+			return nil, nil, fmt.Errorf("WriteJoin unable to find reverse-join key %s in %v", reverseJoin.Key, record)
 		}
 
 	}

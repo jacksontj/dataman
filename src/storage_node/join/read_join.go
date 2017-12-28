@@ -79,8 +79,7 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 			query.SetValue(record, joinResults.Return, joinKeyParts)
 
 		} else {
-			fmt.Println(forwardJoin.Key, record)
-			panic("unable to find key")
+			return fmt.Errorf("ReadJoin unable to find forward-join key %s in %v", forwardJoin.Key, record)
 		}
 
 	}
@@ -122,8 +121,7 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 
 			record[reverseJoin.C.Name+"."+reverseJoin.Key] = joinResults.Return
 		} else {
-			fmt.Println("Unable to find", reverseJoin.JoinField.Relation.Field, "in ", record)
-			panic("Unable to find reverse")
+			return fmt.Errorf("ReadJoin unable to find reverse-join key %s in %v", reverseJoin.JoinField.Relation.Field, record)
 		}
 
 	}
