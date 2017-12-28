@@ -53,14 +53,12 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 			// TODO: check that we can assert
 			subRecords := rawRecord.([]interface{})
 			// Go depth first so that things get removed
-			// TODO: keep the records from this
 			replacementSubRecords := make([]interface{}, len(subRecords))
 			for i, rawSubRecord := range subRecords {
 				subRecord := rawSubRecord.(map[string]interface{})
 
 				var subRecordWrites []*WriteJoinSubrecord
 
-				// TODO implement
 				if forwardJoin.C.HasJoins() {
 					swrites, validationErr, err := DoWriteJoin(ctx, client, q, forwardJoin.C, subRecord)
 					if validationErr != nil || err != nil {
@@ -139,7 +137,6 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 
 				var subRecordWrites []*WriteJoinSubrecord
 
-				// TODO implement
 				if reverseJoin.C.HasJoins() {
 					swrites, validationErr, err := DoWriteJoin(ctx, client, q, reverseJoin.C, subRecord)
 					if validationErr != nil || err != nil {
