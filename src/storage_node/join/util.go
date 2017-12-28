@@ -161,6 +161,10 @@ func OrderJoins(collectionMetaGetter CollectionGetter, collection MetaCollection
 				joinField = thisCollection.M.GetField(joinParts)
 			}
 
+			if joinField == nil {
+				return fmt.Errorf("Invalid join key: %s", join)
+			}
+
 			// TODO: check for non-existance
 			metaJoinCollection := collectionMetaGetter(joinField.Relation.Collection)
 			if metaJoinCollection == nil {
