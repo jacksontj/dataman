@@ -16,6 +16,17 @@
 				}
 			],
 			"provision_state": 3
+		},
+		"singleshard": {
+			"name": "singleshard",
+			"count": 1,
+			"shards": [{
+					"shard_instance": 1,
+					"datastore_shard_instance": 1,
+					"provision_state": 3
+				}
+			],
+			"provision_state": 3
 		}
 	},
 	"shards": {
