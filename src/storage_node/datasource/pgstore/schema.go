@@ -359,11 +359,14 @@ func (s *Storage) ListCollectionField(ctx context.Context, dbname, shardinstance
 		if err != nil {
 			logrus.Fatalf("Unable to get relation %s from %s: %v", field.Name, dbname, err)
 		}
+		// Note: this will only import foreign-keys, if you have additional relations
+		// the importer won't be able to find them
 		if len(relationEntries) > 0 {
 			relationEntry := relationEntries[0]
 			field.Relation = &metadata.CollectionFieldRelation{
 				Collection: relationEntry["foreign_table_name"].(string),
 				Field:      relationEntry["foreign_column_name"].(string),
+				ForeignKey: true,
 			}
 		}
 		fields[i] = field
@@ -404,7 +407,7 @@ func (s *Storage) AddCollectionField(ctx context.Context, db *metadata.Database,
 	}
 
 	// If it has a relation, add that constraint
-	if field.Relation != nil {
+	if field.Relation != nil && field.Relation.ForeignKey {
 		query := fmt.Sprintf(
 			addForeignKeyTemplate,
 			shardinstance.Name,

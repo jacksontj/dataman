@@ -159,6 +159,9 @@ type CollectionFieldRelation struct {
 	Collection string `json:"collection"`
 	Field      string `json:"field"`
 
+	// Whether this should enforce a foreign_key constraint
+	ForeignKey bool `json:"foreign_key"`
+
 	// TODO: update and delete
 	//CascadeDelete bool `json:"cascade_on_delete"`
 }

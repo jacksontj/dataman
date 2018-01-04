@@ -770,6 +770,7 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(ctx context.Context, 
 			"collection_field_id":          field.ID,
 			"relation_collection_field_id": field.Relation.FieldID,
 			"cascade_on_delete":            false,
+			"foreign_key":                  field.Relation.ForeignKey,
 		}
 		if field.Relation.ID != 0 {
 			fieldRelationRecord["_id"] = field.Relation.ID
@@ -943,6 +944,7 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 				FieldID:    collectionFieldRelationRecord["relation_collection_field_id"].(int64),
 				Collection: relatedCollection.Name,
 				Field:      relatedField.Name,
+				ForeignKey: collectionFieldRelationRecord["foreign_key"].(bool),
 			}
 		}
 
