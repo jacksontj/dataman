@@ -5,7 +5,6 @@ import (
 
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node"
-	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
 func NewDatasourceInstanceTransport(dsi *storagenode.DatasourceInstance) *DatasourceInstanceTransport {
