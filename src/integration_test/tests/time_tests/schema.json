@@ -39,9 +39,6 @@
 		    "write": true,
 		    "datastore_id": 57,
 		    "required": true
-	    }],
-	    "database_vshard": {
-		    "shard_count": 1
-	    }
+	    }]
     }
 }
