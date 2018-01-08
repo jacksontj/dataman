@@ -463,13 +463,17 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 					hasShardKey = false
 					break
 				}
-				if filterComparator == filter.Equal {
+				filterType, err := filter.StringToFilterType(filterComparator)
+				if err != nil {
+					hasShardKey = false
+					break
+				}
+				if filterType == filter.Equal {
 					shardKeys[i] = filterComparatorRaw[1]
 				} else {
 					hasShardKey = false
 					break
 				}
-
 			}
 		}
 		// if there is only one partition and we have our shard key, we can be more specific

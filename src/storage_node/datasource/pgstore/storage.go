@@ -238,14 +238,12 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 
 	recordValues, err := s.recordOpDo(args, recordData, collection)
 	if err != nil {
-		fmt.Println("err?", err)
 		result.Error = err.Error()
 		return result
 	}
 	if recordValues != nil {
 		// Apply recordValues (assuming they exist
 		for k, v := range recordValues {
-			fmt.Println("kv", k, v)
 			if _, ok := recordData[k]; ok {
 				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
 				return result
@@ -722,14 +720,18 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 
 			switch fieldFilterTyped := fieldFilterRaw.(type) {
 			case []interface{}:
-				filterTypeString, ok := fieldFilterTyped[0].(string)
-				if !ok {
-					return "", fmt.Errorf("Invalid filter type %v", fieldFilterTyped[0])
+				switch filterTyped := fieldFilterTyped[0].(type) {
+				case filter.FilterType:
+					filterType = filterTyped
+				case string:
+					filterType, err = filter.StringToFilterType(filterTyped)
+					if err != nil {
+						return "", err
+					}
+				default:
+					return "", fmt.Errorf("Invalid filter type %v", filterTyped)
 				}
-				filterType, err = filter.StringToFilterType(filterTypeString)
-				if err != nil {
-					return "", err
-				}
+
 				fieldValue = fieldFilterTyped[1]
 			case []string:
 				filterType, err = filter.StringToFilterType(fieldFilterTyped[0])

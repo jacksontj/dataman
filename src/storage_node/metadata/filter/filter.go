@@ -7,16 +7,15 @@ import (
 
 type FilterType string
 
-// TODO FilterType needs to be part of these
 const (
-	Equal            = "="
-	NotEqual         = "!="
-	LessThan         = "<"
-	LessThanEqual    = "<="
-	GreaterThan      = ">"
-	GreaterThanEqual = ">="
-	In               = "in"
-	NotIn            = "notin"
+	Equal            FilterType = "="
+	NotEqual         FilterType = "!="
+	LessThan         FilterType = "<"
+	LessThanEqual    FilterType = "<="
+	GreaterThan      FilterType = ">"
+	GreaterThanEqual FilterType = ">="
+	In               FilterType = "in"
+	NotIn            FilterType = "notin"
 )
 
 func StringToFilterType(in string) (FilterType, error) {

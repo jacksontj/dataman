@@ -67,6 +67,12 @@ func (r *Result) Project(fields []string) {
 
 // Merge multiple results together
 func MergeResult(pkeyFields []string, numResults int, results chan *Result) *Result {
+	// Fast-path single results
+	if numResults == 1 {
+		r := <-results
+		return r
+	}
+
 	pkeyFieldParts := make([][]string, len(pkeyFields))
 	for i, pkeyField := range pkeyFields {
 		pkeyFieldParts[i] = strings.Split(pkeyField, ".")
