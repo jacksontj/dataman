@@ -89,7 +89,11 @@ func MergeResult(pkeyFields []string, numResults int, results chan *Result) *Res
 	recievedResults := 0
 	for result := range results {
 		if result.Error != "" {
-			combinedResult.Error += "\n" + result.Error
+			// If there was one before, add this to the list
+			if combinedResult.Error != "" {
+				combinedResult.Error += "\n"
+			}
+			combinedResult.Error += result.Error
 		}
 		// TODO: merge meta
 		if len(combinedResult.Meta) == 0 {
