@@ -2048,7 +2048,6 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(ctx context.Context, db *
 	collectionKeyspaceRecord := map[string]interface{}{
 		"collection_id": collection.ID,
 		"hash_method":   collectionKeyspace.Hash,
-		"write":         true, // TODO: change once we support more than one
 	}
 
 	if collectionKeyspace.ID != 0 {

@@ -366,12 +366,6 @@ const schemaJson string = `
                   "field_type": "_string",
                   "not_null": true,
                   "provision_state": 3
-                },
-                "write": {
-                  "name": "write",
-                  "field_type": "_bool",
-                  "not_null": true,
-                  "provision_state": 3
                 }
               },
               "indexes": {
