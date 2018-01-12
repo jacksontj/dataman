@@ -1,6 +1,6 @@
 {
   "return": [],
-  "error": "\nFilters must have a map or a list at the top level\nFilters must have a map or a list at the top level",
+  "error": "Filters must have a map or a list at the top level\nFilters must have a map or a list at the top level",
   "meta": {
     "datasource": "postgres"
   }
