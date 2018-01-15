@@ -144,11 +144,12 @@ func (t *TaskNode) fetchMeta() (err error) {
 	// TODO: lots of error handling required
 
 	// TODO: support errors
+	// TODO: support timeouts!
 	meta, err := t.MetaStore.GetMeta(context.Background())
 	if err != nil {
 		return err
 	}
-	if meta != nil && err == nil {
+	if meta != nil {
 		t.meta.Store(meta)
 	}
 	logrus.Debugf("Loaded meta: %v", meta)
@@ -187,9 +188,7 @@ func (t *TaskNode) EnsureExistsDatabase(ctx context.Context, db *metadata.Databa
 		return err
 	}
 
-	t.fetchMeta()
-
-	return nil
+	return t.fetchMeta()
 }
 
 // TODO: this will eventually actually use a long-running task system for
