@@ -29,8 +29,14 @@ func Setup() (*tasknode.TaskNode, *routernode.RouterNode, *storagenode.Datasourc
 		logrus.Fatalf("Error creating tasknode: %v", err)
 	}
 
-	go taskNode.Start()
-	time.Sleep(time.Second) // TODO: remove-- need a mechanism to know its ready
+	taskErrChan := make(chan error, 1)
+	go func() { taskErrChan <- taskNode.Start() }()
+	select {
+	case err := <-taskErrChan:
+		logrus.Fatalf("Error starting TaskNode: %v", err)
+	case <-time.After(time.Second):
+		break
+	}
 
 	// Router (with static config?)
 	routernodeConfig := &routernode.Config{}
@@ -47,7 +53,14 @@ func Setup() (*tasknode.TaskNode, *routernode.RouterNode, *storagenode.Datasourc
 	if err != nil {
 		logrus.Fatalf("Error creating routernode: %v", err)
 	}
-	go routerNode.Start()
+	routerErrChan := make(chan error, 1)
+	go func() { routerErrChan <- routerNode.Start() }()
+	select {
+	case err := <-routerErrChan:
+		logrus.Fatalf("Error starting routerNode: %v", err)
+	case <-time.After(time.Second):
+		break
+	}
 
 	// Datasource
 	storagenodeConfig := &storagenode.Config{}
@@ -68,7 +81,14 @@ func Setup() (*tasknode.TaskNode, *routernode.RouterNode, *storagenode.Datasourc
 	if err != nil {
 		logrus.Fatalf("Unable to create storagenode: %v", err)
 	}
-	go storageNode.Start()
+	storageErrChan := make(chan error, 1)
+	go func() { storageErrChan <- storageNode.Start() }()
+	select {
+	case err := <-storageErrChan:
+		logrus.Fatalf("Error starting storageNode: %v", err)
+	case <-time.After(time.Second):
+		break
+	}
 
 	var datasourceInstance *storagenode.DatasourceInstance
 	for _, dsi := range storageNode.Datasources {
