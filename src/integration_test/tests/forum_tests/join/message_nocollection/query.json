@@ -6,6 +6,6 @@
 		"filter": {
 		    "ksuid": ["=", 1]
 		},
-		"join": [".data.created_by"]
+		"join": ["nonexistantcollection.data.created_by"]
 	}
 }
