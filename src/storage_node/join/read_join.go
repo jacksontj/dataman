@@ -18,9 +18,8 @@ func DoReadJoins(ctx context.Context, client *datamanclient.Client, q *query.Que
 		return err
 	}
 
-	getter := func(name string) MetaCollection {
-		tmp, _ := meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), name)
-		return tmp
+	getter := func(name string) (MetaCollection, error) {
+		return meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), name)
 	}
 
 	joinCollection, err := OrderJoins(getter, collection, joinMap)

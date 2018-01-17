@@ -88,7 +88,7 @@ type MetaCollection interface {
 	GetField(nameParts []string) *metadata.CollectionField
 }
 
-type CollectionGetter func(name string) MetaCollection
+type CollectionGetter func(name string) (MetaCollection, error)
 
 func NewCollection(m MetaCollection) *Collection {
 	return &Collection{
@@ -166,9 +166,9 @@ func OrderJoins(collectionMetaGetter CollectionGetter, collection MetaCollection
 			}
 
 			// TODO: check for non-existance
-			metaJoinCollection := collectionMetaGetter(joinField.Relation.Collection)
-			if metaJoinCollection == nil {
-				return fmt.Errorf("Unknown collection: %s", joinField.Relation.Collection)
+			metaJoinCollection, err := collectionMetaGetter(joinField.Relation.Collection)
+			if err != nil {
+				return err
 			}
 			joinCollection := NewCollection(metaJoinCollection)
 
@@ -248,7 +248,10 @@ func OrderJoins(collectionMetaGetter CollectionGetter, collection MetaCollection
 
 			joinParts := strings.SplitN(join, ".", 2)
 			// Get the collection from meta defined by joinParts[0]
-			localCollection := collectionMetaGetter(joinParts[0])
+			localCollection, err := collectionMetaGetter(joinParts[0])
+			if err != nil {
+				return nil, err
+			}
 
 			// Make our joinCollection repr
 			joinCollection := NewCollection(localCollection)
