@@ -29,7 +29,7 @@ func fieldToSchema(field *metadata.CollectionField) (string, error) {
 	case datamantype.Float:
 		fieldStr += "\"" + field.Name + "\" double precision"
 	case datamantype.Serial:
-		fieldStr += "\"" + field.Name + "\" serial"
+		fieldStr += "\"" + field.Name + "\" serial8"
 	case datamantype.Bool:
 		fieldStr += "\"" + field.Name + "\" bool"
 	case datamantype.DateTime:
