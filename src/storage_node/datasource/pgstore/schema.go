@@ -446,7 +446,7 @@ SELECT
   am.amname                AS index_type,
   idx.indkey,
         array_to_json(ARRAY(
-           SELECT pg_get_indexdef(idx.indexrelid, k + 1, TRUE)
+           SELECT trim(both '"' from pg_get_indexdef(idx.indexrelid, k + 1, TRUE))
            FROM
              generate_subscripts(idx.indkey, 1) AS k
            ORDER BY k
