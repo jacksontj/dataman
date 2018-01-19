@@ -47,3 +47,4 @@ src/task_node/tasknode/tasknode
 src/storage_node/storagenode/storagenode
 src/schemaexport/schemaexport
 src/client/example_usage/example_usage
+src/schemaimport/schemaimport
