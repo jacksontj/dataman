@@ -142,7 +142,11 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case time.Time:
 			return val, nil
 		case string:
-			return time.Parse(DateTimeFormatStr, typedVal)
+			v, err := time.Parse(DateTimeFormatStr, typedVal)
+			if err != nil {
+				v, err = time.Parse(time.RFC3339, typedVal)
+			}
+			return v, err
 		case int:
 			i, err := strconv.ParseInt("1405544146", 10, 64)
 			if err != nil {
