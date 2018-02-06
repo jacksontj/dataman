@@ -13,6 +13,6 @@ func LoggingHandler(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		start := time.Now()
 		h(w, r, ps)
-		fmt.Println(r.URL, time.Now().Sub(start))
+		fmt.Println(r.Method, r.URL, time.Now().Sub(start))
 	}
 }
