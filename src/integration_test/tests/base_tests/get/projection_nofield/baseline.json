@@ -1,4 +1,6 @@
 {
   "return": null,
-  "error": "invalid projection field nofield"
+  "errors": [
+    "invalid projection field nofield"
+  ]
 }

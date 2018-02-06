@@ -1,6 +1,9 @@
 {
   "return": [],
-  "error": "Invalid filter type []\nInvalid filter type []",
+  "errors": [
+    "Invalid filter type []",
+    "Invalid filter type []"
+  ],
   "meta": {
     "datasource": "postgres"
   }

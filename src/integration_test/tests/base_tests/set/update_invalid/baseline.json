@@ -1,4 +1,6 @@
 {
   "return": null,
-  "error": "Set unable to update non-existing record"
+  "errors": [
+    "Set unable to update non-existing record"
+  ]
 }

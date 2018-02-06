@@ -1,4 +1,6 @@
 {
   "return": null,
-  "error": "PKey must be a map[string]interface{}"
+  "errors": [
+    "PKey must be a map[string]interface{}"
+  ]
 }

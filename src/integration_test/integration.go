@@ -87,8 +87,8 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 				if result.ValidationError != nil {
 					t.Fatalf("Valdiation error loading data into %s.%s: %v", databaseName, collectionName, result.ValidationError)
 				}
-				if result.Error != "" {
-					t.Fatalf("Error loading data into %s.%s: %v", databaseName, collectionName, result.Error)
+				if err := result.Err(); err != nil {
+					t.Fatalf("Error loading data into %s.%s: %v", databaseName, collectionName, err)
 				}
 			}
 		}

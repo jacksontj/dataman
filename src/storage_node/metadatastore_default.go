@@ -48,8 +48,8 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 		"collection":     "field_type",
 	})
 	// TODO: better error handle
-	if fieldTypeResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+	if err := fieldTypeResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", err)
 	}
 
 	// for each database load the database + collections etc.
@@ -68,8 +68,8 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 			},
 		})
 		// TODO: better error handle
-		if fieldTypeConstraintResult.Error != "" {
-			return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+		if err := fieldTypeConstraintResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", err)
 		}
 
 		if len(fieldTypeConstraintResult.Return) > 0 {
@@ -99,8 +99,8 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 		"collection":     "database",
 	})
 	// TODO: better error handle
-	if databaseResult.Error != "" {
-		return nil, fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
+	if err := databaseResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error getting databaseResult: %v", err)
 	}
 
 	// for each database load the database + shard + collections etc.
@@ -117,8 +117,8 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 				"database_id": []interface{}{"=", databaseRecord["_id"]},
 			},
 		})
-		if shardInstanceResult.Error != "" {
-			return nil, fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
+		if err := shardInstanceResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting shardInstanceResult: %v", err)
 		}
 
 		// Now loop over all collections in the database to load them
@@ -137,8 +137,8 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 					"shard_instance_id": []interface{}{"=", shardInstanceRecord["_id"]},
 				},
 			})
-			if collectionResult.Error != "" {
-				return nil, fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
+			if err := collectionResult.Err(); err != nil {
+				return nil, fmt.Errorf("Error getting collectionResult: %v", err)
 			}
 
 			// Now loop over all collections in the database to load them
@@ -187,8 +187,8 @@ func (m *DefaultMetadataStore) EnsureExistsDatabase(ctx context.Context, db *met
 		"record":         databaseRecord,
 	})
 
-	if databaseResult.Error != "" {
-		return fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
+	if err := databaseResult.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseResult: %v", err)
 	}
 
 	db.ID = databaseResult.Return[0]["_id"].(int64)
@@ -230,8 +230,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistDatabase(ctx context.Context, db
 			"_id": database.ID,
 		},
 	})
-	if databaseDelete.Error != "" {
-		return fmt.Errorf("Error getting databaseDelete: %v", databaseDelete.Error)
+	if err := databaseDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseDelete: %v", err)
 	}
 
 	return nil
@@ -272,8 +272,8 @@ func (m *DefaultMetadataStore) EnsureExistsShardInstance(ctx context.Context, db
 		"record":         shardInstanceRecord,
 	})
 
-	if shardInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
+	if err := shardInstanceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting shardInstanceResult: %v", err)
 	}
 
 	shardInstance.ID = shardInstanceResult.Return[0]["_id"].(int64)
@@ -331,8 +331,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistShardInstance(ctx context.Contex
 			"_id": shardInstance.ID,
 		},
 	})
-	if shardInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting shardInstanceResult: %v", shardInstanceResult.Error)
+	if err := shardInstanceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting shardInstanceResult: %v", err)
 	}
 	return nil
 }
@@ -405,8 +405,8 @@ func (m *DefaultMetadataStore) EnsureExistsCollection(ctx context.Context, db *m
 		"collection":     "collection",
 		"record":         collectionRecord,
 	})
-	if collectionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
+	if err := collectionResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionResult: %v", err)
 	}
 
 	collection.ID = collectionResult.Return[0]["_id"].(int64)
@@ -489,8 +489,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollection(ctx context.Context, 
 			"_id": collection.ID,
 		},
 	})
-	if collectionDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionDelete: %v", collectionDelete.Error)
+	if err := collectionDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionDelete: %v", err)
 	}
 
 	return nil
@@ -574,8 +574,8 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(ctx context.Context, 
 		"collection":     "collection_index",
 		"record":         collectionIndexRecord,
 	})
-	if collectionIndexResult.Error != "" {
-		return fmt.Errorf("Error inserting collectionIndexResult: %v", collectionIndexResult.Error)
+	if err := collectionIndexResult.Err(); err != nil {
+		return fmt.Errorf("Error inserting collectionIndexResult: %v", err)
 	}
 	index.ID = collectionIndexResult.Return[0]["_id"].(int64)
 
@@ -592,8 +592,8 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(ctx context.Context, 
 			},
 		})
 		// TODO: use CollectionIndexItem
-		if collectionIndexItemResult.Error != "" && false {
-			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+		if err := collectionIndexItemResult.Err(); err != nil && false {
+			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", err)
 		}
 	}
 
@@ -635,8 +635,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 			"collection_index_id": []interface{}{"=", collectionIndex.ID},
 		},
 	})
-	if collectionIndexItemResult.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+	if err := collectionIndexItemResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionIndexItemResult: %v", err)
 	}
 
 	for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
@@ -648,8 +648,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 				"_id": collectionIndexItemRecord["_id"],
 			},
 		})
-		if collectionIndexItemDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
+		if err := collectionIndexItemDelete.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", err)
 		}
 
 	}
@@ -662,8 +662,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 			"_id": collectionIndex.ID,
 		},
 	})
-	if collectionIndexDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
+	if err := collectionIndexDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionIndexDelete: %v", err)
 	}
 
 	return nil
@@ -749,8 +749,8 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(ctx context.Context, 
 		"collection":     "collection_field",
 		"record":         fieldRecord,
 	})
-	if collectionFieldResult.Error != "" {
-		return fmt.Errorf("Error inserting collectionFieldResult: %v", collectionFieldResult.Error)
+	if err := collectionFieldResult.Err(); err != nil {
+		return fmt.Errorf("Error inserting collectionFieldResult: %v", err)
 	}
 	field.ID = collectionFieldResult.Return[0]["_id"].(int64)
 
@@ -781,8 +781,8 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(ctx context.Context, 
 			"collection":     "collection_field_relation",
 			"record":         fieldRelationRecord,
 		})
-		if collectionFieldRelationResult.Error != "" {
-			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+		if err := collectionFieldRelationResult.Err(); err != nil {
+			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", err)
 		}
 		field.Relation.ID = collectionFieldRelationResult.Return[0]["_id"].(int64)
 	}
@@ -846,8 +846,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(ctx context.Cont
 				"_id": field.Relation.ID,
 			},
 		})
-		if collectionFieldRelationDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", collectionFieldRelationDelete.Error)
+		if err := collectionFieldRelationDelete.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", err)
 		}
 	}
 
@@ -859,8 +859,8 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(ctx context.Cont
 			"_id": field.ID,
 		},
 	})
-	if collectionFieldDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionFieldDelete: %v", collectionFieldDelete.Error)
+	if err := collectionFieldDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionFieldDelete: %v", err)
 	}
 	return nil
 }
@@ -877,8 +877,8 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 				"_id": []interface{}{"=", id},
 			},
 		})
-		if collectionFieldResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		if err := collectionFieldResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", err)
 		}
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
@@ -925,8 +925,8 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 				"collection_field_id": []interface{}{"=", id},
 			},
 		})
-		if collectionFieldRelationResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+		if err := collectionFieldRelationResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldRelationResult: %v", err)
 		}
 		if len(collectionFieldRelationResult.Return) == 1 {
 			collectionFieldRelationRecord := collectionFieldRelationResult.Return[0]
@@ -965,8 +965,8 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 				"_id": []interface{}{"=", id},
 			},
 		})
-		if collectionResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
+		if err := collectionResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionResult: %v", err)
 		}
 
 		collectionRecord := collectionResult.Return[0]
@@ -984,8 +984,8 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
-		if collectionFieldResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		if err := collectionFieldResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", err)
 		}
 
 		// TODO: remove
@@ -1010,8 +1010,8 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
-		if collectionIndexResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+		if err := collectionIndexResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionIndexResult: %v", err)
 		}
 
 		for _, collectionIndexRecord := range collectionIndexResult.Return {
@@ -1024,8 +1024,8 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 					"collection_index_id": []interface{}{"=", collectionIndexRecord["_id"]},
 				},
 			})
-			if collectionIndexItemResult.Error != "" {
-				return nil, fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+			if err := collectionIndexItemResult.Err(); err != nil {
+				return nil, fmt.Errorf("Error getting collectionIndexItemResult: %v", err)
 			}
 
 			// TODO: better? Right now we need a way to nicely define what the index points to

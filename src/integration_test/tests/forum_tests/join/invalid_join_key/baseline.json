@@ -10,7 +10,9 @@
       "ksuid": "1"
     }
   ],
-  "error": "Invalid join key: .data.created_sby",
+  "errors": [
+    "Invalid join key: .data.created_sby"
+  ],
   "meta": {
     "datasource": "postgres"
   }

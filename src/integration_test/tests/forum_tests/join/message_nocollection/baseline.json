@@ -10,7 +10,9 @@
       "ksuid": "1"
     }
   ],
-  "error": "Unknown collection nonexistantcollection",
+  "errors": [
+    "Unknown collection nonexistantcollection"
+  ],
   "meta": {
     "datasource": "postgres"
   }

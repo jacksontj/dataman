@@ -243,11 +243,11 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 	// TODO: pass down database + collection
 	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
+		return &query.Result{Errors: []string{"Unknown db " + q.Args["db"].(string)}}
 	}
 	collection, ok := database.Collections[q.Args["collection"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
+		return &query.Result{Errors: []string{"Unknown collection " + q.Args["collection"].(string)}}
 	}
 
 	var fieldList []string
@@ -262,17 +262,17 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 			for i, f := range fieldsTyped {
 				fieldList[i], ok = f.(string)
 				if !ok {
-					return &query.Result{Error: `"fields" must be a list of strings`}
+					return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
 				}
 			}
 		default:
-			return &query.Result{Error: `"fields" must be a list of strings`}
+			return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
 		}
 
 		// Check that the fields exist (or at least are subfields of things that exist)
 		for _, field := range fieldList {
 			if collectionField := collection.GetFieldByName(field); collectionField == nil {
-				return &query.Result{Error: "invalid projection field " + field}
+				return &query.Result{Errors: []string{"invalid projection field " + field}}
 			}
 		}
 	}
@@ -291,7 +291,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 
 		// All other operations should error
 	default:
-		return &query.Result{Error: "Unknown query type: " + string(q.Type)}
+		return &query.Result{Errors: []string{"Unknown query type: " + string(q.Type)}}
 	}
 
 	// Apply projection
@@ -312,7 +312,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		case []string:
 			sortList = sortListTyped
 		default:
-			result.Error = "Unable to sort result, invalid sort args"
+			result.Errors = []string{"Unable to sort result, invalid sort args"}
 			return result
 		}
 
@@ -330,14 +330,14 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 				}
 			case []bool:
 				if len(sortReverseRawTyped) != len(sortList) {
-					result.Error = "Unable to sort_reverse must be the same len as sort"
+					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
 					return result
 				}
 				sortReverseList = sortReverseRawTyped
 			// TODO: remove? things should have a real type...
 			case []interface{}:
 				if len(sortReverseRawTyped) != len(sortList) {
-					result.Error = "Unable to sort_reverse must be the same len as sort"
+					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
 					return result
 				}
 				for i, sortReverseItem := range sortReverseRawTyped {
@@ -345,7 +345,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 					sortReverseList[i] = sortReverseItem.(bool)
 				}
 			default:
-				result.Error = "Invalid sort_reverse value"
+				result.Errors = []string{"Invalid sort_reverse value"}
 				return result
 			}
 
@@ -358,11 +358,11 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *query.Query) *query.Result {
 	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
+		return &query.Result{Errors: []string{"Unknown db " + q.Args["db"].(string)}}
 	}
 	collection, ok := database.Collections[q.Args["collection"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
+		return &query.Result{Errors: []string{"Unknown collection " + q.Args["collection"].(string)}}
 	}
 
 	// Once we have the metadata all found we need to do the following:
@@ -398,11 +398,11 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 	case query.Get:
 		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
+			return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}}
 		}
 		pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("PKey must be a map[string]interface{}")}
+			return &query.Result{Errors: []string{fmt.Sprintf("PKey must be a map[string]interface{}")}}
 		}
 
 		// Ensure the pkeyRecord has the primary key in it
@@ -410,7 +410,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		flattenedPKey := query.FlattenResult(pkeyRecord)
 		for _, fieldName := range collection.PrimaryIndex.Fields {
 			if _, ok := flattenedPKey[fieldName]; !ok {
-				return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
+				return &query.Result{Errors: []string{fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}}
 			}
 		}
 
@@ -418,14 +418,14 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(pkeyRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
+				return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
 		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 
 		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
@@ -434,7 +434,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 	case query.Filter:
 		filterMapRaw, ok := q.Args["filter"] // TODO: better arg than pkey, maybe record?
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Filter()s must include filter map")}
+			return &query.Result{Errors: []string{fmt.Sprintf("Filter()s must include filter map")}}
 		}
 
 		hasShardKey := true
@@ -482,7 +482,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
-				return &query.Result{Error: err.Error()}
+				return &query.Result{Errors: []string{err.Error()}}
 			}
 
 			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
@@ -493,7 +493,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		}
 
 	default:
-		return &query.Result{Error: "Unknown read query type " + string(q.Type)}
+		return &query.Result{Errors: []string{"Unknown read query type " + string(q.Type)}}
 
 	}
 
@@ -512,13 +512,13 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			vshardResults <- &query.Result{Error: "1 Unknown datasourceInstanceShardInstance"}
+			vshardResults <- &query.Result{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
 		} else {
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 				if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 					vshardResults <- result
 				} else {
-					vshardResults <- &query.Result{Error: err.Error()}
+					vshardResults <- &query.Result{Errors: []string{err.Error()}}
 				}
 			}(datasourceInstance, datasourceInstanceShardInstance)
 		}
@@ -531,11 +531,11 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *query.Query) *query.Result {
 	database, ok := meta.Databases[q.Args["db"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown db " + q.Args["db"].(string)}
+		return &query.Result{Errors: []string{"Unknown db " + q.Args["db"].(string)}}
 	}
 	collection, ok := database.Collections[q.Args["collection"].(string)]
 	if !ok {
-		return &query.Result{Error: "Unknown collection " + q.Args["collection"].(string)}
+		return &query.Result{Errors: []string{"Unknown collection " + q.Args["collection"].(string)}}
 	}
 
 	// Once we have the metadata all found we need to do the following:
@@ -569,11 +569,11 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	case query.Set:
 		queryRecordRaw, ok := q.Args["record"]
 		if !ok {
-			return &query.Result{Error: "Set()s must include a record"}
+			return &query.Result{Errors: []string{"Set()s must include a record"}}
 		}
 		queryRecord, ok := queryRecordRaw.(map[string]interface{})
 		if !ok {
-			return &query.Result{Error: "Set()s record must be a map"}
+			return &query.Result{Errors: []string{"Set()s record must be a map"}}
 		}
 
 		// Do we have the primary key?
@@ -585,11 +585,11 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 				// this is an insert, and as such we need to run *all* the function_default
 				if missingPKeyField := collection.GetFieldByName(fieldName); missingPKeyField != nil && missingPKeyField.FunctionDefault != nil {
 					if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
-						return &query.Result{Error: fmt.Sprintf("Error enforcing function_default: %v", err)}
+						return &query.Result{Errors: []string{fmt.Sprintf("Error enforcing function_default: %v", err)}}
 					}
 					break
 				} else {
-					return &query.Result{Error: fmt.Sprintf("record must include the primary key, missing %s", fieldName)}
+					return &query.Result{Errors: []string{fmt.Sprintf("record must include the primary key, missing %s", fieldName)}}
 				}
 			}
 		}
@@ -599,14 +599,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
+				return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
 		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
@@ -617,30 +617,30 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		// TODO: generate or store/read the name!
 		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Error: "2 Unknown datasourceInstanceShardInstance"}
+			return &query.Result{Errors: []string{"2 Unknown datasourceInstanceShardInstance"}}
 		}
 
 		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
 		queryRecordRaw, ok := q.Args["record"]
 		if !ok {
-			return &query.Result{Error: "Insert()s must include a record"}
+			return &query.Result{Errors: []string{"Insert()s must include a record"}}
 		}
 		queryRecord, ok := queryRecordRaw.(map[string]interface{})
 		if !ok {
-			return &query.Result{Error: "Insert()s record must be a map"}
+			return &query.Result{Errors: []string{"Insert()s record must be a map"}}
 		}
 		// For inserts we need to ensure we have set the function_default fields
 		// this is because function_default fields will commonly be used in shardKey
 		// so we need to have it set before we do the sharding/hashing
 		if err := collection.FunctionDefaultRecord(queryRecord); err != nil {
-			return &query.Result{Error: fmt.Sprintf("Error enforcing function_default: %v", err)}
+			return &query.Result{Errors: []string{fmt.Sprintf("Error enforcing function_default: %v", err)}}
 		}
 		// TODO: enforce other collection-level validations (fields, etc.)
 
@@ -648,14 +648,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(queryRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}
+				return &query.Result{Errors: []string{fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, q.Args["record"])}}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
 		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
@@ -666,19 +666,19 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Error: "4 Unknown datasourceInstanceShardInstance"}
+			return &query.Result{Errors: []string{"4 Unknown datasourceInstanceShardInstance"}}
 		}
 
 		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 
 	case query.Update:
 		filterRecord, ok := q.Args["filter"].(map[string]interface{})
 		if !ok {
-			return &query.Result{Error: "fitler must be a map[string]interface{}"}
+			return &query.Result{Errors: []string{"fitler must be a map[string]interface{}"}}
 		}
 
 		hasShardKey := true
@@ -691,7 +691,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			}
 			filterTyped, ok := tmp.([]interface{})
 			if !ok {
-				return &query.Result{Error: "fitler values must be a list of [comparator, args]"}
+				return &query.Result{Errors: []string{"fitler values must be a list of [comparator, args]"}}
 			}
 			if filterTyped[0] == filter.Equal {
 				shardKeys[i] = filterTyped[1]
@@ -707,7 +707,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			hashedShardKey, err := keyspace.HashFunc(shardKey)
 			if err != nil {
 				// TODO: wrap the error
-				return &query.Result{Error: err.Error()}
+				return &query.Result{Errors: []string{err.Error()}}
 			}
 			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
@@ -717,14 +717,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 			if !ok {
-				return &query.Result{Error: "5 Unknown datasourceInstanceShardInstance"}
+				return &query.Result{Errors: []string{"5 Unknown datasourceInstanceShardInstance"}}
 			}
 
 			// TODO: replicas -- add args for slave etc.
 			if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 				return result
 			} else {
-				return &query.Result{Error: err.Error()}
+				return &query.Result{Errors: []string{err.Error()}}
 			}
 
 		} else { // Otherwise we need to send this query to all shards to let them handle it
@@ -735,14 +735,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 				datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 				if !ok {
-					vshardResults <- &query.Result{Error: "6 Unknown datasourceInstanceShardInstance"}
+					vshardResults <- &query.Result{Errors: []string{"6 Unknown datasourceInstanceShardInstance"}}
 				} else {
 					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 						// TODO: replicas -- add args for slave etc.
 						if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 							vshardResults <- result
 						} else {
-							vshardResults <- &query.Result{Error: err.Error()}
+							vshardResults <- &query.Result{Errors: []string{err.Error()}}
 						}
 					}(datasourceInstance, datasourceInstanceShardInstance)
 				}
@@ -755,11 +755,11 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	case query.Delete:
 		rawPkeyRecord, ok := q.Args["pkey"] // TODO: better arg than pkey, maybe record?
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}
+			return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the primary-key: %v", keyspace.ShardKey)}}
 		}
 		pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
 		if !ok {
-			return &query.Result{Error: fmt.Sprintf("PKey must be a map[string]interface{}")}
+			return &query.Result{Errors: []string{fmt.Sprintf("PKey must be a map[string]interface{}")}}
 		}
 
 		// Ensure the pkeyRecord has the primary key in it
@@ -767,7 +767,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		flattenedPKey := query.FlattenResult(pkeyRecord)
 		for _, fieldName := range collection.PrimaryIndex.Fields {
 			if _, ok := flattenedPKey[fieldName]; !ok {
-				return &query.Result{Error: fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}
+				return &query.Result{Errors: []string{fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}}
 			}
 		}
 
@@ -775,14 +775,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		for i, shardKey := range keyspace.ShardKeySplit {
 			shardKeys[i], ok = query.GetValue(pkeyRecord, shardKey)
 			if !ok {
-				return &query.Result{Error: fmt.Sprintf("Delete()s must include the shard-key, missing %s from (%v)", shardKey, pkeyRecord)}
+				return &query.Result{Errors: []string{fmt.Sprintf("Delete()s must include the shard-key, missing %s from (%v)", shardKey, pkeyRecord)}}
 			}
 		}
 		shardKey := sharding.CombineKeys(shardKeys)
 		hashedShardKey, err := keyspace.HashFunc(shardKey)
 		if err != nil {
 			// TODO: wrap the error
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 
@@ -793,14 +793,14 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Error: "7 Unknown datasourceInstanceShardInstance"}
+			return &query.Result{Errors: []string{"7 Unknown datasourceInstanceShardInstance"}}
 		}
 
 		// TODO: replicas -- add args for slave etc.
 		if result, err := Query(ctx, s.clientManager, datasourceInstance, q.WithArg("shard_instance", datasourceInstanceShardInstance.Name)); err == nil {
 			return result
 		} else {
-			return &query.Result{Error: err.Error()}
+			return &query.Result{Errors: []string{err.Error()}}
 		}
 
 	}

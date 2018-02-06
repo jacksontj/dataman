@@ -1,6 +1,9 @@
 {
   "return": [],
-  "error": "where lists need to be A op B\nwhere lists need to be A op B",
+  "errors": [
+    "where lists need to be A op B",
+    "where lists need to be A op B"
+  ],
   "meta": {
     "datasource": "postgres"
   }

@@ -60,8 +60,8 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 				return err
 			}
 
-			if joinResults.Error != "" {
-				return fmt.Errorf(joinResults.Error)
+			if err := joinResults.Err(); err != nil {
+				return err
 			}
 
 			if forwardJoin.C.HasJoins() {
@@ -103,8 +103,8 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 				// is a library method so we need to deal with it
 				return err
 			}
-			if joinResults.Error != "" {
-				return fmt.Errorf(joinResults.Error)
+			if err := joinResults.Err(); err != nil {
+				return err
 			}
 
 			// Check if the child has stuff to do

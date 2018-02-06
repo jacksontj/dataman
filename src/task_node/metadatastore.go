@@ -51,8 +51,8 @@ func (m *MetadataStore) GetSequence(ctx context.Context, name string) (int64, er
 		},
 	})
 	// TODO: better error handle
-	if sequenceReadResult.Error != "" {
-		return 0, fmt.Errorf("Error in getting sequenceReadResult: %v", sequenceReadResult.Error)
+	if err := sequenceReadResult.Err(); err != nil {
+		return 0, fmt.Errorf("Error in getting sequenceReadResult: %v", err)
 	}
 	var nextId int64
 	if len(sequenceReadResult.Return) == 0 {
@@ -67,8 +67,8 @@ func (m *MetadataStore) GetSequence(ctx context.Context, name string) (int64, er
 			},
 		})
 		// TODO: better error handle
-		if sequenceWriteResult.Error != "" {
-			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", sequenceWriteResult.Error)
+		if err := sequenceWriteResult.Err(); err != nil {
+			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", err)
 		}
 
 	} else {
@@ -86,8 +86,8 @@ func (m *MetadataStore) GetSequence(ctx context.Context, name string) (int64, er
 			"record": sequenceReadResult.Return[0],
 		})
 		// TODO: better error handle
-		if sequenceWriteResult.Error != "" {
-			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", sequenceWriteResult.Error)
+		if err := sequenceWriteResult.Err(); err != nil {
+			return 0, fmt.Errorf("Error in getting sequenceWriteResult: %v", err)
 		}
 
 	}
@@ -109,8 +109,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 		"collection":     "field_type",
 	})
 	// TODO: better error handle
-	if fieldTypeResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+	if err := fieldTypeResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", err)
 	}
 
 	// for each database load the database + collections etc.
@@ -129,8 +129,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 			},
 		})
 		// TODO: better error handle
-		if fieldTypeConstraintResult.Error != "" {
-			return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", fieldTypeResult.Error)
+		if err := fieldTypeConstraintResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in getting fieldTypeResult: %v", err)
 		}
 
 		if len(fieldTypeConstraintResult.Return) > 0 {
@@ -158,8 +158,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 		"collection":     "storage_node",
 	})
 	// TODO: better error handle
-	if storageNodeResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting storageNodeResult: %v", storageNodeResult.Error)
+	if err := storageNodeResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting storageNodeResult: %v", err)
 	}
 
 	meta.Nodes = make(map[int64]*metadata.StorageNode)
@@ -187,8 +187,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 		"collection":     "datasource_instance",
 	})
 	// TODO: better error handle
-	if datasourceInstanceResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting datasourceInstanceResult: %v", datasourceInstanceResult.Error)
+	if err := datasourceInstanceResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting datasourceInstanceResult: %v", err)
 	}
 	for _, datasourceInstanceRecord := range datasourceInstanceResult.Return {
 		datasourceInstance := metadata.NewDatasourceInstance(datasourceInstanceRecord["name"].(string))
@@ -208,8 +208,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 			},
 		})
 		// TODO: better error handle
-		if datasourceInstanceShardInstanceResult.Error != "" {
-			return nil, fmt.Errorf("Error in getting datasourceInstanceShardInstanceResult: %v", datasourceInstanceShardInstanceResult.Error)
+		if err := datasourceInstanceShardInstanceResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in getting datasourceInstanceShardInstanceResult: %v", err)
 		}
 		for _, datasourceInstanceShardInstanceRecord := range datasourceInstanceShardInstanceResult.Return {
 			dsisi := &metadata.DatasourceInstanceShardInstance{
@@ -234,8 +234,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 		"collection":     "datastore",
 	})
 	// TODO: better error handle
-	if datastoreResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting datastoreResult: %v", datastoreResult.Error)
+	if err := datastoreResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting datastoreResult: %v", err)
 	}
 
 	// for each database load the database + collections etc.
@@ -254,8 +254,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 		"collection":     "database",
 	})
 	// TODO: better error handle
-	if databaseResult.Error != "" {
-		return nil, fmt.Errorf("Error in getting database list: %v", databaseResult.Error)
+	if err := databaseResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in getting database list: %v", err)
 	}
 
 	// for each database load the database + collections etc.
@@ -278,8 +278,8 @@ func (m *MetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, error) {
 			"collection":     "collection",
 		})
 		// TODO: better error handle
-		if collectionResult.Error != "" {
-			return nil, fmt.Errorf("Error in collectionResult: %v", collectionResult.Error)
+		if err := collectionResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in collectionResult: %v", err)
 		}
 
 		for _, collectionRecord := range collectionResult.Return {
@@ -311,8 +311,8 @@ func (m *MetadataStore) getDatastoreSetByDatabaseId(ctx context.Context, meta *m
 		},
 	})
 	// TODO: better error handle
-	if databaseDatastoreResult.Error != "" {
-		return nil, fmt.Errorf("Error in databaseDatastoreResult: %v", databaseDatastoreResult.Error)
+	if err := databaseDatastoreResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in databaseDatastoreResult: %v", err)
 	}
 
 	if len(databaseDatastoreResult.Return) == 0 {
@@ -369,8 +369,8 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 		},
 	})
 	// TODO: better error handle
-	if datastoreResult.Error != "" {
-		return nil, fmt.Errorf("Error in datastoreResult: %v", datastoreResult.Error)
+	if err := datastoreResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in datastoreResult: %v", err)
 	}
 	datastoreRecord := datastoreResult.Return[0]
 
@@ -390,8 +390,8 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 	})
 
 	// TODO: better error handle
-	if datastoreShardResult.Error != "" {
-		return nil, fmt.Errorf("Error in datastoreShardResult: %v", datastoreShardResult.Error)
+	if err := datastoreShardResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in datastoreShardResult: %v", err)
 	}
 
 	for _, datastoreShardRecord := range datastoreShardResult.Return {
@@ -416,8 +416,8 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 		})
 
 		// TODO: better error handle
-		if datastoreShardReplicaResult.Error != "" {
-			return nil, fmt.Errorf("Error in datastoreShardReplicaResult: %v", datastoreShardReplicaResult.Error)
+		if err := datastoreShardReplicaResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in datastoreShardReplicaResult: %v", err)
 		}
 
 		for _, datastoreShardReplicaRecord := range datastoreShardReplicaResult.Return {
@@ -446,8 +446,8 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 	})
 
 	// TODO: better error handle
-	if datastoreVShardResult.Error != "" {
-		return nil, fmt.Errorf("Error in datastoreVShardResult: %v", datastoreVShardResult.Error)
+	if err := datastoreVShardResult.Err(); err != nil {
+		return nil, fmt.Errorf("Error in datastoreVShardResult: %v", err)
 	}
 	for _, datastoreVShardRecord := range datastoreVShardResult.Return {
 		// Load all vshard instances for the vshard
@@ -461,8 +461,8 @@ func (m *MetadataStore) getDatastoreById(ctx context.Context, meta *metadata.Met
 		})
 
 		// TODO: better error handle
-		if datastoreVShardInstanceResult.Error != "" {
-			return nil, fmt.Errorf("Error in datastoreVShardInstanceResult: %v", datastoreVShardInstanceResult.Error)
+		if err := datastoreVShardInstanceResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in datastoreVShardInstanceResult: %v", err)
 		}
 
 		vshardInstances := make([]*metadata.DatastoreVShardInstance, len(datastoreVShardInstanceResult.Return))
@@ -519,8 +519,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 			},
 		})
 		// TODO: better error handle
-		if collectionResult.Error != "" {
-			return nil, fmt.Errorf("Error in collectionResult: %v", collectionResult.Error)
+		if err := collectionResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in collectionResult: %v", err)
 		}
 		collectionRecord := collectionResult.Return[0]
 
@@ -537,8 +537,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
-		if collectionFieldResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		if err := collectionFieldResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", err)
 		}
 
 		// A temporary place to put all the fields as we find them, we
@@ -565,8 +565,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
-		if collectionIndexResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionIndexResult: %v", collectionIndexResult.Error)
+		if err := collectionIndexResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionIndexResult: %v", err)
 		}
 
 		for _, collectionIndexRecord := range collectionIndexResult.Return {
@@ -579,8 +579,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 					"collection_index_id": []interface{}{"=", collectionIndexRecord["_id"]},
 				},
 			})
-			if collectionIndexItemResult.Error != "" {
-				return nil, fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+			if err := collectionIndexItemResult.Err(); err != nil {
+				return nil, fmt.Errorf("Error getting collectionIndexItemResult: %v", err)
 			}
 
 			// TODO: better? Right now we need a way to nicely define what the index points to
@@ -638,8 +638,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 			},
 		})
 		// TODO: better error handle
-		if collectionKeyspaceResult.Error != "" {
-			return nil, fmt.Errorf("Error in collectionKeyspaceResult: %v", collectionKeyspaceResult.Error)
+		if err := collectionKeyspaceResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error in collectionKeyspaceResult: %v", err)
 		}
 
 		collection.Keyspaces = make([]*metadata.CollectionKeyspace, len(collectionKeyspaceResult.Return))
@@ -656,8 +656,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 				"sort": map[string]interface{}{"fields": []interface{}{"order"}},
 			})
 			// TODO: better error handle
-			if collectionKeyspaceShardKeyResult.Error != "" {
-				return nil, fmt.Errorf("Error in collectionKeyspaceShardKeyResult: %v", collectionKeyspaceShardKeyResult.Error)
+			if err := collectionKeyspaceShardKeyResult.Err(); err != nil {
+				return nil, fmt.Errorf("Error in collectionKeyspaceShardKeyResult: %v", err)
 			}
 			shardKey := make([]string, len(collectionKeyspaceShardKeyResult.Return))
 			for j, collectionKeyspaceShardKeyRecord := range collectionKeyspaceShardKeyResult.Return {
@@ -679,8 +679,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 				},
 			})
 			// TODO: better error handle
-			if collectionKeyspacePartitionResult.Error != "" {
-				return nil, fmt.Errorf("Error in collectionKeyspacePartitionResult: %v", collectionKeyspacePartitionResult.Error)
+			if err := collectionKeyspacePartitionResult.Err(); err != nil {
+				return nil, fmt.Errorf("Error in collectionKeyspacePartitionResult: %v", err)
 			}
 			partitions := make([]*metadata.CollectionKeyspacePartition, len(collectionKeyspacePartitionResult.Return))
 			for k, collectionKeyspacePartitionRecord := range collectionKeyspacePartitionResult.Return {
@@ -693,8 +693,8 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 					},
 				})
 				// TODO: better error handle
-				if collectionKeyspacePartitionDatastoreVShardResult.Error != "" {
-					return nil, fmt.Errorf("Error in collectionKeyspacePartitionDatastoreVShardResult: %v", collectionKeyspacePartitionDatastoreVShardResult.Error)
+				if err := collectionKeyspacePartitionDatastoreVShardResult.Err(); err != nil {
+					return nil, fmt.Errorf("Error in collectionKeyspacePartitionDatastoreVShardResult: %v", err)
 				}
 
 				datastoreVShardIDs := make([]int64, len(collectionKeyspacePartitionDatastoreVShardResult.Return))
@@ -747,8 +747,8 @@ func (m *MetadataStore) getFieldByID(ctx context.Context, meta *metadata.Meta, i
 				"_id": []interface{}{"=", id},
 			},
 		})
-		if collectionFieldResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", collectionFieldResult.Error)
+		if err := collectionFieldResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldResult: %v", err)
 		}
 
 		collectionFieldRecord := collectionFieldResult.Return[0]
@@ -802,8 +802,8 @@ func (m *MetadataStore) getFieldByID(ctx context.Context, meta *metadata.Meta, i
 				"collection_field_id": []interface{}{"=", id},
 			},
 		})
-		if collectionFieldRelationResult.Error != "" {
-			return nil, fmt.Errorf("Error getting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+		if err := collectionFieldRelationResult.Err(); err != nil {
+			return nil, fmt.Errorf("Error getting collectionFieldRelationResult: %v", err)
 		}
 		if len(collectionFieldRelationResult.Return) == 1 {
 			collectionFieldRelationRecord := collectionFieldRelationResult.Return[0]
@@ -863,8 +863,8 @@ func (m *MetadataStore) EnsureExistsStorageNode(ctx context.Context, storageNode
 		"record":         storagenodeRecord,
 	})
 
-	if storagenodeResult.Error != "" {
-		return fmt.Errorf("Error getting storagenodeResult: %v", storagenodeResult.Error)
+	if err := storagenodeResult.Err(); err != nil {
+		return fmt.Errorf("Error getting storagenodeResult: %v", err)
 	}
 
 	storageNode.ID = storagenodeResult.Return[0]["_id"].(int64)
@@ -904,8 +904,8 @@ func (m *MetadataStore) EnsureDoesntExistStorageNode(ctx context.Context, id int
 			"_id": storageNode.ID,
 		},
 	})
-	if storagenodeDelete.Error != "" {
-		return fmt.Errorf("Error getting storagenodeDelete: %v", storagenodeDelete.Error)
+	if err := storagenodeDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting storagenodeDelete: %v", err)
 	}
 
 	return nil
@@ -959,8 +959,8 @@ func (m *MetadataStore) EnsureExistsDatasourceInstance(ctx context.Context, stor
 		"record":         datasourceInstanceRecord,
 	})
 
-	if datasourceInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting datasourceInstanceResult: %v", datasourceInstanceResult.Error)
+	if err := datasourceInstanceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datasourceInstanceResult: %v", err)
 	}
 
 	datasourceInstance.ID = datasourceInstanceResult.Return[0]["_id"].(int64)
@@ -1005,8 +1005,8 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(ctx context.Context,
 			"_id": datasourceInstance.ID,
 		},
 	})
-	if datasourceInstanceDelete.Error != "" {
-		return fmt.Errorf("Error getting datasourceInstanceDelete: %v", datasourceInstanceDelete.Error)
+	if err := datasourceInstanceDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datasourceInstanceDelete: %v", err)
 	}
 
 	return nil
@@ -1066,8 +1066,8 @@ func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(ctx context.
 		"record":         datasourceInstanceShardInstanceRecord,
 	})
 
-	if datasourceInstanceShardInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting datasourceInstanceShardInstanceResult: %v", datasourceInstanceShardInstanceResult.Error)
+	if err := datasourceInstanceShardInstanceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datasourceInstanceShardInstanceResult: %v", err)
 	}
 
 	datasourceInstanceShardInstance.ID = datasourceInstanceShardInstanceResult.Return[0]["_id"].(int64)
@@ -1111,8 +1111,8 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstanceShardInstance(ctx con
 			"_id": datasourceInstanceShardInstance.ID,
 		},
 	})
-	if datasourceInstanceShardInstanceDelete.Error != "" {
-		return fmt.Errorf("Error getting datasourceInstanceShardInstanceDelete: %v", datasourceInstanceShardInstanceDelete.Error)
+	if err := datasourceInstanceShardInstanceDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datasourceInstanceShardInstanceDelete: %v", err)
 	}
 
 	return nil
@@ -1148,8 +1148,8 @@ func (m *MetadataStore) EnsureExistsDatastore(ctx context.Context, datastore *me
 		"record":         datastoreRecord,
 	})
 
-	if datastoreResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreResult: %v", datastoreResult.Error)
+	if err := datastoreResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreResult: %v", err)
 	}
 
 	datastore.ID = datastoreResult.Return[0]["_id"].(int64)
@@ -1202,8 +1202,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastore(ctx context.Context, datastor
 			"_id": datastore.ID,
 		},
 	})
-	if datastoreDelete.Error != "" {
-		return fmt.Errorf("Error getting datastoreDelete: %v", datastoreDelete.Error)
+	if err := datastoreDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreDelete: %v", err)
 	}
 
 	return nil
@@ -1262,8 +1262,8 @@ func (m *MetadataStore) EnsureExistsDatastoreVShard(ctx context.Context, datasto
 		"record":         datastoreVShardRecord,
 	})
 
-	if datastoreVShardResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
+	if err := datastoreVShardResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreVShardResult: %v", err)
 	}
 
 	vShard.ID = datastoreVShardResult.Return[0]["_id"].(int64)
@@ -1316,8 +1316,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShard(ctx context.Context, da
 			"_id": datastoreVShard.ID,
 		},
 	})
-	if datastoreVShardDelete.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardDelete: %v", datastoreVShardDelete.Error)
+	if err := datastoreVShardDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreVShardDelete: %v", err)
 	}
 
 	return nil
@@ -1364,8 +1364,8 @@ func (m *MetadataStore) EnsureExistsDatastoreVShardInstance(ctx context.Context,
 		"record":         datastoreVShardInstanceRecord,
 	})
 
-	if datastoreVShardInstanceResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardInstanceResult: %v", datastoreVShardInstanceResult.Error)
+	if err := datastoreVShardInstanceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreVShardInstanceResult: %v", err)
 	}
 
 	vShardInstance.ID = datastoreVShardInstanceResult.Return[0]["_id"].(int64)
@@ -1415,8 +1415,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreVShardInstance(ctx context.Con
 			"_id": datastoreVShardInstance.ID,
 		},
 	})
-	if datastoreVShardInstanceDelete.Error != "" {
-		return fmt.Errorf("Error getting datastoreVShardInstanceDelete: %v", datastoreVShardInstanceDelete.Error)
+	if err := datastoreVShardInstanceDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreVShardInstanceDelete: %v", err)
 	}
 
 	return nil
@@ -1462,8 +1462,8 @@ func (m *MetadataStore) EnsureExistsDatastoreShard(ctx context.Context, datastor
 		"record":         datastoreShardRecord,
 	})
 
-	if datastoreShardResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreShardResult: %v", datastoreShardResult.Error)
+	if err := datastoreShardResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreShardResult: %v", err)
 	}
 
 	datastoreShard.ID = datastoreShardResult.Return[0]["_id"].(int64)
@@ -1526,8 +1526,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShard(ctx context.Context, dat
 			"_id": datastoreShard.ID,
 		},
 	})
-	if datastoreShardDelete.Error != "" {
-		return fmt.Errorf("Error getting datastoreShardDelete: %v", datastoreShardDelete.Error)
+	if err := datastoreShardDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreShardDelete: %v", err)
 	}
 
 	return nil
@@ -1578,8 +1578,8 @@ func (m *MetadataStore) EnsureExistsDatastoreShardReplica(ctx context.Context, d
 		"record":         datastoreShardReplicaRecord,
 	})
 
-	if datastoreShardReplicaResult.Error != "" {
-		return fmt.Errorf("Error getting datastoreShardReplicaResult: %v", datastoreShardReplicaResult.Error)
+	if err := datastoreShardReplicaResult.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreShardReplicaResult: %v", err)
 	}
 
 	datastoreShardReplica.ID = datastoreShardReplicaResult.Return[0]["_id"].(int64)
@@ -1637,8 +1637,8 @@ func (m *MetadataStore) EnsureDoesntExistDatastoreShardReplica(ctx context.Conte
 			"_id": datastoreShardReplica.ID,
 		},
 	})
-	if datastoreShardReplicaDelete.Error != "" {
-		return fmt.Errorf("Error getting datastoreShardReplicaDelete: %v", datastoreShardReplicaDelete.Error)
+	if err := datastoreShardReplicaDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting datastoreShardReplicaDelete: %v", err)
 	}
 
 	return nil
@@ -1670,8 +1670,8 @@ func (m *MetadataStore) EnsureExistsDatabase(ctx context.Context, db *metadata.D
 		"record":         databaseRecord,
 	})
 
-	if databaseResult.Error != "" {
-		return fmt.Errorf("Error getting databaseResult: %v", databaseResult.Error)
+	if err := databaseResult.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseResult: %v", err)
 	}
 
 	db.ID = databaseResult.Return[0]["_id"].(int64)
@@ -1753,8 +1753,8 @@ func (m *MetadataStore) EnsureDoesntExistDatabase(ctx context.Context, dbname st
 			"_id": database.ID,
 		},
 	})
-	if databaseDelete.Error != "" {
-		return fmt.Errorf("Error getting databaseDelete: %v", databaseDelete.Error)
+	if err := databaseDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseDelete: %v", err)
 	}
 
 	return nil
@@ -1802,8 +1802,8 @@ func (m *MetadataStore) EnsureExistsDatabaseDatastore(ctx context.Context, db *m
 		"record":         databaseDatastoreRecord,
 	})
 
-	if databaseDatastoreResult.Error != "" {
-		return fmt.Errorf("Error getting databaseDatastoreResult: %v", databaseDatastoreResult.Error)
+	if err := databaseDatastoreResult.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseDatastoreResult: %v", err)
 	}
 
 	databaseDatastore.ID = databaseDatastoreResult.Return[0]["_id"].(int64)
@@ -1843,8 +1843,8 @@ func (m *MetadataStore) EnsureDoesntExistDatabaseDatastore(ctx context.Context, 
 			"_id": databaseDatastore.ID,
 		},
 	})
-	if databaseDatastoreDelete.Error != "" {
-		return fmt.Errorf("Error getting databaseDatastoreDelete: %v", databaseDatastoreDelete.Error)
+	if err := databaseDatastoreDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting databaseDatastoreDelete: %v", err)
 	}
 
 	return nil
@@ -1916,8 +1916,8 @@ func (m *MetadataStore) EnsureExistsCollection(ctx context.Context, db *metadata
 		"collection":     "collection",
 		"record":         collectionRecord,
 	})
-	if collectionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionResult: %v", collectionResult.Error)
+	if err := collectionResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionResult: %v", err)
 	}
 
 	collection.ID = collectionResult.Return[0]["_id"].(int64)
@@ -2008,8 +2008,8 @@ func (m *MetadataStore) EnsureDoesntExistCollection(ctx context.Context, dbname,
 			"_id": collection.ID,
 		},
 	})
-	if collectionDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionDelete: %v", collectionDelete.Error)
+	if err := collectionDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionDelete: %v", err)
 	}
 
 	return nil
@@ -2061,8 +2061,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspace(ctx context.Context, db *
 		"record":         collectionKeyspaceRecord,
 	})
 
-	if collectionKeyspaceResult.Error != "" {
-		return fmt.Errorf("Error getting collectionKeyspaceResult: %v", collectionKeyspaceResult.Error)
+	if err := collectionKeyspaceResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionKeyspaceResult: %v", err)
 	}
 
 	collectionKeyspace.ID = collectionKeyspaceResult.Return[0]["_id"].(int64)
@@ -2127,8 +2127,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(ctx context.Context,
 				"collection_keyspace_id": []interface{}{"=", collectionKeyspace.ID},
 			},
 		})
-		if collectionKeyspaceShardKeyResult.Error != "" {
-			return fmt.Errorf("Error getting collectionKeyspaceShardKeyResult: %v", collectionKeyspaceShardKeyResult.Error)
+		if err := collectionKeyspaceShardKeyResult.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionKeyspaceShardKeyResult: %v", err)
 		}
 		for _, collectionKeyspaceShardKeyRecord := range collectionKeyspaceShardKeyResult.Return {
 			collectionKeyspaceShardKeyDelete := m.Store.Delete(ctx, map[string]interface{}{
@@ -2139,8 +2139,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(ctx context.Context,
 					"_id": collectionKeyspaceShardKeyRecord["_id"],
 				},
 			})
-			if collectionKeyspaceShardKeyDelete.Error != "" {
-				return fmt.Errorf("Error getting collectionKeyspaceShardKeyDelete: %v", collectionKeyspaceShardKeyDelete.Error)
+			if err := collectionKeyspaceShardKeyDelete.Err(); err != nil {
+				return fmt.Errorf("Error getting collectionKeyspaceShardKeyDelete: %v", err)
 			}
 		}
 
@@ -2153,8 +2153,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(ctx context.Context,
 				"_id": collectionKeyspace.ID,
 			},
 		})
-		if collectionKeyspaceDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionKeyspaceDelete: %v", collectionKeyspaceDelete.Error)
+		if err := collectionKeyspaceDelete.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionKeyspaceDelete: %v", err)
 		}
 	}
 
@@ -2197,8 +2197,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 				"_id": datastoreVShardID,
 			},
 		})
-		if datastoreVShardResult.Error != "" {
-			return fmt.Errorf("Error getting datastoreVShardResult: %v", datastoreVShardResult.Error)
+		if err := datastoreVShardResult.Err(); err != nil {
+			return fmt.Errorf("Error getting datastoreVShardResult: %v", err)
 		}
 		if datastoreVShardDatabaseIDRaw, ok := datastoreVShardResult.Return[0]["database_id"]; ok && datastoreVShardDatabaseIDRaw != nil {
 			datastoreVShardDatabaseID := datastoreVShardDatabaseIDRaw.(int64)
@@ -2214,8 +2214,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 				"record":         datastoreVShardResult.Return[0],
 			})
 
-			if datastoreVShardUpdateResult.Error != "" {
-				return fmt.Errorf("Error getting datastoreVShardUpdateResult: %v", datastoreVShardUpdateResult.Error)
+			if err := datastoreVShardUpdateResult.Err(); err != nil {
+				return fmt.Errorf("Error getting datastoreVShardUpdateResult: %v", err)
 			}
 		}
 
@@ -2239,8 +2239,8 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 		"record":         collectionKeyspacePartitionRecord,
 	})
 
-	if collectionKeyspacePartitionResult.Error != "" {
-		return fmt.Errorf("Error getting collectionKeyspacePartitionResult: %v", collectionKeyspacePartitionResult.Error)
+	if err := collectionKeyspacePartitionResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionKeyspacePartitionResult: %v", err)
 	}
 
 	collectionKeyspacePartition.ID = collectionKeyspacePartitionResult.Return[0]["_id"].(int64)
@@ -2295,8 +2295,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context
 					"collection_keyspace_partition_id": []interface{}{"=", collectionKeyspacePartition.ID},
 				},
 			})
-			if collectionKeyspacePartitionDatastoreVShardResult.Error != "" {
-				return fmt.Errorf("Error getting collectionKeyspacePartitionDatastoreVShardResult: %v", collectionKeyspacePartitionDatastoreVShardResult.Error)
+			if err := collectionKeyspacePartitionDatastoreVShardResult.Err(); err != nil {
+				return fmt.Errorf("Error getting collectionKeyspacePartitionDatastoreVShardResult: %v", err)
 			}
 
 			for _, collectionKeyspacePartitionDatastoreVShardRecord := range collectionKeyspacePartitionDatastoreVShardResult.Return {
@@ -2309,8 +2309,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context
 					},
 				})
 
-				if collectionKeyspacePartitionDatastoreVShardDelete.Error != "" {
-					return fmt.Errorf("Error getting collectionKeyspacePartitionDatastoreVShardDelete: %v", collectionKeyspacePartitionDatastoreVShardDelete.Error)
+				if err := collectionKeyspacePartitionDatastoreVShardDelete.Err(); err != nil {
+					return fmt.Errorf("Error getting collectionKeyspacePartitionDatastoreVShardDelete: %v", err)
 				}
 			}
 
@@ -2323,8 +2323,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context
 					"_id": collectionKeyspacePartition.ID,
 				},
 			})
-			if collectionPartitionDelete.Error != "" {
-				return fmt.Errorf("Error getting collectionPartitionDelete: %v", collectionPartitionDelete.Error)
+			if err := collectionPartitionDelete.Err(); err != nil {
+				return fmt.Errorf("Error getting collectionPartitionDelete: %v", err)
 			}
 		}
 	}
@@ -2408,8 +2408,8 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(ctx context.Context, db *met
 		"collection":     "collection_index",
 		"record":         collectionIndexRecord,
 	})
-	if collectionIndexResult.Error != "" {
-		return fmt.Errorf("Error inserting collectionIndexResult: %v", collectionIndexResult.Error)
+	if err := collectionIndexResult.Err(); err != nil {
+		return fmt.Errorf("Error inserting collectionIndexResult: %v", err)
 	}
 	index.ID = collectionIndexResult.Return[0]["_id"].(int64)
 
@@ -2426,8 +2426,8 @@ func (m *MetadataStore) EnsureExistsCollectionIndex(ctx context.Context, db *met
 			},
 		})
 		// TODO: use CollectionIndexItem
-		if collectionIndexItemResult.Error != "" && false {
-			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+		if err := collectionIndexItemResult.Err(); err != nil && false {
+			return fmt.Errorf("Error inserting collectionIndexItemResult: %v", err)
 		}
 	}
 
@@ -2463,8 +2463,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Context, db
 			"collection_index_id": []interface{}{"=", collectionIndex.ID},
 		},
 	})
-	if collectionIndexItemResult.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexItemResult: %v", collectionIndexItemResult.Error)
+	if err := collectionIndexItemResult.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionIndexItemResult: %v", err)
 	}
 
 	for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
@@ -2476,8 +2476,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Context, db
 				"_id": collectionIndexItemRecord["_id"],
 			},
 		})
-		if collectionIndexItemDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", collectionIndexItemDelete.Error)
+		if err := collectionIndexItemDelete.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionIndexItemDelete: %v", err)
 		}
 
 	}
@@ -2490,8 +2490,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Context, db
 			"_id": collectionIndex.ID,
 		},
 	})
-	if collectionIndexDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionIndexDelete: %v", collectionIndexDelete.Error)
+	if err := collectionIndexDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionIndexDelete: %v", err)
 	}
 
 	return nil
@@ -2588,8 +2588,8 @@ func (m *MetadataStore) EnsureExistsCollectionField(ctx context.Context, db *met
 		"collection":     "collection_field",
 		"record":         fieldRecord,
 	})
-	if collectionFieldResult.Error != "" {
-		return fmt.Errorf("Error inserting collectionFieldResult: %v", collectionFieldResult.Error)
+	if err := collectionFieldResult.Err(); err != nil {
+		return fmt.Errorf("Error inserting collectionFieldResult: %v", err)
 	}
 	field.ID = collectionFieldResult.Return[0]["_id"].(int64)
 
@@ -2620,8 +2620,8 @@ func (m *MetadataStore) EnsureExistsCollectionField(ctx context.Context, db *met
 			"collection":     "collection_field_relation",
 			"record":         fieldRelationRecord,
 		})
-		if collectionFieldRelationResult.Error != "" {
-			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", collectionFieldRelationResult.Error)
+		if err := collectionFieldRelationResult.Err(); err != nil {
+			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", err)
 		}
 		field.Relation.ID = collectionFieldRelationResult.Return[0]["_id"].(int64)
 	}
@@ -2680,8 +2680,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(ctx context.Context, db
 				"_id": field.Relation.ID,
 			},
 		})
-		if collectionFieldRelationDelete.Error != "" {
-			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", collectionFieldRelationDelete.Error)
+		if err := collectionFieldRelationDelete.Err(); err != nil {
+			return fmt.Errorf("Error getting collectionFieldRelationDelete: %v", err)
 		}
 	}
 
@@ -2693,8 +2693,8 @@ func (m *MetadataStore) EnsureDoesntExistCollectionField(ctx context.Context, db
 			"_id": field.ID,
 		},
 	})
-	if collectionFieldDelete.Error != "" {
-		return fmt.Errorf("Error getting collectionFieldDelete: %v", collectionFieldDelete.Error)
+	if err := collectionFieldDelete.Err(); err != nil {
+		return fmt.Errorf("Error getting collectionFieldDelete: %v", err)
 	}
 	return nil
 }

@@ -1,6 +1,8 @@
 {
   "return": null,
-  "error": "Unable to find record with given pkey",
+  "errors": [
+    "Unable to find record with given pkey"
+  ],
   "meta": {
     "datasource": "postgres"
   }

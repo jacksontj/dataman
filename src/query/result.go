@@ -12,10 +12,18 @@ import (
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
 	// TODO: make a list of errors!
-	Error string `json:"error,omitempty"`
+	Errors []string `json:"errors,omitempty"`
 	// TODO: pointer to the right thing
 	ValidationError interface{}            `json:"validation_error,omitempty"`
 	Meta            map[string]interface{} `json:"meta,omitempty"`
+}
+
+func (r *Result) Err() error {
+	if r.Errors == nil {
+		return nil
+	} else {
+		return fmt.Errorf(strings.Join(r.Errors, "\n"))
+	}
 }
 
 func (r *Result) Sort(keys []string, reverseList []bool) {
@@ -88,12 +96,12 @@ func MergeResult(pkeyFields []string, numResults int, results chan *Result) *Res
 
 	recievedResults := 0
 	for result := range results {
-		if result.Error != "" {
-			// If there was one before, add this to the list
-			if combinedResult.Error != "" {
-				combinedResult.Error += "\n"
+		if result.Errors != nil {
+			if combinedResult.Errors == nil {
+				combinedResult.Errors = result.Errors
+			} else {
+				combinedResult.Errors = append(combinedResult.Errors, result.Errors...)
 			}
-			combinedResult.Error += result.Error
 		}
 		// TODO: merge meta
 		if len(combinedResult.Meta) == 0 {

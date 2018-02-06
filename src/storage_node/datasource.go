@@ -237,9 +237,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	collection, err := meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), q.Args["collection"].(string))
 	// Verify that the table is within our domain
 	if err != nil {
-		return &query.Result{
-			Error: err.Error(),
-		}
+		return &query.Result{Errors: []string{err.Error()}}
 	}
 
 	var fieldList []string
@@ -254,17 +252,17 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 			for i, f := range fieldsTyped {
 				fieldList[i], ok = f.(string)
 				if !ok {
-					return &query.Result{Error: `"fields" must be a list of strings`}
+					return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
 				}
 			}
 		default:
-			return &query.Result{Error: `"fields" must be a list of strings`}
+			return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
 		}
 
 		// Check that the fields exist (or at least are subfields of things that exist)
 		for _, field := range fieldList {
 			if collectionField := collection.GetFieldByName(field); collectionField == nil {
-				return &query.Result{Error: "invalid projection field " + field}
+				return &query.Result{Errors: []string{"invalid projection field " + field}}
 			}
 		}
 	}
@@ -272,7 +270,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	if joinFieldList, ok := q.Args["join"]; ok && joinFieldList != nil {
 		// TODO: remove? We can only do joins at this layer if there is only one shardInstance
 		if meta.Databases[q.Args["db"].(string)].ShardInstances[q.Args["shard_instance"].(string)].Count != 1 {
-			return &query.Result{Error: "Datasource-level joins only supported on collections with one shardInstance"}
+			return &query.Result{Errors: []string{"Datasource-level joins only supported on collections with one shardInstance"}}
 		}
 	}
 
@@ -290,7 +288,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 			if srecordMap, validationError, err := join.DoWriteJoins(ctx, s.client, q, meta, collection, joinFieldList.([]interface{}), q.Args["record"].(map[string]interface{})); validationError != nil {
 				return &query.Result{ValidationError: validationError.Error()}
 			} else if err != nil {
-				return &query.Result{Error: err.Error()}
+				return &query.Result{Errors: []string{err.Error()}}
 			} else {
 				subRecordList = srecordMap
 			}
@@ -322,7 +320,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 
 				result = s.Store.Update(ctx, q.Args)
 				if len(result.Return) != 1 {
-					return &query.Result{Error: "Set unable to update non-existing record"}
+					return &query.Result{Errors: []string{"Set unable to update non-existing record"}}
 				}
 				return result
 
@@ -353,7 +351,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// This only works for stuff that has a shard count of 1
 		if joinField, ok := q.Args["join"]; ok && joinField != nil {
 			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, joinField, result.Return); err != nil {
-				result.Error = err.Error()
+				result.Errors = []string{err.Error()}
 				return result
 			}
 		}
@@ -375,15 +373,13 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// This only works for stuff that has a shard count of 1
 		if joinField, ok := q.Args["join"]; ok && joinField != nil {
 			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, joinField, result.Return); err != nil {
-				result.Error = err.Error()
+				result.Errors = []string{err.Error()}
 				return result
 			}
 		}
 
 	default:
-		return &query.Result{
-			Error: "Unsupported query type " + string(q.Type),
-		}
+		return &query.Result{Errors: []string{"Unsupported query type " + string(q.Type)}}
 	}
 
 	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
@@ -422,7 +418,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		case []string:
 			sortList = sortListTyped
 		default:
-			result.Error = "Unable to sort result, invalid sort args type"
+			result.Errors = []string{"Unable to sort result, invalid sort args type"}
 			return result
 		}
 
@@ -440,14 +436,14 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 				}
 			case []bool:
 				if len(sortReverseRawTyped) != len(sortList) {
-					result.Error = "Unable to sort_reverse must be the same len as sort"
+					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
 					return result
 				}
 				sortReverseList = sortReverseRawTyped
 			// TODO: remove? things should have a real type...
 			case []interface{}:
 				if len(sortReverseRawTyped) != len(sortList) {
-					result.Error = "Unable to sort_reverse must be the same len as sort"
+					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
 					return result
 				}
 				for i, sortReverseItem := range sortReverseRawTyped {
@@ -455,7 +451,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 					sortReverseList[i] = sortReverseItem.(bool)
 				}
 			default:
-				result.Error = "Invalid sort_reverse value"
+				result.Errors = []string{"Invalid sort_reverse value"}
 				return result
 			}
 

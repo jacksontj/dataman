@@ -107,19 +107,19 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 
 	rawPkeyRecord, ok := args["pkey"]
 	if !ok {
-		result.Error = "pkey record required"
+		result.Errors = []string{"pkey record required"}
 		return result
 	}
 	pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
 	if !ok {
-		result.Error = "pkey must be a map[string]interface{}"
+		result.Errors = []string{"pkey must be a map[string]interface{}"}
 		return result
 	}
 
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -128,12 +128,12 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 		fieldNameParts := strings.Split(fieldName, ".")
 		field := collection.GetField(fieldNameParts)
 		if field == nil {
-			result.Error = "pkey " + fieldName + " missing from meta? Shouldn't be possible"
+			result.Errors = []string{"pkey " + fieldName + " missing from meta? Shouldn't be possible"}
 			return result
 		}
 		fieldValue, ok := pkeyRecord[fieldName]
 		if !ok {
-			result.Error = "missing " + fieldName + " from pkey"
+			result.Errors = []string{"missing " + fieldName + " from pkey"}
 			return result
 		}
 		switch field.FieldType.DatamanType {
@@ -158,7 +158,7 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 	selectQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s WHERE %s", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, " AND "))
 	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), selectQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	s.normalizeResult(args, result)
@@ -180,7 +180,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -192,7 +192,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.Fields[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)
+			result.Errors = []string{fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)}
 			return result
 		}
 
@@ -210,7 +210,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 				encoder.SetEscapeHTML(false)
 				err := encoder.Encode(fieldValue)
 				if err != nil {
-					result.Error = err.Error()
+					result.Errors = []string{err.Error()}
 					return result
 				}
 				fieldJson := buffer.Bytes()
@@ -238,14 +238,14 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 
 	recordValues, err := s.recordOpDo(args, recordData, collection)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	if recordValues != nil {
 		// Apply recordValues (assuming they exist
 		for k, v := range recordValues {
 			if _, ok := recordData[k]; ok {
-				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
+				result.Errors = []string{fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)}
 				return result
 			}
 
@@ -264,7 +264,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 
 	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), upsertQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	s.normalizeResult(args, result)
@@ -285,7 +285,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -296,7 +296,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.Fields[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)
+			result.Errors = []string{fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args["db"], args["collection"], collection.Fields)}
 			return result
 		}
 
@@ -314,7 +314,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 				encoder.SetEscapeHTML(false)
 				err := encoder.Encode(fieldValue)
 				if err != nil {
-					result.Error = err.Error()
+					result.Errors = []string{err.Error()}
 					return result
 				}
 				fieldJson := buffer.Bytes()
@@ -335,7 +335,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES (%s) RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
 	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), insertQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	s.normalizeResult(args, result)
@@ -356,7 +356,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -367,7 +367,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 	for fieldName, fieldValue := range recordData {
 		field, ok := collection.Fields[fieldName]
 		if !ok {
-			result.Error = fmt.Sprintf("CollectionField %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])
+			result.Errors = []string{fmt.Sprintf("CollectionField %s doesn't exist in %v.%v", fieldName, args["db"], args["collection"])}
 			return result
 		}
 
@@ -385,7 +385,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 				encoder.SetEscapeHTML(false)
 				err := encoder.Encode(fieldValue)
 				if err != nil {
-					result.Error = err.Error()
+					result.Errors = []string{err.Error()}
 					return result
 				}
 				fieldJson := buffer.Bytes()
@@ -404,14 +404,14 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	recordValues, err := s.recordOpDo(args, recordData, collection)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	if recordValues != nil {
 		// Apply recordValues (assuming they exist
 		for k, v := range recordValues {
 			if _, ok := recordData[k]; ok {
-				result.Error = fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)
+				result.Errors = []string{fmt.Sprintf("Already have value in record for %s can't also have in record_op", k)}
 				return result
 			}
 			fieldHeaders = append(fieldHeaders, `"`+k+`"`)
@@ -429,7 +429,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -438,7 +438,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	result.Return, err = DoQuery(ctx, s.getDB(args["db"].(string)), updateQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	s.normalizeResult(args, result)
@@ -458,19 +458,19 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	rawPkeyRecord, ok := args["pkey"]
 	if !ok {
-		result.Error = "pkey record required"
+		result.Errors = []string{"pkey record required"}
 		return result
 	}
 	pkeyRecord, ok := rawPkeyRecord.(map[string]interface{})
 	if !ok {
-		result.Error = "pkey must be a map[string]interface{}"
+		result.Errors = []string{"pkey must be a map[string]interface{}"}
 		return result
 	}
 
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -479,12 +479,12 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 		fieldNameParts := strings.Split(fieldName, ".")
 		field := collection.GetField(fieldNameParts)
 		if field == nil {
-			result.Error = "pkey " + fieldName + " missing from meta? Shouldn't be possible"
+			result.Errors = []string{"pkey " + fieldName + " missing from meta? Shouldn't be possible"}
 			return result
 		}
 		fieldValue, ok := pkeyRecord[fieldName]
 		if !ok {
-			result.Error = "missing " + fieldName + " from pkey"
+			result.Errors = []string{"missing " + fieldName + " from pkey"}
 			return result
 		}
 		switch field.FieldType.DatamanType {
@@ -510,7 +510,7 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	if whereClause != "" {
@@ -520,12 +520,12 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING *", args["shard_instance"].(string), args["collection"], strings.Join(whereParts, ","), whereClause)
 	rows, err := DoQuery(ctx, s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
 	if len(rows) == 0 {
-		result.Error = "Unable to find record with given pkey"
+		result.Errors = []string{"Unable to find record with given pkey"}
 		return result
 	}
 
@@ -550,7 +550,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 	if whereClause != "" {
@@ -559,7 +559,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	rows, err := DoQuery(ctx, s.getDB(args["db"].(string)), sqlQuery)
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return result
 	}
 
@@ -575,7 +575,7 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 	meta := s.GetMeta()
 	collection, err := meta.GetCollection(args["db"].(string), args["shard_instance"].(string), args["collection"].(string))
 	if err != nil {
-		result.Error = err.Error()
+		result.Errors = []string{err.Error()}
 		return
 	}
 	for _, row := range result.Return {

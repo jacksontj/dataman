@@ -93,11 +93,11 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 				}
 
 				if joinResults.ValidationError != nil {
-					return nil, fmt.Errorf("%v", joinResults.ValidationError), fmt.Errorf(joinResults.Error)
+					return nil, fmt.Errorf("%v", joinResults.ValidationError), joinResults.Err()
 				}
 
-				if joinResults.Error != "" {
-					return nil, nil, fmt.Errorf(joinResults.Error)
+				if err := joinResults.Err(); err != nil {
+					return nil, nil, err
 				}
 
 				if subRecordWrites != nil {
@@ -171,11 +171,11 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 				}
 
 				if joinResults.ValidationError != nil {
-					return nil, fmt.Errorf("%v", joinResults.ValidationError), fmt.Errorf(joinResults.Error)
+					return nil, fmt.Errorf("%v", joinResults.ValidationError), joinResults.Err()
 				}
 
-				if joinResults.Error != "" {
-					return nil, nil, fmt.Errorf(joinResults.Error)
+				if err := joinResults.Err(); err != nil {
+					return nil, nil, err
 				}
 
 				if subRecordWrites != nil {

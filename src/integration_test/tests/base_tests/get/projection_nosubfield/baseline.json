@@ -1,4 +1,6 @@
 {
   "return": null,
-  "error": "invalid projection field doc.a"
+  "errors": [
+    "invalid projection field doc.a"
+  ]
 }

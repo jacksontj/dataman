@@ -1,6 +1,9 @@
 {
   "return": [],
-  "error": "Unknown filter type Ins\nUnknown filter type Ins",
+  "errors": [
+    "Unknown filter type Ins",
+    "Unknown filter type Ins"
+  ],
   "meta": {
     "datasource": "postgres"
   }
