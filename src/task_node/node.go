@@ -205,15 +205,16 @@ func (t *TaskNode) ensureExistsDatabase(ctx context.Context, db *metadata.Databa
 	// Validate the schemas passed in
 	for _, collection := range db.Collections {
 		// TODO: we need to recurse!
-		hasRelation := false
+		hasFKey := false
 		for _, field := range collection.Fields {
-			if field.Relation != nil {
-				hasRelation = true
+			// TODO: change to fkey -- relations are allowed!
+			if field.Relation != nil && field.Relation.ForeignKey {
+				hasFKey = true
 				break
 			}
 		}
-		if hasRelation && collection.IsSharded() {
-			return fmt.Errorf("relations are currently only supported on collections with a shardcount of 1")
+		if hasFKey && collection.IsSharded() {
+			return fmt.Errorf("ForeignKeys are currently only supported on collections with a shardcount of 1")
 		}
 
 		for _, keyspace := range collection.Keyspaces {
