@@ -19,7 +19,7 @@ func DoReadJoins(ctx context.Context, client *datamanclient.Client, q *query.Que
 	}
 
 	getter := func(name string) (MetaCollection, error) {
-		return meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), name)
+		return meta.GetCollection(q.Args.DB, q.Args.ShardInstance, name)
 	}
 
 	joinCollection, err := OrderJoins(getter, collection, joinMap)
@@ -46,11 +46,11 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 			forwardJoin.Filter[forwardJoin.JoinField.Relation.Field] = []interface{}{filter.Equal, rawRecord}
 			joinResults, err := client.DoQuery(ctx, &query.Query{
 				Type: query.Filter,
-				Args: map[string]interface{}{
-					"db":             q.Args["db"],
-					"shard_instance": q.Args["shard_instance"].(string),
-					"collection":     forwardJoin.C.Name,
-					"filter":         forwardJoin.Filter,
+				Args: query.QueryArgs{
+					DB:            q.Args.DB,
+					ShardInstance: q.Args.ShardInstance,
+					Collection:    forwardJoin.C.Name,
+					Filter:        forwardJoin.Filter,
 				},
 			})
 
@@ -91,11 +91,11 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 			reverseJoin.Filter[reverseJoin.Key] = []interface{}{filter.Equal, rawRecord}
 			joinResults, err := client.DoQuery(ctx, &query.Query{
 				Type: query.Filter,
-				Args: map[string]interface{}{
-					"db":             q.Args["db"],
-					"shard_instance": q.Args["shard_instance"].(string),
-					"collection":     reverseJoin.C.Name,
-					"filter":         reverseJoin.Filter,
+				Args: query.QueryArgs{
+					DB:            q.Args.DB,
+					ShardInstance: q.Args.ShardInstance,
+					Collection:    reverseJoin.C.Name,
+					Filter:        reverseJoin.Filter,
 				},
 			})
 			if err != nil {

@@ -1,7 +1,29 @@
 package query
 
 type QueryType string
-type QueryArgs map[string]interface{}
+
+type QueryArgs struct {
+	// Shared options
+	DB            string `json:"db"`
+	Collection    string `json:"collection"`
+	ShardInstance string `json:"shard_instance,omitempty"`
+
+	Fields []string `json:"fields"`
+	Sort   []string `json:"sort"`
+	// TODO: change to ints?
+	SortReverse []bool `json:"sort_reverse"`
+
+	// Record types (TODO: record struct)
+	PKey   map[string]interface{} `json:"pkey"`
+	Record map[string]interface{} `json:"record"`
+
+	// TODO struct?
+	RecordOp map[string]interface{} `json:"record_op"`
+
+	// TODO; type for the filter itself
+	Filter interface{} `json:"filter"`
+	Join   interface{} `json:"join"`
+}
 
 const (
 	Get    QueryType = "get"
@@ -15,19 +37,4 @@ const (
 type Query struct {
 	Type QueryType
 	Args QueryArgs
-}
-
-// Return a copy of Query with the following Arg set/overriden
-func (q *Query) WithArg(newK string, newV interface{}) *Query {
-	newQ := &Query{
-		Type: q.Type,
-		Args: QueryArgs{newK: newV},
-	}
-
-	for k, v := range q.Args {
-		if k != newK {
-			newQ.Args[k] = v
-		}
-	}
-	return newQ
 }

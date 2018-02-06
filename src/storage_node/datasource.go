@@ -234,42 +234,24 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	// schema information across this batch of queries
 	meta := s.GetActiveMeta()
 
-	collection, err := meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), q.Args["collection"].(string))
+	collection, err := meta.GetCollection(q.Args.DB, q.Args.ShardInstance, q.Args.Collection)
 	// Verify that the table is within our domain
 	if err != nil {
 		return &query.Result{Errors: []string{err.Error()}}
 	}
 
-	var fieldList []string
-	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
-	if fields, ok := q.Args["fields"]; ok {
-		switch fieldsTyped := fields.(type) {
-		case []string:
-			fieldList = fields.([]string)
-		case []interface{}:
-			fieldList = make([]string, len(fieldsTyped))
-			var ok bool
-			for i, f := range fieldsTyped {
-				fieldList[i], ok = f.(string)
-				if !ok {
-					return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
-				}
-			}
-		default:
-			return &query.Result{Errors: []string{`"fields" must be a list of strings`}}
-		}
-
+	if q.Args.Fields != nil {
 		// Check that the fields exist (or at least are subfields of things that exist)
-		for _, field := range fieldList {
+		for _, field := range q.Args.Fields {
 			if collectionField := collection.GetFieldByName(field); collectionField == nil {
 				return &query.Result{Errors: []string{"invalid projection field " + field}}
 			}
 		}
 	}
 
-	if joinFieldList, ok := q.Args["join"]; ok && joinFieldList != nil {
+	if q.Args.Join != nil {
 		// TODO: remove? We can only do joins at this layer if there is only one shardInstance
-		if meta.Databases[q.Args["db"].(string)].ShardInstances[q.Args["shard_instance"].(string)].Count != 1 {
+		if meta.Databases[q.Args.DB].ShardInstances[q.Args.ShardInstance].Count != 1 {
 			return &query.Result{Errors: []string{"Datasource-level joins only supported on collections with one shardInstance"}}
 		}
 	}
@@ -284,8 +266,8 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// TODO: handle the errors -- if this was a single shard we'd use transactions, but since this
 		// can potentially span *many* shards we need to determine what the failure modes will be
 		// Right now we'll support joins on sets by doing the set before we do the base set
-		if joinFieldList, ok := q.Args["join"]; ok && joinFieldList != nil {
-			if srecordMap, validationError, err := join.DoWriteJoins(ctx, s.client, q, meta, collection, joinFieldList.([]interface{}), q.Args["record"].(map[string]interface{})); validationError != nil {
+		if q.Args.Join != nil {
+			if srecordMap, validationError, err := join.DoWriteJoins(ctx, s.client, q, meta, collection, q.Args.Join, q.Args.Record); validationError != nil {
 				return &query.Result{ValidationError: validationError.Error()}
 			} else if err != nil {
 				return &query.Result{Errors: []string{err.Error()}}
@@ -303,19 +285,19 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// down to the plugin as a regular set (assuming it is valid)
 
 		// To be a valid Set() it must be okay as either an insert or an update
-		if insertValidationResultMap := collection.ValidateRecordInsert(q.Args["record"].(map[string]interface{})); !insertValidationResultMap.IsValid() {
+		if insertValidationResultMap := collection.ValidateRecordInsert(q.Args.Record); !insertValidationResultMap.IsValid() {
 			// If it isn't valid as an upsert, we can see if it is valid as an update only
-			if updateValidationResultMap := collection.ValidateRecordUpdate(q.Args["record"].(map[string]interface{})); updateValidationResultMap.IsValid() {
+			if updateValidationResultMap := collection.ValidateRecordUpdate(q.Args.Record); updateValidationResultMap.IsValid() {
 				// If it is valid as an update, then we need to convert the set request to an update
 
 				q.Type = query.Update
 
 				filterRecord := make(map[string]interface{})
 				for _, fieldName := range collection.PrimaryIndex.Fields {
-					fieldValue, _ := query.GetValue(q.Args["record"].(map[string]interface{}), strings.Split(fieldName, "."))
+					fieldValue, _ := query.GetValue(q.Args.Record, strings.Split(fieldName, "."))
 					filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
 				}
-				q.Args["filter"] = filterRecord
+				q.Args.Filter = filterRecord
 				// TODO: remove pkey from "record"?
 
 				result = s.Store.Update(ctx, q.Args)
@@ -330,7 +312,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 
 	case query.Insert:
-		if validationResultMap := collection.ValidateRecordInsert(q.Args["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+		if validationResultMap := collection.ValidateRecordInsert(q.Args.Record); !validationResultMap.IsValid() {
 			return &query.Result{ValidationError: validationResultMap}
 		}
 	case query.Update:
@@ -338,7 +320,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		// TODO: some datastores can actually do the enforcement on their own. We
 		// probably want to leave this up to lower layers, and provide some wrapper
 		// that they can call if they can't do it in the datastore itself
-		if validationResultMap := collection.ValidateRecordUpdate(q.Args["record"].(map[string]interface{})); !validationResultMap.IsValid() {
+		if validationResultMap := collection.ValidateRecordUpdate(q.Args.Record); !validationResultMap.IsValid() {
 			return &query.Result{ValidationError: validationResultMap}
 		}
 	}
@@ -349,8 +331,8 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	case query.Get:
 		result = s.Store.Get(ctx, q.Args)
 		// This only works for stuff that has a shard count of 1
-		if joinField, ok := q.Args["join"]; ok && joinField != nil {
-			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, joinField, result.Return); err != nil {
+		if q.Args.Join != nil {
+			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, q.Args.Join, result.Return); err != nil {
 				result.Errors = []string{err.Error()}
 				return result
 			}
@@ -371,8 +353,8 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	case query.Filter:
 		result = s.Store.Filter(ctx, q.Args)
 		// This only works for stuff that has a shard count of 1
-		if joinField, ok := q.Args["join"]; ok && joinField != nil {
-			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, joinField, result.Return); err != nil {
+		if q.Args.Join != nil {
+			if err := join.DoReadJoins(ctx, s.client, q, meta, collection, q.Args.Join, result.Return); err != nil {
 				result.Errors = []string{err.Error()}
 				return result
 			}
@@ -383,80 +365,37 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	}
 
 	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
-	if fieldList != nil {
+	if q.Args.Fields != nil {
 		// TODO: only need to do this if the request came from a router (for deduping purposes)
-		// Ensure that fieldList has all the pkeys in it
+		// Ensure that q.Args.Fields has all the pkeys in it
 		for _, pkeyFieldName := range collection.PrimaryIndex.Fields {
 			found := false
-			for _, fieldListItem := range fieldList {
+			for _, fieldListItem := range q.Args.Fields {
 				if pkeyFieldName == fieldListItem {
 					found = true
 					break
 				}
 			}
 			if !found {
-				fieldList = append(fieldList, pkeyFieldName)
+				q.Args.Fields = append(q.Args.Fields, pkeyFieldName)
 			}
 		}
-		// TODO: disallow fieldList to include fields that aren't in the collection
+		// TODO: disallow q.Args.Fields to include fields that aren't in the collection
 		// we'll need a special case for sub-fields (as we might not know *all* the schema)
-		result.Project(fieldList)
+		result.Project(q.Args.Fields)
 
 	}
 
 	// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
-	if sortListRaw, ok := q.Args["sort"]; ok && sortListRaw != nil {
-		// TODO: parse out before doing the query, if its wrong we can't do anything
-		// TODO: we need to support interface{} as well
-		var sortList []string
-		switch sortListTyped := sortListRaw.(type) {
-		case []interface{}:
-			sortList = make([]string, len(sortListTyped))
-			for i, sortKey := range sortListTyped {
-				sortList[i] = sortKey.(string)
-			}
-		case []string:
-			sortList = sortListTyped
-		default:
-			result.Errors = []string{"Unable to sort result, invalid sort args type"}
-			return result
-		}
-
-		sortReverseList := make([]bool, len(sortList))
-		if sortReverseRaw, ok := q.Args["sort_reverse"]; !ok || sortReverseRaw == nil {
+	if q.Args.Sort != nil {
+		if q.Args.SortReverse == nil {
+			q.Args.SortReverse = make([]bool, len(q.Args.Sort))
 			// TODO: better, seems heavy
-			for i, _ := range sortReverseList {
-				sortReverseList[i] = false
+			for i, _ := range q.Args.SortReverse {
+				q.Args.SortReverse[i] = false
 			}
-		} else {
-			switch sortReverseRawTyped := sortReverseRaw.(type) {
-			case bool:
-				for i, _ := range sortReverseList {
-					sortReverseList[i] = sortReverseRawTyped
-				}
-			case []bool:
-				if len(sortReverseRawTyped) != len(sortList) {
-					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
-					return result
-				}
-				sortReverseList = sortReverseRawTyped
-			// TODO: remove? things should have a real type...
-			case []interface{}:
-				if len(sortReverseRawTyped) != len(sortList) {
-					result.Errors = []string{"Unable to sort_reverse must be the same len as sort"}
-					return result
-				}
-				for i, sortReverseItem := range sortReverseRawTyped {
-					// TODO: handle case where it isn't a bool!
-					sortReverseList[i] = sortReverseItem.(bool)
-				}
-			default:
-				result.Errors = []string{"Invalid sort_reverse value"}
-				return result
-			}
-
 		}
-		result.Sort(sortList, sortReverseList)
+		result.Sort(q.Args.Sort, q.Args.SortReverse)
 	}
 	return result
 }

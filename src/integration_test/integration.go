@@ -78,10 +78,10 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			for _, record := range recordList {
 				result := router.HandleQuery(context.Background(), &query.Query{
 					Type: query.Insert,
-					Args: map[string]interface{}{
-						"db":         databaseName,
-						"collection": collectionName,
-						"record":     record,
+					Args: query.QueryArgs{
+						DB:         databaseName,
+						Collection: collectionName,
+						Record:     record,
 					},
 				})
 				if result.ValidationError != nil {
@@ -111,15 +111,16 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			}
 			t.Fatalf("Unable to read queryBytes for test %s.%s: %v", testDir, info.Name(), err)
 		}
-		if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
-			t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
-		}
 
 		relFilePath, err := filepath.Rel(testsDir, fpath)
 		if err != nil {
 			t.Fatalf("Error getting relative path? Shouldn't be possible: %v", err)
 		}
 		t.Run(relFilePath, func(t *testing.T) {
+
+			if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
+				t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
+			}
 
 			// Run the query
 			result := router.HandleQuery(context.Background(), q)

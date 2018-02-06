@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/src/datamantype"
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/datasource"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
@@ -42,10 +43,10 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 	meta := metadata.NewMeta()
 
 	// Add all field_types
-	fieldTypeResult := m.Store.Filter(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "field_type",
+	fieldTypeResult := m.Store.Filter(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "field_type",
 	})
 	// TODO: better error handle
 	if err := fieldTypeResult.Err(); err != nil {
@@ -59,11 +60,11 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 			DatamanType: datamantype.DatamanType(fieldTypeRecord["dataman_type"].(string)),
 		}
 
-		fieldTypeConstraintResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "field_type_constraint",
-			"filter": map[string]interface{}{
+		fieldTypeConstraintResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "field_type_constraint",
+			Filter: map[string]interface{}{
 				"field_type_id": []interface{}{"=", fieldTypeRecord["_id"]},
 			},
 		})
@@ -93,10 +94,10 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 	}
 
 	// Get all databases
-	databaseResult := m.Store.Filter(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
+	databaseResult := m.Store.Filter(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "database",
 	})
 	// TODO: better error handle
 	if err := databaseResult.Err(); err != nil {
@@ -109,11 +110,11 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 		database.ID = databaseRecord["_id"].(int64)
 		database.ProvisionState = metadata.ProvisionState(databaseRecord["provision_state"].(int64))
 
-		shardInstanceResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "shard_instance",
-			"filter": map[string]interface{}{
+		shardInstanceResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "shard_instance",
+			Filter: map[string]interface{}{
 				"database_id": []interface{}{"=", databaseRecord["_id"]},
 			},
 		})
@@ -129,11 +130,11 @@ func (m *DefaultMetadataStore) GetMeta(ctx context.Context) (*metadata.Meta, err
 			shardInstance.Instance = shardInstanceRecord["instance"].(int64)
 			shardInstance.ProvisionState = metadata.ProvisionState(shardInstanceRecord["provision_state"].(int64))
 
-			collectionResult := m.Store.Filter(ctx, map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection",
-				"filter": map[string]interface{}{
+			collectionResult := m.Store.Filter(ctx, query.QueryArgs{
+				DB:            "dataman_storage",
+				ShardInstance: "public",
+				Collection:    "collection",
+				Filter: map[string]interface{}{
 					"shard_instance_id": []interface{}{"=", shardInstanceRecord["_id"]},
 				},
 			})
@@ -180,11 +181,11 @@ func (m *DefaultMetadataStore) EnsureExistsDatabase(ctx context.Context, db *met
 		databaseRecord["_id"] = db.ID
 	}
 
-	databaseResult := m.Store.Set(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
-		"record":         databaseRecord,
+	databaseResult := m.Store.Set(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "database",
+		Record:        databaseRecord,
 	})
 
 	if err := databaseResult.Err(); err != nil {
@@ -222,11 +223,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistDatabase(ctx context.Context, db
 	}
 
 	// Delete database entry
-	databaseDelete := m.Store.Delete(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "database",
-		"pkey": map[string]interface{}{
+	databaseDelete := m.Store.Delete(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "database",
+		PKey: map[string]interface{}{
 			"_id": database.ID,
 		},
 	})
@@ -265,11 +266,11 @@ func (m *DefaultMetadataStore) EnsureExistsShardInstance(ctx context.Context, db
 		shardInstanceRecord["_id"] = shardInstance.ID
 	}
 
-	shardInstanceResult := m.Store.Set(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "shard_instance",
-		"record":         shardInstanceRecord,
+	shardInstanceResult := m.Store.Set(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "shard_instance",
+		Record:        shardInstanceRecord,
 	})
 
 	if err := shardInstanceResult.Err(); err != nil {
@@ -323,11 +324,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistShardInstance(ctx context.Contex
 	}
 
 	// Remove shard instance
-	shardInstanceResult := m.Store.Delete(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "shard_instance",
-		"pkey": map[string]interface{}{
+	shardInstanceResult := m.Store.Delete(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "shard_instance",
+		PKey: map[string]interface{}{
 			"_id": shardInstance.ID,
 		},
 	})
@@ -399,11 +400,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollection(ctx context.Context, db *m
 	}
 
 	// Add the collection
-	collectionResult := m.Store.Set(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection",
-		"record":         collectionRecord,
+	collectionResult := m.Store.Set(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection",
+		Record:        collectionRecord,
 	})
 	if err := collectionResult.Err(); err != nil {
 		return fmt.Errorf("Error getting collectionResult: %v", err)
@@ -481,11 +482,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollection(ctx context.Context, 
 	}
 
 	// Delete collection
-	collectionDelete := m.Store.Delete(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection",
-		"pkey": map[string]interface{}{
+	collectionDelete := m.Store.Delete(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection",
+		PKey: map[string]interface{}{
 			"_id": collection.ID,
 		},
 	})
@@ -568,11 +569,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(ctx context.Context, 
 		collectionIndexRecord["_id"] = index.ID
 	}
 
-	collectionIndexResult := m.Store.Set(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_index",
-		"record":         collectionIndexRecord,
+	collectionIndexResult := m.Store.Set(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection_index",
+		Record:        collectionIndexRecord,
 	})
 	if err := collectionIndexResult.Err(); err != nil {
 		return fmt.Errorf("Error inserting collectionIndexResult: %v", err)
@@ -582,11 +583,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionIndex(ctx context.Context, 
 	// insert all of the field links
 
 	for _, fieldID := range fieldIds {
-		collectionIndexItemResult := m.Store.Insert(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index_item",
-			"record": map[string]interface{}{
+		collectionIndexItemResult := m.Store.Insert(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_index_item",
+			Record: map[string]interface{}{
 				"collection_index_id": index.ID,
 				"collection_field_id": fieldID,
 			},
@@ -627,11 +628,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 	}
 
 	// Remove the index items
-	collectionIndexItemResult := m.Store.Filter(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_index_item",
-		"filter": map[string]interface{}{
+	collectionIndexItemResult := m.Store.Filter(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection_index_item",
+		Filter: map[string]interface{}{
 			"collection_index_id": []interface{}{"=", collectionIndex.ID},
 		},
 	})
@@ -640,11 +641,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 	}
 
 	for _, collectionIndexItemRecord := range collectionIndexItemResult.Return {
-		collectionIndexItemDelete := m.Store.Delete(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index_item",
-			"pkey": map[string]interface{}{
+		collectionIndexItemDelete := m.Store.Delete(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_index_item",
+			PKey: map[string]interface{}{
 				"_id": collectionIndexItemRecord["_id"],
 			},
 		})
@@ -654,11 +655,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionIndex(ctx context.Cont
 
 	}
 
-	collectionIndexDelete := m.Store.Delete(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_index",
-		"pkey": map[string]interface{}{
+	collectionIndexDelete := m.Store.Delete(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection_index",
+		PKey: map[string]interface{}{
 			"_id": collectionIndex.ID,
 		},
 	})
@@ -743,11 +744,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(ctx context.Context, 
 		fieldRecord["_id"] = field.ID
 	}
 
-	collectionFieldResult := m.Store.Set(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_field",
-		"record":         fieldRecord,
+	collectionFieldResult := m.Store.Set(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection_field",
+		Record:        fieldRecord,
 	})
 	if err := collectionFieldResult.Err(); err != nil {
 		return fmt.Errorf("Error inserting collectionFieldResult: %v", err)
@@ -775,11 +776,11 @@ func (m *DefaultMetadataStore) EnsureExistsCollectionField(ctx context.Context, 
 		if field.Relation.ID != 0 {
 			fieldRelationRecord["_id"] = field.Relation.ID
 		}
-		collectionFieldRelationResult := m.Store.Set(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field_relation",
-			"record":         fieldRelationRecord,
+		collectionFieldRelationResult := m.Store.Set(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_field_relation",
+			Record:        fieldRelationRecord,
 		})
 		if err := collectionFieldRelationResult.Err(); err != nil {
 			return fmt.Errorf("Error inserting collectionFieldRelationResult: %v", err)
@@ -838,11 +839,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(ctx context.Cont
 
 	// If we have a relation, remove it
 	if field.Relation != nil {
-		collectionFieldRelationDelete := m.Store.Delete(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field_relation",
-			"pkey": map[string]interface{}{
+		collectionFieldRelationDelete := m.Store.Delete(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_field_relation",
+			PKey: map[string]interface{}{
 				"_id": field.Relation.ID,
 			},
 		})
@@ -851,11 +852,11 @@ func (m *DefaultMetadataStore) EnsureDoesntExistCollectionField(ctx context.Cont
 		}
 	}
 
-	collectionFieldDelete := m.Store.Delete(ctx, map[string]interface{}{
-		"db":             "dataman_storage",
-		"shard_instance": "public",
-		"collection":     "collection_field",
-		"pkey": map[string]interface{}{
+	collectionFieldDelete := m.Store.Delete(ctx, query.QueryArgs{
+		DB:            "dataman_storage",
+		ShardInstance: "public",
+		Collection:    "collection_field",
+		PKey: map[string]interface{}{
 			"_id": field.ID,
 		},
 	})
@@ -869,11 +870,11 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 	field, ok := meta.Fields[id]
 	if !ok {
 		// Load field
-		collectionFieldResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field",
-			"filter": map[string]interface{}{
+		collectionFieldResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_field",
+			Filter: map[string]interface{}{
 				"_id": []interface{}{"=", id},
 			},
 		})
@@ -917,11 +918,11 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 		}
 
 		// If we have a relation, get it
-		collectionFieldRelationResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field_relation",
-			"filter": map[string]interface{}{
+		collectionFieldRelationResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_field_relation",
+			Filter: map[string]interface{}{
 				"collection_field_id": []interface{}{"=", id},
 			},
 		})
@@ -957,11 +958,11 @@ func (m *DefaultMetadataStore) getFieldByID(ctx context.Context, meta *metadata.
 func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Meta, id int64) (*metadata.Collection, error) {
 	collection, ok := meta.Collections[id]
 	if !ok {
-		collectionResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection",
-			"filter": map[string]interface{}{
+		collectionResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection",
+			Filter: map[string]interface{}{
 				"_id": []interface{}{"=", id},
 			},
 		})
@@ -976,11 +977,11 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 		collection.ProvisionState = metadata.ProvisionState(collectionRecord["provision_state"].(int64))
 
 		// Load fields
-		collectionFieldResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_field",
-			"filter": map[string]interface{}{
+		collectionFieldResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_field",
+			Filter: map[string]interface{}{
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
@@ -1002,11 +1003,11 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 		}
 
 		// Now load all the indexes for the collection
-		collectionIndexResult := m.Store.Filter(ctx, map[string]interface{}{
-			"db":             "dataman_storage",
-			"shard_instance": "public",
-			"collection":     "collection_index",
-			"filter": map[string]interface{}{
+		collectionIndexResult := m.Store.Filter(ctx, query.QueryArgs{
+			DB:            "dataman_storage",
+			ShardInstance: "public",
+			Collection:    "collection_index",
+			Filter: map[string]interface{}{
 				"collection_id": []interface{}{"=", collectionRecord["_id"]},
 			},
 		})
@@ -1016,11 +1017,11 @@ func (m *DefaultMetadataStore) getCollectionByID(ctx context.Context, meta *meta
 
 		for _, collectionIndexRecord := range collectionIndexResult.Return {
 			// Load the index fields
-			collectionIndexItemResult := m.Store.Filter(ctx, map[string]interface{}{
-				"db":             "dataman_storage",
-				"shard_instance": "public",
-				"collection":     "collection_index_item",
-				"filter": map[string]interface{}{
+			collectionIndexItemResult := m.Store.Filter(ctx, query.QueryArgs{
+				DB:            "dataman_storage",
+				ShardInstance: "public",
+				Collection:    "collection_index_item",
+				Filter: map[string]interface{}{
 					"collection_index_id": []interface{}{"=", collectionIndexRecord["_id"]},
 				},
 			})

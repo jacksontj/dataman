@@ -1,6 +1,0 @@
-{
-  "return": null,
-  "errors": [
-    "\"fields\" must be a list of strings"
-  ]
-}

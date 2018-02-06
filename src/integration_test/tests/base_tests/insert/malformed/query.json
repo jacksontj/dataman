@@ -1,8 +1,0 @@
-{
-    "type": "insert",
-    "args": {
-        "db": "test1",
-        "collection": "user",
-        "record": "MALFORMED"
-    }
-}

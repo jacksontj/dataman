@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/storage_node/metadata"
 )
 
@@ -29,6 +30,10 @@ func init() {
 				map[string]interface{}{"id": []interface{}{"=", 2}},
 			},
 			result: `( "id"=1 OR  "id"=2)`,
+		},
+
+		&filterTestCase{
+			filter: map[string]interface{}{},
 		},
 	}
 }
@@ -58,12 +63,12 @@ func getTestStorage() (*Storage, error) {
 	}, nil
 }
 
-func getFilter(filter interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"filter":         filter,
-		"db":             "example_forum",
-		"shard_instance": "dbshard_example_forum_2",
-		"collection":     "user",
+func getFilter(filter interface{}) query.QueryArgs {
+	return query.QueryArgs{
+		Filter:        filter,
+		DB:            "example_forum",
+		ShardInstance: "dbshard_example_forum_2",
+		Collection:    "user",
 	}
 }
 

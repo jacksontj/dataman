@@ -29,7 +29,7 @@ func DoWriteJoins(ctx context.Context, client *datamanclient.Client, q *query.Qu
 	}
 
 	getter := func(name string) (MetaCollection, error) {
-		return meta.GetCollection(q.Args["db"].(string), q.Args["shard_instance"].(string), name)
+		return meta.GetCollection(q.Args.DB, q.Args.ShardInstance, name)
 	}
 
 	joinCollection, err := OrderJoins(getter, collection, joinMap)
@@ -79,11 +79,11 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 				// At this point we need to do our layer
 				joinResults, err := client.DoQuery(ctx, &query.Query{
 					Type: query.Set,
-					Args: map[string]interface{}{
-						"db":             q.Args["db"],
-						"shard_instance": q.Args["shard_instance"].(string),
-						"collection":     forwardJoin.C.Name,
-						"record":         subRecord,
+					Args: query.QueryArgs{
+						DB:            q.Args.DB,
+						ShardInstance: q.Args.ShardInstance,
+						Collection:    forwardJoin.C.Name,
+						Record:        subRecord,
 					},
 				})
 				if err != nil {
@@ -157,11 +157,11 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 				// At this point we need to do our layer
 				joinResults, err := client.DoQuery(ctx, &query.Query{
 					Type: query.Set,
-					Args: map[string]interface{}{
-						"db":             q.Args["db"],
-						"shard_instance": q.Args["shard_instance"].(string),
-						"collection":     reverseJoin.C.Name,
-						"record":         subRecord,
+					Args: query.QueryArgs{
+						DB:            q.Args.DB,
+						ShardInstance: q.Args.ShardInstance,
+						Collection:    reverseJoin.C.Name,
+						Record:        subRecord,
 					},
 				})
 				if err != nil {

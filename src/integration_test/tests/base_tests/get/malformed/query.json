@@ -1,8 +1,0 @@
-{
-    "type": "get",
-    "args": {
-        "db": "test1",
-        "collection": "user",
-        "pkey": "malformed"
-    }
-}
