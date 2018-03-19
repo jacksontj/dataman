@@ -1,0 +1,25 @@
+{
+  "return": [
+    {
+      "data": {
+        "content": "post3",
+        "created": 3,
+        "created_by": "user2",
+        "thread_ksuid": "1"
+      },
+      "ksuid": "3"
+    },
+    {
+      "data": {
+        "content": "post4",
+        "created": 4,
+        "created_by": "user2",
+        "thread_ksuid": "1"
+      },
+      "ksuid": "4"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}
