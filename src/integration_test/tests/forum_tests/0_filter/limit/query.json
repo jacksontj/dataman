@@ -1,0 +1,10 @@
+{
+    "type": "filter",
+    "args": {
+        "db": "test1",
+        "collection": "message",
+        "filter": {},
+        "sort": ["ksuid"],
+        "limit": 2
+    }
+}
