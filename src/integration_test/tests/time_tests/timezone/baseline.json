@@ -3,7 +3,7 @@
   "validation_error": {
     "fields": {
       "created": {
-        "error": "parsing time \"2017-09-08 14:44:02 PST\": extra text:  PST"
+        "error": "parsing time \"2017-09-08 14:44:02 PST\" as \"2006-01-02T15:04:05Z07:00\": cannot parse \" 14:44:02 PST\" as \"T\""
       }
     }
   }
