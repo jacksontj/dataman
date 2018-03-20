@@ -462,7 +462,15 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		}
 	}
 
-	return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
+	// TODO: better limit
+	// this is the naive approach, but this requires pulling all the results from all shards and then doing the limit.
+	// Ideally we'd determine that we're asking for a "lot" of data and then switch the underlying queries to
+	// iterative queries then we could pull in at most the result set and 1 additional record from each shard
+	result := query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
+	if q.Args.Limit > 0 {
+		result.Return = result.Return[:q.Args.Limit]
+	}
+	return result
 }
 
 // TODO: fix

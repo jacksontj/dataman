@@ -2,6 +2,7 @@ package query
 
 type QueryType string
 
+// TODO: func to validate the mix of arguments
 type QueryArgs struct {
 	// Shared options
 	DB            string `json:"db"`
@@ -12,6 +13,7 @@ type QueryArgs struct {
 	Sort   []string `json:"sort"`
 	// TODO: change to ints?
 	SortReverse []bool `json:"sort_reverse"`
+	Limit       uint64 `json:"limit"`
 
 	// Record types (TODO: record struct)
 	PKey   map[string]interface{} `json:"pkey"`

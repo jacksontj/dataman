@@ -537,6 +537,10 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		sqlQuery += " WHERE " + whereClause
 	}
 
+	if args.Limit > 0 {
+		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+	}
+
 	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery)
 	if err != nil {
 		result.Errors = []string{err.Error()}
