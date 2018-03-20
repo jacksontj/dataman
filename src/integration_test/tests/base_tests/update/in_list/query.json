@@ -1,0 +1,13 @@
+{
+    "type": "update",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "filter": {
+            "username": ["in", ["foo", "bar"]]
+        },
+        "record": {
+            "firstname": "IN"
+        }
+    }
+}
