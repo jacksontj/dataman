@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/src/datamantype"
+	"github.com/jacksontj/dataman/src/stream"
+	"github.com/jacksontj/dataman/src/stream/local"
 )
 
 func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
@@ -47,6 +49,60 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 		results = append(results, data)
 	}
 	return results, nil
+}
+
+type streamQueryItem struct {
+	item map[string]interface{}
+	err  error
+}
+
+func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) (stream.ClientStream, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
+	}
+
+	resultsChan := make(chan stream.Result, 1)
+	errorChan := make(chan error, 1)
+
+	serverStream := local.NewServerStream(resultsChan, errorChan)
+	clientStream := local.NewClientStream(resultsChan, errorChan)
+
+	// TODO: without goroutine?
+	go func() {
+		defer serverStream.Close()
+		// Get the list of column names
+		cols, err := rows.Columns()
+		if err != nil {
+			serverStream.SendError(err)
+			return
+		}
+		// If there aren't any rows, we return a nil result
+		for rows.Next() {
+			columns := make([]interface{}, len(cols))
+			columnPointers := make([]interface{}, len(cols))
+			for i, _ := range columns {
+				columnPointers[i] = &columns[i]
+			}
+
+			// Scan the result into the column pointers...
+			if err := rows.Scan(columnPointers...); err != nil {
+				serverStream.SendError(err)
+				return
+			}
+
+			// Create our map, and retrieve the value for each column from the pointers slice,
+			// storing it in the map with the name of the column as the key.
+			data := make(map[string]interface{})
+			for i, colName := range cols {
+				val := columnPointers[i].(*interface{})
+				data[colName] = *val
+			}
+			serverStream.SendResult(data)
+		}
+	}()
+
+	return clientStream, nil
 }
 
 // Normalize field names. This takes a string such as "(data ->> 'created'::text)"

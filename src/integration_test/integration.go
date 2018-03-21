@@ -12,6 +12,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/jacksontj/dataman/src/client"
 	"github.com/jacksontj/dataman/src/client/direct"
 	"github.com/jacksontj/dataman/src/client/http"
@@ -33,6 +36,10 @@ type Data map[string]map[string][]map[string]interface{}
 
 // For this we assume these are empty and we can do whatever we want to them!
 func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	// Find all tests
 	files, err := ioutil.ReadDir("tests")
@@ -154,14 +161,43 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 				t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
 			}
 
-			// Run the query
-			result := router.HandleQuery(context.Background(), q)
+			var queryResult interface{}
+
+			// Run the type of query it is
+			switch q.Type {
+			case query.FilterStream:
+				resultStream, err := client.DoStreamQuery(context.Background(), q)
+				if err != nil {
+					t.Fatalf("Transport error on client: %v", err)
+				}
+
+				streamResult := []interface{}{resultStream}
+
+				// TODO: wrap the results in a struct for marshaling?
+				for {
+					if val, err := resultStream.Recv(); err != nil {
+						streamResult = append(streamResult, err.Error())
+						break
+					} else {
+						streamResult = append(streamResult, val)
+					}
+				}
+				queryResult = streamResult
+
+			default:
+				// Run the query
+				result, err := client.DoQuery(context.Background(), q)
+				if err != nil {
+					t.Fatalf("Transport error on client: %v", err)
+				}
+				queryResult = result
+			}
 
 			// Check result
 
 			// write out results
 			resultPath := path.Join(fpath, "result.json")
-			resultBytes, _ := json.MarshalIndent(result, "", "  ")
+			resultBytes, _ := json.MarshalIndent(queryResult, "", "  ")
 			ioutil.WriteFile(resultPath, resultBytes, 0644)
 
 			// compare against baseline if it exists

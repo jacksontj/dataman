@@ -34,6 +34,9 @@ const (
 	Update           = "update"
 	Delete           = "delete"
 	Filter           = "filter"
+
+	// Stream types
+	FilterStream = "filter_stream"
 )
 
 type Query struct {

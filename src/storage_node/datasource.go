@@ -219,7 +219,6 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 	return nil
 }
 
-// TODO: switch this to the query.Query struct? If not then we should probably support both query formats? Or remove that Query struct
 func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *query.Result {
 	start := time.Now()
 	defer func() {
@@ -397,6 +396,66 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 		result.Sort(q.Args.Sort, q.Args.SortReverse)
 	}
+	return result
+}
+
+// TODO: push sort down to the datasource instance (needed to get the stream corect)
+// Handle all stream queries
+func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Query) *query.ResultStream {
+	var result *query.ResultStream
+
+	// We specifically want to load this once for the batch so we don't have mixed
+	// schema information across this batch of queries
+	meta := s.GetActiveMeta()
+
+	collection, err := meta.GetCollection(q.Args.DB, q.Args.ShardInstance, q.Args.Collection)
+	// Verify that the table is within our domain
+	if err != nil {
+		return &query.ResultStream{Errors: []string{err.Error()}}
+	}
+
+	if q.Args.Fields != nil {
+		// Check that the fields exist (or at least are subfields of things that exist)
+		for _, field := range q.Args.Fields {
+			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+				return &query.ResultStream{Errors: []string{"invalid projection field " + field}}
+			}
+		}
+	}
+
+	switch q.Type {
+	case query.FilterStream:
+		result = s.Store.FilterStream(ctx, q.Args)
+	default:
+		return &query.ResultStream{Errors: []string{"invalid stream query"}}
+	}
+
+	if q.Args.Fields != nil {
+		// TODO: only need to do this if the request came from a router (for deduping purposes)
+		// Ensure that q.Args.Fields has all the pkeys in it
+		for _, pkeyFieldName := range collection.PrimaryIndex.Fields {
+			found := false
+			for _, fieldListItem := range q.Args.Fields {
+				if pkeyFieldName == fieldListItem {
+					found = true
+					break
+				}
+			}
+			if !found {
+				q.Args.Fields = append(q.Args.Fields, pkeyFieldName)
+			}
+		}
+
+		projectionFields := query.ProjectionFields(q.Args.Fields)
+
+		// Add projection transformation to the stream
+		result.AddTransformation(func(r map[string]interface{}) error {
+			r = query.Project(projectionFields, r)
+			return nil
+		})
+
+	}
+
 	return result
 }
 

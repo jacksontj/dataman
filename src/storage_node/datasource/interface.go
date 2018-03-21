@@ -70,4 +70,7 @@ type DataInterface interface {
 	Update(context.Context, query.QueryArgs) *query.Result
 	Delete(context.Context, query.QueryArgs) *query.Result
 	Filter(context.Context, query.QueryArgs) *query.Result
+
+	// Stream APIs
+	FilterStream(context.Context, query.QueryArgs) *query.ResultStream
 }

@@ -28,9 +28,19 @@ type Client struct {
 // be reported in this error, they will be in the normal Result.Error location)
 func (d *Client) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
 	c, cancel := context.WithCancel(ctx)
-	defer cancel() // Cancel ctx as soon as handleSearch returns.
+	defer cancel() // Cancel ctx as soon as transport returns.
 
 	results, err := d.Transport.DoQuery(c, q)
+	if err != nil {
+		return nil, err
+	} else {
+		return results, err
+	}
+}
+
+// DoStreamQuery will execute a given query and stream the results back.
+func (d *Client) DoStreamQuery(ctx context.Context, q *query.Query) (*query.ResultStream, error) {
+	results, err := d.Transport.DoStreamQuery(ctx, q)
 	if err != nil {
 		return nil, err
 	} else {

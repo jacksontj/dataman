@@ -553,6 +553,46 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	return result
 }
 
+func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query.ResultStream {
+	result := &query.ResultStream{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
+	// don't support it (new in postgres 7.3)
+	sqlQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s", args.ShardInstance, args.Collection)
+
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+	if whereClause != "" {
+		sqlQuery += " WHERE " + whereClause
+	}
+
+	if args.Limit > 0 {
+		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+	}
+
+	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), sqlQuery)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+
+	result.Stream = streamChan
+
+	// TODO: do this somehow in the stream
+	//s.normalizeResult(args, result)
+
+	return result
+}
+
 func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 
 	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)

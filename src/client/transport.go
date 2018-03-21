@@ -14,4 +14,6 @@ type DatamanClientTransport interface {
 	// if there is an update
 
 	DoQuery(context.Context, *query.Query) (*query.Result, error)
+
+	DoStreamQuery(context.Context, *query.Query) (*query.ResultStream, error)
 }
