@@ -27,9 +27,9 @@ func NewHTTPApi(routerNode *RouterNode) *HTTPApi {
 }
 
 func wrapHandler(h http.Handler) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	return httputil.LoggingHandler(func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		h.ServeHTTP(w, r)
-	}
+	})
 }
 
 // Register any endpoints to the router
@@ -38,7 +38,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/metadata", httputil.LoggingHandler(h.showMetadata))
 
 	// Data access APIs
-	router.POST("/v1/data/raw", httputil.LoggingHandler(h.rawQueryHandler))
+	router.POST("/v1/data/raw/:qtype", httputil.LoggingHandler(h.rawQueryHandler))
 
 	// TODO: options to enable/disable (or scope to just localhost)
 	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
@@ -82,28 +82,23 @@ func (h *HTTPApi) showMetadata(w http.ResponseWriter, r *http.Request, ps httpro
 func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	ctx := r.Context()
 
-	// TODO: read here should cancel if the ctx closes (client disconnects etc.)
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
-	var qMap map[query.QueryType]query.QueryArgs
+	// TODO: validate that this is correct, error if its not a valid name
+	qType := query.QueryType(ps.ByName("qtype"))
 
-	if err := json.Unmarshal(bytes, &qMap); err != nil {
+	var qArgs query.QueryArgs
+
+	if err := json.Unmarshal(bytes, &qArgs); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		// If there was more than one thing, error
-		if len(qMap) != 1 {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
 		// Otherwise, lets create the query struct to pass down
-		var q query.Query
-		for k, v := range qMap {
-			q.Type = k
-			q.Args = v
+		q := query.Query{
+			Type: qType,
+			Args: qArgs,
 		}
 
 		results := h.routerNode.HandleQuery(ctx, &q)

@@ -11,29 +11,27 @@ import (
 	"github.com/jacksontj/dataman/src/query"
 )
 
-func NewHTTPDatamanClient(destination string) (*HTTPDatamanClient, error) {
-	return &HTTPDatamanClient{
+func NewHTTPTransport(destination string) (*HTTPTransport, error) {
+	return &HTTPTransport{
 		destination: destination,
 		client:      &http.Client{},
 	}, nil
 }
 
-type HTTPDatamanClient struct {
+type HTTPTransport struct {
 	destination string
 	client      *http.Client
 }
 
-func (d *HTTPDatamanClient) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
-	queryMap := map[query.QueryType]interface{}{q.Type: q.Args}
-
-	encQueries, err := json.Marshal(queryMap)
+func (d *HTTPTransport) DoQuery(ctx context.Context, q *query.Query) (*query.Result, error) {
+	encArgs, err := json.Marshal(q.Args)
 	if err != nil {
 		return nil, fmt.Errorf("Json error: %v", err)
 	}
-	bodyReader := bytes.NewReader(encQueries)
+	bodyReader := bytes.NewReader(encArgs)
 
 	// send task to node
-	req, err := http.NewRequest("POST", d.destination, bodyReader)
+	req, err := http.NewRequest("POST", d.destination+"/"+string(q.Type), bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating request: %v", err)
 	}
