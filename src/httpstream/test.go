@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	_ "net/http/pprof"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -69,26 +70,28 @@ func StreamTest(t *testing.T, c StreamPairCreator) {
 		{10, 10, 10},
 	}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		expectingError := test.errOffset >= 0 && test.errOffset < test.itemCount
 		expectedResults := test.itemCount
 		if test.errOffset >= 0 && test.errOffset < test.itemCount {
 			expectedResults = test.errOffset + 1
 		}
 
-		server, client := c()
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			server, client := c()
 
-		// return 10 items, no errors
-		go makeStuff(server, test.itemCount, test.errOffset, test.sleepStep)
+			// return 10 items, no errors
+			go makeStuff(server, test.itemCount, test.errOffset, test.sleepStep)
 
-		results, err := streamResponses(client)
-		if err != nil && !expectingError {
-			t.Fatalf("error unexpected: %v", err)
-		} else if err == nil && expectingError {
-			t.Fatalf("Missing expected error")
-		}
-		if len(results) != expectedResults {
-			t.Fatalf("incorrect number of responses expected=%d actual=%d", expectedResults, len(results))
-		}
+			results, err := streamResponses(client)
+			if err != nil && !expectingError {
+				t.Fatalf("error unexpected: %v", err)
+			} else if err == nil && expectingError {
+				t.Fatalf("Missing expected error")
+			}
+			if len(results) != expectedResults {
+				t.Fatalf("incorrect number of responses expected=%d actual=%d", expectedResults, len(results))
+			}
+		})
 	}
 }
