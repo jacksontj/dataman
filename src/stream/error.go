@@ -1,4 +1,4 @@
-package httpstream
+package stream
 
 // BrokenStream means that the stream broke before we got the trailer.
 // In practice this means that there was an interruption to the stream, meaning

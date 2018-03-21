@@ -1,4 +1,4 @@
-package httpstream
+package stream
 
 type ClientStream interface {
 	Recv() (Result, error)

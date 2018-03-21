@@ -9,14 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jacksontj/dataman/src/httpstream"
+	"github.com/jacksontj/dataman/src/stream"
 )
 
 // Since the trailer is constant, we'll calculate it once for the package and re-use it
 var trailer []byte
 
 func init() {
-	trailer, _ = json.Marshal(httpstream.ResultChunk{Results: []httpstream.Result{}})
+	trailer, _ = json.Marshal(stream.ResultChunk{Results: []stream.Result{}})
 }
 
 /*
@@ -26,9 +26,9 @@ Flusing:
 
 */
 
-func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Duration, w io.Writer) httpstream.ServerStream {
+func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Duration, w io.Writer) stream.ServerStream {
 	sw := &ServerStream{
-		resultsChan:   make(chan httpstream.Result),
+		resultsChan:   make(chan stream.Result),
 		errorChan:     make(chan error),
 		chunkSize:     chunkSize,
 		flushInterval: flushInterval,
@@ -43,7 +43,7 @@ func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Dura
 
 // The guy that actually writes things out
 type ServerStream struct {
-	resultsChan   chan httpstream.Result
+	resultsChan   chan stream.Result
 	errorChan     chan error
 	chunkSize     int
 	flushInterval time.Duration
@@ -57,7 +57,7 @@ type ServerStream struct {
 }
 
 // SendResult will send the result r or return an error.
-func (s *ServerStream) SendResult(r httpstream.Result) error {
+func (s *ServerStream) SendResult(r stream.Result) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
@@ -109,12 +109,12 @@ func (s *ServerStream) doChunking(ctx context.Context, w io.Writer) {
 	flusher, _ := w.(http.Flusher)
 
 	timer := time.NewTimer(s.flushInterval)
-	buf := make([]httpstream.Result, s.chunkSize)
+	buf := make([]stream.Result, s.chunkSize)
 	i := 0
 	flushNow := false
 
 	flush := func() {
-		b, _ := json.Marshal(httpstream.ResultChunk{Results: buf[:i]})
+		b, _ := json.Marshal(stream.ResultChunk{Results: buf[:i]})
 		if _, err := w.Write(b); err != nil {
 			s.close(err)
 			return
@@ -152,7 +152,7 @@ func (s *ServerStream) doChunking(ctx context.Context, w io.Writer) {
 	}
 
 	flushError := func(err error) {
-		b, _ := json.Marshal(httpstream.ResultChunk{Results: buf[:i], Error: err.Error()})
+		b, _ := json.Marshal(stream.ResultChunk{Results: buf[:i], Error: err.Error()})
 		if _, err := w.Write(b); err != nil {
 			s.close(err)
 			return

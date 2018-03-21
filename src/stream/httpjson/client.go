@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jacksontj/dataman/src/httpstream"
+	"github.com/jacksontj/dataman/src/stream"
 )
 
-func NewClientStream(r io.ReadCloser) httpstream.ClientStream {
+func NewClientStream(r io.ReadCloser) stream.ClientStream {
 	stream := &ClientStream{
-		results:   make(chan *httpstream.ResultChunk),
+		results:   make(chan *stream.ResultChunk),
 		errorChan: make(chan error),
 		r:         r,
 	}
@@ -21,9 +21,9 @@ func NewClientStream(r io.ReadCloser) httpstream.ClientStream {
 }
 
 type ClientStream struct {
-	results      chan *httpstream.ResultChunk
+	results      chan *stream.ResultChunk
 	errorChan    chan error
-	currentChunk *httpstream.ResultChunk
+	currentChunk *stream.ResultChunk
 	offset       int
 
 	r io.ReadCloser
@@ -53,10 +53,10 @@ func (s *ClientStream) handleStream() {
 			return
 		}
 
-		chunk := &httpstream.ResultChunk{}
+		chunk := &stream.ResultChunk{}
 		if e := json.Unmarshal(buf, chunk); e != nil {
 			// TODO: set the other error?
-			s.results <- &httpstream.ResultChunk{Error: e.Error()}
+			s.results <- &stream.ResultChunk{Error: e.Error()}
 			return
 		} else {
 			// If we got the trailer, we are done!
@@ -69,7 +69,7 @@ func (s *ClientStream) handleStream() {
 
 }
 
-func (s *ClientStream) Recv() (httpstream.Result, error) {
+func (s *ClientStream) Recv() (stream.Result, error) {
 	for {
 		// If we need a new chunk, get it
 		if s.currentChunk == nil || (len(s.currentChunk.Results) <= s.offset) {
@@ -83,7 +83,7 @@ func (s *ClientStream) Recv() (httpstream.Result, error) {
 			case err, ok := <-s.errorChan:
 				if ok {
 					if err == io.EOF {
-						return nil, httpstream.BrokenStream{}
+						return nil, stream.BrokenStream{}
 					} else {
 						return nil, err
 					}

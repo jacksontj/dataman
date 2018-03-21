@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/jacksontj/dataman/src/httpstream"
+	"github.com/jacksontj/dataman/src/stream"
 )
 
 // Since the trailer is constant, we'll calculate it once for the package and re-use it
 var trailer []byte
 
 func init() {
-	trailer, _ = json.Marshal(httpstream.ResultChunk{Results: []httpstream.Result{}})
+	trailer, _ = json.Marshal(stream.ResultChunk{Results: []stream.Result{}})
 }
 
 /*
@@ -22,7 +22,7 @@ Flusing:
 
 */
 
-func NewServerStream(resultsChan chan httpstream.Result, errorChan chan error) httpstream.ServerStream {
+func NewServerStream(resultsChan chan stream.Result, errorChan chan error) stream.ServerStream {
 	sw := &ServerStream{
 		resultsChan: resultsChan,
 		errorChan:   errorChan,
@@ -34,7 +34,7 @@ func NewServerStream(resultsChan chan httpstream.Result, errorChan chan error) h
 
 // The guy that actually writes things out
 type ServerStream struct {
-	resultsChan chan httpstream.Result
+	resultsChan chan stream.Result
 	errorChan   chan error
 
 	closed    bool
@@ -46,7 +46,7 @@ type ServerStream struct {
 }
 
 // SendResult will send the result r or return an error.
-func (s *ServerStream) SendResult(r httpstream.Result) error {
+func (s *ServerStream) SendResult(r stream.Result) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {

@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jacksontj/dataman/src/httpstream"
-	"github.com/jacksontj/dataman/src/httpstream/httpjson"
+	"github.com/jacksontj/dataman/src/stream"
+	"github.com/jacksontj/dataman/src/stream/httpjson"
 )
 
 // TODO: test client cancellation
@@ -35,7 +35,7 @@ func TestJsonStreams(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		f := func() (httpstream.ServerStream, httpstream.ClientStream) {
+		f := func() (stream.ServerStream, stream.ClientStream) {
 			// make something client + server -- we just need something that acts like a socket
 			// meaning that we can read and block waiting until io.EOF (instead of reading nothing
 			// and immediately exiting like a bytes.Buffer)
@@ -47,7 +47,7 @@ func TestJsonStreams(t *testing.T) {
 			return server, client
 		}
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			httpstream.StreamTest(t, f)
+			stream.StreamTest(t, f)
 		})
 	}
 }

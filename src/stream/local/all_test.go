@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/jacksontj/dataman/src/httpstream"
+	"github.com/jacksontj/dataman/src/stream"
 )
 
 // TODO: test client cancellation
@@ -15,9 +15,9 @@ func TestLocalStreams(t *testing.T) {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	f := func() (httpstream.ServerStream, httpstream.ClientStream) {
+	f := func() (stream.ServerStream, stream.ClientStream) {
 
-		resultsChan := make(chan httpstream.Result, 1)
+		resultsChan := make(chan stream.Result, 1)
 		errorChan := make(chan error, 1)
 
 		server := NewServerStream(resultsChan, errorChan)
@@ -26,5 +26,5 @@ func TestLocalStreams(t *testing.T) {
 		return server, client
 	}
 
-	httpstream.StreamTest(t, f)
+	stream.StreamTest(t, f)
 }
