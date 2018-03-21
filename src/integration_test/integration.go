@@ -14,6 +14,7 @@ import (
 
 	"github.com/jacksontj/dataman/src/client"
 	"github.com/jacksontj/dataman/src/client/direct"
+	"github.com/jacksontj/dataman/src/client/http"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -51,10 +52,15 @@ func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routerno
 }
 
 func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
+	// Get the transport requested from the CLI
 	getTransport := func() datamanclient.DatamanClientTransport {
 		switch datamanClientTransport {
 		case "direct":
 			return datamandirect.NewRouterTransport(router)
+
+		case "http":
+			transport, _ := datamanhttp.NewHTTPDatamanClient("http://127.0.0.1" + router.Config.HTTP.Addr + "/v1/data/raw")
+			return transport
 
 		default:
 			log.Fatalf("Unknown datman-client-transport: %s", datamanClientTransport)
@@ -62,6 +68,7 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 		}
 	}
 
+	// TODO: use client for schema manipulation too
 	// Load the various files
 	schema := make(map[string]*metadata.Database)
 	schemaBytes, err := ioutil.ReadFile(path.Join("tests", testDir, "/schema.json"))
