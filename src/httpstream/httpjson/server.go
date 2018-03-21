@@ -1,4 +1,4 @@
-package httpstream
+package httpjson
 
 import (
 	"context"
@@ -8,13 +8,15 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/jacksontj/dataman/src/httpstream"
 )
 
 // Since the trailer is constant, we'll calculate it once for the package and re-use it
 var trailer []byte
 
 func init() {
-	trailer, _ = json.Marshal(ResultChunk{Results: []Result{}})
+	trailer, _ = json.Marshal(httpstream.ResultChunk{Results: []httpstream.Result{}})
 }
 
 /*
@@ -24,9 +26,9 @@ Flusing:
 
 */
 
-func NewJSONServerStream(ctx context.Context, chunkSize int, flushInterval time.Duration, w io.Writer) ServerStream {
-	sw := &JSONServerStream{
-		resultsChan:   make(chan Result),
+func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Duration, w io.Writer) httpstream.ServerStream {
+	sw := &ServerStream{
+		resultsChan:   make(chan httpstream.Result),
 		errorChan:     make(chan error),
 		chunkSize:     chunkSize,
 		flushInterval: flushInterval,
@@ -40,8 +42,8 @@ func NewJSONServerStream(ctx context.Context, chunkSize int, flushInterval time.
 }
 
 // The guy that actually writes things out
-type JSONServerStream struct {
-	resultsChan   chan Result
+type ServerStream struct {
+	resultsChan   chan httpstream.Result
 	errorChan     chan error
 	chunkSize     int
 	flushInterval time.Duration
@@ -55,7 +57,7 @@ type JSONServerStream struct {
 }
 
 // SendResult will send the result r or return an error.
-func (s *JSONServerStream) SendResult(r Result) error {
+func (s *ServerStream) SendResult(r httpstream.Result) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
@@ -67,7 +69,7 @@ func (s *JSONServerStream) SendResult(r Result) error {
 }
 
 // SendError will send the error err down the stream or return an error on its own
-func (s *JSONServerStream) SendError(err error) error {
+func (s *ServerStream) SendError(err error) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
@@ -80,7 +82,7 @@ func (s *JSONServerStream) SendError(err error) error {
 }
 
 // Close will close the server stream, disallowing all future sends
-func (s *JSONServerStream) Close() error {
+func (s *ServerStream) Close() error {
 	s.serverLock.Lock()
 	s.close(fmt.Errorf("Stream Closed"))
 	// Unlock before waiting for background task to complete
@@ -90,7 +92,7 @@ func (s *JSONServerStream) Close() error {
 }
 
 // close is an internal close method which assumes that the serverLock is held
-func (s *JSONServerStream) close(err error) {
+func (s *ServerStream) close(err error) {
 	if !s.closed {
 		close(s.resultsChan)
 		close(s.errorChan)
@@ -101,18 +103,18 @@ func (s *JSONServerStream) close(err error) {
 
 // doChunking is a background goroutine function which does the actual chunking
 // of the channels to the wire
-func (s *JSONServerStream) doChunking(ctx context.Context, w io.Writer) {
+func (s *ServerStream) doChunking(ctx context.Context, w io.Writer) {
 	defer close(s.doneChan)
 	// Support iowriters that are also flushers
 	flusher, _ := w.(http.Flusher)
 
 	timer := time.NewTimer(s.flushInterval)
-	buf := make([]Result, s.chunkSize)
+	buf := make([]httpstream.Result, s.chunkSize)
 	i := 0
 	flushNow := false
 
 	flush := func() {
-		b, _ := json.Marshal(ResultChunk{Results: buf[:i]})
+		b, _ := json.Marshal(httpstream.ResultChunk{Results: buf[:i]})
 		if _, err := w.Write(b); err != nil {
 			s.close(err)
 			return
@@ -150,7 +152,7 @@ func (s *JSONServerStream) doChunking(ctx context.Context, w io.Writer) {
 	}
 
 	flushError := func(err error) {
-		b, _ := json.Marshal(ResultChunk{Results: buf[:i], Error: err.Error()})
+		b, _ := json.Marshal(httpstream.ResultChunk{Results: buf[:i], Error: err.Error()})
 		if _, err := w.Write(b); err != nil {
 			s.close(err)
 			return
