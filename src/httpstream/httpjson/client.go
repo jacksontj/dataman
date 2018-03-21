@@ -1,15 +1,17 @@
-package httpstream
+package httpjson
 
 import (
 	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/jacksontj/dataman/src/httpstream"
 )
 
-func NewJSONClientStream(r io.ReadCloser) ClientStream {
-	stream := &JSONClientStream{
-		results:   make(chan *ResultChunk),
+func NewClientStream(r io.ReadCloser) httpstream.ClientStream {
+	stream := &ClientStream{
+		results:   make(chan *httpstream.ResultChunk),
 		errorChan: make(chan error),
 		r:         r,
 	}
@@ -18,16 +20,16 @@ func NewJSONClientStream(r io.ReadCloser) ClientStream {
 	return stream
 }
 
-type JSONClientStream struct {
-	results      chan *ResultChunk
+type ClientStream struct {
+	results      chan *httpstream.ResultChunk
 	errorChan    chan error
-	currentChunk *ResultChunk
+	currentChunk *httpstream.ResultChunk
 	offset       int
 
 	r io.ReadCloser
 }
 
-func (s *JSONClientStream) Close() error {
+func (s *ClientStream) Close() error {
 	if s.r != nil {
 		return s.r.Close()
 	}
@@ -35,7 +37,7 @@ func (s *JSONClientStream) Close() error {
 }
 
 // Handle reading the io.Reader in chunks
-func (s *JSONClientStream) handleStream() {
+func (s *ClientStream) handleStream() {
 	defer func() {
 		s.Close()
 		close(s.results)
@@ -51,10 +53,10 @@ func (s *JSONClientStream) handleStream() {
 			return
 		}
 
-		chunk := &ResultChunk{}
+		chunk := &httpstream.ResultChunk{}
 		if e := json.Unmarshal(buf, chunk); e != nil {
 			// TODO: set the other error?
-			s.results <- &ResultChunk{Error: e.Error()}
+			s.results <- &httpstream.ResultChunk{Error: e.Error()}
 			return
 		} else {
 			// If we got the trailer, we are done!
@@ -67,7 +69,7 @@ func (s *JSONClientStream) handleStream() {
 
 }
 
-func (s *JSONClientStream) Recv() (Result, error) {
+func (s *ClientStream) Recv() (httpstream.Result, error) {
 	for {
 		// If we need a new chunk, get it
 		if s.currentChunk == nil || (len(s.currentChunk.Results) <= s.offset) {
@@ -81,7 +83,7 @@ func (s *JSONClientStream) Recv() (Result, error) {
 			case err, ok := <-s.errorChan:
 				if ok {
 					if err == io.EOF {
-						return nil, BrokenStream{}
+						return nil, httpstream.BrokenStream{}
 					} else {
 						return nil, err
 					}
