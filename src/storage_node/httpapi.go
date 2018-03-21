@@ -2,9 +2,13 @@ package storagenode
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/pprof"
+	"time"
+
+	"github.com/jacksontj/dataman/src/stream/httpjson"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rcrowley/go-metrics"
@@ -501,15 +505,52 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 			Args: qArgs,
 		}
 
-		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(ctx, &q)
-		// Now we need to return the results
-		if bytes, err := json.Marshal(result); err != nil {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(bytes)
+		// TODO: func or something instead of having these switches all over
+		switch qType {
+		case query.FilterStream:
+			results := h.storageNode.Datasources[ps.ByName("datasource")].HandleStreamQuery(ctx, &q)
+			// Now we need to return the results
+			if bytes, err := json.Marshal(results); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+				// TODO: move into the stream package
+				w.Write([]byte{'\n'})
+			}
+
+			if results.Stream != nil {
+				// start the server chunker on the same stream
+				// TODO: options + config
+				serverStream := httpjson.NewServerStream(ctx, 10, time.Second, w)
+				defer serverStream.Close()
+				// TODO: helper function for this
+				for {
+					if record, err := results.Stream.Recv(); err != nil {
+						if err == io.EOF {
+							return
+						}
+						serverStream.SendError(err)
+						return
+					} else {
+						serverStream.SendResult(record)
+					}
+				}
+			}
+
+		default:
+			results := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(ctx, &q)
+			// Now we need to return the results
+			if bytes, err := json.Marshal(results); err != nil {
+				// TODO: log this better?
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(bytes)
+			}
 		}
 	}
 }

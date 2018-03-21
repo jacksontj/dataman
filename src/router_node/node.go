@@ -18,6 +18,8 @@ import (
 	"github.com/jacksontj/dataman/src/router_node/client_manager"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
 	"github.com/jacksontj/dataman/src/router_node/sharding"
+	"github.com/jacksontj/dataman/src/stream"
+	"github.com/jacksontj/dataman/src/stream/local"
 
 	storagenodemetadata "github.com/jacksontj/dataman/src/storage_node/metadata"
 	"github.com/jacksontj/dataman/src/storage_node/metadata/filter"
@@ -753,4 +755,127 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	}
 
 	return nil
+}
+
+// TODO: support sorting
+func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *query.ResultStream {
+	meta := s.GetMeta()
+
+	// TODO: pass down database + collection
+	database, ok := meta.Databases[q.Args.DB]
+	if !ok {
+		return &query.ResultStream{Errors: []string{"Unknown db " + q.Args.DB}}
+	}
+	collection, ok := database.Collections[q.Args.Collection]
+	if !ok {
+		return &query.ResultStream{Errors: []string{"Unknown collection " + q.Args.Collection}}
+	}
+
+	// TODO: move into the underlying datasource -- we should be doing partial selects etc.
+	if q.Args.Fields != nil {
+		// Check that the fields exist (or at least are subfields of things that exist)
+		for _, field := range q.Args.Fields {
+			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+				return &query.ResultStream{Errors: []string{"invalid projection field " + field}}
+			}
+		}
+	}
+
+	var vshardResults chan *query.ResultStream
+
+	switch q.Type {
+	case query.FilterStream:
+		// Once we have the metadata all found we need to do the following:
+		//      - Authentication/authorization
+		//      - Cache
+		//      - Sharding
+		//      - Replicas
+
+		//TODO:Authentication/authorization
+		//TODO:Cache (configurable)
+
+		// Sharding consists of:
+		//		- select datasource(s)
+		//		- select keyspace(s) -- for now only one
+		//		- select keyspace_partition
+		//		- select vshard (collection or partition)
+		//			- hash "shard-key"
+		//			- select vshard
+		//		- send requests (involves mapping vshard -> shard)
+		//			-- TODO: we could combine the requests into a muxed one
+
+		// TODO: support multiple datastores
+		databaseDatastore := database.DatastoreSet.Read[0]
+		// TODO: support multiple keyspaces
+		keyspace := collection.Keyspaces[0]
+		// TODO: support multiple partitions
+		partition := keyspace.Partitions[0]
+
+		// TODO: support finding the shard (assuming the filter has a shard key) -- should just be a refactor of filter
+
+		vshards := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
+
+		// TODO: switch to channels or something (since we can get them in parallel
+		vshardResults = make(chan *query.ResultStream, len(vshards))
+		wg := &sync.WaitGroup{}
+
+		for _, vshard := range vshards {
+			// TODO: replicas -- add args for slave etc.
+			// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
+			// it has the data -- scaling up/down etc.)
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+			logrus.Debugf("\tGoing to %v", datasourceInstance)
+
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+			if !ok {
+				vshardResults <- &query.ResultStream{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
+			} else {
+				wg.Add(1)
+				go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
+					defer wg.Done()
+					newQ := *q
+					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+					if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
+						vshardResults <- result
+					} else {
+						vshardResults <- &query.ResultStream{Errors: []string{err.Error()}}
+					}
+				}(datasourceInstance, datasourceInstanceShardInstance)
+			}
+		}
+
+		// TODO: better? We need to close the channel when it is done
+		go func() {
+			wg.Wait()
+			close(vshardResults)
+		}()
+
+	default:
+		return &query.ResultStream{Errors: []string{"invalid stream query"}}
+	}
+
+	// TODO: limit
+	// TODO: sort
+	// TODO: projection
+
+	// TODO
+	// Consolidate vshardResults to result
+
+	resultsChan := make(chan stream.Result, 1)
+	errorChan := make(chan error, 1)
+
+	serverStream := local.NewServerStream(resultsChan, errorChan)
+	clientStream := local.NewClientStream(resultsChan, errorChan)
+
+	// TODO: pass back any other errors
+	// we should wait for the initial response from all downstream shards so we
+	// know if there where errors with any particular shard, then we can decide
+	// if we want to retry or error out
+	result := &query.ResultStream{
+		Stream: clientStream,
+	}
+
+	go query.MergeResultStreams(collection.PrimaryIndex.Fields, vshardResults, serverStream)
+
+	return result
 }

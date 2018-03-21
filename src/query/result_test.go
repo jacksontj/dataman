@@ -161,12 +161,9 @@ func TestSortSingle(t *testing.T) {
 func TestProjection(t *testing.T) {
 	for _, testCase := range projectionTestCases {
 		for _, projectionFields := range testCase.projections {
-			result := &Result{
-				Return: []map[string]interface{}{testCase.CopyRecord()},
-			}
-			result.Project(projectionFields)
+			ret := Project(ProjectionFields(projectionFields), testCase.CopyRecord())
 
-			flatResult := FlattenResult(result.Return[0])
+			flatResult := FlattenResult(ret)
 			// check that they are all valid
 			for k, _ := range flatResult {
 				found := false
