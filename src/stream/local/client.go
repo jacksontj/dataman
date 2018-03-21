@@ -3,10 +3,10 @@ package local
 import (
 	"io"
 
-	"github.com/jacksontj/dataman/src/httpstream"
+	"github.com/jacksontj/dataman/src/stream"
 )
 
-func NewClientStream(resultsChan chan httpstream.Result, errorChan chan error) httpstream.ClientStream {
+func NewClientStream(resultsChan chan stream.Result, errorChan chan error) stream.ClientStream {
 	stream := &ClientStream{
 		resultsChan: resultsChan,
 		errorChan:   errorChan,
@@ -16,7 +16,7 @@ func NewClientStream(resultsChan chan httpstream.Result, errorChan chan error) h
 }
 
 type ClientStream struct {
-	resultsChan chan httpstream.Result
+	resultsChan chan stream.Result
 	errorChan   chan error
 }
 
@@ -24,7 +24,7 @@ func (s *ClientStream) Close() error {
 	return nil
 }
 
-func (s *ClientStream) Recv() (httpstream.Result, error) {
+func (s *ClientStream) Recv() (stream.Result, error) {
 	// TODO: implement this cleaner, its a bit of a mess since we want specific
 	// priorities on channel reading
 	for {
