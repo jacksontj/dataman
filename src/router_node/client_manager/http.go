@@ -11,7 +11,7 @@ type HTTPClientManager struct {
 }
 
 func (h *HTTPClientManager) GetClient(datasourceInstance *metadata.DatasourceInstance) (*datamanclient.Client, error) {
-	transport, err := datamanhttp.NewHTTPDatamanClient(datasourceInstance.GetURL())
+	transport, err := datamanhttp.NewHTTPTransport(datasourceInstance.GetURL())
 	if err != nil {
 		return nil, err
 	}

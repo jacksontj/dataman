@@ -59,7 +59,7 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			return datamandirect.NewRouterTransport(router)
 
 		case "http":
-			transport, _ := datamanhttp.NewHTTPDatamanClient("http://127.0.0.1" + router.Config.HTTP.Addr + "/v1/data/raw")
+			transport, _ := datamanhttp.NewHTTPTransport("http://127.0.0.1" + router.Config.HTTP.Addr + "/v1/data/raw")
 			return transport
 
 		default:

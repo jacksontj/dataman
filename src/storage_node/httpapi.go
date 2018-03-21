@@ -77,7 +77,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.POST("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", httputil.LoggingHandler(h.ensureIndex))
 	router.DELETE("/v1/datasource_instance/:datasource/database/:dbname/shard_instance/:shardinstance/collection/:collectionname/indexes/:indexname", httputil.LoggingHandler(h.removeIndex))
 
-	router.POST("/v1/datasource_instance/:datasource/data/raw", httputil.LoggingHandler(h.rawQueryHandler))
+	router.POST("/v1/datasource_instance/:datasource/data/raw/:qtype", httputil.LoggingHandler(h.rawQueryHandler))
 
 	// TODO: options to enable/disable (or scope to just localhost)
 	router.GET("/v1/debug/pprof/", wrapHandler(http.HandlerFunc(pprof.Index)))
@@ -486,25 +486,21 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 	defer r.Body.Close()
 	bytes, _ := ioutil.ReadAll(r.Body)
 
-	var qMap map[query.QueryType]query.QueryArgs
+	// TODO: validate that this is correct, error if its not a valid name
+	qType := query.QueryType(ps.ByName("qtype"))
 
-	if err := json.Unmarshal(bytes, &qMap); err != nil {
+	var qArgs query.QueryArgs
+	if err := json.Unmarshal(bytes, &qArgs); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
 		return
 	} else {
-		// If there was more than one thing, error
-		if len(qMap) != 1 {
-			// TODO: log this better?
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
 		// Otherwise, lets create the query struct to pass down
-		var q query.Query
-		for k, v := range qMap {
-			q.Type = k
-			q.Args = v
+		q := query.Query{
+			Type: qType,
+			Args: qArgs,
 		}
+
 		result := h.storageNode.Datasources[ps.ByName("datasource")].HandleQuery(ctx, &q)
 		// Now we need to return the results
 		if bytes, err := json.Marshal(result); err != nil {
