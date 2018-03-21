@@ -1,10 +1,21 @@
-package integrationtest
+package main
+
+/*
+
+CLI tool for running dataman integration tests
+
+
+Steps:
+	- setup nodes
+	- clear nodes
+	- run tests
+
+*/
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,8 +23,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/jacksontj/dataman/src/client"
-	"github.com/jacksontj/dataman/src/client/direct"
+	"github.com/Sirupsen/logrus"
+	flags "github.com/jessevdk/go-flags"
+
+	"github.com/jacksontj/dataman/src/integration_test"
+
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -21,47 +35,52 @@ import (
 	"github.com/jacksontj/dataman/src/task_node"
 )
 
-var datamanClientTransport string
+var opts struct {
+	TestDirs []string `long:"test-dir" required:"true"`
+}
 
-func init() {
-	flag.StringVar(&datamanClientTransport, "dataman-client-transport", "direct", "Which transport to use for the dataman client")
-	flag.Parse()
+func main() {
+	parser := flags.NewParser(&opts, flags.Default)
+	if _, err := parser.Parse(); err != nil {
+		logrus.Fatalf("Error parsing flags: %v", err)
+	}
+
+	logrus.Infof("%v", opts.TestDirs)
+
+	// At this point we need to find all the cases and do our thing
+	// TODO: don't log these outputs to stdout?
+	RunIntegrationTests(integrationtest.Setup())
+
 }
 
 type Data map[string]map[string][]map[string]interface{}
 
+type Queries []*query.Query
+
 // For this we assume these are empty and we can do whatever we want to them!
-func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
+func RunIntegrationTests(task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
 
-	// Find all tests
-	files, err := ioutil.ReadDir("tests")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, file := range files {
-		if !file.IsDir() {
-			continue
+	for _, testDir := range opts.TestDirs {
+		// Find all tests
+		files, err := ioutil.ReadDir(testDir)
+		if err != nil {
+			log.Fatal(err)
 		}
-		// TODO: subtest stuff
-		t.Run(file.Name(), func(t *testing.T) {
-			runIntegrationTest(file.Name(), t, task, router, datasource)
-		})
+
+		for _, file := range files {
+			if !file.IsDir() {
+				continue
+			}
+			t := &testing.T{}
+			// TODO: subtest stuff
+			t.Run(file.Name(), func(t *testing.T) {
+				runIntegrationTest(file.Name(), t, task, router, datasource)
+			})
+		}
 	}
 }
 
 func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
-	getTransport := func() datamanclient.DatamanClientTransport {
-		switch datamanClientTransport {
-		case "direct":
-			return datamandirect.NewRouterTransport(router)
-
-		default:
-			log.Fatalf("Unknown datman-client-transport: %s", datamanClientTransport)
-			return nil
-		}
-	}
-
 	// Load the various files
 	schema := make(map[string]*metadata.Database)
 	schemaBytes, err := ioutil.ReadFile(path.Join("tests", testDir, "/schema.json"))
@@ -82,8 +101,6 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 	// Block the router waiting on an update from the tasknode
 	router.FetchMeta()
 
-	client := datamanclient.Client{getTransport()}
-
 	// Load data
 	data := make(Data)
 	dataString, err := ioutil.ReadFile(path.Join("tests", testDir, "/data.json"))
@@ -97,23 +114,19 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 	for databaseName, collectionMap := range data {
 		for collectionName, recordList := range collectionMap {
 			for _, record := range recordList {
-				// TODO: switch to using the client interface (with CLI flag for which one to use)
-				result, err := client.DoQuery(context.Background(), &query.Query{
+				result := router.HandleQuery(context.Background(), &query.Query{
 					Type: query.Insert,
-					Args: query.QueryArgs{
-						DB:         databaseName,
-						Collection: collectionName,
-						Record:     record,
+					Args: map[string]interface{}{
+						"db":         databaseName,
+						"collection": collectionName,
+						"record":     record,
 					},
 				})
-				if err != nil {
-					t.Fatalf("Transport error on client: %v", err)
-				}
 				if result.ValidationError != nil {
 					t.Fatalf("Valdiation error loading data into %s.%s: %v", databaseName, collectionName, result.ValidationError)
 				}
-				if err := result.Err(); err != nil {
-					t.Fatalf("Error loading data into %s.%s: %v", databaseName, collectionName, err)
+				if result.Error != "" {
+					t.Fatalf("Error loading data into %s.%s: %v", databaseName, collectionName, result.Error)
 				}
 			}
 		}
@@ -136,16 +149,15 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			}
 			t.Fatalf("Unable to read queryBytes for test %s.%s: %v", testDir, info.Name(), err)
 		}
+		if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
+			t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
+		}
 
 		relFilePath, err := filepath.Rel(testsDir, fpath)
 		if err != nil {
 			t.Fatalf("Error getting relative path? Shouldn't be possible: %v", err)
 		}
 		t.Run(relFilePath, func(t *testing.T) {
-
-			if err := json.Unmarshal([]byte(queryBytes), &q); err != nil {
-				t.Fatalf("Unable to load queries for test %s.%s: %v", testDir, info.Name(), err)
-			}
 
 			// Run the query
 			result := router.HandleQuery(context.Background(), q)
@@ -176,15 +188,5 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 	if err := filepath.Walk(testsDir, walkFunc); err != nil {
 		t.Errorf("Error walking: %v", err)
 	}
-
-	// Assuming we finished properly, lets remove the things we added
-	for _, database := range schema {
-		if err := task.EnsureDoesntExistDatabase(context.Background(), database.Name); err != nil {
-			t.Fatalf("Unable to remove in test %s for database %s: %v", testDir, database.Name, err)
-		}
-	}
-
-	// Block the router waiting on an update from the tasknode
-	router.FetchMeta()
 
 }
