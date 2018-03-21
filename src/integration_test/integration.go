@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jacksontj/dataman/src/client"
+	"github.com/jacksontj/dataman/src/client/direct"
 	"github.com/jacksontj/dataman/src/query"
 	"github.com/jacksontj/dataman/src/router_node"
 	"github.com/jacksontj/dataman/src/router_node/metadata"
@@ -18,9 +21,14 @@ import (
 	"github.com/jacksontj/dataman/src/task_node"
 )
 
-type Data map[string]map[string][]map[string]interface{}
+var datamanClientTransport string
 
-type Queries []*query.Query
+func init() {
+	flag.StringVar(&datamanClientTransport, "dataman-client-transport", "direct", "Which transport to use for the dataman client")
+	flag.Parse()
+}
+
+type Data map[string]map[string][]map[string]interface{}
 
 // For this we assume these are empty and we can do whatever we want to them!
 func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
@@ -43,6 +51,17 @@ func RunIntegrationTests(t *testing.T, task *tasknode.TaskNode, router *routerno
 }
 
 func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, router *routernode.RouterNode, datasource *storagenode.DatasourceInstance) {
+	getTransport := func() datamanclient.DatamanClientTransport {
+		switch datamanClientTransport {
+		case "direct":
+			return datamandirect.NewRouterTransport(router)
+
+		default:
+			log.Fatalf("Unknown datman-client-transport: %s", datamanClientTransport)
+			return nil
+		}
+	}
+
 	// Load the various files
 	schema := make(map[string]*metadata.Database)
 	schemaBytes, err := ioutil.ReadFile(path.Join("tests", testDir, "/schema.json"))
@@ -63,6 +82,8 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 	// Block the router waiting on an update from the tasknode
 	router.FetchMeta()
 
+	client := datamanclient.Client{getTransport()}
+
 	// Load data
 	data := make(Data)
 	dataString, err := ioutil.ReadFile(path.Join("tests", testDir, "/data.json"))
@@ -76,7 +97,8 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 	for databaseName, collectionMap := range data {
 		for collectionName, recordList := range collectionMap {
 			for _, record := range recordList {
-				result := router.HandleQuery(context.Background(), &query.Query{
+				// TODO: switch to using the client interface (with CLI flag for which one to use)
+				result, err := client.DoQuery(context.Background(), &query.Query{
 					Type: query.Insert,
 					Args: query.QueryArgs{
 						DB:         databaseName,
@@ -84,6 +106,9 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 						Record:     record,
 					},
 				})
+				if err != nil {
+					t.Fatalf("Transport error on client: %v", err)
+				}
 				if result.ValidationError != nil {
 					t.Fatalf("Valdiation error loading data into %s.%s: %v", databaseName, collectionName, result.ValidationError)
 				}
