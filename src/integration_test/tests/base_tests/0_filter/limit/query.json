@@ -4,6 +4,7 @@
 		"db": "test1",
 		"collection": "user",
 		"filter": {},
-		"limit": 1
+		"limit": 1,
+                "sort": ["username"]
 	}
 }
