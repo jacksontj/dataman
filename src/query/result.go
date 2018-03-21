@@ -11,7 +11,6 @@ import (
 // Encapsulate a result from the datastore
 type Result struct {
 	Return []map[string]interface{} `json:"return"`
-	// TODO: make a list of errors!
 	Errors []string `json:"errors,omitempty"`
 	// TODO: pointer to the right thing
 	ValidationError interface{}            `json:"validation_error,omitempty"`
