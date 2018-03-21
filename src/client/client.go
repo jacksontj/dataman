@@ -16,11 +16,11 @@ type Client struct {
 
 // TODO: add these convenience methods
 /*
-   Get(query.QueryArgs) *query.Result
-   Set(query.QueryArgs) *query.Result
-   Insert(query.QueryArgs) *query.Result
-   Update(query.QueryArgs) *query.Result
-   Delete(query.QueryArgs) *query.Result
+   Get(context.Context, query.QueryArgs) *query.Result
+   Set(context.Context, query.QueryArgs) *query.Result
+   Insert(context.Context, query.QueryArgs) *query.Result
+   Update(context.Context, query.QueryArgs) *query.Result
+   Delete(context.Context, query.QueryArgs) *query.Result
 */
 
 // DoQuery will execute a given query. This will return a (result, error) -- where the
