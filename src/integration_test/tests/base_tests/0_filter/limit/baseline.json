@@ -2,9 +2,9 @@
   "return": [
     {
       "doc": null,
-      "firstname": "foofirst",
-      "lastname": "foolast",
-      "username": "foo"
+      "firstname": "barfirst",
+      "lastname": "barlast",
+      "username": "bar"
     }
   ],
   "meta": {
