@@ -1,0 +1,10 @@
+{
+	"type": "filter_stream",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"filter": {
+			"username": ["NOTIN", ["foo", "bar", "qux"]]
+		}
+	}
+}
