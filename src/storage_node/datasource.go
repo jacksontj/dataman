@@ -385,17 +385,6 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 
 	}
 
-	// TODO: move into the underlying datasource -- we should be generating the sort DB-side? (might not, since CPU elsewhere is cheaper)
-	if q.Args.Sort != nil {
-		if q.Args.SortReverse == nil {
-			q.Args.SortReverse = make([]bool, len(q.Args.Sort))
-			// TODO: better, seems heavy
-			for i, _ := range q.Args.SortReverse {
-				q.Args.SortReverse[i] = false
-			}
-		}
-		result.Sort(q.Args.Sort, q.Args.SortReverse)
-	}
 	return result
 }
 

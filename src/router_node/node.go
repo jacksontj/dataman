@@ -284,8 +284,8 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		result.Project(q.Args.Fields)
 	}
 
+    // TODO: do this in MergeResult (since these are coming in as sorted results from the datasource_instances)
 	if q.Args.Sort != nil {
-
 		if q.Args.SortReverse == nil {
 			sortReverseList := make([]bool, len(q.Args.Sort))
 			// TODO: better, seems heavy
@@ -781,7 +781,7 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		}
 	}
 
-	var vshardResults chan *query.ResultStream
+	var vshardResults []*query.ResultStream
 
 	switch q.Type {
 	case query.FilterStream:
@@ -816,10 +816,10 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		vshards := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
 
 		// TODO: switch to channels or something (since we can get them in parallel
-		vshardResults = make(chan *query.ResultStream, len(vshards))
+		vshardResults = make([]*query.ResultStream, len(vshards))
 		wg := &sync.WaitGroup{}
 
-		for _, vshard := range vshards {
+		for i, vshard := range vshards {
 			// TODO: replicas -- add args for slave etc.
 			// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
 			// it has the data -- scaling up/down etc.)
@@ -828,27 +828,24 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 
 			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 			if !ok {
-				vshardResults <- &query.ResultStream{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
+				vshardResults[i] = &query.ResultStream{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
 			} else {
 				wg.Add(1)
-				go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
+				go func(i int, datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 					defer wg.Done()
 					newQ := *q
 					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
 					if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-						vshardResults <- result
+						vshardResults[i] = result
 					} else {
-						vshardResults <- &query.ResultStream{Errors: []string{err.Error()}}
+					    vshardResults[i] = &query.ResultStream{Errors: []string{err.Error()}}
 					}
-				}(datasourceInstance, datasourceInstanceShardInstance)
+				}(i, datasourceInstance, datasourceInstanceShardInstance)
 			}
 		}
 
-		// TODO: better? We need to close the channel when it is done
-		go func() {
-			wg.Wait()
-			close(vshardResults)
-		}()
+        // Wait for each shard to respond with their headers
+		wg.Wait()
 
 	default:
 		return &query.ResultStream{Errors: []string{"invalid stream query"}}
