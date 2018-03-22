@@ -1,0 +1,8 @@
+{
+	"type": "filter_stream",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"filter": "malformed"
+	}
+}

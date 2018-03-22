@@ -1,0 +1,28 @@
+[
+  {},
+  {
+    "doc": null,
+    "firstname": "quxfirst",
+    "lastname": "quxlast",
+    "username": "qux"
+  },
+  {
+    "doc": null,
+    "firstname": "foofirst",
+    "lastname": "foolast",
+    "username": "foo"
+  },
+  {
+    "doc": null,
+    "firstname": "bazfirst",
+    "lastname": "bazlast",
+    "username": "baz"
+  },
+  {
+    "doc": null,
+    "firstname": "barfirst",
+    "lastname": "barlast",
+    "username": "bar"
+  },
+  "EOF"
+]
