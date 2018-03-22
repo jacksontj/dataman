@@ -537,6 +537,27 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		sqlQuery += " WHERE " + whereClause
 	}
 
+	if args.Sort != nil && len(args.Sort) > 0 {
+		if args.Sort != nil {
+			if args.SortReverse == nil {
+				args.SortReverse = make([]bool, len(args.Sort))
+				// TODO: better, seems heavy
+				for i, _ := range args.SortReverse {
+					args.SortReverse[i] = false
+				}
+			}
+		}
+
+		sqlQuery += " ORDER BY "
+		for i, sortKey := range args.Sort {
+			if args.SortReverse[i] {
+				sqlQuery += `"` + sortKey + `" DESC`
+			} else {
+				sqlQuery += `"` + sortKey + `" ASC`
+			}
+		}
+	}
+
 	if args.Limit > 0 {
 		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
 	}
@@ -573,6 +594,27 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 	}
 	if whereClause != "" {
 		sqlQuery += " WHERE " + whereClause
+	}
+
+	if args.Sort != nil && len(args.Sort) > 0 {
+		if args.Sort != nil {
+			if args.SortReverse == nil {
+				args.SortReverse = make([]bool, len(args.Sort))
+				// TODO: better, seems heavy
+				for i, _ := range args.SortReverse {
+					args.SortReverse[i] = false
+				}
+			}
+		}
+
+		sqlQuery += " ORDER BY "
+		for i, sortKey := range args.Sort {
+			if args.SortReverse[i] {
+				sqlQuery += `"` + sortKey + `" DESC`
+			} else {
+				sqlQuery += `"` + sortKey + `" ASC`
+			}
+		}
 	}
 
 	if args.Limit > 0 {

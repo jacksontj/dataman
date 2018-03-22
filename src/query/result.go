@@ -40,6 +40,7 @@ func (r *Result) Project(fields []string) {
 }
 
 // Merge multiple results together
+// This function is responsible for maintaining sort order (if passed in args)
 func MergeResult(pkeyFields []string, numResults int, results chan *Result) *Result {
 	// Fast-path single results
 	if numResults == 1 {
