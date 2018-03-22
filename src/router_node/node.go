@@ -296,6 +296,15 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		}
 		result.Sort(q.Args.Sort, q.Args.SortReverse)
 	}
+
+	// TODO: better limit
+	// this is the naive approach, but this requires pulling all the results from all shards and then doing the limit.
+	// Ideally we'd determine that we're asking for a "lot" of data and then switch the underlying queries to
+	// iterative queries then we could pull in at most the result set and 1 additional record from each shard
+	if q.Args.Limit > 0 {
+		result.Return = result.Return[:q.Args.Limit]
+	}
+
 	return result
 }
 
@@ -464,15 +473,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		}
 	}
 
-	// TODO: better limit
-	// this is the naive approach, but this requires pulling all the results from all shards and then doing the limit.
-	// Ideally we'd determine that we're asking for a "lot" of data and then switch the underlying queries to
-	// iterative queries then we could pull in at most the result set and 1 additional record from each shard
-	result := query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
-	if q.Args.Limit > 0 {
-		result.Return = result.Return[:q.Args.Limit]
-	}
-	return result
+    return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
 }
 
 // TODO: fix
@@ -757,11 +758,9 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	return nil
 }
 
-// TODO: support sorting
 func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *query.ResultStream {
 	meta := s.GetMeta()
 
-	// TODO: pass down database + collection
 	database, ok := meta.Databases[q.Args.DB]
 	if !ok {
 		return &query.ResultStream{Errors: []string{"Unknown db " + q.Args.DB}}
@@ -851,11 +850,6 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		return &query.ResultStream{Errors: []string{"invalid stream query"}}
 	}
 
-	// TODO: limit
-	// TODO: sort
-	// TODO: projection
-
-	// TODO
 	// Consolidate vshardResults to result
 
 	resultsChan := make(chan stream.Result, 1)
@@ -872,7 +866,7 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		Stream: clientStream,
 	}
 
-	go query.MergeResultStreams(collection.PrimaryIndex.Fields, vshardResults, serverStream)
+	go query.MergeResultStreams(q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
 
 	return result
 }

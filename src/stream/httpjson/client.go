@@ -39,9 +39,9 @@ func (s *ClientStream) Close() error {
 // Handle reading the io.Reader in chunks
 func (s *ClientStream) handleStream() {
 	defer func() {
-		s.Close()
 		close(s.results)
 		close(s.errorChan)
+		s.Close()
 	}()
 
 	reader := bufio.NewReader(s.r)
@@ -87,6 +87,9 @@ func (s *ClientStream) Recv() (stream.Result, error) {
 					} else {
 						return nil, err
 					}
+				} else {    
+			        // If the error channel closed, then we just need to continue on
+			        continue
 				}
 			case s.currentChunk, ok = <-s.results:
 				if !ok {

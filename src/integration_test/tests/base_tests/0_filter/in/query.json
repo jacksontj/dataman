@@ -5,6 +5,7 @@
 		"collection": "user",
 		"filter": {
 			"username": ["In", ["foo", "bar"]]
-		}
+		},
+		"sort": ["username"]
 	}
 }

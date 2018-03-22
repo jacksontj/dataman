@@ -1,9 +1,11 @@
 package query
 
 import (
+	"container/heap"
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/jacksontj/dataman/src/router_node/sharding"
 	"github.com/jacksontj/dataman/src/stream"
@@ -65,8 +67,57 @@ func (r *ResultStream) Close() error {
 	return r.Stream.Close()
 }
 
+// TODO: move to stream?
+type streamItem struct {
+	item map[string]interface{}
+	err  error
+}
+
+func streamResults(stream *ResultStream) chan streamItem {
+	c := make(chan streamItem)
+	go func(stream *ResultStream) {
+		defer close(c)
+		for {
+			v, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			c <- streamItem{v, err}
+		}
+	}(stream)
+	return c
+}
+
+// TODO: cleaner? seems that this is faster than the reflect one
+// TODO: move to stream package?
+// TODO: this leaks a goroutine per channel if the stream aborts abruptly
+func mergeStreams(streams []*ResultStream) chan streamItem {
+	c := make(chan streamItem)
+	wg := &sync.WaitGroup{}
+	for _, stream := range streams {
+		wg.Add(1)
+		go func(stream *ResultStream) {
+			defer wg.Done()
+			for {
+				v, err := stream.Recv()
+				if err == io.EOF {
+					return
+				}
+				c <- streamItem{v, err}
+			}
+		}(stream)
+	}
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+	return c
+}
+
 // TODO: take context
-func MergeResultStreams(pkeyFields []string, vshardResults chan *ResultStream, resultStream stream.ServerStream) {
+// MergeResultStreams is responsible to (1) merge result streams uniquely based on pkey and (2) maintain sort order
+// (if sorted) from the streams (each stream is assumed to be in-order already)
+func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*ResultStream, resultStream stream.ServerStream) {
 	defer resultStream.Close()
 
 	pkeyFieldParts := make([][]string, len(pkeyFields))
@@ -74,40 +125,141 @@ func MergeResultStreams(pkeyFields []string, vshardResults chan *ResultStream, r
 		pkeyFieldParts[i] = strings.Split(pkeyField, ".")
 	}
 
+	getPkeyID := func(record map[string]interface{}) uint64 {
+		// now get the pkey from the item, to ensure no dupes
+		pkeyFields := make([]interface{}, len(pkeyFieldParts))
+		var ok bool
+		for i, pkeyField := range pkeyFieldParts {
+			pkeyFields[i], ok = GetValue(record, pkeyField)
+			if !ok {
+				// TODO: something else?
+				panic("Missing pkey in response!!!")
+			}
+		}
+		pkey, err := (sharding.HashMethod(sharding.SHA256).Get())(sharding.CombineKeys(pkeyFields))
+		if err != nil {
+			panic(fmt.Sprintf("MergeResult doesn't know how to hash pkey: %v", err))
+		}
+		return pkey
+	}
+
 	// We want to make sure we don't duplicate return entries
 	ids := make(map[uint64]struct{})
 
-	// TODO: select, so we can have a context with a timeout and cancel
-	for vshardResultStream := range vshardResults {
-		// TODO: better error checking
-		// TODO: pass the errors up or redisbatch?
-		if len(vshardResultStream.Errors) > 0 {
-			continue
+	// If we need to do sorting, then we need to do a minheap thing
+	if args.Sort != nil {
+		// create slice of stream channels
+		vshardResultChannels := make([]chan streamItem, len(vshardResults))
+		for i, vshardResult := range vshardResults {
+			defer vshardResult.Close()
+
+			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
+				resultStream.SendError(fmt.Errorf("errors in thing: %v", vshardResult.Errors))
+				return
+			}
+			if vshardResult.Stream == nil {
+				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
+				return
+			}
+			vshardResultChannels[i] = streamResults(vshardResult)
 		}
-		for {
-			record, err := vshardResultStream.Recv()
-			if err != nil {
-				if err != io.EOF {
+
+		if args.SortReverse == nil {
+			sortReverseList := make([]bool, len(args.Sort))
+			// TODO: better, seems heavy
+			for i, _ := range sortReverseList {
+				sortReverseList[i] = false
+			}
+			args.SortReverse = sortReverseList
+		}
+
+		// TODO: util func
+		splitSortKeys := make([][]string, len(args.Sort))
+		for i, sortKey := range args.Sort {
+			splitSortKeys[i] = strings.Split(sortKey, ".")
+		}
+
+		// TODO: refactor
+		h := NewRecordHeap(splitSortKeys, args.SortReverse)
+		heap.Init(h)
+
+		// Load an item from each vshard
+		for i, source := range vshardResultChannels {
+			if head, ok := <-source; ok {
+				if head.err != nil {
+					resultStream.SendError(head.err)
+					return
+				}
+				item := RecordItem{
+					Record: head.item,
+					Source: i,
+				}
+				heap.Push(h, item)
+			}
+		}
+
+		// TODO: faster to just use len(ids) ?
+		// Count of the number of results we've sent
+		resultsSent := uint64(0)
+
+		for h.Len() > 0 {
+			item := heap.Pop(h).(RecordItem)
+
+			// now get the pkey from the item, to ensure no dupes
+			pkeyID := getPkeyID(item.Record)
+			if _, ok := ids[pkeyID]; !ok {
+				ids[pkeyID] = struct{}{}
+				if err := resultStream.SendResult(item.Record); err != nil {
 					resultStream.SendError(err)
+					return
 				}
-				// TODO: return and error all the things!
-				break
-			}
-			pkeyFields := make([]interface{}, len(pkeyFieldParts))
-			var ok bool
-			for i, pkeyField := range pkeyFieldParts {
-				pkeyFields[i], ok = GetValue(record, pkeyField)
-				if !ok {
-					// TODO: something else?
-					panic("Missing pkey in response!!!")
+				resultsSent++
+				// If we have a limit defined, lets enforce it
+				if args.Limit > 0 && resultsSent >= args.Limit {
+					return
 				}
 			}
-			pkey, err := (sharding.HashMethod(sharding.SHA256).Get())(sharding.CombineKeys(pkeyFields))
-			if err != nil {
-				panic(fmt.Sprintf("MergeResult doesn't know how to hash pkey: %v", err))
+
+			// TODO: add item back
+			source := vshardResultChannels[item.Source]
+			if head, ok := <-source; ok {
+				if head.err != nil {
+					resultStream.SendError(head.err)
+					return
+				}
+				newItem := RecordItem{
+					Record: head.item,
+					Source: item.Source,
+				}
+				heap.Push(h, newItem)
 			}
-			if _, ok := ids[pkey]; !ok {
-				resultStream.SendResult(record)
+		}
+	} else {
+		// TODO: faster to just use len(ids) ?
+		// Count of the number of results we've sent
+		resultsSent := uint64(0)
+
+		// Othewise we just need to select through the channels and push results as we get them
+		s := mergeStreams(vshardResults)
+		for item := range s {
+			if item.err != nil {
+				resultStream.SendError(item.err)
+				return
+			} else {
+				// now get the pkey from the item, to ensure no dupes
+				pkeyID := getPkeyID(item.item)
+				if _, ok := ids[pkeyID]; !ok {
+					ids[pkeyID] = struct{}{}
+					if err := resultStream.SendResult(item.item); err != nil {
+						resultStream.SendError(err)
+						return
+					}
+				    resultsSent++
+				    // If we have a limit defined, lets enforce it
+				    if args.Limit > 0 && resultsSent >= args.Limit {
+					    return
+				    }
+				}
 			}
 		}
 	}
