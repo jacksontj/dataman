@@ -239,6 +239,21 @@ func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*Re
 		// Count of the number of results we've sent
 		resultsSent := uint64(0)
 
+		// TODO: move into the mergeStreams method?
+		// This is ugly, but we need to check that these don't have errors, and if we do we want to propogate them
+		for _, vshardResult := range vshardResults {
+			defer vshardResult.Close()
+
+			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
+				resultStream.SendError(fmt.Errorf("errors in thing: %v", vshardResult.Errors))
+				return
+			}
+			if vshardResult.Stream == nil {
+				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
+				return
+			}
+		}
+
 		// Othewise we just need to select through the channels and push results as we get them
 		s := mergeStreams(vshardResults)
 		for item := range s {
@@ -254,11 +269,11 @@ func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*Re
 						resultStream.SendError(err)
 						return
 					}
-				    resultsSent++
-				    // If we have a limit defined, lets enforce it
-				    if args.Limit > 0 && resultsSent >= args.Limit {
-					    return
-				    }
+					resultsSent++
+					// If we have a limit defined, lets enforce it
+					if args.Limit > 0 && resultsSent >= args.Limit {
+						return
+					}
 				}
 			}
 		}

@@ -98,9 +98,12 @@ func (d *HTTPTransport) DoStreamQuery(ctx context.Context, q *query.Query) (*que
 		return nil, err
 	}
 
-	// We have to use this BufCloser as the bufio.Reader pulls things into the buffer,
-	// so they won't be in the resp.Body
-	result.Stream = httpjson.NewClientStream(&BufCloser{reader, resp.Body})
+	// If there was no error in the header, then we have more to stream!
+	if result.Errors == nil || len(result.Errors) == 0 {
+		// We have to use this BufCloser as the bufio.Reader pulls things into the buffer,
+		// so they won't be in the resp.Body
+		result.Stream = httpjson.NewClientStream(&BufCloser{reader, resp.Body})
+	}
 
 	return result, nil
 }
