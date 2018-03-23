@@ -12,7 +12,8 @@ import (
 )
 
 // Function to transform a given record
-type ResultStreamItemTransformation func(map[string]interface{}) error
+// argument *must* be a pointer, otherwise you are passed a copy which you cannot replace directly
+type ResultStreamItemTransformation func(*map[string]interface{}) error
 
 // Encapsulate a streaming result from the datastore
 type ResultStream struct {
@@ -53,7 +54,7 @@ func (r *ResultStream) Recv() (map[string]interface{}, error) {
 		r.started = true
 		// Apply Transformations
 		for _, t := range r.transformations {
-			if err := t(record); err != nil {
+			if err := t(&record); err != nil {
 				return record, err
 			}
 		}
