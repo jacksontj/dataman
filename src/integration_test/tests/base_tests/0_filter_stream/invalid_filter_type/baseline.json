@@ -1,4 +1,8 @@
 [
-  {},
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
   "errors in thing: [Unknown filter type Ins]"
 ]
