@@ -881,7 +881,7 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		}
 	}
 
-	go query.MergeResultStreams(q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
+	go query.MergeResultStreams(ctx, q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
 
 	return result
 }
