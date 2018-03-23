@@ -47,7 +47,6 @@ type ServerStream struct {
 
 // SendResult will send the result r or return an error.
 func (s *ServerStream) SendResult(r stream.Result) error {
-    fmt.Println("sendresult", r)
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
@@ -60,7 +59,6 @@ func (s *ServerStream) SendResult(r stream.Result) error {
 
 // SendError will send the error err down the stream or return an error on its own
 func (s *ServerStream) SendError(err error) error {
-    fmt.Println("senderror", err)
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
