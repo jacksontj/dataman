@@ -297,6 +297,14 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		result.Sort(q.Args.Sort, q.Args.SortReverse)
 	}
 
+	// TODO: better?
+	// Offsets are complicated in sharded environments. If we are sorting based off of a
+	// cast shard key we can do some smart things, otherwise we basically need to start
+	// get too many results to throw some away
+	if q.Args.Offset > 0 {
+		result.Return = result.Return[q.Args.Offset:]
+	}
+
 	// TODO: better limit
 	// this is the naive approach, but this requires pulling all the results from all shards and then doing the limit.
 	// Ideally we'd determine that we're asking for a "lot" of data and then switch the underlying queries to
@@ -464,6 +472,17 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
 				newQ := *q
 				newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+
+				// If there is an offset defined, we don't know how that will work
+				// out with the various sharding configs etc. So to make this work
+				// we simply remove the offset from the downstream query and increase
+				// the limit appropriately
+				if newQ.Args.Offset > 0 {
+					if newQ.Args.Limit > 0 {
+						newQ.Args.Limit += newQ.Args.Offset
+					}
+					newQ.Args.Offset = 0
+				}
 				if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
 					vshardResults <- result
 				} else {
@@ -834,6 +853,18 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 					defer wg.Done()
 					newQ := *q
 					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+
+					// If there is an offset defined, we don't know how that will work
+					// out with the various sharding configs etc. So to make this work
+					// we simply remove the offset from the downstream query and increase
+					// the limit appropriately
+					if newQ.Args.Offset > 0 {
+						if newQ.Args.Limit > 0 {
+							newQ.Args.Limit += newQ.Args.Offset
+						}
+						newQ.Args.Offset = 0
+					}
+
 					if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
 						vshardResults[i] = result
 					} else {

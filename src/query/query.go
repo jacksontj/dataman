@@ -15,7 +15,6 @@ const (
 	FilterStream = "filter_stream"
 )
 
-
 // TODO: func to validate the mix of arguments
 type QueryArgs struct {
 	// Shared options
@@ -23,17 +22,23 @@ type QueryArgs struct {
 	Collection    string `json:"collection"`
 	ShardInstance string `json:"shard_instance,omitempty"`
 
-    // Fields defines a list of fields for Projections
+	// Fields defines a list of fields for Projections
 	Fields []string `json:"fields"`
 
 	// Sort + SortReverse control the ordering of results
-	Sort   []string `json:"sort"`
+	Sort []string `json:"sort"`
 	// TODO: change to ints?
 	SortReverse []bool `json:"sort_reverse"`
 
-    // Limit is how many records will be returned in the result	
-	Limit       uint64 `json:"limit"`
-	
+	// Limit is how many records will be returned in the result
+	Limit uint64 `json:"limit"`
+
+	// TODO: name skip?
+	// TODO: if offset is set without a sort, then it is meaningless -- we need to error out
+	// Offset controls the offset for returning results. This will exclude `Offset`
+	// number of records from the "front" of the results
+	Offset uint64 `json:"offset"`
+
 	// Record types (TODO: record struct)
 	PKey   map[string]interface{} `json:"pkey"`
 	Record map[string]interface{} `json:"record"`
@@ -43,11 +48,11 @@ type QueryArgs struct {
 	RecordOp map[string]interface{} `json:"record_op"`
 
 	// TODO; type for the filter itself
-    // Filter is the conditions to match data on
+	// Filter is the conditions to match data on
 	Filter interface{} `json:"filter"`
 
 	// Join defines what data we should pull in addition to the record defined in `Collection`
-	Join   interface{} `json:"join"`
+	Join interface{} `json:"join"`
 }
 
 // Query is the struct which contains the entire query to run, this includes
