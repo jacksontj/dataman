@@ -864,18 +864,21 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 	// if we want to retry or error out
 	result := &query.ResultStream{
 		Stream: clientStream,
+		Meta:   vshardResults[0].Meta, // TODO: merge meta
 	}
 
-	// Line up projection transformation
-	projectionFields := query.ProjectionFields(q.Args.Fields)
+	if q.Args.Fields != nil {
+		// Line up projection transformation
+		projectionFields := query.ProjectionFields(q.Args.Fields)
 
-	// Add projection transformation to the stream
-	err := result.AddTransformation(func(r *map[string]interface{}) error {
-		*r = query.Project(projectionFields, *r)
-		return nil
-	})
-	if err != nil {
-		panic("unable to add transformation")
+		// Add projection transformation to the stream
+		err := result.AddTransformation(func(r *map[string]interface{}) error {
+			*r = query.Project(projectionFields, *r)
+			return nil
+		})
+		if err != nil {
+			panic("unable to add transformation")
+		}
 	}
 
 	go query.MergeResultStreams(q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
