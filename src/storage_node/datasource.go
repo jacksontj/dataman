@@ -410,16 +410,7 @@ func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Que
 				return &query.ResultStream{Errors: []string{"invalid projection field " + field}}
 			}
 		}
-	}
 
-	switch q.Type {
-	case query.FilterStream:
-		result = s.Store.FilterStream(ctx, q.Args)
-	default:
-		return &query.ResultStream{Errors: []string{"invalid stream query"}}
-	}
-
-	if q.Args.Fields != nil {
 		// TODO: only need to do this if the request came from a router (for deduping purposes)
 		// Ensure that q.Args.Fields has all the pkeys in it
 		for _, pkeyFieldName := range collection.PrimaryIndex.Fields {
@@ -434,6 +425,21 @@ func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Que
 				q.Args.Fields = append(q.Args.Fields, pkeyFieldName)
 			}
 		}
+	}
+
+	switch q.Type {
+	case query.FilterStream:
+		result = s.Store.FilterStream(ctx, q.Args)
+	default:
+		return &query.ResultStream{Errors: []string{"invalid stream query"}}
+	}
+
+	// TODO: optionally enable for datasources that don't support this
+	// this isn't really an "interface" question, to do this we'll need some
+	// "capabilities" API within the datasource interface so we know if we need
+	// to do additional projecting. Assuming the datasource can do it there is no
+	// need for us to do it again (especially since we are on the same node-- burning CPU)
+	if q.Args.Fields != nil {
 		projectionFields := query.ProjectionFields(q.Args.Fields)
 
 		// Add projection transformation to the stream

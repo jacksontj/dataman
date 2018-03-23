@@ -144,7 +144,12 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 		}
 	}
 
-	selectQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s WHERE %s", args.ShardInstance, args.Collection, strings.Join(whereParts, " AND "))
+	selectQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s WHERE %s",
+		selectFields(args.Fields),
+		args.ShardInstance,
+		args.Collection,
+		strings.Join(whereParts, " AND "),
+	)
 	result.Return, err = DoQuery(ctx, s.getDB(args.DB), selectQuery)
 	if err != nil {
 		result.Errors = []string{err.Error()}
@@ -241,13 +246,14 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		}
 	}
 
-	upsertQuery := fmt.Sprintf(`INSERT INTO "%s".%s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s RETURNING *`,
+	upsertQuery := fmt.Sprintf(`INSERT INTO "%s".%s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s RETURNING %s`,
 		args.ShardInstance,
 		args.Collection,
 		strings.Join(fieldHeaders, ","),
 		strings.Join(fieldValues, ","),
 		strings.Join(collection.PrimaryIndex.Fields, ","),
 		strings.Join(updatePairs, ","),
+		selectFields(args.Fields),
 	)
 
 	result.Return, err = DoQuery(ctx, s.getDB(args.DB), upsertQuery)
@@ -317,9 +323,13 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 		}
 	}
 
-	// TODO: re-add
-	// insertQuery := fmt.Sprintf("INSERT INTO public.%s (_created, %s) VALUES ('now', %s) RETURNING *", args.Collection, strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
-	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES (%s) RETURNING *", args.ShardInstance, args.Collection, strings.Join(fieldHeaders, ","), strings.Join(fieldValues, ","))
+	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES (%s) RETURNING %s",
+		args.ShardInstance,
+		args.Collection,
+		strings.Join(fieldHeaders, ","),
+		strings.Join(fieldValues, ","),
+		selectFields(args.Fields),
+	)
 	result.Return, err = DoQuery(ctx, s.getDB(args.DB), insertQuery)
 	if err != nil {
 		result.Errors = []string{err.Error()}
@@ -419,8 +429,13 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 		return result
 	}
 
-	//updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET _updated='now',%s WHERE %s RETURNING *", args.ShardInstance, args.Collection, setClause, whereClause)
-	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING *", args.ShardInstance, args.Collection, setClause, whereClause)
+	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING %s",
+		args.ShardInstance,
+		args.Collection,
+		setClause,
+		whereClause,
+		selectFields(args.Fields),
+	)
 
 	result.Return, err = DoQuery(ctx, s.getDB(args.DB), updateQuery)
 	if err != nil {
@@ -497,7 +512,13 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 		whereClause = " AND " + whereClause
 	}
 
-	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING *", args.ShardInstance, args.Collection, strings.Join(whereParts, ","), whereClause)
+	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING %s",
+		args.ShardInstance,
+		args.Collection,
+		strings.Join(whereParts, ","),
+		whereClause,
+		selectFields(args.Fields),
+	)
 	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery)
 	if err != nil {
 		result.Errors = []string{err.Error()}
@@ -526,7 +547,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	sqlQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s", args.ShardInstance, args.Collection)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields(args.Fields), args.ShardInstance, args.Collection)
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
@@ -585,7 +606,7 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	sqlQuery := fmt.Sprintf("SELECT * FROM \"%s\".%s", args.ShardInstance, args.Collection)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields(args.Fields), args.ShardInstance, args.Collection)
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
