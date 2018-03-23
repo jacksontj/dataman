@@ -15,6 +15,15 @@ func NewRecordHeap(splitSortKeys [][]string, reverseList []bool) *RecordHeap {
 	}
 }
 
+// RecordHeap is a heap for use in sorting Record objects
+// Records need "special" sorting as we potentiall have many
+// fields to sort by, so we effectively need to sort by each key
+// until one has a comparison that sorts -- otherwise we continue down
+// the list of sortKeys until we find one or we hit the end.
+// In addition to the sort we also need to support "reverse" but we need the
+// heap to still work with pop/push. To make this work we just have a reverseList
+// option per sortKey, and the underlying sort list will negate the Less() return
+// if "reverse" is true
 type RecordHeap struct {
 	Heap          []RecordItem
 	splitSortKeys [][]string
