@@ -1,5 +1,9 @@
 [
-  {},
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
   {
     "doc": null,
     "firstname": "barfirst",

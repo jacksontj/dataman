@@ -1,4 +1,8 @@
 [
-  {},
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
   "EOF"
 ]
