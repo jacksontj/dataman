@@ -166,6 +166,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 
 	// We want to make sure we don't duplicate return entries
 	ids := make(map[uint64]struct{})
+	offset := args.Offset
 
 	// If we need to do sorting, then we need to do a minheap thing
 	if args.Sort != nil {
@@ -230,14 +231,20 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 			pkeyID := getPkeyID(item.Record)
 			if _, ok := ids[pkeyID]; !ok {
 				ids[pkeyID] = struct{}{}
-				if err := resultStream.SendResult(item.Record); err != nil {
-					resultStream.SendError(err)
-					return
-				}
-				resultsSent++
-				// If we have a limit defined, lets enforce it
-				if args.Limit > 0 && resultsSent >= args.Limit {
-					return
+
+				// If an offset was defined, do that
+				if offset > 0 {
+					offset--
+				} else {
+					if err := resultStream.SendResult(item.Record); err != nil {
+						resultStream.SendError(err)
+						return
+					}
+					resultsSent++
+					// If we have a limit defined, lets enforce it
+					if args.Limit > 0 && resultsSent >= args.Limit {
+						return
+					}
 				}
 			}
 
@@ -286,14 +293,20 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 				pkeyID := getPkeyID(item.item)
 				if _, ok := ids[pkeyID]; !ok {
 					ids[pkeyID] = struct{}{}
-					if err := resultStream.SendResult(item.item); err != nil {
-						resultStream.SendError(err)
-						return
-					}
-					resultsSent++
-					// If we have a limit defined, lets enforce it
-					if args.Limit > 0 && resultsSent >= args.Limit {
-						return
+
+					// If an offset was defined, do that
+					if offset > 0 {
+						offset--
+					} else {
+						if err := resultStream.SendResult(item.item); err != nil {
+							resultStream.SendError(err)
+							return
+						}
+						resultsSent++
+						// If we have a limit defined, lets enforce it
+						if args.Limit > 0 && resultsSent >= args.Limit {
+							return
+						}
 					}
 				}
 			}

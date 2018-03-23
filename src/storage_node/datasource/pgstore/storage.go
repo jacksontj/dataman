@@ -583,6 +583,10 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
 	}
 
+	if args.Offset > 0 {
+		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
+	}
+
 	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery)
 	if err != nil {
 		result.Errors = []string{err.Error()}
@@ -595,6 +599,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	return result
 }
 
+// TODO: combine filter & filterStream query generation (they are literally a copy/paste up until the actual query execution)
 func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query.ResultStream {
 	result := &query.ResultStream{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
@@ -640,6 +645,10 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 
 	if args.Limit > 0 {
 		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+	}
+
+	if args.Offset > 0 {
+		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
 	}
 
 	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), sqlQuery)
