@@ -434,15 +434,13 @@ func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Que
 				q.Args.Fields = append(q.Args.Fields, pkeyFieldName)
 			}
 		}
-
 		projectionFields := query.ProjectionFields(q.Args.Fields)
 
 		// Add projection transformation to the stream
-		result.AddTransformation(func(r map[string]interface{}) error {
-			r = query.Project(projectionFields, r)
+		result.AddTransformation(func(r *map[string]interface{}) error {
+			*r = query.Project(projectionFields, *r)
 			return nil
 		})
-
 	}
 
 	return result

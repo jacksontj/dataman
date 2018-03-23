@@ -284,7 +284,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		result.Project(q.Args.Fields)
 	}
 
-    // TODO: do this in MergeResult (since these are coming in as sorted results from the datasource_instances)
+	// TODO: do this in MergeResult (since these are coming in as sorted results from the datasource_instances)
 	if q.Args.Sort != nil {
 		if q.Args.SortReverse == nil {
 			sortReverseList := make([]bool, len(q.Args.Sort))
@@ -473,7 +473,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		}
 	}
 
-    return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
+	return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
 }
 
 // TODO: fix
@@ -837,13 +837,13 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 					if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
 						vshardResults[i] = result
 					} else {
-					    vshardResults[i] = &query.ResultStream{Errors: []string{err.Error()}}
+						vshardResults[i] = &query.ResultStream{Errors: []string{err.Error()}}
 					}
 				}(i, datasourceInstance, datasourceInstanceShardInstance)
 			}
 		}
 
-        // Wait for each shard to respond with their headers
+		// Wait for each shard to respond with their headers
 		wg.Wait()
 
 	default:
@@ -864,6 +864,18 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 	// if we want to retry or error out
 	result := &query.ResultStream{
 		Stream: clientStream,
+	}
+
+	// Line up projection transformation
+	projectionFields := query.ProjectionFields(q.Args.Fields)
+
+	// Add projection transformation to the stream
+	err := result.AddTransformation(func(r *map[string]interface{}) error {
+		*r = query.Project(projectionFields, *r)
+		return nil
+	})
+	if err != nil {
+		panic("unable to add transformation")
 	}
 
 	go query.MergeResultStreams(q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
