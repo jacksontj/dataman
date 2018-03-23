@@ -149,5 +149,18 @@ func collectionFieldToSelector(path []string) string {
 		fieldChain := path[1:len(path)]
 		return path[0] + "->'" + strings.Join(fieldChain[:len(fieldChain)-1], "'->'") + "'->>'" + path[len(path)-1] + "'"
 	}
+}
 
+func selectFields(fields []string) string {
+	// If no projection, then just return all
+	if fields == nil {
+		return "*"
+	}
+
+	fieldParts := make([]string, len(fields))
+	for i, field := range fields {
+		fieldParts[i] = collectionFieldToSelector(strings.Split(field, "."))
+	}
+
+	return strings.Join(fieldParts, ",")
 }
