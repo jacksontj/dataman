@@ -19,10 +19,49 @@ func TestCollectionFieldToSelector(t *testing.T) {
 			Input:  []string{"data", "innervalue"},
 			Output: "data->>'innervalue'",
 		},
+		{
+			Input:  []string{"column"},
+			Output: "column",
+		},
 	}
 
 	for i, test := range tests {
 		ret := collectionFieldToSelector(test.Input)
+		if ret != test.Output {
+			t.Fatalf("Mismatch in %d expected=%v actual=%v", i, test.Output, ret)
+		}
+	}
+}
+
+func TestSelectFields(t *testing.T) {
+	tests := []struct {
+		Input  []string
+		Output string
+	}{
+		{
+			Input:  nil,
+			Output: "*",
+		},
+		{
+			Input:  []string{"data.a"},
+			Output: "data->>'a'",
+		},
+		{
+			Input:  []string{"column"},
+			Output: "column",
+		},
+		{
+			Input:  []string{"column", "data.a"},
+			Output: "column,data->>'a'",
+		},
+		{
+			Input:  []string{"column", "data.a.b"},
+			Output: "column,data->'a'->>'b'",
+		},
+	}
+
+	for i, test := range tests {
+		ret := selectFields(test.Input)
 		if ret != test.Output {
 			t.Fatalf("Mismatch in %d expected=%v actual=%v", i, test.Output, ret)
 		}
