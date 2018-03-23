@@ -2,6 +2,7 @@ package query
 
 import (
 	"container/heap"
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -74,7 +75,7 @@ type streamItem struct {
 	err  error
 }
 
-func streamResults(stream *ResultStream) chan streamItem {
+func streamResults(ctx context.Context, stream *ResultStream) chan streamItem {
 	c := make(chan streamItem)
 	go func(stream *ResultStream) {
 		defer close(c)
@@ -83,7 +84,17 @@ func streamResults(stream *ResultStream) chan streamItem {
 			if err == io.EOF {
 				return
 			}
-			c <- streamItem{v, err}
+			select {
+			case c <- streamItem{v, err}:
+			// If the context is closed, then we need to cancel, we'll do a
+			// non-blocking send of an error down the channel, and then exit
+			case <-ctx.Done():
+				select {
+				case c <- streamItem{err: ctx.Err()}:
+				default:
+				}
+				return
+			}
 		}
 	}(stream)
 	return c
@@ -91,8 +102,7 @@ func streamResults(stream *ResultStream) chan streamItem {
 
 // TODO: cleaner? seems that this is faster than the reflect one
 // TODO: move to stream package?
-// TODO: this leaks a goroutine per channel if the stream aborts abruptly
-func mergeStreams(streams []*ResultStream) chan streamItem {
+func mergeStreams(ctx context.Context, streams []*ResultStream) chan streamItem {
 	c := make(chan streamItem)
 	wg := &sync.WaitGroup{}
 	for _, stream := range streams {
@@ -104,7 +114,17 @@ func mergeStreams(streams []*ResultStream) chan streamItem {
 				if err == io.EOF {
 					return
 				}
-				c <- streamItem{v, err}
+				select {
+				case c <- streamItem{v, err}:
+				// If the context is closed, then we need to cancel, we'll do a
+				// non-blocking send of an error down the channel, and then exit
+				case <-ctx.Done():
+					select {
+					case c <- streamItem{err: ctx.Err()}:
+					default:
+					}
+					return
+				}
 			}
 		}(stream)
 	}
@@ -118,7 +138,7 @@ func mergeStreams(streams []*ResultStream) chan streamItem {
 // TODO: take context
 // MergeResultStreams is responsible to (1) merge result streams uniquely based on pkey and (2) maintain sort order
 // (if sorted) from the streams (each stream is assumed to be in-order already)
-func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*ResultStream, resultStream stream.ServerStream) {
+func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string, vshardResults []*ResultStream, resultStream stream.ServerStream) {
 	defer resultStream.Close()
 
 	pkeyFieldParts := make([][]string, len(pkeyFields))
@@ -162,7 +182,7 @@ func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*Re
 				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
 				return
 			}
-			vshardResultChannels[i] = streamResults(vshardResult)
+			vshardResultChannels[i] = streamResults(ctx, vshardResult)
 		}
 
 		if args.SortReverse == nil {
@@ -256,7 +276,7 @@ func MergeResultStreams(args QueryArgs, pkeyFields []string, vshardResults []*Re
 		}
 
 		// Othewise we just need to select through the channels and push results as we get them
-		s := mergeStreams(vshardResults)
+		s := mergeStreams(ctx, vshardResults)
 		for item := range s {
 			if item.err != nil {
 				resultStream.SendError(item.err)
