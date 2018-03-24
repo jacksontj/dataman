@@ -124,6 +124,17 @@ func (f *CollectionField) Normalize(val interface{}) (interface{}, *ValidationRe
 			result.Error = fmt.Sprintf("Subfields on a non-document type")
 			return normalizedVal, result
 		}
+
+		// If the subfield value is a nil, lets check that there are no required subfields
+		if normalizedVal == nil {
+			for _, subField := range f.SubFields {
+				if subField.NotNull {
+					result.Error = fmt.Sprintf("subfield %s required for field %s", subField.Name, f.Name)
+					return normalizedVal, result
+				}
+			}
+		}
+
 		result.Fields = make(map[string]*ValidationResult)
 		mapVal := normalizedVal.(map[string]interface{})
 		for k, subField := range f.SubFields {
