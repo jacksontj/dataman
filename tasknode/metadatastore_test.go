@@ -1,6 +1,7 @@
 package tasknode
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	_ "net/http/pprof"
@@ -14,7 +15,7 @@ import (
 
 func getMetaStore() (*MetadataStore, error) {
 	config := &Config{}
-	configBytes, err := ioutil.ReadFile("tasknode/config.yaml")
+	configBytes, err := ioutil.ReadFile("../cmd/tasknode/config.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -41,19 +42,19 @@ func resetMetaStore(metaStore *MetadataStore) error {
 
 	// TODO MORE!
 	for _, database := range meta.Databases {
-		if err := metaStore.EnsureDoesntExistDatabase(database.Name); err != nil {
+		if err := metaStore.EnsureDoesntExistDatabase(context.Background(), database.Name); err != nil {
 			return err
 		}
 	}
 
 	for _, datastore := range meta.Datastore {
-		if err := metaStore.EnsureDoesntExistDatastore(datastore.Name); err != nil {
+		if err := metaStore.EnsureDoesntExistDatastore(context.Background(), datastore.Name); err != nil {
 			return err
 		}
 	}
 
 	for _, storageNode := range meta.Nodes {
-		if err := metaStore.EnsureDoesntExistStorageNode(storageNode.ID); err != nil {
+		if err := metaStore.EnsureDoesntExistStorageNode(context.Background(), storageNode.ID); err != nil {
 			return err
 		}
 	}
@@ -83,7 +84,10 @@ func metaEqual(a, b interface{}) bool {
 }
 
 func getMeta(m *MetadataStore) *metadata.Meta {
-	meta, _ := m.GetMeta()
+	meta, err := m.GetMeta(context.Background())
+	if err != nil {
+		panic(err)
+	}
 	return meta
 }
 
@@ -103,7 +107,7 @@ func TestMetaStore_StorageNode(t *testing.T) {
 	}
 
 	// Insert the meta -- here the provision state is all 0
-	if err := metaStore.EnsureExistsStorageNode(storageNode); err != nil {
+	if err := metaStore.EnsureExistsStorageNode(context.Background(), storageNode); err != nil {
 		t.Fatalf("Error ensuring StorageNode: %v", err)
 	}
 
@@ -114,7 +118,7 @@ func TestMetaStore_StorageNode(t *testing.T) {
 
 	// Now lets update the provision state for stuff
 	storageNode.ProvisionState = metadata.Provision
-	if err := metaStore.EnsureExistsStorageNode(storageNode); err != nil {
+	if err := metaStore.EnsureExistsStorageNode(context.Background(), storageNode); err != nil {
 		t.Fatalf("Error ensuring StorageNode 2: %v", err)
 	}
 
@@ -128,7 +132,7 @@ func TestMetaStore_StorageNode(t *testing.T) {
 		datasourceInstance := metadata.NewDatasourceInstance("datasourceInstance1")
 
 		// Insert the meta -- here the provision state is all 0
-		if err := metaStore.EnsureExistsDatasourceInstance(storageNode, datasourceInstance); err != nil {
+		if err := metaStore.EnsureExistsDatasourceInstance(context.Background(), storageNode, datasourceInstance); err != nil {
 			t.Fatalf("Error ensuring StorageNode: %v", err)
 		}
 
@@ -139,7 +143,7 @@ func TestMetaStore_StorageNode(t *testing.T) {
 
 		// Now lets update the provision state for stuff
 		datasourceInstance.ProvisionState = metadata.Provision
-		if err := metaStore.EnsureExistsDatasourceInstance(storageNode, datasourceInstance); err != nil {
+		if err := metaStore.EnsureExistsDatasourceInstance(context.Background(), storageNode, datasourceInstance); err != nil {
 			t.Fatalf("Error EnsureExistsDatasourceInstance 2: %v", err)
 		}
 
@@ -151,14 +155,14 @@ func TestMetaStore_StorageNode(t *testing.T) {
 		// TODO: test DSISI? -- this gets a little weird since it requires the other to be defined
 
 		// Remove it all
-		if err := metaStore.EnsureDoesntExistDatasourceInstance(storageNode.ID, datasourceInstance.Name); err != nil {
+		if err := metaStore.EnsureDoesntExistDatasourceInstance(context.Background(), storageNode.ID, datasourceInstance.Name); err != nil {
 			t.Fatalf("Error EnsureDoesntExistStorageNode: %v", err)
 		}
 
 	})
 
 	// Remove it all
-	if err := metaStore.EnsureDoesntExistStorageNode(storageNode.ID); err != nil {
+	if err := metaStore.EnsureDoesntExistStorageNode(context.Background(), storageNode.ID); err != nil {
 		t.Fatalf("Error EnsureDoesntExistStorageNode: %v", err)
 	}
 
@@ -178,7 +182,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 	datastore := metadata.NewDatastore("datastore1")
 
 	// Insert the meta -- here the provision state is all 0
-	if err := metaStore.EnsureExistsDatastore(datastore); err != nil {
+	if err := metaStore.EnsureExistsDatastore(context.Background(), datastore); err != nil {
 		t.Fatalf("Error ensuring StorageNode: %v", err)
 	}
 
@@ -189,7 +193,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 
 	// Now lets update the provision state for stuff
 	datastore.ProvisionState = metadata.Provision
-	if err := metaStore.EnsureExistsDatastore(datastore); err != nil {
+	if err := metaStore.EnsureExistsDatastore(context.Background(), datastore); err != nil {
 		t.Fatalf("Error ensuring datastore 2: %v", err)
 	}
 
@@ -207,7 +211,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 		}
 
 		// Insert the meta -- here the provision state is all 0
-		if err := metaStore.EnsureExistsDatastoreShard(datastore, datastoreShard); err != nil {
+		if err := metaStore.EnsureExistsDatastoreShard(context.Background(), datastore, datastoreShard); err != nil {
 			t.Fatalf("Error ensuring datastoreShard: %v", err)
 		}
 
@@ -218,7 +222,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 
 		// Now lets update the provision state for stuff
 		datastoreShard.ProvisionState = metadata.Provision
-		if err := metaStore.EnsureExistsDatastoreShard(datastore, datastoreShard); err != nil {
+		if err := metaStore.EnsureExistsDatastoreShard(context.Background(), datastore, datastoreShard); err != nil {
 			t.Fatalf("Error EnsureExistsDatastoreShard 2: %v", err)
 		}
 
@@ -235,13 +239,13 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Insert the meta -- here the provision state is all 0
-			if err := metaStore.EnsureExistsStorageNode(storageNode); err != nil {
+			if err := metaStore.EnsureExistsStorageNode(context.Background(), storageNode); err != nil {
 				t.Fatalf("Error ensuring StorageNode: %v", err)
 			}
 			datasourceInstance := metadata.NewDatasourceInstance("datastoreTestdatasourceInstance")
 
 			// Insert the meta -- here the provision state is all 0
-			if err := metaStore.EnsureExistsDatasourceInstance(storageNode, datasourceInstance); err != nil {
+			if err := metaStore.EnsureExistsDatasourceInstance(context.Background(), storageNode, datasourceInstance); err != nil {
 				t.Fatalf("Error ensuring StorageNode: %v", err)
 			}
 
@@ -252,7 +256,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Insert the meta -- here the provision state is all 0
-			if err := metaStore.EnsureExistsDatastoreShardReplica(datastore, datastoreShard, datastoreShardReplica); err != nil {
+			if err := metaStore.EnsureExistsDatastoreShardReplica(context.Background(), datastore, datastoreShard, datastoreShardReplica); err != nil {
 				t.Fatalf("Error ensuring datastoreShardReplica: %v", err)
 			}
 
@@ -263,7 +267,7 @@ func TestMetaStore_Datastore(t *testing.T) {
 
 			// Now lets update the provision state for stuff
 			datastoreShardReplica.ProvisionState = metadata.Provision
-			if err := metaStore.EnsureExistsDatastoreShardReplica(datastore, datastoreShard, datastoreShardReplica); err != nil {
+			if err := metaStore.EnsureExistsDatastoreShardReplica(context.Background(), datastore, datastoreShard, datastoreShardReplica); err != nil {
 				t.Fatalf("Error EnsureExistsDatastoreShard 2: %v", err)
 			}
 
@@ -273,20 +277,20 @@ func TestMetaStore_Datastore(t *testing.T) {
 			}
 
 			// Remove it all
-			if err := metaStore.EnsureDoesntExistDatastoreShardReplica(datastore.Name, datastoreShard.Instance, datasourceInstance.ID); err != nil {
+			if err := metaStore.EnsureDoesntExistDatastoreShardReplica(context.Background(), datastore.Name, datastoreShard.Instance, datasourceInstance.ID); err != nil {
 				t.Fatalf("Error EnsureDoesntExistDatastoreShardReplica: %v", err)
 			}
 		})
 
 		// Remove it all
-		if err := metaStore.EnsureDoesntExistDatastoreShard(datastore.Name, datastoreShard.Instance); err != nil {
+		if err := metaStore.EnsureDoesntExistDatastoreShard(context.Background(), datastore.Name, datastoreShard.Instance); err != nil {
 			t.Fatalf("Error EnsureDoesntExistStorageNode: %v", err)
 		}
 
 	})
 
 	// Remove it all
-	if err := metaStore.EnsureDoesntExistDatastore(datastore.Name); err != nil {
+	if err := metaStore.EnsureDoesntExistDatastore(context.Background(), datastore.Name); err != nil {
 		t.Fatalf("Error EnsureDoesntExistStorageNode: %v", err)
 	}
 
@@ -302,9 +306,6 @@ func TestMetaStore_Database(t *testing.T) {
 	if err := resetMetaStore(metaStore); err != nil {
 		t.Fatalf("Unable to reset meta store: %v", err)
 	}
-
-	databaseVShard := metadata.NewDatabaseVShard()
-	databaseVShard.ShardCount = 10
 
 	// TODO: move to a file
 	// Get a Database
@@ -481,14 +482,9 @@ func TestMetaStore_Database(t *testing.T) {
 `
 	database := &metadata.Database{}
 	json.Unmarshal([]byte(dbString), database)
-	for _, collection := range database.Collections {
-		if err := collection.EnsureInternalFields(); err != nil {
-			t.Fatalf("Unable to prep test data: %v", err)
-		}
-	}
 
 	// Insert the meta -- here the provision state is all 0
-	if err := metaStore.EnsureExistsDatabase(database); err != nil {
+	if err := metaStore.EnsureExistsDatabase(context.Background(), database); err != nil {
 		t.Fatalf("Error ensuring database: %v", err)
 	}
 
@@ -499,7 +495,7 @@ func TestMetaStore_Database(t *testing.T) {
 
 	// Now lets update the provision state for stuff
 	database.ProvisionState = metadata.Provision
-	if err := metaStore.EnsureExistsDatabase(database); err != nil {
+	if err := metaStore.EnsureExistsDatabase(context.Background(), database); err != nil {
 		t.Fatalf("Error ensuring database 2: %v", err)
 	}
 	// Make sure it changed
@@ -507,7 +503,7 @@ func TestMetaStore_Database(t *testing.T) {
 		t.Fatalf("not equal %v != %v", database, getMeta(metaStore).Databases[database.Name])
 	}
 	// Remove it all
-	if err := metaStore.EnsureDoesntExistDatabase(database.Name); err != nil {
+	if err := metaStore.EnsureDoesntExistDatabase(context.Background(), database.Name); err != nil {
 		t.Fatalf("Error EnsureDoesntExistDatabase: %v", err)
 	}
 
