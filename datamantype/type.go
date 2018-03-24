@@ -148,11 +148,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			}
 			return v, err
 		case int:
-			i, err := strconv.ParseInt("1405544146", 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			return time.Unix(i, 0), nil
+			return time.Unix(int64(typedVal), 0), nil
 		case float64:
 			seconds, ns := math.Modf(typedVal)
 			return time.Unix(int64(seconds), int64(ns)), nil
