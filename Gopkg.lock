@@ -22,7 +22,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/lib/pq"
-  packages = [".","oid"]
+  packages = [
+    ".",
+    "oid"
+  ]
   revision = "017e4c14d80628353eaee677a1aeffe47a10c0dc"
 
 [[projects]]
@@ -46,7 +49,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
-  packages = [".","exp"]
+  packages = [
+    ".",
+    "exp"
+  ]
   revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
 
 [[projects]]
@@ -60,6 +66,12 @@
   name = "github.com/segmentio/ksuid"
   packages = ["."]
   revision = "3afe411cb572d01e8cca76be44d691de89efb1fb"
+
+[[projects]]
+  name = "github.com/sergi/go-diff"
+  packages = ["diffmatchpatch"]
+  revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -76,7 +88,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "ebfc5b4631820b793c9010c87fd8fef0f39eb082"
 
 [[projects]]
@@ -88,6 +103,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b375f6f47dded1cc0005d66874b0804d0096c28c3a8973ddf093532050201927"
+  inputs-digest = "3bfa1f5416723128d997b887e352cb69fb65c0c3eb979352f013caa3d16bf734"
   solver-name = "gps-cdcl"
   solver-version = 1
