@@ -51,11 +51,6 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 	return results, nil
 }
 
-type streamQueryItem struct {
-	item map[string]interface{}
-	err  error
-}
-
 func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) (stream.ClientStream, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
