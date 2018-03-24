@@ -1,5 +1,6 @@
 package datamanclient
 
+// TODO: query type validation
 import (
 	"context"
 

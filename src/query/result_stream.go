@@ -270,6 +270,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 		// TODO: move into the mergeStreams method?
 		// This is ugly, but we need to check that these don't have errors, and if we do we want to propogate them
 		for _, vshardResult := range vshardResults {
+			// TODO: benchmark 100s of defers -- if this is slow move it to a function as a single defer
 			defer vshardResult.Close()
 
 			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {

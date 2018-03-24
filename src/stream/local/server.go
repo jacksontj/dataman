@@ -1,27 +1,13 @@
 package local
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 
 	"github.com/jacksontj/dataman/src/stream"
 )
 
-// Since the trailer is constant, we'll calculate it once for the package and re-use it
-var trailer []byte
-
-func init() {
-	trailer, _ = json.Marshal(stream.ResultChunk{Results: []stream.Result{}})
-}
-
-/*
-
-Flusing:
-    - on count or on time
-
-*/
-
+// TODO: context
 func NewServerStream(resultsChan chan stream.Result, errorChan chan error) stream.ServerStream {
 	sw := &ServerStream{
 		resultsChan: resultsChan,

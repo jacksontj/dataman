@@ -16,7 +16,7 @@ func NewRecordHeap(splitSortKeys [][]string, reverseList []bool) *RecordHeap {
 }
 
 // RecordHeap is a heap for use in sorting Record objects
-// Records need "special" sorting as we potentiall have many
+// Records need "special" sorting as we potentially have many
 // fields to sort by, so we effectively need to sort by each key
 // until one has a comparison that sorts -- otherwise we continue down
 // the list of sortKeys until we find one or we hit the end.
