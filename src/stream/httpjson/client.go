@@ -87,9 +87,9 @@ func (s *ClientStream) Recv() (stream.Result, error) {
 					} else {
 						return nil, err
 					}
-				} else {    
-			        // If the error channel closed, then we just need to continue on
-			        continue
+				} else {
+					// If the error channel closed, then we just need to continue on
+					continue
 				}
 			case s.currentChunk, ok = <-s.results:
 				if !ok {

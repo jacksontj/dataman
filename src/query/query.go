@@ -1,5 +1,6 @@
 package query
 
+// TODO: method to know if it is stream or not
 // QueryType is the list of all query functions dataman supports
 type QueryType string
 
@@ -15,6 +16,7 @@ const (
 	FilterStream = "filter_stream"
 )
 
+// TODO: add meta
 // TODO: func to validate the mix of arguments
 type QueryArgs struct {
 	// Shared options
