@@ -46,5 +46,5 @@ cmd/routernode/routernode
 cmd/tasknode/tasknode
 cmd/storagenode/storagenode
 cmd/schemaexport
-src/client/example_usage/example_usage
+cmd/exampleClientUsage
 cmd/schemaimport

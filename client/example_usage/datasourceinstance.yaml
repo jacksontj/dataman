@@ -1,3 +1,0 @@
-storage_type: postgres
-storage_config:
-  pg_string: user=postgres password=password sslmode=disable
