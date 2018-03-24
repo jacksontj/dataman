@@ -1,0 +1,66 @@
+
+# Gopkg.toml example
+#
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+#
+# required = ["github.com/user/thing/cmd/thing"]
+# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
+#
+# [[constraint]]
+#   name = "github.com/user/project"
+#   version = "1.0.0"
+#
+# [[constraint]]
+#   name = "github.com/user/project2"
+#   branch = "dev"
+#   source = "github.com/myfork/project2"
+#
+# [[override]]
+#  name = "github.com/x/y"
+#  version = "2.4.0"
+
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/armon/go-radix"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jessevdk/go-flags"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/julienschmidt/httprouter"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/lib/pq"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/mitchellh/copystructure"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/nu7hatch/gouuid"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/rcrowley/go-metrics"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/renstrom/go-jump-consistent-hash"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/segmentio/ksuid"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/sirupsen/logrus"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/yaml.v2"

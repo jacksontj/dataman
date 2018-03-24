@@ -1,0 +1,25 @@
+language: go
+
+go:
+  - "1.x"
+
+addons:
+  postgresql: "9.6"
+
+services:
+  - postgresql
+
+before_script:
+  - psql -c 'create database dataman_router;' -U postgres
+  - psql -U postgres -d dataman_router -a -f integration_test/test_setup/router.sql
+  - psql -c 'create database dataman_storage;' -U postgres
+  - psql -U postgres -d dataman_storage -a -f integration_test/test_setup/storage.sql
+  - psql -c "ALTER USER postgres WITH PASSWORD 'password';" -U postgres
+
+before_install:
+  - curl -L -s https://github.com/golang/dep/releases/download/v0.3.1/dep-linux-amd64 -o $GOPATH/bin/dep
+  - chmod +x $GOPATH/bin/dep
+
+install:
+  # use dep to populate the vendor directory
+  - dep ensure
