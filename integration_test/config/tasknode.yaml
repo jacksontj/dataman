@@ -1,0 +1,8 @@
+# Metadata store config
+metastore_type: postgres
+metastore_config:
+  pg_string: user=postgres password=password dbname=dataman_router sslmode=disable
+
+# config for the HTTP api
+http_api:
+  addr: ":8079"
