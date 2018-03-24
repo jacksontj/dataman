@@ -1,7 +1,7 @@
 test_directory/
     test_suite_1/
         schema.json
-            - schema file of the database schema + shard count required 
+            - schema file of the database schema + shard count required
                 (database_vshard.shard_count)
 
         data.json
@@ -15,7 +15,7 @@ test_directory/
                         ]
                     }
                 }
-        
+
         testcase/
             query.json
                 - file containing query to run
