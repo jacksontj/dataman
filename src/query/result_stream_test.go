@@ -45,8 +45,8 @@ func TestBasic(t *testing.T) {
 
 func TestBasicTransformation(t *testing.T) {
 	transformed := false
-	tF := func(r map[string]interface{}) error {
-		r["t"] = "transformed"
+	tF := func(r *map[string]interface{}) error {
+		(*r)["t"] = "transformed"
 		transformed = true
 		return nil
 	}
