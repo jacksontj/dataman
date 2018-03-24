@@ -82,85 +82,85 @@ func BenchmarkFieldValidation(b *testing.B) {
 
 func benchmark_Bool(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(true)
+		field.Normalize(true)
 	}
 }
 
 func benchmark_String(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate("something")
+		field.Normalize("something")
 	}
 }
 
 func benchmark_int(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(int(4))
+		field.Normalize(int(4))
 	}
 }
 
 func benchmark_int8(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(int8(4))
+		field.Normalize(int8(4))
 	}
 }
 
 func benchmark_int16(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(int16(4))
+		field.Normalize(int16(4))
 	}
 }
 
 func benchmark_int32(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(int32(4))
+		field.Normalize(int32(4))
 	}
 }
 
 func benchmark_int64(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(int64(4))
+		field.Normalize(int64(4))
 	}
 }
 
 func benchmark_uint(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(uint(4))
+		field.Normalize(uint(4))
 	}
 }
 
 func benchmark_uint8(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(uint8(4))
+		field.Normalize(uint8(4))
 	}
 }
 
 func benchmark_uint16(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(uint16(4))
+		field.Normalize(uint16(4))
 	}
 }
 
 func benchmark_uint32(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(uint32(4))
+		field.Normalize(uint32(4))
 	}
 }
 
 func benchmark_uint64(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(uint64(4))
+		field.Normalize(uint64(4))
 	}
 }
 
 func benchmark_float32(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(float32(4))
+		field.Normalize(float32(4))
 	}
 }
 
 func benchmark_float64(b *testing.B, field *CollectionField) {
 	for n := 0; n < b.N; n++ {
-		field.Validate(float64(4))
+		field.Normalize(float64(4))
 	}
 }
 
@@ -169,6 +169,6 @@ func benchmark_map(b *testing.B, field *CollectionField) {
 		"foo": "bar",
 	}
 	for n := 0; n < b.N; n++ {
-		field.Validate(tmp)
+		field.Normalize(tmp)
 	}
 }

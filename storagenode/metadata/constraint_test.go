@@ -2,6 +2,8 @@ package metadata
 
 import (
 	"testing"
+
+	"github.com/jacksontj/dataman/datamantype"
 )
 
 var constraintTestValues []*constraintTestValue
@@ -15,17 +17,17 @@ func init() {
 		//	Size: 6,
 		//},
 		&constraintTestValue{
-			Type:  String,
+			Type:  datamantype.String,
 			Value: "foobar",
 			Size:  6,
 		},
 		&constraintTestValue{
-			Type:  Text,
+			Type:  datamantype.Text,
 			Value: "somethinglongerimsure",
 			Size:  22,
 		},
 		&constraintTestValue{
-			Type:  Int,
+			Type:  datamantype.Int,
 			Value: 100,
 			Size:  100,
 		},
@@ -44,7 +46,7 @@ func init() {
 }
 
 type constraintTestValue struct {
-	Type  DatamanType
+	Type  datamantype.DatamanType
 	Value interface{}
 	Size  int
 }
@@ -80,7 +82,7 @@ func TestConstraint_LessThan(t *testing.T) {
 		map[string]interface{}{
 			"value": 200,
 		},
-		Int,
+		datamantype.Int,
 	)
 	if err != nil {
 		t.Fatalf("Error: %v", err)

@@ -1,6 +1,10 @@
 package metadata
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/jacksontj/dataman/datamantype"
+)
 
 type fieldValidationCase struct {
 	field      *CollectionField
@@ -11,15 +15,15 @@ type fieldValidationCase struct {
 func (f *fieldValidationCase) Test(t *testing.T) {
 	// Check the positive cases
 	for _, val := range f.goodValues {
-		if err := f.field.Validate(val); err != nil {
-			t.Errorf("Error validating value %v: %v", val, err)
+		if _, validationResult := f.field.Normalize(val); !validationResult.IsValid() {
+			t.Errorf("Error validating value %v: %v", val, validationResult)
 		}
 	}
 
 	// Check the negative cases
 	for _, val := range f.badValues {
-		if err := f.field.Validate(val); err == nil {
-			t.Errorf("No error validating a bad value: %v\n%v", val, f)
+		if _, validationResult := f.field.Normalize(val); validationResult.IsValid() {
+			t.Errorf("No error validating a bad value: %v\n%v", val, validationResult)
 		}
 	}
 }
@@ -28,27 +32,27 @@ func TestFieldValidation_Document(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
 			Type:      "_document",
-			FieldType: FieldTypeRegistry["_document"],
+			FieldType: DatamanTypeToFieldType(datamantype.Document),
 			SubFields: map[string]*CollectionField{
 				"name": &CollectionField{
 					Name:      "name",
 					Type:      "_string",
-					FieldType: FieldTypeRegistry["_string"],
+					FieldType: DatamanTypeToFieldType(datamantype.String),
 					NotNull:   true,
 				},
 				"number": &CollectionField{
 					Name:      "number",
 					Type:      "_int",
-					FieldType: FieldTypeRegistry["_int"],
+					FieldType: DatamanTypeToFieldType(datamantype.Int),
 				},
 				"subDoc": &CollectionField{
 					Type:      "_document",
-					FieldType: FieldTypeRegistry["_document"],
+					FieldType: DatamanTypeToFieldType(datamantype.Document),
 					SubFields: map[string]*CollectionField{
 						"name": &CollectionField{
 							Name:      "name",
-							Type:      String,
-							FieldType: FieldTypeRegistry["_string"],
+							Type:      datamantype.String,
+							FieldType: DatamanTypeToFieldType(datamantype.String),
 							NotNull:   true,
 						},
 					},
@@ -92,17 +96,17 @@ func TestFieldValidation_Document(t *testing.T) {
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      String,
-			FieldType: FieldTypeRegistry["_string"],
+			Type:      datamantype.String,
+			FieldType: DatamanTypeToFieldType(datamantype.String),
 		},
 		goodValues: []interface{}{
 			"foo",
 			"f",
 			"",
+			nil, // nil
 		},
 		badValues: []interface{}{
-			1,   // a number
-			nil, // nil
+			1, // a number
 		},
 	}
 	testCase.Test(t)
@@ -111,18 +115,18 @@ func TestFieldValidation_String(t *testing.T) {
 func TestFieldValidation_Int(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      Int,
-			FieldType: FieldTypeRegistry["_int"],
+			Type:      datamantype.Int,
+			FieldType: DatamanTypeToFieldType(datamantype.Int),
 		},
 		goodValues: []interface{}{
 			0,
 			-10,
 			100,
 			0.0, // float
+			nil, // nil
 		},
 		badValues: []interface{}{
 			"string", // string
-			nil,      // nil
 		},
 	}
 	testCase.Test(t)
@@ -131,16 +135,16 @@ func TestFieldValidation_Int(t *testing.T) {
 func TestFieldValidation_Bool(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      Bool,
-			FieldType: FieldTypeRegistry["_bool"],
+			Type:      datamantype.Bool,
+			FieldType: DatamanTypeToFieldType(datamantype.Bool),
 		},
 		goodValues: []interface{}{
 			true,
 			false,
+			nil, // nil
 		},
 		badValues: []interface{}{
 			"string", // string
-			nil,      // nil
 			0.0,      // float
 		},
 	}
