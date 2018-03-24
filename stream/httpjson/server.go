@@ -106,7 +106,7 @@ func (s *ServerStream) close(err error) {
 func (s *ServerStream) doChunking(ctx context.Context, w io.Writer) {
 	defer close(s.doneChan)
 	// Support iowriters that are also flushers
-	flusher := w.(http.Flusher)
+	flusher, _ := w.(http.Flusher)
 
 	timer := time.NewTimer(s.flushInterval)
 	buf := make([]stream.Result, s.chunkSize)
