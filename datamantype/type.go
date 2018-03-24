@@ -147,11 +147,12 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 				v, err = time.Parse(time.RFC3339, typedVal)
 			}
 			return v, err
+		// Any number representation is assumed a UTC timestamp
 		case int:
-			return time.Unix(int64(typedVal), 0), nil
+			return time.Unix(int64(typedVal), 0).UTC(), nil
 		case float64:
 			seconds, ns := math.Modf(typedVal)
-			return time.Unix(int64(seconds), int64(ns)), nil
+			return time.Unix(int64(seconds), int64(ns)).UTC(), nil
 
 		default:
 			return nil, fmt.Errorf("Unknown datetime type: %s", reflect.TypeOf(val))
