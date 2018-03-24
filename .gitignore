@@ -42,9 +42,9 @@ _testmain.go
 # TODO: ideally these binaries would be found auto-magically, probably by having 
 # them output into a "bin" directory of some type
 # Manual list of binaries we build to not include
-src/router_node/routernode/routernode
-src/task_node/tasknode/tasknode
-src/storage_node/storagenode/storagenode
-src/schemaexport/schemaexport
+cmd/routernode/routernode
+cmd/tasknode/tasknode
+cmd/storagenode/storagenode
+cmd/schemaexport
 src/client/example_usage/example_usage
-src/schemaimport/schemaimport
+cmd/schemaimport
