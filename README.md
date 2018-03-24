@@ -1,4 +1,4 @@
-# DataMan
+# DataMan [![Build Status](https://travis-ci.org/jacksontj/dataman.svg?branch=master)](https://travis-ci.org/jacksontj/dataman)
 A data service-- which has:
 
     - schema enforcement
