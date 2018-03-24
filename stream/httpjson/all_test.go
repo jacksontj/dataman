@@ -3,23 +3,15 @@ package httpjson
 import (
 	"context"
 	"io"
-	"log"
-	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/jacksontj/dataman/stream"
-	"github.com/jacksontj/dataman/stream/httpjson"
 )
 
 // TODO: test client cancellation
 func TestJsonStreams(t *testing.T) {
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	tests := []struct {
 		chunkSize     int
 		flushInterval time.Duration
@@ -41,8 +33,8 @@ func TestJsonStreams(t *testing.T) {
 			// and immediately exiting like a bytes.Buffer)
 			reader, writer := io.Pipe()
 
-			server := httpjson.NewServerStream(context.Background(), test.chunkSize, test.flushInterval, writer)
-			client := httpjson.NewClientStream(reader)
+			server := NewServerStream(context.Background(), test.chunkSize, test.flushInterval, writer)
+			client := NewClientStream(reader)
 
 			return server, client
 		}

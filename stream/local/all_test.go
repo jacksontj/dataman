@@ -1,8 +1,6 @@
 package local
 
 import (
-	"log"
-	"net/http"
 	"testing"
 
 	"github.com/jacksontj/dataman/stream"
@@ -10,11 +8,6 @@ import (
 
 // TODO: test client cancellation
 func TestLocalStreams(t *testing.T) {
-
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	f := func() (stream.ServerStream, stream.ClientStream) {
 
 		resultsChan := make(chan stream.Result, 1)
