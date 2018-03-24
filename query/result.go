@@ -10,7 +10,7 @@ import (
 
 // Encapsulate a result from the datastore
 type Result struct {
-	Return []map[string]interface{} `json:"return"`
+	Return []Record `json:"return"`
 	Errors []string                 `json:"errors,omitempty"`
 	// TODO: pointer to the right thing
 	ValidationError interface{}            `json:"validation_error,omitempty"`
