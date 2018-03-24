@@ -1,5 +1,8 @@
 package storagenode
 
+// TODO: re-enable once we either (1) use a separate store or (2) have an in-memory one to use
+
+
 import (
 	"context"
 	"encoding/json"
