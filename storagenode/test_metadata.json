@@ -170,6 +170,10 @@
             "name": "_document",
             "dataman_type": "document"
         },
+        "_float": {
+            "name": "_float",
+            "dataman_type": "float"
+        },
         "_int": {
             "name": "_int",
             "dataman_type": "int"

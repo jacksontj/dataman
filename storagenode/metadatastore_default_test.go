@@ -15,7 +15,7 @@ import (
 
 func getMetaStore() (MutableStorageMetadataStore, error) {
 	config := &Config{}
-	configBytes, err := ioutil.ReadFile("storagenode/config.yaml")
+	configBytes, err := ioutil.ReadFile("../cmd/storagenode/config.yaml")
 	if err != nil {
 		return nil, err
 	}
