@@ -69,8 +69,8 @@ func Test_OrderNew(t *testing.T) {
 		},
 	}
 
-	getter := func(name string) MetaCollection {
-		return shardInstance.Collections[name]
+	getter := func(name string) (MetaCollection, error) {
+		return shardInstance.Collections[name], nil
 	}
 
 	for i, test := range tests {
