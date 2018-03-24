@@ -23,6 +23,7 @@ import (
 	"github.com/jacksontj/dataman/routernode/metadata"
 	"github.com/jacksontj/dataman/storagenode"
 	"github.com/jacksontj/dataman/tasknode"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 var datamanClientTransport string
@@ -209,7 +210,9 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 				baselineResultBytes = bytes.TrimSpace(baselineResultBytes)
 				resultBytes = bytes.TrimSpace(resultBytes)
 				if !bytes.Equal(baselineResultBytes, resultBytes) {
-					t.Fatalf("Mismatch of results and baseline!")
+					dmp := diffmatchpatch.New()
+					diffs := dmp.DiffMain(string(baselineResultBytes), string(resultBytes), false)
+					t.Fatalf("Mismatch of results and baseline!\n%s", dmp.DiffPrettyText(diffs))
 				}
 			}
 		})
