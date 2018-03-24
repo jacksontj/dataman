@@ -6,13 +6,14 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/client"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
 )
 
 // TODO: change this to have a flag on whether to stop on error or continue (or maybe switch to channels for the error? then we can decide either way
-func DoReadJoins(ctx context.Context, client *datamanclient.Client, q *query.Query, meta *metadata.Meta, collection *metadata.Collection, joinField interface{}, records []map[string]interface{}) error {
+func DoReadJoins(ctx context.Context, client *datamanclient.Client, q *query.Query, meta *metadata.Meta, collection *metadata.Collection, joinField interface{}, records []record.Record) error {
 	joinMap, err := ParseJoinMap(joinField)
 	if err != nil {
 		return err
@@ -37,11 +38,11 @@ func DoReadJoins(ctx context.Context, client *datamanclient.Client, q *query.Que
 }
 
 // TODO: reimplement to do records at once -- so we can batch?
-func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Query, joinCollection *Collection, record map[string]interface{}) error {
+func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Query, joinCollection *Collection, record record.Record) error {
 	// Do forward join
 	for _, forwardJoin := range joinCollection.ForwardJoin {
 		joinKeyParts := strings.Split(forwardJoin.Key, ".")
-		if rawRecord, _ := query.GetValue(record, joinKeyParts); rawRecord != nil {
+		if rawRecord, _ := record.Get(joinKeyParts); rawRecord != nil {
 			// add joinkey to the filter defined
 			forwardJoin.Filter[forwardJoin.JoinField.Relation.Field] = []interface{}{filter.Equal, rawRecord}
 			joinResults, err := client.DoQuery(ctx, &query.Query{
@@ -75,7 +76,7 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 			}
 
 			joinKeyParts[len(joinKeyParts)-1] += "."
-			query.SetValue(record, joinResults.Return, joinKeyParts)
+			record.Set(joinKeyParts, joinResults.Return)
 
 		} else {
 			return fmt.Errorf("ReadJoin unable to find forward-join key %s in %v", forwardJoin.Key, record)
@@ -87,7 +88,7 @@ func DoReadJoin(ctx context.Context, client *datamanclient.Client, q *query.Quer
 	for _, reverseJoin := range joinCollection.ReverseJoin {
 		// Name of field in this record to do the join with
 
-		if rawRecord, _ := query.GetValue(record, strings.Split(reverseJoin.JoinField.Relation.Field, ".")); rawRecord != nil {
+		if rawRecord, _ := record.Get(strings.Split(reverseJoin.JoinField.Relation.Field, ".")); rawRecord != nil {
 			reverseJoin.Filter[reverseJoin.Key] = []interface{}{filter.Equal, rawRecord}
 			joinResults, err := client.DoQuery(ctx, &query.Query{
 				Type: query.Filter,

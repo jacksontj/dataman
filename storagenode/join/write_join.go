@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/client"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 )
@@ -16,13 +17,13 @@ type WriteJoinSubrecord struct {
 	Value interface{}
 }
 
-func (w *WriteJoinSubrecord) Apply(record map[string]interface{}) {
-	query.SetValue(record, w.Value, w.Path)
+func (w *WriteJoinSubrecord) Apply(record record.Record) {
+	record.Set(w.Path, w.Value)
 }
 
 // TODO: change this to have a flag on whether to stop on error or continue (or maybe switch to channels for the error? then we can decide either way
 // return map[path]subrecord validationError, error
-func DoWriteJoins(ctx context.Context, client *datamanclient.Client, q *query.Query, meta *metadata.Meta, collection *metadata.Collection, joinField interface{}, record map[string]interface{}) ([]*WriteJoinSubrecord, error, error) {
+func DoWriteJoins(ctx context.Context, client *datamanclient.Client, q *query.Query, meta *metadata.Meta, collection *metadata.Collection, joinField interface{}, record record.Record) ([]*WriteJoinSubrecord, error, error) {
 	joinMap, err := ParseJoinMap(joinField)
 	if err != nil {
 		return nil, nil, err
@@ -40,7 +41,7 @@ func DoWriteJoins(ctx context.Context, client *datamanclient.Client, q *query.Qu
 	return DoWriteJoin(ctx, client, q, joinCollection, record)
 }
 
-func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Query, joinCollection *Collection, record map[string]interface{}) ([]*WriteJoinSubrecord, error, error) {
+func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Query, joinCollection *Collection, record record.Record) ([]*WriteJoinSubrecord, error, error) {
 	writeJoinRecords := make([]*WriteJoinSubrecord, 0)
 
 	// Do forward joins
@@ -48,7 +49,7 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 		joinKeyParts := strings.Split(forwardJoin.Key, ".")
 		joinKeyParts[len(joinKeyParts)-1] += "."
 
-		if rawRecord, _ := query.PopValue(record, joinKeyParts); rawRecord != nil {
+		if rawRecord, _ := record.Pop(joinKeyParts); rawRecord != nil {
 			// TODO: check that we can assert
 			subRecords := rawRecord.([]interface{})
 			// Go depth first so that things get removed
@@ -123,7 +124,7 @@ func DoWriteJoin(ctx context.Context, client *datamanclient.Client, q *query.Que
 	// Do reverse joins
 	for _, reverseJoin := range joinCollection.ReverseJoin {
 		recordKey := reverseJoin.C.Name + "." + reverseJoin.JoinField.FullName()
-		if rawRecord, _ := query.PopValue(record, []string{recordKey}); rawRecord != nil {
+		if rawRecord, _ := record.Pop([]string{recordKey}); rawRecord != nil {
 
 			// rawRecord is the value for the join we are about to do.
 

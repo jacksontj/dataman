@@ -8,13 +8,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/routernode/sharding"
 	"github.com/jacksontj/dataman/stream"
 )
 
 // Function to transform a given record
 // argument *must* be a pointer, otherwise you are passed a copy which you cannot replace directly
-type ResultStreamItemTransformation func(*map[string]interface{}) error
+type ResultStreamItemTransformation func(*record.Record) error
 
 // Encapsulate a streaming result from the datastore
 type ResultStream struct {
@@ -44,25 +45,34 @@ func (r *ResultStream) AddTransformation(t ResultStreamItemTransformation) error
 	return nil
 }
 
-func (r *ResultStream) Recv() (map[string]interface{}, error) {
+func (r *ResultStream) Recv() (record.Record, error) {
 	// TODO: check r.Errors?
 	result, err := r.Stream.Recv()
 	if err != nil {
 		return nil, err
 	}
 
-	if record, ok := result.(map[string]interface{}); ok {
-		r.started = true
-		// Apply Transformations
-		for _, t := range r.transformations {
-			if err := t(&record); err != nil {
-				return record, err
-			}
-		}
-		return record, nil
-	} else {
-		return nil, fmt.Errorf("Invalid type on resultStream")
+	var resultRecord record.Record
+	// The type switch here is necessary as the stream type (as of now) is
+	// an interface{} -- so things that are unmarshalled (for example from json)
+	// might come in as a generic map[string]interface{}
+	switch resultTyped := result.(type) {
+		case map[string]interface{}:
+			resultRecord = record.Record(resultTyped)
+		case record.Record:
+			resultRecord = resultTyped
+		default:
+			return nil, fmt.Errorf("Invalid type on resultStream")
 	}
+
+	r.started = true
+	// Apply Transformations
+	for _, t := range r.transformations {
+		if err := t(&resultRecord); err != nil {
+			return resultRecord, err
+		}
+	}
+	return resultRecord, nil
 }
 
 func (r *ResultStream) Close() error {
@@ -71,7 +81,7 @@ func (r *ResultStream) Close() error {
 
 // TODO: move to stream?
 type streamItem struct {
-	item map[string]interface{}
+	item record.Record
 	err  error
 }
 
@@ -146,12 +156,12 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 		pkeyFieldParts[i] = strings.Split(pkeyField, ".")
 	}
 
-	getPkeyID := func(record map[string]interface{}) uint64 {
+	getPkeyID := func(r record.Record) uint64 {
 		// now get the pkey from the item, to ensure no dupes
 		pkeyFields := make([]interface{}, len(pkeyFieldParts))
 		var ok bool
 		for i, pkeyField := range pkeyFieldParts {
-			pkeyFields[i], ok = GetValue(record, pkeyField)
+			pkeyFields[i], ok = r.Get(pkeyField)
 			if !ok {
 				// TODO: something else?
 				panic("Missing pkey in response!!!")
@@ -202,7 +212,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 		}
 
 		// TODO: refactor
-		h := NewRecordHeap(splitSortKeys, args.SortReverse)
+		h := record.NewRecordHeap(splitSortKeys, args.SortReverse)
 		heap.Init(h)
 
 		// Load an item from each vshard
@@ -212,7 +222,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 					resultStream.SendError(head.err)
 					return
 				}
-				item := RecordItem{
+				item := record.RecordItem{
 					Record: head.item,
 					Source: i,
 				}
@@ -225,7 +235,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 		resultsSent := uint64(0)
 
 		for h.Len() > 0 {
-			item := heap.Pop(h).(RecordItem)
+			item := heap.Pop(h).(record.RecordItem)
 
 			// now get the pkey from the item, to ensure no dupes
 			pkeyID := getPkeyID(item.Record)
@@ -255,7 +265,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 					resultStream.SendError(head.err)
 					return
 				}
-				newItem := RecordItem{
+				newItem := record.RecordItem{
 					Record: head.item,
 					Source: item.Source,
 				}

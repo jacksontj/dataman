@@ -8,18 +8,19 @@ import (
 
 	"strings"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )
 
-func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]map[string]interface{}, error) {
+func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]record.Record, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
 	}
 
-	results := make([]map[string]interface{}, 0)
+	results := make([]record.Record, 0)
 
 	// Get the list of column names
 	cols, err := rows.Columns()
@@ -88,7 +89,7 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interf
 
 			// Create our map, and retrieve the value for each column from the pointers slice,
 			// storing it in the map with the name of the column as the key.
-			data := make(map[string]interface{})
+			data := make(record.Record)
 			for i, colName := range cols {
 				val := columnPointers[i].(*interface{})
 				data[colName] = *val

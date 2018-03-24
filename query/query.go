@@ -1,5 +1,7 @@
 package query
 
+import	"github.com/jacksontj/dataman/record"
+
 // TODO: method to know if it is stream or not
 // QueryType is the list of all query functions dataman supports
 type QueryType string
@@ -42,8 +44,8 @@ type QueryArgs struct {
 	Offset uint64 `json:"offset"`
 
 	// Record types (TODO: record struct)
-	PKey   map[string]interface{} `json:"pkey"`
-	Record map[string]interface{} `json:"record"`
+	PKey   record.Record `json:"pkey"`
+	Record record.Record `json:"record"`
 
 	// TODO struct?
 	// RecordOp is a map of operations to apply to the record (incr, decr, etc.)

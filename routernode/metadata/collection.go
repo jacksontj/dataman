@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/routernode/sharding"
 	storagenodemetadata "github.com/jacksontj/dataman/storagenode/metadata"
 )
@@ -42,7 +42,7 @@ type Collection struct {
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
-func (c *Collection) FunctionDefaultRecord(record map[string]interface{}) error {
+func (c *Collection) FunctionDefaultRecord(record record.Record) error {
 	if c.functionDefaultFields == nil {
 		return nil
 	}
@@ -52,11 +52,7 @@ func (c *Collection) FunctionDefaultRecord(record map[string]interface{}) error 
 		if err != nil {
 			return err
 		}
-		query.SetValue(
-			record,
-			val,
-			strings.Split(k, "."),
-		)
+		record.Set(strings.Split(k, "."), val)
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )
@@ -28,7 +29,7 @@ func resultStreamGenerator(val interface{}, count int) *ResultStream {
 }
 
 func TestBasic(t *testing.T) {
-	val := map[string]interface{}{"a": 1}
+	val := record.Record{"a": 1}
 	resultStream := resultStreamGenerator(val, 1)
 	for {
 		if record, err := resultStream.Recv(); err != nil {
@@ -45,13 +46,13 @@ func TestBasic(t *testing.T) {
 
 func TestBasicTransformation(t *testing.T) {
 	transformed := false
-	tF := func(r *map[string]interface{}) error {
+	tF := func(r *record.Record) error {
 		(*r)["t"] = "transformed"
 		transformed = true
 		return nil
 	}
 
-	val := map[string]interface{}{"a": 1}
+	val := record.Record{"a": 1}
 	resultStream := resultStreamGenerator(val, 1)
 
 	resultStream.AddTransformation(tF)
