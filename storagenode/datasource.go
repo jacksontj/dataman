@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jacksontj/dataman/client"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/storagenode/datasource"
@@ -293,7 +294,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 
 				filterRecord := make(map[string]interface{})
 				for _, fieldName := range collection.PrimaryIndex.Fields {
-					fieldValue, _ := query.GetValue(q.Args.Record, strings.Split(fieldName, "."))
+					fieldValue, _ := q.Args.Record.Get(strings.Split(fieldName, "."))
 					filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
 				}
 				q.Args.Filter = filterRecord
@@ -440,11 +441,11 @@ func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Que
 	// to do additional projecting. Assuming the datasource can do it there is no
 	// need for us to do it again (especially since we are on the same node-- burning CPU)
 	if q.Args.Fields != nil {
-		projectionFields := query.ProjectionFields(q.Args.Fields)
+		projectionFields := record.ProjectionFields(q.Args.Fields)
 
 		// Add projection transformation to the stream
-		result.AddTransformation(func(r *map[string]interface{}) error {
-			*r = query.Project(projectionFields, *r)
+		result.AddTransformation(func(r *record.Record) error {
+			*r = (*r).Project(projectionFields)
 			return nil
 		})
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/routernode/client_manager"
 	"github.com/jacksontj/dataman/routernode/metadata"
 	"github.com/jacksontj/dataman/routernode/sharding"
@@ -363,7 +364,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 
 		// Ensure the pkeyRecord has the primary key in it
 		// TODO: better support dotted field names (no need to do a full flatten)
-		flattenedPKey := query.FlattenResult(q.Args.PKey)
+		flattenedPKey := q.Args.PKey.Flatten()
 		for _, fieldName := range collection.PrimaryIndex.Fields {
 			if _, ok := flattenedPKey[fieldName]; !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}}
@@ -372,7 +373,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
 		for i, shardKey := range keyspace.ShardKeySplit {
-			shardKeys[i], ok = query.GetValue(q.Args.PKey, shardKey)
+			shardKeys[i], ok = q.Args.PKey.Get(shardKey)
 			if !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args.Record)}}
 			}
@@ -403,7 +404,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 		if hasShardKey {
 			shardKeys = make([]interface{}, len(keyspace.ShardKey))
 			for i, shardKey := range keyspace.ShardKeySplit {
-				filterValueRaw, ok := query.GetValue(filterMap, shardKey)
+				filterValueRaw, ok := record.Record(filterMap).Get(shardKey)
 				if !ok {
 					hasShardKey = false
 					break
@@ -541,7 +542,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		// Do we have the primary key?
 		// if all missing fields of the primary key are function_default, then we assume this is an insert
-		flattenedQueryRecord := query.FlattenResult(q.Args.Record)
+		flattenedQueryRecord := q.Args.Record.Flatten()
 		for _, fieldName := range collection.PrimaryIndex.Fields {
 			if _, ok := flattenedQueryRecord[fieldName]; !ok {
 				// If we are missing a pkey field and that field is a function_default, we assume
@@ -560,7 +561,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 		// Sets require that the shard-key be present (so we know where to send it)
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
 		for i, shardKey := range keyspace.ShardKeySplit {
-			shardKeys[i], ok = query.GetValue(q.Args.Record, shardKey)
+			shardKeys[i], ok = q.Args.Record.Get(shardKey)
 			if !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("Get()s must include the shard-key, missing %s from (%v)", shardKey, q.Args.Record)}}
 			}
@@ -606,7 +607,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
 		for i, shardKey := range keyspace.ShardKeySplit {
-			shardKeys[i], ok = query.GetValue(q.Args.Record, shardKey)
+			shardKeys[i], ok = q.Args.Record.Get(shardKey)
 			if !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, q.Args.Record)}}
 			}
@@ -731,7 +732,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		// Ensure the q.Args.PKey has the primary key in it
 		// TODO: better support dotted field names (no need to do a full flatten)
-		flattenedPKey := query.FlattenResult(q.Args.PKey)
+		flattenedPKey := q.Args.PKey.Flatten()
 		for _, fieldName := range collection.PrimaryIndex.Fields {
 			if _, ok := flattenedPKey[fieldName]; !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("PKey must include the primary key, missing %s", fieldName)}}
@@ -740,7 +741,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 
 		shardKeys := make([]interface{}, len(keyspace.ShardKey))
 		for i, shardKey := range keyspace.ShardKeySplit {
-			shardKeys[i], ok = query.GetValue(q.Args.PKey, shardKey)
+			shardKeys[i], ok = q.Args.PKey.Get(shardKey)
 			if !ok {
 				return &query.Result{Errors: []string{fmt.Sprintf("Delete()s must include the shard-key, missing %s from (%v)", shardKey, q.Args.PKey)}}
 			}
@@ -900,11 +901,11 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 
 	if q.Args.Fields != nil {
 		// Line up projection transformation
-		projectionFields := query.ProjectionFields(q.Args.Fields)
+		projectionFields := record.ProjectionFields(q.Args.Fields)
 
 		// Add projection transformation to the stream
-		err := result.AddTransformation(func(r *map[string]interface{}) error {
-			*r = query.Project(projectionFields, *r)
+		err := result.AddTransformation(func(r *record.Record) error {
+			*r = (*r).Project(projectionFields)
 			return nil
 		})
 		if err != nil {

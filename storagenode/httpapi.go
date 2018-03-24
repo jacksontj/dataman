@@ -15,6 +15,7 @@ import (
 	"github.com/rcrowley/go-metrics/exp"
 
 	"github.com/jacksontj/dataman/httputil"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 )
@@ -528,14 +529,14 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 				defer serverStream.Close()
 				// TODO: helper function for this
 				for {
-					if record, err := results.Stream.Recv(); err != nil {
+					if result, err := results.Stream.Recv(); err != nil {
 						if err == io.EOF {
 							return
 						}
 						serverStream.SendError(err)
 						return
 					} else {
-						serverStream.SendResult(record)
+						serverStream.SendResult(result.(record.Record))
 					}
 				}
 			}
