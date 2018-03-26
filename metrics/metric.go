@@ -99,7 +99,6 @@ func (m *ArrayMetric) WithValues(vals []string) Valuer {
 	var buf []byte
 	buf = sum[:]
 	s := binary.LittleEndian.Uint64(buf)
-	fmt.Println(s)
 
 	valuer, ok := m.m.Load(s)
 	if ok {

@@ -25,7 +25,6 @@ WAITLOOP:
 		select {
 		case item, ok := <-ch:
 			if !ok {
-				fmt.Println("break")
 				break WAITLOOP
 			}
 			fmt.Println("got item", item.String())

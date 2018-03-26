@@ -34,7 +34,6 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 
 	WAITRESULT:
 		for {
-			fmt.Println("registry wait")
 			select {
 			case item, ok := <-innerPoints:
 				if !ok {
