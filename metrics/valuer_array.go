@@ -30,6 +30,7 @@ type ValuerArray struct {
 	// Map of labelset-hash -> Valuer
 	//m map[uint64]Valuer
 	m sync.Map
+	// Map of labelset-hash -> label values
 	// uint64->[]string
 	mL sync.Map
 }
