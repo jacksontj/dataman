@@ -29,7 +29,7 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 		innerPoints := make(chan MetricPoint)
 		go func() {
 			defer close(innerPoints)
-			err = c.Collect(ctx, points)
+			err = c.Collect(ctx, innerPoints)
 		}()
 
 	WAITRESULT:
@@ -39,7 +39,9 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 				if !ok {
 					break WAITRESULT
 				}
-				item.Metric.Name = n.Namespace + "." + item.Metric.Name
+				if n.Namespace != "" {
+					item.Metric.Name = n.Namespace + "." + item.Metric.Name
+				}
 				points <- item
 			}
 		}
