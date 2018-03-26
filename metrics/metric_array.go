@@ -95,10 +95,3 @@ func (m *ArrayMetric) WithValues(vals ...string) Valuer {
 		return valuer.(Valuer)
 	}
 }
-
-// TODO: if we think this is helpful
-/*
-// Access it by the map of things
-func (m *MetricArray) WithValuesMap(ls LabelSet) Valuer {
-}
-*/
