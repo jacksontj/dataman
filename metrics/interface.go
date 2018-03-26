@@ -31,6 +31,13 @@ type Collectable interface {
 	Collect(context.Context, chan MetricPoint) error
 }
 
+// PrefixCollectable is a mechanism for the Registry to know that the Collectable
+// is going to create more metrics in the namespace. This way the registry knows
+// that the given Collectable has "laid claim" to everything under Prefix()
+type PrefixCollectable interface {
+	Prefix() string
+}
+
 type RegistryEachFunc func(Collectable) error
 
 // Registry is a collection collectables with given names

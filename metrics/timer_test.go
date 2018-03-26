@@ -10,14 +10,22 @@ func TestTimerUsage(t *testing.T) {
 
 	timer := NewTimer()
 
-	r.Register(timer)
+	r.Register(&SingleCollectable{
+		Metric: Metric{
+			Name: "topname",
+			Labels: map[string]string{
+				"test": "true",
+			},
+		},
+		Collectable: NewTimer(),
+	})
 
 	timer.Observe(time.Second)
 
 	// Register a CONFLICTING single metric
 	counterMetric := &SingleMetric{
 		Metric: Metric{
-			Name: "time_total",
+			Name: "topname_time_total",
 			Labels: map[string]string{
 				"test": "true",
 			},

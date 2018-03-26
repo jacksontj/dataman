@@ -50,7 +50,7 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 					break WAITRESULT
 				}
 				if n.Namespace != "" {
-					item.Metric.Name = n.Namespace + "." + item.Metric.Name
+					item.Metric.Name = n.Namespace + "_" + item.Metric.Name
 				}
 				points <- item
 			}
@@ -62,14 +62,18 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 }
 
 func (n *NamespaceRegistry) Register(c Collectable) error {
+	name := c.Name()
+
+	if name == "" {
+		return fmt.Errorf("Collectable must have a name")
+	}
+
 	n.l.Lock()
 	defer n.l.Unlock()
 
-	name := c.Name()
-
 	// If c is a registry, we need to add it to the prefix tree
-	if _, ok := c.(Registry); ok {
-		name += "."
+	if _, ok := c.(PrefixCollectable); ok {
+		name += "_"
 	}
 
 	if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
@@ -78,7 +82,7 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 
 	if _, ok := n.m.LoadOrStore(name, c); !ok {
 		// If c is a registry, we need to add it to the prefix tree
-		if _, ok := c.(Registry); ok {
+		if _, ok := c.(PrefixCollectable); ok {
 			n.prefixTree.Insert(name, c)
 		}
 
@@ -86,6 +90,10 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 	} else {
 		return fmt.Errorf("Collectable with that name already registered")
 	}
+}
+
+func (n *NamespaceRegistry) Prefix() string {
+	return n.Namespace
 }
 
 func (n *NamespaceRegistry) Unregister(c Collectable) error {
