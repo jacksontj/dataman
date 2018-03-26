@@ -1,0 +1,8 @@
+TODO:
+- configurable delimiter (current default of "_")
+- handle case where PrefixCollectable is registered and someone with a *similar* name wants something
+    -- example being the Timer, if initialized with "foo" it would be "foo_total" but if someone wanted
+        to add "foo_something_else" right now you would be unable as the prefix "foo_" was taken
+- Create type-specific wrappers for arrays?
+    -- this would allow us to remove the type Assertions
+- 
