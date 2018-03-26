@@ -1,41 +1,9 @@
 package metrics
 
 import (
-	"context"
 	"fmt"
 	"testing"
 )
-
-// TODO: prettier print
-func printCollectable(c Collectable) {
-	ch := make(chan MetricPoint)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var err error
-
-	go func() {
-		defer close(ch)
-		err = c.Collect(ctx, ch)
-	}()
-
-WAITLOOP:
-	for {
-		select {
-		case item, ok := <-ch:
-			if !ok {
-				break WAITLOOP
-			}
-			fmt.Println("got item", item.String())
-		case <-ctx.Done():
-			fmt.Println("context done?", ctx.Err())
-			return
-		}
-	}
-
-	fmt.Println("err", err)
-}
 
 func TestUsage(t *testing.T) {
 	r := NewNamespaceRegistry("")
@@ -88,6 +56,21 @@ func TestUsage(t *testing.T) {
 	}
 
 	subR.Register(subCounterMetric.Metric.Name, subCounterMetric)
+
+	// Try adding a metric name that collides with the namespace
+	// Register a metricArray of counters
+	tmp := &ArrayMetric{
+		Metric: Metric{
+			Name: "subregistry.",
+			Labels: map[string]string{
+				"base": "true",
+			},
+		},
+		Creator:   NewCounter,
+		LabelKeys: []string{"handler", "statuscode"},
+	}
+
+	fmt.Println("register conflict", r.Register(tmp.Metric.Name, tmp))
 
 	// Print out register
 	printCollectable(r)

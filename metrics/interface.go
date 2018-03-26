@@ -32,7 +32,7 @@ type Collectable interface {
 
 type RegistryEachFunc func(string, Collectable) error
 
-// TODO: needs names etc so we can namespace things
+// Registry is a collection collectables with given names
 type Registry interface {
 	// Registries need to be collectable
 	Collectable

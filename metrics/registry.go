@@ -4,17 +4,23 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	radix "github.com/armon/go-radix"
 )
 
 func NewNamespaceRegistry(n string) *NamespaceRegistry {
 	return &NamespaceRegistry{
-		Namespace: n,
-		m:         &sync.Map{},
+		Namespace:  n,
+		prefixTree: radix.New(),
+		m:          &sync.Map{},
 	}
 }
 
 type NamespaceRegistry struct {
 	Namespace string
+
+	l          sync.Mutex
+	prefixTree *radix.Tree
 
 	// Map of name -> collectable
 	m *sync.Map
@@ -52,7 +58,18 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 }
 
 func (n *NamespaceRegistry) Register(name string, c Collectable) error {
+	n.l.Lock()
+	defer n.l.Unlock()
+	if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
+		return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
+	}
+
 	if _, ok := n.m.LoadOrStore(name, c); ok {
+		// If c is a registry, we need to add it to the prefix tree
+		if _, ok := c.(Registry); ok {
+			n.prefixTree.Insert(name, c)
+		}
+
 		return nil
 	} else {
 		return fmt.Errorf("Collectable with that name already registered")
