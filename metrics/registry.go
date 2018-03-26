@@ -60,11 +60,17 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 func (n *NamespaceRegistry) Register(name string, c Collectable) error {
 	n.l.Lock()
 	defer n.l.Unlock()
+
+	// If c is a registry, we need to add it to the prefix tree
+	if _, ok := c.(Registry); ok {
+		name += "."
+	}
+
 	if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
 		return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
 	}
 
-	if _, ok := n.m.LoadOrStore(name, c); ok {
+	if _, ok := n.m.LoadOrStore(name, c); !ok {
 		// If c is a registry, we need to add it to the prefix tree
 		if _, ok := c.(Registry); ok {
 			n.prefixTree.Insert(name, c)

@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -56,21 +55,6 @@ func TestUsage(t *testing.T) {
 	}
 
 	subR.Register(subCounterMetric.Metric.Name, subCounterMetric)
-
-	// Try adding a metric name that collides with the namespace
-	// Register a metricArray of counters
-	tmp := &ArrayMetric{
-		Metric: Metric{
-			Name: "subregistry.",
-			Labels: map[string]string{
-				"base": "true",
-			},
-		},
-		Creator:   NewCounter,
-		LabelKeys: []string{"handler", "statuscode"},
-	}
-
-	fmt.Println("register conflict", r.Register(tmp.Metric.Name, tmp))
 
 	// Print out register
 	printCollectable(r)

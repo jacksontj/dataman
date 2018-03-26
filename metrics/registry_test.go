@@ -42,7 +42,9 @@ func TestRegistrySubRegister(t *testing.T) {
 
 	// Create a sub-registry and attach it
 	subR := NewNamespaceRegistry("subregistry")
-	r.Register(subR.Namespace, subR)
+	if err := r.Register(subR.Namespace, subR); err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
 
 	// Try adding a metric name that collides with the namespace
 	// Register a metricArray of counters
@@ -57,11 +59,12 @@ func TestRegistrySubRegister(t *testing.T) {
 		LabelKeys: []string{"handler", "statuscode"},
 	}
 
-    if err := r.Register(tmp.Metric.Name, tmp); err == nil {
-        t.Fatalf("No eror when registering a conflict")
-    }
-    
-    // Try adding a *similar* metric that won't conflict
+	if err := r.Register(tmp.Metric.Name, tmp); err == nil {
+		printCollectable(r)
+		t.Fatalf("No eror when registering a conflict")
+	}
+
+	// Try adding a *similar* metric that won't conflict
 	tmp2 := &ArrayMetric{
 		Metric: Metric{
 			Name: "subregistry_other",
@@ -73,8 +76,8 @@ func TestRegistrySubRegister(t *testing.T) {
 		LabelKeys: []string{"handler", "statuscode"},
 	}
 
-    if err := r.Register(tmp2.Metric.Name, tmp2); err != nil {
-        t.Fatalf("Unexpected error when registering subregister: %v", err)
-    }
+	if err := r.Register(tmp2.Metric.Name, tmp2); err != nil {
+		t.Fatalf("Unexpected error when registering subregister: %v", err)
+	}
 
 }
