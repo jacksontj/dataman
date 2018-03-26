@@ -67,7 +67,7 @@ func TestRegistrySubRegister(t *testing.T) {
 
 	// Try adding a metric name that collides with the namespace
 	// Register a metricArray of counters
-	tmp := &ArrayMetric{
+	tmp := &ValuerArray{
 		Metric: Metric{
 			Name: "subregistry.",
 			Labels: map[string]string{
@@ -84,7 +84,7 @@ func TestRegistrySubRegister(t *testing.T) {
 	}
 
 	// Try adding a *similar* metric that won't conflict
-	tmp2 := &ArrayMetric{
+	tmp2 := &ValuerArray{
 		Metric: Metric{
 			Name: "subregistry_other",
 			Labels: map[string]string{

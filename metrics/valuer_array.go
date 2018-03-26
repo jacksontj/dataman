@@ -8,8 +8,8 @@ import (
 	"sync"
 )
 
-func NewArrayMetric(m Metric, c ValuerCreator, l []string) *ArrayMetric {
-	return &ArrayMetric{
+func NewValuerArray(m Metric, c ValuerCreator, l []string) *ValuerArray {
+	return &ValuerArray{
 		Metric:    m,
 		Creator:   c,
 		LabelKeys: l,
@@ -17,7 +17,7 @@ func NewArrayMetric(m Metric, c ValuerCreator, l []string) *ArrayMetric {
 }
 
 // Store an array of metrics.
-type ArrayMetric struct {
+type ValuerArray struct {
 	// Base name + labelset to apply to all sub-metrics
 	Metric
 
@@ -34,11 +34,11 @@ type ArrayMetric struct {
 	mL sync.Map
 }
 
-func (m *ArrayMetric) Name() string {
+func (m *ValuerArray) Name() string {
 	return m.Metric.Name
 }
 
-func (m *ArrayMetric) Collect(ctx context.Context, c chan MetricPoint) error {
+func (m *ValuerArray) Collect(ctx context.Context, c chan MetricPoint) error {
 	var err error
 	f := func(kRaw, vRaw interface{}) bool {
 		k := kRaw.(uint64)
@@ -65,7 +65,7 @@ func (m *ArrayMetric) Collect(ctx context.Context, c chan MetricPoint) error {
 }
 
 // Access it by the slice of values
-func (m *ArrayMetric) WithValues(vals ...string) Valuer {
+func (m *ValuerArray) WithValues(vals ...string) Valuer {
 
 	h := sha1.New()
 
