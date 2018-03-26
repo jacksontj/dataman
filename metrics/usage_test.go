@@ -28,7 +28,7 @@ func TestUsage(t *testing.T) {
 	}
 
 	// Register a metricArray of counters
-	counterArray := NewArray(
+	counterArray := NewArrayMetric(
 		arrayBaseMetric,
 		NewCounter,
 		[]string{"handler", "statuscode"},

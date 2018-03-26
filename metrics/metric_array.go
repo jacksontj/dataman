@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-func NewArray(m Metric, c ValuerCreator, l []string) *ArrayMetric {
+func NewArrayMetric(m Metric, c ValuerCreator, l []string) *ArrayMetric {
 	return &ArrayMetric{
 		Metric:    m,
 		Creator:   c,
