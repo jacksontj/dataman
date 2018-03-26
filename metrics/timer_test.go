@@ -17,7 +17,7 @@ func TestTimerUsage(t *testing.T) {
 	// Register a CONFLICTING single metric
 	counterMetric := &SingleMetric{
 		Metric: Metric{
-			Name: "testtimer_total",
+			Name: "time_total",
 			Labels: map[string]string{
 				"test": "true",
 			},
@@ -32,7 +32,7 @@ func TestTimerUsage(t *testing.T) {
 
 }
 
-func TestTimerUsageArray(t *testing.T) {
+func TestTimerArrayUsage(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
 	// If you have a metric that needs to actually report more than one metric
