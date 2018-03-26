@@ -30,6 +30,7 @@ type Collectable interface {
 	Collect(context.Context, chan MetricPoint) error
 }
 
+// NamedCollectable is a collectable that exposes only a single metric
 type NamedCollectable interface {
 	Collectable
 	Name() string
