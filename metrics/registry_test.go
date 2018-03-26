@@ -69,7 +69,7 @@ func TestRegistrySubRegister(t *testing.T) {
 	// Register a metricArray of counters
 	tmp := &ValuerArray{
 		Metric: Metric{
-			Name: "subregistry.",
+			Name: "subregistry_",
 			Labels: map[string]string{
 				"base": "true",
 			},
@@ -80,13 +80,13 @@ func TestRegistrySubRegister(t *testing.T) {
 
 	if err := r.Register(tmp); err == nil {
 		printCollectable(r)
-		t.Fatalf("No eror when registering a conflict")
+		t.Fatalf("No error when registering a conflict")
 	}
 
 	// Try adding a *similar* metric that won't conflict
 	tmp2 := &ValuerArray{
 		Metric: Metric{
-			Name: "subregistry_other",
+			Name: "subregistryother",
 			Labels: map[string]string{
 				"base": "true",
 			},

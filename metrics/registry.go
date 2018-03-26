@@ -26,10 +26,6 @@ type NamespaceRegistry struct {
 	m *sync.Map
 }
 
-func (n *NamespaceRegistry) Name() string {
-	return n.Namespace
-}
-
 // Collect simply calls collect on all the collectables in this registry adding its
 // namespace as a prefix to the name
 func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint) error {
@@ -62,34 +58,46 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 }
 
 func (n *NamespaceRegistry) Register(c Collectable) error {
-	name := c.Name()
-
-	if name == "" {
-		return fmt.Errorf("Collectable must have a name")
-	}
-
 	n.l.Lock()
 	defer n.l.Unlock()
 
-	// If c is a registry, we need to add it to the prefix tree
-	if _, ok := c.(PrefixCollectable); ok {
-		name += "_"
-	}
+	switch cTyped := c.(type) {
+	case NamedCollectable:
+		name := cTyped.Name()
 
-	if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
-		return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
-	}
-
-	if _, ok := n.m.LoadOrStore(name, c); !ok {
-		// If c is a registry, we need to add it to the prefix tree
-		if _, ok := c.(PrefixCollectable); ok {
-			n.prefixTree.Insert(name, c)
+		if name == "" {
+			return fmt.Errorf("NamedCollectable must have a name")
+		}
+		if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
+			return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
 		}
 
-		return nil
-	} else {
-		return fmt.Errorf("Collectable with that name already registered")
+		if _, ok := n.m.LoadOrStore(name, c); !ok {
+			return nil
+		} else {
+			return fmt.Errorf("Collectable with that name already registered")
+		}
+
+	case PrefixCollectable:
+		prefix := cTyped.Prefix() + "_"
+
+		if prefix == "" {
+			return fmt.Errorf("PrefixCollectable must have a prefix")
+		}
+		if prefix, item, ok := n.prefixTree.LongestPrefix(prefix); ok {
+			return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
+		}
+
+		if _, ok := n.m.LoadOrStore(prefix, c); !ok {
+			n.prefixTree.Insert(prefix, c)
+			return nil
+		} else {
+			return fmt.Errorf("Collectable with that name already registered")
+		}
+	default:
+		return fmt.Errorf("Unsupported collectable")
 	}
+
 }
 
 func (n *NamespaceRegistry) Prefix() string {
@@ -97,7 +105,22 @@ func (n *NamespaceRegistry) Prefix() string {
 }
 
 func (n *NamespaceRegistry) Unregister(c Collectable) error {
-	n.m.Delete(c.Name())
+	switch cTyped := c.(type) {
+	case NamedCollectable:
+		n.m.Delete(cTyped.Name())
+
+	case PrefixCollectable:
+		n.l.Lock()
+		defer n.l.Unlock()
+
+		prefix := cTyped.Prefix() + "_"
+
+		n.m.Delete(prefix)
+		n.prefixTree.Delete(prefix)
+	default:
+		return fmt.Errorf("Unsupported collectable")
+	}
+
 	return nil
 }
 

@@ -27,14 +27,19 @@ Types of metrics:
 
 // Collectable is an interface that defines how to collect metrics
 type Collectable interface {
-	Name() string
 	Collect(context.Context, chan MetricPoint) error
+}
+
+type NamedCollectable interface {
+	Collectable
+	Name() string
 }
 
 // PrefixCollectable is a mechanism for the Registry to know that the Collectable
 // is going to create more metrics in the namespace. This way the registry knows
 // that the given Collectable has "laid claim" to everything under Prefix()
 type PrefixCollectable interface {
+	Collectable
 	Prefix() string
 }
 
