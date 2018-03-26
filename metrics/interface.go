@@ -56,3 +56,5 @@ type Valuer interface {
 
 // Function that creates an empty Valuer
 type ValuerCreator func() Valuer
+
+type CollectableCreator func() Collectable

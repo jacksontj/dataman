@@ -1,0 +1,113 @@
+package metrics
+
+import (
+	"context"
+	"crypto/sha1"
+	"encoding/binary"
+	"fmt"
+	"sync"
+)
+
+func NewCollectableArray(m Metric, c CollectableCreator, l []string) *CollectableArray {
+	return &CollectableArray{
+		Metric:    m,
+		Creator:   c,
+		LabelKeys: l,
+	}
+}
+
+// Store an array of metrics.
+type CollectableArray struct {
+	// Base name + labelset to apply to all sub-metrics
+	Metric
+
+	// Function to create a new Value
+	Creator CollectableCreator
+
+	// Keys of all the labels allowed for metrics in this array
+	LabelKeys []string
+
+	// Map of labelset-hash -> Valuer
+	//m map[uint64]Valuer
+	m sync.Map
+	// uint64->[]string
+	mL sync.Map
+}
+
+func (m *CollectableArray) Name() string {
+	return m.Metric.Name
+}
+
+func (m *CollectableArray) Collect(ctx context.Context, c chan MetricPoint) error {
+	var err error
+	f := func(kRaw, vRaw interface{}) bool {
+		k := kRaw.(uint64)
+		v := vRaw.(Collectable)
+
+		labelValues, ok := m.mL.Load(k)
+		if !ok {
+			err = fmt.Errorf("Unable to get label values")
+			return false
+		}
+
+		// TODO: helper function for transforming MetricPoint
+		innerC := make(chan MetricPoint)
+		var innerErr error
+		go func() {
+			defer close(innerC)
+			innerErr = v.Collect(ctx, innerC)
+
+		}()
+
+		for point := range innerC {
+			name := m.Metric.Name
+			if point.Metric.Name != "" {
+				name += "_" + point.Metric.Name
+			}
+			c <- MetricPoint{
+				Metric{
+					Name:   name,
+					Labels: MergeLabelsDirect(MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)), point.Metric.Labels),
+				},
+				point.Value,
+			}
+		}
+
+		return true
+	}
+
+	m.m.Range(f)
+	return nil
+}
+
+// Access it by the slice of values
+func (m *CollectableArray) WithValues(vals ...string) Collectable {
+
+	h := sha1.New()
+
+	for _, v := range vals {
+		h.Write([]byte(v))
+		h.Write([]byte(","))
+	}
+
+	// TODO: use hashing from sharding package?
+	sum := h.Sum(nil)
+	var buf []byte
+	buf = sum[:]
+	s := binary.LittleEndian.Uint64(buf)
+
+	collectable, ok := m.m.Load(s)
+	if ok {
+		return collectable.(Collectable)
+	} else {
+		// Otherwise it doesn't exist, so lets try adding it
+		if _, ok := m.mL.LoadOrStore(s, vals); ok {
+			return m.WithValues(vals...)
+		}
+		collectable = m.Creator()
+		if _, ok = m.m.LoadOrStore(s, collectable); ok {
+			return m.WithValues(vals...)
+		}
+		return collectable.(Collectable)
+	}
+}
