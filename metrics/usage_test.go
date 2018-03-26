@@ -35,9 +35,9 @@ func TestUsage(t *testing.T) {
 	r.Register(counterArray)
 
 	// Add a few variations in there
-	counterArray.WithValues([]string{"/foo", "200"}).(*Counter).Add(1)
-	counterArray.WithValues([]string{"/foo", "500"}).(*Counter).Add(1)
-	counterArray.WithValues([]string{"/foo", "502"}).(*Counter).Add(1)
+	counterArray.WithValues("/foo", "200").(*Counter).Add(1)
+	counterArray.WithValues("/foo", "500").(*Counter).Add(1)
+	counterArray.WithValues("/foo", "502").(*Counter).Add(1)
 
 	// Create a sub-registry and attach it
 	subR := NewNamespaceRegistry("subregistry")

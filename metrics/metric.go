@@ -93,7 +93,7 @@ func (m *ArrayMetric) Collect(ctx context.Context, c chan MetricPoint) error {
 }
 
 // Access it by the slice of values
-func (m *ArrayMetric) WithValues(vals []string) Valuer {
+func (m *ArrayMetric) WithValues(vals ...string) Valuer {
 
 	h := sha1.New()
 
@@ -114,11 +114,11 @@ func (m *ArrayMetric) WithValues(vals []string) Valuer {
 	} else {
 		// Otherwise it doesn't exist, so lets try adding it
 		if _, ok := m.mL.LoadOrStore(s, vals); ok {
-			return m.WithValues(vals)
+			return m.WithValues(vals...)
 		}
 		valuer = m.Creator()
 		if _, ok = m.m.LoadOrStore(s, valuer); ok {
-			return m.WithValues(vals)
+			return m.WithValues(vals...)
 		}
 		return valuer.(Valuer)
 	}
