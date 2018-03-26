@@ -26,10 +26,14 @@ type NamespaceRegistry struct {
 	m *sync.Map
 }
 
+func (n *NamespaceRegistry) Name() string {
+	return n.Namespace
+}
+
 // Collect simply calls collect on all the collectables in this registry adding its
 // namespace as a prefix to the name
 func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint) error {
-	f := func(_ string, c Collectable) error {
+	f := func(c Collectable) error {
 		var err error
 		// We need to call collect on the children and add our namespace stuff to the value that is returned
 		innerPoints := make(chan MetricPoint)
@@ -57,9 +61,11 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint
 	return n.Each(ctx, f)
 }
 
-func (n *NamespaceRegistry) Register(name string, c Collectable) error {
+func (n *NamespaceRegistry) Register(c Collectable) error {
 	n.l.Lock()
 	defer n.l.Unlock()
+
+	name := c.Name()
 
 	// If c is a registry, we need to add it to the prefix tree
 	if _, ok := c.(Registry); ok {
@@ -98,11 +104,10 @@ func (n *NamespaceRegistry) Get(name string) Collectable {
 func (n *NamespaceRegistry) Each(ctx context.Context, eachFunc RegistryEachFunc) error {
 	var err error
 
-	f := func(kRaw, vRaw interface{}) bool {
-		k := kRaw.(string)
+	f := func(_, vRaw interface{}) bool {
 		v := vRaw.(Collectable)
 
-		err = eachFunc(k, v)
+		err = eachFunc(v)
 		if err != nil {
 			return false
 		}

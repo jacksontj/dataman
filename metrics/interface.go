@@ -27,17 +27,18 @@ Types of metrics:
 
 // Collectable is an interface that defines how to collect metrics
 type Collectable interface {
+	Name() string
 	Collect(context.Context, chan MetricPoint) error
 }
 
-type RegistryEachFunc func(string, Collectable) error
+type RegistryEachFunc func(Collectable) error
 
 // Registry is a collection collectables with given names
 type Registry interface {
 	// Registries need to be collectable
 	Collectable
 
-	Register(string, Collectable) error
+	Register(Collectable) error
 	Unregister(name string) error
 
 	// Return nil if the metric doesn't exist

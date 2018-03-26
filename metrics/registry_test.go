@@ -51,8 +51,8 @@ func TestBasicRegistry(t *testing.T) {
 		Valuer: &Counter{},
 	}
 
-	if err := r.Register(counterMetric.Metric.Name, counterMetric); err != nil {
-	    t.Fatalf("unexpected error: %v", err)
+	if err := r.Register(counterMetric); err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -61,7 +61,7 @@ func TestRegistrySubRegister(t *testing.T) {
 
 	// Create a sub-registry and attach it
 	subR := NewNamespaceRegistry("subregistry")
-	if err := r.Register(subR.Namespace, subR); err != nil {
+	if err := r.Register(subR); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestRegistrySubRegister(t *testing.T) {
 		LabelKeys: []string{"handler", "statuscode"},
 	}
 
-	if err := r.Register(tmp.Metric.Name, tmp); err == nil {
+	if err := r.Register(tmp); err == nil {
 		printCollectable(r)
 		t.Fatalf("No eror when registering a conflict")
 	}
@@ -95,7 +95,7 @@ func TestRegistrySubRegister(t *testing.T) {
 		LabelKeys: []string{"handler", "statuscode"},
 	}
 
-	if err := r.Register(tmp2.Metric.Name, tmp2); err != nil {
+	if err := r.Register(tmp2); err != nil {
 		t.Fatalf("Unexpected error when registering subregister: %v", err)
 	}
 

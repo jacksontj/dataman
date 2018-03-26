@@ -35,6 +35,10 @@ type SingleMetric struct {
 	Valuer Valuer
 }
 
+func (s *SingleMetric) Name() string {
+	return s.Metric.Name
+}
+
 func (s *SingleMetric) Collect(ctx context.Context, c chan MetricPoint) error {
 	c <- MetricPoint{s.Metric, s.Valuer.Value()}
 	return nil
@@ -56,6 +60,10 @@ type ArrayMetric struct {
 	m sync.Map
 	// uint64->[]string
 	mL sync.Map
+}
+
+func (m *ArrayMetric) Name() string {
+	return m.Metric.Name
 }
 
 func (m *ArrayMetric) Collect(ctx context.Context, c chan MetricPoint) error {

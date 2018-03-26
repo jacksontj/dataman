@@ -18,7 +18,7 @@ func TestUsage(t *testing.T) {
 		Valuer: &Counter{},
 	}
 
-	r.Register(counterMetric.Metric.Name, counterMetric)
+	r.Register(counterMetric)
 
 	// Register a metricArray of counters
 	counterArray := &ArrayMetric{
@@ -32,7 +32,7 @@ func TestUsage(t *testing.T) {
 		LabelKeys: []string{"handler", "statuscode"},
 	}
 
-	r.Register(counterArray.Metric.Name, counterArray)
+	r.Register(counterArray)
 
 	// Add a few variations in there
 	counterArray.WithValues([]string{"/foo", "200"}).(*Counter).Add(1)
@@ -41,7 +41,7 @@ func TestUsage(t *testing.T) {
 
 	// Create a sub-registry and attach it
 	subR := NewNamespaceRegistry("subregistry")
-	r.Register(subR.Namespace, subR)
+	r.Register(subR)
 
 	// Register a single metric to subR
 	subCounterMetric := &SingleMetric{
@@ -54,7 +54,7 @@ func TestUsage(t *testing.T) {
 		Valuer: &Counter{},
 	}
 
-	subR.Register(subCounterMetric.Metric.Name, subCounterMetric)
+	subR.Register(subCounterMetric)
 
 	// Print out register
 	printCollectable(r)
