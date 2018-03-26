@@ -8,6 +8,14 @@ import (
 	"sync"
 )
 
+func NewArray(m Metric, c ValuerCreator, l []string) *ArrayMetric {
+	return &ArrayMetric{
+		Metric:    m,
+		Creator:   c,
+		LabelKeys: l,
+	}
+}
+
 // Store an array of metrics.
 type ArrayMetric struct {
 	// Base name + labelset to apply to all sub-metrics

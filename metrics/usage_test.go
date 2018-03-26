@@ -20,17 +20,19 @@ func TestUsage(t *testing.T) {
 
 	r.Register(counterMetric)
 
-	// Register a metricArray of counters
-	counterArray := &ArrayMetric{
-		Metric: Metric{
-			Name: "testcounterarray",
-			Labels: map[string]string{
-				"base": "true",
-			},
+	arrayBaseMetric := Metric{
+		Name: "testcounterarray",
+		Labels: map[string]string{
+			"base": "true",
 		},
-		Creator:   NewCounter,
-		LabelKeys: []string{"handler", "statuscode"},
 	}
+
+	// Register a metricArray of counters
+	counterArray := NewArray(
+		arrayBaseMetric,
+		NewCounter,
+		[]string{"handler", "statuscode"},
+	)
 
 	r.Register(counterArray)
 
