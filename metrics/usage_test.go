@@ -67,7 +67,11 @@ func TestUsage(t *testing.T) {
 	}
 
 	r.Register(counterArray.Metric.Name, counterArray)
-	
+
+	counterArray.WithValues([]string{"/foo", "200"}).(*Counter).Add(1)
+	counterArray.WithValues([]string{"/foo", "500"}).(*Counter).Add(1)
+	counterArray.WithValues([]string{"/foo", "502"}).(*Counter).Add(1)
+
 	// Add a few variations in there
 
 	// Print out register
