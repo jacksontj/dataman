@@ -88,8 +88,8 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 	}
 }
 
-func (n *NamespaceRegistry) Unregister(name string) error {
-	n.m.Delete(name)
+func (n *NamespaceRegistry) Unregister(c Collectable) error {
+	n.m.Delete(c.Name())
 	return nil
 }
 

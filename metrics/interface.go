@@ -39,7 +39,7 @@ type Registry interface {
 	Collectable
 
 	Register(Collectable) error
-	Unregister(name string) error
+	Unregister(Collectable) error
 
 	// Return nil if the metric doesn't exist
 	Get(name string) Collectable
