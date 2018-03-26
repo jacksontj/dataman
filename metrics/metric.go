@@ -66,9 +66,13 @@ func (s *SingleCollectable) Collect(ctx context.Context, c chan MetricPoint) err
 	}()
 
 	for item := range innerPoints {
+		name := s.Metric.Name
+		if item.Metric.Name != "" {
+			name += "_" + item.Metric.Name
+		}
 		c <- MetricPoint{
 			Metric: Metric{
-				Name:   s.Metric.Name + "_" + item.Metric.Name,
+				Name:   name,
 				Labels: s.Metric.Labels,
 			},
 			Value: item.Value,
