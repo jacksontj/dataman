@@ -37,6 +37,25 @@ WAITLOOP:
 	fmt.Println("err", err)
 }
 
+func TestBasicRegistry(t *testing.T) {
+	r := NewNamespaceRegistry("")
+
+	// Register a single metric
+	counterMetric := &SingleMetric{
+		Metric: Metric{
+			Name: "testcounter",
+			Labels: map[string]string{
+				"test": "true",
+			},
+		},
+		Valuer: &Counter{},
+	}
+
+	if err := r.Register(counterMetric.Metric.Name, counterMetric); err != nil {
+	    t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestRegistrySubRegister(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
