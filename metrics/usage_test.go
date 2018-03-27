@@ -63,3 +63,24 @@ func TestUsage(t *testing.T) {
 	printCollectable(r)
 
 }
+
+func TestFunctionMetric(t *testing.T) {
+	r := NewNamespaceRegistry("")
+
+	// Register a single metric
+	counterMetric := &SingleMetric{
+		Metric: Metric{
+			Name: "testfunction",
+			Labels: map[string]string{
+				"test": "true",
+			},
+		},
+		Valuer: NewFunctionValuer(func() float64 {
+			return 1
+		}),
+	}
+
+	r.Register(counterMetric)
+	// Print out register
+	printCollectable(r)
+}
