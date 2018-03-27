@@ -124,14 +124,6 @@ func (n *NamespaceRegistry) Unregister(c Collectable) error {
 	return nil
 }
 
-func (n *NamespaceRegistry) Get(name string) Collectable {
-	c, _ := n.m.Load(name)
-	if c == nil {
-		return nil
-	}
-	return c.(Collectable)
-}
-
 func (n *NamespaceRegistry) Each(ctx context.Context, eachFunc RegistryEachFunc) error {
 	var err error
 

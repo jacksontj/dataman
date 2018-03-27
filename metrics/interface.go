@@ -54,9 +54,6 @@ type Registry interface {
 	Register(Collectable) error
 	Unregister(Collectable) error
 
-	// Return nil if the metric doesn't exist
-	Get(name string) Collectable
-
 	// called for each metric in the registry, context for cancellation and a function
 	// which takes the name of the collectable and the collectable itself
 	Each(context.Context, RegistryEachFunc) error
