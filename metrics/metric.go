@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+// Description of metrics
+type MetricDesc struct {
+	Name   string
+	Prefix bool
+}
+
 // A metric is defined as (1) name and (2) labelset
 type Metric struct {
 	Name   string // TODO: remove from here?
@@ -34,8 +40,9 @@ type SingleMetric struct {
 	Valuer Valuer
 }
 
-func (s *SingleMetric) Name() string {
-	return s.Metric.Name
+func (s *SingleMetric) Describe(c chan<- MetricDesc) error {
+	c <- MetricDesc{Name: s.Metric.Name}
+	return nil
 }
 
 func (s *SingleMetric) Collect(ctx context.Context, c chan<- MetricPoint) error {
@@ -49,12 +56,20 @@ type SingleCollectable struct {
 	Collectable
 }
 
-func (s *SingleCollectable) Prefix() string {
-	return s.Metric.Name
-}
+func (s *SingleCollectable) Describe(c chan<- MetricDesc) error {
+	var err error
+	// We need to call collect on the children and add our namespace stuff to the value that is returned
+	ch := make(chan MetricDesc)
+	go func() {
+		defer close(ch)
+		err = s.Collectable.Describe(ch)
+	}()
 
-func (s *SingleCollectable) Name() string {
-	return s.Metric.Name
+	for metricDesc := range ch {
+		metricDesc.Name = s.Metric.Name + "_" + metricDesc.Name
+		c <- metricDesc
+	}
+	return err
 }
 
 func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {

@@ -86,7 +86,7 @@ func TestRegistrySubRegister(t *testing.T) {
 	// Try adding a *similar* metric that won't conflict
 	tmp2 := &ValuerArray{
 		Metric: Metric{
-			Name: "subregistryother",
+			Name: "subregistrsyother",
 			Labels: map[string]string{
 				"base": "true",
 			},

@@ -33,7 +33,9 @@ func TestTimerUsage(t *testing.T) {
 		Valuer: &Counter{},
 	}
 
-	r.Register(counterMetric)
+	if err := r.Register(counterMetric); err == nil {
+		t.Fatalf("No error registering a conflicting metric")
+	}
 
 	// Print out register
 	printCollectable(r)

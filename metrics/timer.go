@@ -15,6 +15,12 @@ type Timer struct {
 	totalCount *Counter
 }
 
+func (t *Timer) Describe(c chan<- MetricDesc) error {
+	c <- MetricDesc{Name: "time_total"}
+	c <- MetricDesc{Name: "total"}
+	return nil
+}
+
 func (t *Timer) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	c <- MetricPoint{
 		Metric: Metric{

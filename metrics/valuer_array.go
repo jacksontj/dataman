@@ -41,8 +41,9 @@ type ValuerArray struct {
 	mL sync.Map
 }
 
-func (m *ValuerArray) Name() string {
-	return m.Metric.Name
+func (m *ValuerArray) Describe(c chan<- MetricDesc) error {
+	c <- MetricDesc{Name: m.Metric.Name}
+	return nil
 }
 
 func (m *ValuerArray) Collect(ctx context.Context, c chan<- MetricPoint) error {

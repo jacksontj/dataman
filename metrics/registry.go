@@ -2,29 +2,33 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"sync"
-
-	radix "github.com/armon/go-radix"
 )
 
 func NewNamespaceRegistry(n string) *NamespaceRegistry {
 	return &NamespaceRegistry{
-		Namespace:  n,
-		prefixTree: radix.New(),
-		m:          &sync.Map{},
+		Namespace: n,
+		mr:        NewMetricDescRegistry(),
+		m:         &sync.Map{},
 	}
 }
 
 type NamespaceRegistry struct {
 	Namespace string
 
-	l sync.Mutex
-	// Tree of prefix -> collectable
-	prefixTree *radix.Tree
+	mr *MetricDescRegistry
 
-	// Map of name -> collectable
+	// TODO: have a name??
+	// Map of collectable -> collectable
 	m *sync.Map
+}
+
+func (n *NamespaceRegistry) Describe(c chan<- MetricDesc) error {
+	c <- MetricDesc{
+		Name:   n.Namespace,
+		Prefix: true,
+	}
+	return nil
 }
 
 // Collect simply calls collect on all the collectables in this registry adding its
@@ -59,53 +63,52 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoi
 }
 
 func (n *NamespaceRegistry) Register(c Collectable) error {
-	n.l.Lock()
-	defer n.l.Unlock()
+	var err error
+	ch := make(chan MetricDesc)
+	go func() {
+		defer close(ch)
+		err = c.Describe(ch)
+	}()
 
-	switch cTyped := c.(type) {
-	case NamedCollectable:
-		name := cTyped.Name()
-
-		if name == "" {
-			return fmt.Errorf("NamedCollectable must have a name")
-		}
-		if prefix, item, ok := n.prefixTree.LongestPrefix(name); ok {
-			return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
-		}
-
-		if _, ok := n.m.LoadOrStore(name, c); !ok {
-			return nil
-		} else {
-			return fmt.Errorf("Collectable with that name already registered")
-		}
-
-	case PrefixCollectable:
-		prefix := cTyped.Prefix() + "_"
-
-		if prefix == "" {
-			return fmt.Errorf("PrefixCollectable must have a prefix")
-		}
-		if prefix, item, ok := n.prefixTree.LongestPrefix(prefix); ok {
-			return fmt.Errorf("cannot register metric as it conflicts with a sub-namespace: %v %v", prefix, item)
-		}
-
-		if _, ok := n.m.LoadOrStore(prefix, c); !ok {
-			n.prefixTree.Insert(prefix, c)
-			return nil
-		} else {
-			return fmt.Errorf("Collectable with that name already registered")
-		}
-	default:
-		return fmt.Errorf("Unsupported collectable")
+	metricDescs := make([]MetricDesc, 0)
+	for metricDesc := range ch {
+		metricDescs = append(metricDescs, metricDesc)
 	}
 
+	if err != nil {
+		return err
+	}
+
+	// check that we can register all the names
+	if err := n.mr.AddOrError(metricDescs); err != nil {
+		return err
+	}
+
+	if _, ok := n.m.LoadOrStore(c, c); ok {
+		panic("shouldn't be possible!")
+	}
+
+	return nil
 }
 
-func (n *NamespaceRegistry) Prefix() string {
-	return n.Namespace
-}
-
+/*
 func (n *NamespaceRegistry) Unregister(c Collectable) error {
+	var err error
+	ch := make(chan MetricDesc)
+	go func() {
+		defer close(ch)
+		err = c.Describe(ch)
+	}()
+
+	metricDescs := make([]MetricDesc, 0)
+	for metricDesc := range ch {
+		metricDescs = append(metricDescs, metricDesc)
+	}
+
+	if err != nil {
+		return err
+	}
+
 	switch cTyped := c.(type) {
 	case NamedCollectable:
 		n.m.Delete(cTyped.Name())
@@ -124,6 +127,7 @@ func (n *NamespaceRegistry) Unregister(c Collectable) error {
 
 	return nil
 }
+*/
 
 func (n *NamespaceRegistry) Each(ctx context.Context, eachFunc RegistryEachFunc) error {
 	var err error

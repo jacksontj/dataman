@@ -40,8 +40,23 @@ type CollectableArray struct {
 	mL sync.Map
 }
 
-func (m *CollectableArray) Name() string {
-	return m.Metric.Name
+func (m *CollectableArray) Describe(c chan<- MetricDesc) error {
+	var err error
+	ch := make(chan MetricDesc)
+	go func() {
+		defer close(ch)
+		err = m.Creator().Describe(ch)
+	}()
+
+	for d := range ch {
+		if d.Name != "" {
+			d.Name = m.Metric.Name + "_" + d.Name
+		} else {
+			d.Name = m.Metric.Name
+		}
+		c <- d
+	}
+	return err
 }
 
 func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) error {
