@@ -19,7 +19,8 @@ func NewNamespaceRegistry(n string) *NamespaceRegistry {
 type NamespaceRegistry struct {
 	Namespace string
 
-	l          sync.Mutex
+	l sync.Mutex
+	// Tree of prefix -> collectable
 	prefixTree *radix.Tree
 
 	// Map of name -> collectable
