@@ -13,7 +13,7 @@ type Metric struct {
 
 // TODO: nicely layout the m.Labels (instead of the go print out)
 func (m Metric) String() string {
-	return fmt.Sprintf("%s{%v}", m.Name, m.Labels)
+	return fmt.Sprintf("%s%v", m.Name, m.Labels)
 }
 
 // Represent a snapshot of a metric at a specific point in time
