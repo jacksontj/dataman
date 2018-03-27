@@ -32,7 +32,7 @@ func TestTDigestArrayUsage(t *testing.T) {
 
 	// If you have a metric that needs to actually report more than one metric
 	// then you can implement the collectable interface
-	newTimer := func() Collectable {
+	newTDigest := func() Collectable {
 		return NewTDigest([]float64{1, 0.5, 0.75})
 	}
 
@@ -43,7 +43,7 @@ func TestTDigestArrayUsage(t *testing.T) {
 		},
 	}
 
-	arr := NewCollectableArray(m, newTimer, []string{"handler", "code"})
+	arr := NewCollectableArray(m, newTDigest, []string{"handler", "code"})
 
 	r.Register(arr)
 
