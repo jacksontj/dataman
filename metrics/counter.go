@@ -5,13 +5,13 @@ import "sync/atomic"
 func NewCounter() Valuer { return &Counter{} }
 
 type Counter struct {
-	v int64
+	v uint64
 }
 
-func (c *Counter) Add(i int64) {
-	atomic.AddInt64(&c.v, i)
+func (c *Counter) Inc(i uint64) {
+	atomic.AddUint64(&c.v, i)
 }
 
 func (c *Counter) Value() float64 {
-	return float64(atomic.LoadInt64(&c.v))
+	return float64(atomic.LoadUint64(&c.v))
 }

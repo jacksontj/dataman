@@ -35,6 +35,6 @@ func (t *Timer) Collect(ctx context.Context, c chan<- MetricPoint) error {
 }
 
 func (t *Timer) Observe(dur time.Duration) {
-	t.totalTime.Add(int64(dur))
-	t.totalCount.Add(1)
+	t.totalTime.Inc(uint64(dur))
+	t.totalCount.Inc(1)
 }

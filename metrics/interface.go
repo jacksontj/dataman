@@ -71,3 +71,13 @@ type Valuer interface {
 type ValuerCreator func() Valuer
 
 type CollectableCreator func() Collectable
+
+type CounterValuer interface {
+	Valuer
+	Inc(uint64)
+}
+
+type GaugeValuer interface {
+	Valuer
+	Set(float64)
+}
