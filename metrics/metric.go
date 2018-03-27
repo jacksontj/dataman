@@ -9,6 +9,7 @@ import (
 type Metric struct {
 	Name   string // TODO: remove from here?
 	Labels LabelSet
+	Help string
 }
 
 // TODO: nicely layout the m.Labels (instead of the go print out)

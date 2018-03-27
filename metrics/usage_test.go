@@ -14,6 +14,7 @@ func TestUsage(t *testing.T) {
 			Labels: map[string]string{
 				"test": "true",
 			},
+			Help: "optional helper string to define what this metric is",
 		},
 		Valuer: &Counter{},
 	}
