@@ -83,7 +83,6 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 		return err
 	}
 
-	// TODO: make these mergeable, so we can just call n.mr.MergeOrError()
 	r := NewMetricDescRegistry()
 	r.AddOrError(metricDescs)
 

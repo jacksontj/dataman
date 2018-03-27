@@ -64,6 +64,7 @@ type CounterType interface {
 	Inc(uint64)
 }
 
+// TODO: Add
 type GaugeType interface {
 	Set(float64)
 }
