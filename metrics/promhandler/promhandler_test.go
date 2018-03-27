@@ -63,7 +63,9 @@ func TestUsage(t *testing.T) {
 
 	subR.Register(subCounterMetric)
 
-	http.Handle("/metrics", Handler(r))
+	if false {
+		http.Handle("/metrics", Handler(r))
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+		log.Fatal(http.ListenAndServe(":8080", nil))
+	}
 }
