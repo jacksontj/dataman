@@ -24,7 +24,7 @@ func (t *TDigest) Observe(v float64) {
 	t.d.Add(v)
 }
 
-func (t *TDigest) Collect(ctx context.Context, c chan MetricPoint) error {
+func (t *TDigest) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	for _, quantile := range t.quantiles {
 		c <- MetricPoint{
 			Metric: Metric{

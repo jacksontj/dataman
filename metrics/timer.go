@@ -18,7 +18,7 @@ type Timer struct {
 	totalCount *Counter
 }
 
-func (t *Timer) Collect(ctx context.Context, c chan MetricPoint) error {
+func (t *Timer) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	c <- MetricPoint{
 		Metric: Metric{
 			Name: "time_total",

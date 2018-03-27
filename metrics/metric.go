@@ -37,7 +37,7 @@ func (s *SingleMetric) Name() string {
 	return s.Metric.Name
 }
 
-func (s *SingleMetric) Collect(ctx context.Context, c chan MetricPoint) error {
+func (s *SingleMetric) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	c <- MetricPoint{s.Metric, s.Valuer.Value()}
 	return nil
 }
@@ -56,7 +56,7 @@ func (s *SingleCollectable) Name() string {
 	return s.Metric.Name
 }
 
-func (s *SingleCollectable) Collect(ctx context.Context, c chan MetricPoint) error {
+func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	var err error
 	// We need to call collect on the children and add our namespace stuff to the value that is returned
 	innerPoints := make(chan MetricPoint)

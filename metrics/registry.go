@@ -28,7 +28,7 @@ type NamespaceRegistry struct {
 
 // Collect simply calls collect on all the collectables in this registry adding its
 // namespace as a prefix to the name
-func (n *NamespaceRegistry) Collect(ctx context.Context, points chan MetricPoint) error {
+func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoint) error {
 	f := func(c Collectable) error {
 		var err error
 		// We need to call collect on the children and add our namespace stuff to the value that is returned

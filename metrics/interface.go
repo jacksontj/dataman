@@ -27,7 +27,7 @@ Types of metrics:
 
 // Collectable is an interface that defines how to collect metrics
 type Collectable interface {
-	Collect(context.Context, chan MetricPoint) error
+	Collect(context.Context, chan<- MetricPoint) error
 }
 
 // NamedCollectable is a collectable that exposes only a single metric

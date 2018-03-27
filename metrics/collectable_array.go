@@ -39,7 +39,7 @@ func (m *CollectableArray) Name() string {
 	return m.Metric.Name
 }
 
-func (m *CollectableArray) Collect(ctx context.Context, c chan MetricPoint) error {
+func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	var err error
 	f := func(kRaw, vRaw interface{}) bool {
 		k := kRaw.(uint64)
