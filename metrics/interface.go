@@ -69,12 +69,18 @@ type ValuerCreator func() Valuer
 
 type CollectableCreator func() Collectable
 
-type CounterValuer interface {
-	Valuer
+// A few Valuer interfaces. The goal here is to create a more user-friendly
+// interface for the Array types
+
+type CounterType interface {
 	Inc(uint64)
 }
 
-type GaugeValuer interface {
-	Valuer
+type GaugeType interface {
 	Set(float64)
+}
+
+// TODO: make the rest not valuers?
+type ObserveType interface {
+	Observe(float64)
 }

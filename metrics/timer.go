@@ -1,9 +1,6 @@
 package metrics
 
-import (
-	"context"
-	"time"
-)
+import "context"
 
 func NewTimer() *Timer {
 	return &Timer{
@@ -34,7 +31,8 @@ func (t *Timer) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	return nil
 }
 
-func (t *Timer) Observe(dur time.Duration) {
-	t.totalTime.Inc(uint64(dur))
+// TODO: don't like this :/ I'd like to pass a time.Duration -- but if we have to this isn't terrible
+func (t *Timer) Observe(v float64) {
+	t.totalTime.Inc(uint64(v))
 	t.totalCount.Inc(1)
 }

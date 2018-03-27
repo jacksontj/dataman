@@ -67,7 +67,6 @@ func (m *ValuerArray) Collect(ctx context.Context, c chan<- MetricPoint) error {
 
 // Access it by the slice of values
 func (m *ValuerArray) WithValues(vals ...string) Valuer {
-
 	h := sha1.New()
 
 	for _, v := range vals {
@@ -95,4 +94,19 @@ func (m *ValuerArray) WithValues(vals ...string) Valuer {
 		}
 		return valuer.(Valuer)
 	}
+}
+
+func (m *ValuerArray) CounterWithValues(vals ...string) CounterType {
+	v := m.WithValues(vals...)
+	return v.(CounterType)
+}
+
+func (m *ValuerArray) GaugeWithValues(vals ...string) GaugeType {
+	v := m.WithValues(vals...)
+	return v.(GaugeType)
+}
+
+func (m *ValuerArray) ObserveWithValues(vals ...string) ObserveType {
+	v := m.WithValues(vals...)
+	return v.(ObserveType)
 }

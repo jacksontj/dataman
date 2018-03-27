@@ -47,9 +47,9 @@ func TestTDigestArrayUsage(t *testing.T) {
 
 	r.Register(arr)
 
-	arr.WithValues("/foo", "200").(*TDigest).Observe(1)
-	arr.WithValues("/foo", "500").(*TDigest).Observe(2)
-	arr.WithValues("/foo", "502").(*TDigest).Observe(3)
+	arr.ObserveWithValues("/foo", "200").Observe(1)
+	arr.ObserveWithValues("/foo", "500").Observe(2)
+	arr.ObserveWithValues("/foo", "502").Observe(3)
 
 	// Print out register
 	printCollectable(r)

@@ -114,3 +114,18 @@ func (m *CollectableArray) WithValues(vals ...string) Collectable {
 		return collectable.(Collectable)
 	}
 }
+
+func (m *CollectableArray) CounterWithValues(vals ...string) CounterType {
+	v := m.WithValues(vals...)
+	return v.(CounterType)
+}
+
+func (m *CollectableArray) GaugeWithValues(vals ...string) GaugeType {
+	v := m.WithValues(vals...)
+	return v.(GaugeType)
+}
+
+func (m *CollectableArray) ObserveWithValues(vals ...string) ObserveType {
+	v := m.WithValues(vals...)
+	return v.(ObserveType)
+}

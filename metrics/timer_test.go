@@ -20,7 +20,7 @@ func TestTimerUsage(t *testing.T) {
 		Collectable: NewTimer(),
 	})
 
-	timer.Observe(time.Second)
+	timer.Observe(float64(time.Second))
 
 	// Register a CONFLICTING single metric
 	counterMetric := &SingleMetric{
@@ -60,9 +60,9 @@ func TestTimerArrayUsage(t *testing.T) {
 
 	r.Register(arr)
 
-	arr.WithValues("/foo", "200").(*Timer).Observe(time.Second)
-	arr.WithValues("/foo", "500").(*Timer).Observe(time.Second * 2)
-	arr.WithValues("/foo", "502").(*Timer).Observe(time.Second * 3)
+	arr.ObserveWithValues("/foo", "200").Observe(float64(time.Second))
+	arr.ObserveWithValues("/foo", "500").Observe(float64(time.Second * 2))
+	arr.ObserveWithValues("/foo", "502").Observe(float64(time.Second * 3))
 
 	// Print out register
 	printCollectable(r)
