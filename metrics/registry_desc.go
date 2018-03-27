@@ -38,7 +38,7 @@ func (n *MetricDescRegistry) Contains(name string) bool {
 	}
 
 	// If its not an exact match, but the matching one is a prefix -- its a match
-	return item.(bool)
+	return item.(MetricDesc).Prefix
 }
 
 func (n *MetricDescRegistry) AddOrError(ds []MetricDesc) error {
@@ -55,7 +55,7 @@ func (n *MetricDescRegistry) AddOrError(ds []MetricDesc) error {
 	// Assuming we can, lets do so!
 	for _, d := range ds {
 		// TODO: make sure we didn't update?
-		n.prefixTree.Insert(d.Name, d.Prefix)
+		n.prefixTree.Insert(d.Name, d)
 	}
 
 	return nil
@@ -75,7 +75,7 @@ func (n *MetricDescRegistry) canAddDesc(d MetricDesc) bool {
 	}
 
 	// If the matching one is a prefix, then we can't (since we'd collide)
-	if item.(bool) {
+	if item.(MetricDesc).Prefix {
 		return false
 	}
 
@@ -90,5 +90,13 @@ func (n *MetricDescRegistry) Remove(ds []MetricDesc) {
 	for _, d := range ds {
 		n.prefixTree.Delete(d.Name)
 	}
+}
 
+func (n *MetricDescRegistry) List() []MetricDesc {
+	r := make([]MetricDesc, 0)
+
+	for _, v := range n.prefixTree.ToMap() {
+		r = append(r, v.(MetricDesc))
+	}
+	return r
 }

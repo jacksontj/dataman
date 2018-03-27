@@ -99,43 +99,26 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 	return nil
 }
 
-/*
 func (n *NamespaceRegistry) Unregister(c Collectable) error {
-	var err error
-	ch := make(chan MetricDesc)
-	go func() {
-		defer close(ch)
-		err = c.Describe(ch)
-	}()
-
-	metricDescs := make([]MetricDesc, 0)
-	for metricDesc := range ch {
-		metricDescs = append(metricDescs, metricDesc)
+	// TODO: lock?
+	metricsDescRegisterRaw, ok := n.m.Load(c)
+	if !ok {
+		return fmt.Errorf("Unable to unregister as it wasn't registered")
 	}
 
-	if err != nil {
-		return err
-	}
+	metricsDescRegister := metricsDescRegisterRaw.(*MetricDescRegistry)
 
-	switch cTyped := c.(type) {
-	case NamedCollectable:
-		n.m.Delete(cTyped.Name())
+	descs := metricsDescRegister.List()
 
-	case PrefixCollectable:
-		n.l.Lock()
-		defer n.l.Unlock()
+	// TODO: check for error?
+	// remove entries from our register
+	n.mr.Remove(descs)
 
-		prefix := cTyped.Prefix() + "_"
-
-		n.m.Delete(prefix)
-		n.prefixTree.Delete(prefix)
-	default:
-		return fmt.Errorf("Unsupported collectable")
-	}
+	// Remove from the sync map
+	n.m.Delete(c)
 
 	return nil
 }
-*/
 
 func (n *NamespaceRegistry) Each(ctx context.Context, eachFunc RegistryEachFunc) error {
 	var err error
