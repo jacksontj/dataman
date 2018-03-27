@@ -8,6 +8,7 @@ import (
 	"github.com/jacksontj/dataman/metrics"
 )
 
+// TODO: actually make a test. For now this just starts and endpoint to curl
 func TestUsage(t *testing.T) {
 	r := metrics.NewNamespaceRegistry("")
 
