@@ -67,8 +67,10 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 			}
 			c <- MetricPoint{
 				Metric{
-					Name:   name,
-					Labels: MergeLabelsDirect(MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)), point.Metric.Labels),
+					Name: name,
+					Labels: MergeLabelsDirect(
+						MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)),
+						point.Metric.Labels),
 				},
 				point.Value,
 			}
