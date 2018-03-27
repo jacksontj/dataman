@@ -7,3 +7,4 @@ TODO:
     -- this would allow us to remove the type Assertions
     -- this is done right now with methods like CounterWithValues, maybe we wrap the array instead?
 - TYPE for each metric? (to add to the printout of the prom handler -- for example)
+- split package into interfaces and implementations
