@@ -9,6 +9,11 @@ import (
 )
 
 func NewCollectableArray(m Metric, c CollectableCreator, l []string) *CollectableArray {
+	for _, label := range l {
+		if _, ok := m.Labels[label]; ok {
+			panic("Cannot create ValuerArray with label in base and l")
+		}
+	}
 	return &CollectableArray{
 		Metric:    m,
 		Creator:   c,

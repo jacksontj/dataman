@@ -9,6 +9,12 @@ import (
 )
 
 func NewValuerArray(m Metric, c ValuerCreator, l []string) *ValuerArray {
+	for _, label := range l {
+		if _, ok := m.Labels[label]; ok {
+			panic("Cannot create ValuerArray with label in base and l")
+		}
+	}
+
 	return &ValuerArray{
 		Metric:    m,
 		Creator:   c,
