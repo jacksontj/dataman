@@ -66,7 +66,11 @@ func (s *SingleCollectable) Describe(c chan<- MetricDesc) error {
 	}()
 
 	for metricDesc := range ch {
-		metricDesc.Name = s.Metric.Name + "_" + metricDesc.Name
+		if metricDesc.Name == "" {
+			metricDesc.Name = s.Metric.Name
+		} else if s.Metric.Name != "" {
+			metricDesc.Name = s.Metric.Name + "_" + metricDesc.Name
+		}
 		c <- metricDesc
 	}
 	return err

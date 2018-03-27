@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"sync"
 )
 
@@ -18,8 +19,7 @@ type NamespaceRegistry struct {
 
 	mr *MetricDescRegistry
 
-	// TODO: have a name??
-	// Map of collectable -> collectable
+	// Map of collectable -> *MetricDescRegistry
 	m *sync.Map
 }
 
@@ -34,7 +34,7 @@ func (n *NamespaceRegistry) Describe(c chan<- MetricDesc) error {
 // Collect simply calls collect on all the collectables in this registry adding its
 // namespace as a prefix to the name
 func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoint) error {
-	f := func(c Collectable) error {
+	f := func(c Collectable, r *MetricDescRegistry) error {
 		var err error
 		// We need to call collect on the children and add our namespace stuff to the value that is returned
 		innerPoints := make(chan MetricPoint)
@@ -49,6 +49,10 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoi
 			case item, ok := <-innerPoints:
 				if !ok {
 					break WAITRESULT
+				}
+				if !r.Contains(item.Name) {
+					fmt.Printf("Skipping item %s as it wasn't present for Describe() (not in %v): %v", item.Name, r.prefixTree.ToMap(), item)
+					continue
 				}
 				if n.Namespace != "" {
 					item.Metric.Name = n.Namespace + "_" + item.Metric.Name
@@ -79,12 +83,16 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 		return err
 	}
 
+	// TODO: make these mergeable, so we can just call n.mr.MergeOrError()
+	r := NewMetricDescRegistry()
+	r.AddOrError(metricDescs)
+
 	// check that we can register all the names
 	if err := n.mr.AddOrError(metricDescs); err != nil {
 		return err
 	}
 
-	if _, ok := n.m.LoadOrStore(c, c); ok {
+	if _, ok := n.m.LoadOrStore(c, r); ok {
 		panic("shouldn't be possible!")
 	}
 
@@ -132,10 +140,11 @@ func (n *NamespaceRegistry) Unregister(c Collectable) error {
 func (n *NamespaceRegistry) Each(ctx context.Context, eachFunc RegistryEachFunc) error {
 	var err error
 
-	f := func(_, vRaw interface{}) bool {
-		v := vRaw.(Collectable)
+	f := func(kRaw, vRaw interface{}) bool {
+		k := kRaw.(Collectable)
+		v := vRaw.(*MetricDescRegistry)
 
-		err = eachFunc(v)
+		err = eachFunc(k, v)
 		if err != nil {
 			return false
 		}

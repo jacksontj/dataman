@@ -15,10 +15,30 @@ func NewMetricDescRegistry() *MetricDescRegistry {
 	}
 }
 
+// TODO: make these mergeable
 type MetricDescRegistry struct {
-	l sync.Mutex
+	l sync.RWMutex
 	// Tree of prefix -> bool (prefix or not)
 	prefixTree *radix.Tree
+}
+
+func (n *MetricDescRegistry) Contains(name string) bool {
+	n.l.RLock()
+	defer n.l.RUnlock()
+
+	prefix, item, ok := n.prefixTree.LongestPrefix(name)
+	// If we don't have any prefix matching, then we don't have this
+	if !ok {
+		return false
+	}
+
+	// If the prefix matches, regardless its contained
+	if prefix == name {
+		return true
+	}
+
+	// If its not an exact match, but the matching one is a prefix -- its a match
+	return item.(bool)
 }
 
 func (n *MetricDescRegistry) AddOrError(ds []MetricDesc) error {

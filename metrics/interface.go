@@ -32,7 +32,7 @@ type Collectable interface {
 	Collect(context.Context, chan<- MetricPoint) error
 }
 
-type RegistryEachFunc func(Collectable) error
+type RegistryEachFunc func(Collectable, *MetricDescRegistry) error
 
 // Registry is a collection collectables with given names
 type Registry interface {
