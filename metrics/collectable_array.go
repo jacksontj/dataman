@@ -32,8 +32,8 @@ type CollectableArray struct {
 	// Keys of all the labels allowed for metrics in this array
 	LabelKeys []string
 
-	// Map of labelset-hash -> Valuer
-	//m map[uint64]Valuer
+	// Map of labelset-hash -> Collectable
+	//m map[uint64]Collectable
 	m sync.Map
 	// Map of labelset-hash -> label values
 	// uint64->[]string
@@ -48,6 +48,7 @@ func (m *CollectableArray) Describe(ctx context.Context, c chan<- MetricDesc) er
 			} else {
 				d.Name = m.Metric.Name
 			}
+			// TODO: labels
 			return true, nil
 		},
 	}
@@ -107,10 +108,7 @@ func (m *CollectableArray) WithValues(vals ...string) Collectable {
 	}
 
 	// TODO: use hashing from sharding package?
-	sum := h.Sum(nil)
-	var buf []byte
-	buf = sum[:]
-	s := binary.LittleEndian.Uint64(buf)
+	s := binary.LittleEndian.Uint64(h.Sum(nil)[:])
 
 	collectable, ok := m.m.Load(s)
 	if ok {
