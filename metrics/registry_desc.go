@@ -93,7 +93,7 @@ func (n *MetricDescRegistry) Remove(ds []MetricDesc) {
 }
 
 func (n *MetricDescRegistry) List() []MetricDesc {
-	r := make([]MetricDesc, 0)
+	r := make([]MetricDesc, 0, n.prefixTree.Len())
 
 	for _, v := range n.prefixTree.ToMap() {
 		r = append(r, v.(MetricDesc))
