@@ -32,3 +32,21 @@ func (c *Counter) Collect(ctx context.Context, ch chan<- MetricPoint) error {
 		return ctx.Err()
 	}
 }
+
+// type specific array collectable
+func NewCounterArray(m Metric, c CollectableCreator, l []string) *CounterArray {
+	if _, ok := c().(CounterType); !ok {
+		panic("c must return GaugeType")
+	}
+
+	return &CounterArray{NewCollectableArray(m, c, l)}
+}
+
+type CounterArray struct {
+	*CollectableArray
+}
+
+func (g *CounterArray) WithValues(vals ...string) CounterType {
+	r := g.CollectableArray.WithValues(vals...)
+	return r.(CounterType)
+}

@@ -33,3 +33,21 @@ func (c *Gauge) Collect(ctx context.Context, ch chan<- MetricPoint) error {
 		return ctx.Err()
 	}
 }
+
+// type specific array collectable
+func NewGaugeArray(m Metric, c CollectableCreator, l []string) *GaugeArray {
+	if _, ok := c().(GaugeType); !ok {
+		panic("c must return GaugeType")
+	}
+
+	return &GaugeArray{NewCollectableArray(m, c, l)}
+}
+
+type GaugeArray struct {
+	*CollectableArray
+}
+
+func (g *GaugeArray) WithValues(vals ...string) GaugeType {
+	r := g.CollectableArray.WithValues(vals...)
+	return r.(GaugeType)
+}
