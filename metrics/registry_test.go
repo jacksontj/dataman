@@ -79,7 +79,6 @@ func TestRegistrySubRegister(t *testing.T) {
 	}
 
 	if err := r.Register(tmp); err == nil {
-		printCollectable(r)
 		t.Fatalf("No error when registering a conflict")
 	}
 
