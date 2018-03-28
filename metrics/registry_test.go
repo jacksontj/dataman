@@ -99,3 +99,37 @@ func TestRegistrySubRegister(t *testing.T) {
 	}
 
 }
+
+// Registries can be used with CollectableArray as well!
+func TestRegistryArray(t *testing.T) {
+	r := NewNamespaceRegistry("")
+
+	newRegistry := func() Collectable {
+		return NewNamespaceRegistry("")
+	}
+	// Try adding a *similar* metric that won't conflict
+	tmp2 := &CollectableArray{
+		Metric:    Metric{Name: "subregistry"},
+		Creator:   newRegistry,
+		LabelKeys: []string{"name"},
+	}
+	r.Register(tmp2)
+
+	arr := NewCounterArray(
+		Metric{Name: "testcounterarray"},
+		[]string{"handler", "statuscode"},
+	)
+
+	tmp2.WithValues("a").(Registry).Register(arr)
+	arr.WithValues("/foo", "200").Inc(1)
+
+	arr2 := NewCounterArray(
+		Metric{Name: "testcounterarray"},
+		[]string{"handler", "statuscode"},
+	)
+
+	tmp2.WithValues("b").(Registry).Register(arr2)
+	arr2.WithValues("/foo", "200").Inc(1)
+
+	printCollectable(r)
+}
