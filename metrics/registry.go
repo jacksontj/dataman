@@ -17,6 +17,9 @@ func NewNamespaceRegistry(n string) *NamespaceRegistry {
 type NamespaceRegistry struct {
 	Namespace string
 
+	// Lock for register/deregister actions
+	l sync.Mutex
+
 	mr *MetricDescRegistry
 
 	// Map of collectable -> *MetricDescRegistry
@@ -60,6 +63,9 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoi
 }
 
 func (n *NamespaceRegistry) Register(c Collectable) error {
+	n.l.Lock()
+	defer n.l.Unlock()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var err error
@@ -94,7 +100,9 @@ func (n *NamespaceRegistry) Register(c Collectable) error {
 }
 
 func (n *NamespaceRegistry) Unregister(c Collectable) error {
-	// TODO: lock?
+	n.l.Lock()
+	defer n.l.Unlock()
+
 	metricsDescRegisterRaw, ok := n.m.Load(c)
 	if !ok {
 		return fmt.Errorf("Unable to unregister as it wasn't registered")
