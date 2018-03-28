@@ -34,22 +34,6 @@ func (m *MetricPoint) String() string {
 	return fmt.Sprintf("%s %v", m.Metric.String(), m.Value)
 }
 
-// SingleMetric wraps a single MetricType with a name and a labelset
-type SingleMetric struct {
-	Metric
-	Valuer Valuer
-}
-
-func (s *SingleMetric) Describe(c chan<- MetricDesc) error {
-	c <- MetricDesc{Name: s.Metric.Name}
-	return nil
-}
-
-func (s *SingleMetric) Collect(ctx context.Context, c chan<- MetricPoint) error {
-	c <- MetricPoint{s.Metric, s.Valuer.Value()}
-	return nil
-}
-
 // TODO: move
 type SingleCollectable struct {
 	Metric
@@ -99,4 +83,49 @@ func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) e
 		}
 	}
 	return err
+}
+
+// TODO: nicer? Transformation chains? Required to consolidate Registry usecase
+// Merge all data from `Metric` to every MetricPoint returned from `Collectable`
+func MergeMetricPoint(ctx context.Context, m Metric, c Collectable, out chan<- MetricPoint) error {
+	ch := make(chan MetricPoint)
+	var err error
+	go func() {
+		defer close(ch)
+		err = c.Collect(ctx, ch)
+	}()
+
+	for point := range ch {
+		name := m.Name
+		if point.Metric.Name != "" {
+			name += "_" + point.Metric.Name
+		}
+		// TODO: context
+		out <- MetricPoint{
+			Metric: Metric{
+				Name:   name,
+				Labels: MergeLabelsDirect(m.Labels, point.Metric.Labels),
+			},
+			Value: point.Value,
+		}
+	}
+
+	return err
+}
+
+// TODO: Elsewhere?
+func CollectPoints(ctx context.Context, c Collectable) ([]MetricPoint, error) {
+	ch := make(chan MetricPoint)
+	var err error
+	go func() {
+		defer close(ch)
+		err = c.Collect(ctx, ch)
+	}()
+
+	points := make([]MetricPoint, 0)
+	for point := range ch {
+		points = append(points, point)
+	}
+
+	return points, err
 }

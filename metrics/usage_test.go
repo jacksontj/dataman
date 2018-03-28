@@ -8,7 +8,7 @@ func TestUsage(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
 	// Register a single metric
-	counterMetric := &SingleMetric{
+	counterMetric := &SingleCollectable{
 		Metric: Metric{
 			Name: "testcounter",
 			Labels: map[string]string{
@@ -16,7 +16,7 @@ func TestUsage(t *testing.T) {
 			},
 			Help: "optional helper string to define what this metric is",
 		},
-		Valuer: &Counter{},
+		Collectable: NewCounter(),
 	}
 
 	r.Register(counterMetric)
@@ -29,7 +29,7 @@ func TestUsage(t *testing.T) {
 	}
 
 	// Register a metricArray of counters
-	counterArray := NewValuerArray(
+	counterArray := NewCollectableArray(
 		arrayBaseMetric,
 		NewCounter,
 		[]string{"handler", "statuscode"},
@@ -47,14 +47,14 @@ func TestUsage(t *testing.T) {
 	r.Register(subR)
 
 	// Register a single metric to subR
-	subCounterMetric := &SingleMetric{
+	subCounterMetric := &SingleCollectable{
 		Metric: Metric{
 			Name: "counterinsub",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: &Counter{},
+		Collectable: NewCounter(),
 	}
 
 	subR.Register(subCounterMetric)
@@ -68,14 +68,14 @@ func TestFunctionMetric(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
 	// Register a single metric
-	counterMetric := &SingleMetric{
+	counterMetric := &SingleCollectable{
 		Metric: Metric{
 			Name: "testfunction",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: NewFunctionValuer(func() float64 {
+		Collectable: NewFunctionCollectable(func() float64 {
 			return 1
 		}),
 	}

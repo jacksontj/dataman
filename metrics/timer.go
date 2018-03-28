@@ -22,17 +22,13 @@ func (t *Timer) Describe(c chan<- MetricDesc) error {
 }
 
 func (t *Timer) Collect(ctx context.Context, c chan<- MetricPoint) error {
-	c <- MetricPoint{
-		Metric: Metric{
-			Name: "time_total",
-		},
-		Value: t.totalTime.Value(),
+
+	if err := MergeMetricPoint(ctx, Metric{Name: "time_total"}, t.totalTime, c); err != nil {
+		return err
 	}
-	c <- MetricPoint{
-		Metric: Metric{
-			Name: "total",
-		},
-		Value: t.totalCount.Value(),
+
+	if err := MergeMetricPoint(ctx, Metric{Name: "total"}, t.totalCount, c); err != nil {
+		return err
 	}
 	return nil
 }

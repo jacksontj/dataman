@@ -41,14 +41,14 @@ func TestBasicRegistry(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
 	// Register a single metric
-	counterMetric := &SingleMetric{
+	counterMetric := &SingleCollectable{
 		Metric: Metric{
 			Name: "testcounter",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: &Counter{},
+		Collectable: NewCounter(),
 	}
 
 	if err := r.Register(counterMetric); err != nil {
@@ -67,7 +67,7 @@ func TestRegistrySubRegister(t *testing.T) {
 
 	// Try adding a metric name that collides with the namespace
 	// Register a metricArray of counters
-	tmp := &ValuerArray{
+	tmp := &CollectableArray{
 		Metric: Metric{
 			Name: "subregistry_",
 			Labels: map[string]string{
@@ -84,7 +84,7 @@ func TestRegistrySubRegister(t *testing.T) {
 	}
 
 	// Try adding a *similar* metric that won't conflict
-	tmp2 := &ValuerArray{
+	tmp2 := &CollectableArray{
 		Metric: Metric{
 			Name: "subregistrsyother",
 			Labels: map[string]string{

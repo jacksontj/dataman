@@ -1,9 +1,12 @@
 package metrics
 
-import "math"
-import "sync/atomic"
+import (
+	"context"
+	"math"
+	"sync/atomic"
+)
 
-func NewGauge() Valuer { return &Gauge{} }
+func NewGauge() Collectable { return &Gauge{} }
 
 type Gauge struct {
 	v uint64
@@ -13,25 +16,12 @@ func (c *Gauge) Set(i float64) {
 	atomic.StoreUint64(&c.v, math.Float64bits(i))
 }
 
-func (c *Gauge) Value() float64 {
-	return math.Float64frombits(atomic.LoadUint64(&c.v))
+func (c *Gauge) Describe(ch chan<- MetricDesc) error {
+	ch <- MetricDesc{}
+	return nil
 }
 
-// TODO: (experiment) cleanup or remove
-// type specific array collectable
-func NewGaugeArray(m Metric, c ValuerCreator, l []string) *GaugeArray {
-	if _, ok := c().(GaugeValuer); !ok {
-		panic("c must return GaugeValuer")
-	}
-
-	return &GaugeArray{NewValuerArray(m, c, l)}
-}
-
-type GaugeArray struct {
-	*ValuerArray
-}
-
-func (g *GaugeArray) WithValues(vals ...string) GaugeValuer {
-	r := g.ValuerArray.WithValues(vals...)
-	return r.(GaugeValuer)
+func (c *Gauge) Collect(ctx context.Context, ch chan<- MetricPoint) error {
+	ch <- MetricPoint{Value: math.Float64frombits(atomic.LoadUint64(&c.v))}
+	return nil
 }

@@ -23,14 +23,14 @@ func TestTimerUsage(t *testing.T) {
 	timer.Observe(float64(time.Second))
 
 	// Register a CONFLICTING single metric
-	counterMetric := &SingleMetric{
+	counterMetric := &SingleCollectable{
 		Metric: Metric{
 			Name: "topname_time_total",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: &Counter{},
+		Collectable: NewCounter(),
 	}
 
 	if err := r.Register(counterMetric); err == nil {

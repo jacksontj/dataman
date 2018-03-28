@@ -47,17 +47,9 @@ type Registry interface {
 	Each(context.Context, RegistryEachFunc) error
 }
 
-// Pluggable metric -- these will include all the types (counter/gauge/etc)
-type Valuer interface {
-	Value() float64
-}
-
-// Function that creates an empty Valuer
-type ValuerCreator func() Valuer
-
 type CollectableCreator func() Collectable
 
-// A few Valuer interfaces. The goal here is to create a more user-friendly
+// A few interfaces for user interraction with metrics. The goal here is to create a more user-friendly
 // interface for the Array types
 
 type CounterType interface {
@@ -75,7 +67,7 @@ type ObserveType interface {
 
 // TODO: (experiment) cleanup or remove
 // Some mixed interfaces (for type-specific collectables)
-type GaugeValuer interface {
-	Valuer
+type GaugeCollectable interface {
+	Collectable
 	GaugeType
 }
