@@ -69,7 +69,6 @@ type GaugeType interface {
 	Set(float64)
 }
 
-// TODO: make the rest not valuers?
 type ObserveType interface {
 	Observe(float64)
 }
