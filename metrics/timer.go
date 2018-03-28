@@ -15,9 +15,19 @@ type Timer struct {
 	totalCount *Counter
 }
 
-func (t *Timer) Describe(c chan<- MetricDesc) error {
-	c <- MetricDesc{Name: "time_total"}
-	c <- MetricDesc{Name: "total"}
+func (t *Timer) Describe(ctx context.Context, c chan<- MetricDesc) error {
+	select {
+	case c <- MetricDesc{Name: "time_total"}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	select {
+	case c <- MetricDesc{Name: "total"}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
 	return nil
 }
 

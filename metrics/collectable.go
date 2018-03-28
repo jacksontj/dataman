@@ -8,7 +8,7 @@ type SingleCollectable struct {
 	Collectable
 }
 
-func (s *SingleCollectable) Describe(c chan<- MetricDesc) error {
+func (s *SingleCollectable) Describe(ctx context.Context, c chan<- MetricDesc) error {
 	transformations := []MetricDescTransformation{
 		func(d *MetricDesc) (bool, error) {
 			if d.Name != "" {
@@ -19,7 +19,7 @@ func (s *SingleCollectable) Describe(c chan<- MetricDesc) error {
 			return true, nil
 		},
 	}
-	return StreamMetricDescs(context.Background(), s.Collectable, c, transformations)
+	return StreamMetricDescs(ctx, s.Collectable, c, transformations)
 }
 
 func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {

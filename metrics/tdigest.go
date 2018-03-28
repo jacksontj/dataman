@@ -24,9 +24,13 @@ func (t *TDigest) Observe(v float64) {
 	t.d.Add(v)
 }
 
-func (t *TDigest) Describe(c chan<- MetricDesc) error {
-	c <- MetricDesc{}
-	return nil
+func (t *TDigest) Describe(ctx context.Context, c chan<- MetricDesc) error {
+	select {
+	case c <- MetricDesc{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (t *TDigest) Collect(ctx context.Context, c chan<- MetricPoint) error {

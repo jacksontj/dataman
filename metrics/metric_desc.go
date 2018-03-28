@@ -17,7 +17,7 @@ func StreamMetricDescs(ctx context.Context, c Collectable, out chan<- MetricDesc
 	var err error
 	go func() {
 		defer close(ch)
-		err = c.Describe(ch)
+		err = c.Describe(ctx, ch)
 	}()
 
 STREAM:

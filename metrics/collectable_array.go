@@ -40,7 +40,7 @@ type CollectableArray struct {
 	mL sync.Map
 }
 
-func (m *CollectableArray) Describe(c chan<- MetricDesc) error {
+func (m *CollectableArray) Describe(ctx context.Context, c chan<- MetricDesc) error {
 	transformations := []MetricDescTransformation{
 		func(d *MetricDesc) (bool, error) {
 			if d.Name != "" {
@@ -51,7 +51,7 @@ func (m *CollectableArray) Describe(c chan<- MetricDesc) error {
 			return true, nil
 		},
 	}
-	return StreamMetricDescs(context.Background(), m.Creator(), c, transformations)
+	return StreamMetricDescs(ctx, m.Creator(), c, transformations)
 }
 
 func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) error {

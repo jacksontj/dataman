@@ -23,12 +23,16 @@ type NamespaceRegistry struct {
 	m *sync.Map
 }
 
-func (n *NamespaceRegistry) Describe(c chan<- MetricDesc) error {
-	c <- MetricDesc{
+func (n *NamespaceRegistry) Describe(ctx context.Context, c chan<- MetricDesc) error {
+	select {
+	case c <- MetricDesc{
 		Name:   n.Namespace,
 		Prefix: true,
+	}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-	return nil
 }
 
 // Collect simply calls collect on all the collectables in this registry adding its
@@ -56,11 +60,13 @@ func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoi
 }
 
 func (n *NamespaceRegistry) Register(c Collectable) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	var err error
 	ch := make(chan MetricDesc)
 	go func() {
 		defer close(ch)
-		err = c.Describe(ch)
+		err = c.Describe(ctx, ch)
 	}()
 
 	metricDescs := make([]MetricDesc, 0)

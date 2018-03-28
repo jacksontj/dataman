@@ -16,9 +16,13 @@ func (c *Gauge) Set(i float64) {
 	atomic.StoreUint64(&c.v, math.Float64bits(i))
 }
 
-func (c *Gauge) Describe(ch chan<- MetricDesc) error {
-	ch <- MetricDesc{}
-	return nil
+func (c *Gauge) Describe(ctx context.Context, ch chan<- MetricDesc) error {
+	select {
+	case ch <- MetricDesc{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (c *Gauge) Collect(ctx context.Context, ch chan<- MetricPoint) error {

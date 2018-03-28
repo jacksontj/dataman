@@ -10,9 +10,13 @@ type FunctionCollectable struct {
 	f func() float64
 }
 
-func (f *FunctionCollectable) Describe(ch chan<- MetricDesc) error {
-	ch <- MetricDesc{}
-	return nil
+func (f *FunctionCollectable) Describe(ctx context.Context, ch chan<- MetricDesc) error {
+	select {
+	case ch <- MetricDesc{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (f *FunctionCollectable) Collect(ctx context.Context, ch chan<- MetricPoint) error {
