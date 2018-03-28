@@ -71,31 +71,29 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 			return false
 		}
 
-		// TODO: helper function for transforming MetricPoint
-		innerC := make(chan MetricPoint)
-		var innerErr error
-		go func() {
-			defer close(innerC)
-			innerErr = v.Collect(ctx, innerC)
-
-		}()
-
-		for point := range innerC {
-			name := m.Metric.Name
-			if point.Metric.Name != "" {
-				name += "_" + point.Metric.Name
-			}
-			c <- MetricPoint{
-				Metric{
-					Name: name,
-					Labels: MergeLabelsDirect(
-						MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)),
-						point.Metric.Labels),
-				},
-				point.Value,
-			}
+		transformations := []MetricPointTransformation{
+			func(point *MetricPoint) error {
+				name := m.Metric.Name
+				if point.Metric.Name != "" {
+					name += "_" + point.Metric.Name
+				}
+				*point = MetricPoint{
+					Metric{
+						Name: name,
+						Labels: MergeLabelsDirect(
+							MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)),
+							point.Metric.Labels),
+					},
+					point.Value,
+				}
+				return nil
+			},
 		}
 
+		err = StreamMetricPoints(ctx, v, c, transformations)
+		if err != nil {
+			return false
+		}
 		return true
 	}
 
