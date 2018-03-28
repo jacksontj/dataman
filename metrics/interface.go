@@ -72,3 +72,10 @@ type GaugeType interface {
 type ObserveType interface {
 	Observe(float64)
 }
+
+// TODO: (experiment) cleanup or remove
+// Some mixed interfaces (for type-specific collectables)
+type GaugeValuer interface {
+	Valuer
+	GaugeType
+}

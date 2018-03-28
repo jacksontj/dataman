@@ -16,3 +16,22 @@ func (c *Gauge) Set(i float64) {
 func (c *Gauge) Value() float64 {
 	return math.Float64frombits(atomic.LoadUint64(&c.v))
 }
+
+// TODO: (experiment) cleanup or remove
+// type specific array collectable
+func NewGaugeArray(m Metric, c ValuerCreator, l []string) *GaugeArray {
+	if _, ok := c().(GaugeValuer); !ok {
+		panic("c must return GaugeValuer")
+	}
+
+	return &GaugeArray{NewValuerArray(m, c, l)}
+}
+
+type GaugeArray struct {
+	*ValuerArray
+}
+
+func (g *GaugeArray) WithValues(vals ...string) GaugeValuer {
+	r := g.ValuerArray.WithValues(vals...)
+	return r.(GaugeValuer)
+}
