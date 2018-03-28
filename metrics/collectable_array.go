@@ -99,6 +99,9 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 
 // Access it by the slice of values
 func (m *CollectableArray) WithValues(vals ...string) Collectable {
+	if len(vals) != len(m.LabelKeys) {
+		panic("number of label values must match LabelKeys")
+	}
 
 	h := sha1.New()
 
