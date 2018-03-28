@@ -14,7 +14,13 @@ type Gauge struct {
 }
 
 func (c *Gauge) Add(i float64) {
-	atomic.StoreUint64(&c.v, math.Float64bits(i))
+	for {
+		oldBits := atomic.LoadUint64(&c.v)
+		newBits := math.Float64bits(math.Float64frombits(oldBits) + i)
+		if atomic.CompareAndSwapUint64(&c.v, oldBits, newBits) {
+			return
+		}
+	}
 }
 
 func (c *Gauge) Set(i float64) {
