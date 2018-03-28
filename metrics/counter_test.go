@@ -22,6 +22,38 @@ func TestCounter(t *testing.T) {
 func TestCounterArray(t *testing.T) {
 	arr := NewCounterArray(
 		Metric{Name: "testcounterarray"},
+		[]string{"handler", "statuscode"},
+	)
+
+	arr.WithValues("/foo", "200").Inc(1)
+	arr.WithValues("/foo", "500").Inc(2)
+	arr.WithValues("/foo", "502").Inc(3)
+
+	points, err := CollectPoints(context.Background(), arr)
+	if err != nil {
+		t.Fatalf("error getting datapoints")
+	}
+
+	// TODO: better, ideally we'd marshal these out to text and do some diffing
+	if len(points) != 3 {
+		t.Fatalf("missing value: %v", points)
+	}
+}
+
+func TestCustomCounterArray(t *testing.T) {
+	t.Run("bad", func(t *testing.T) {
+		_, err := NewCustomCounterArray(
+			Metric{Name: "testcounterarray"},
+			NewGauge,
+			[]string{"handler", "statuscode"},
+		)
+		if err == nil {
+			t.Fatalf("No error when sending a bad CollectableCreator")
+		}
+	})
+
+	arr, _ := NewCustomCounterArray(
+		Metric{Name: "testcounterarray"},
 		NewCounter,
 		[]string{"handler", "statuscode"},
 	)
@@ -30,5 +62,13 @@ func TestCounterArray(t *testing.T) {
 	arr.WithValues("/foo", "500").Inc(2)
 	arr.WithValues("/foo", "502").Inc(3)
 
-	// TODO: validate result
+	points, err := CollectPoints(context.Background(), arr)
+	if err != nil {
+		t.Fatalf("error getting datapoints")
+	}
+
+	// TODO: better, ideally we'd marshal these out to text and do some diffing
+	if len(points) != 3 {
+		t.Fatalf("missing value: %v", points)
+	}
 }

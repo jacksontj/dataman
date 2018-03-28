@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 )
 
@@ -34,12 +35,17 @@ func (c *Counter) Collect(ctx context.Context, ch chan<- MetricPoint) error {
 }
 
 // type specific array collectable
-func NewCounterArray(m Metric, c CollectableCreator, l []string) *CounterArray {
+func NewCounterArray(m Metric, l []string) *CounterArray {
+	return &CounterArray{NewCollectableArray(m, NewCounter, l)}
+}
+
+// type specific array collectable
+func NewCustomCounterArray(m Metric, c CollectableCreator, l []string) (*CounterArray, error) {
 	if _, ok := c().(CounterType); !ok {
-		panic("c must return GaugeType")
+		return nil, fmt.Errorf("CollectableCreator must generate an item which is a CounterType")
 	}
 
-	return &CounterArray{NewCollectableArray(m, c, l)}
+	return &CounterArray{NewCollectableArray(m, c, l)}, nil
 }
 
 type CounterArray struct {

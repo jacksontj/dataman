@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sync/atomic"
 )
@@ -39,12 +40,17 @@ func (c *Gauge) Collect(ctx context.Context, ch chan<- MetricPoint) error {
 }
 
 // type specific array collectable
-func NewGaugeArray(m Metric, c CollectableCreator, l []string) *GaugeArray {
+func NewGaugeArray(m Metric, l []string) *GaugeArray {
+	return &GaugeArray{NewCollectableArray(m, NewGauge, l)}
+}
+
+// type specific array collectable
+func NewCustomGaugeArray(m Metric, c CollectableCreator, l []string) (*GaugeArray, error) {
 	if _, ok := c().(GaugeType); !ok {
-		panic("c must return GaugeType")
+		return nil, fmt.Errorf("CollectableCreator must generate an item which is a GaugeType")
 	}
 
-	return &GaugeArray{NewCollectableArray(m, c, l)}
+	return &GaugeArray{NewCollectableArray(m, c, l)}, nil
 }
 
 type GaugeArray struct {

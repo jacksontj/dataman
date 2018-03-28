@@ -1,12 +1,14 @@
 package metrics
 
+import "fmt"
+
 // type specific array collectable
-func NewObserveArray(m Metric, c CollectableCreator, l []string) *ObserveArray {
+func NewCustomObserveArray(m Metric, c CollectableCreator, l []string) (*ObserveArray, error) {
 	if _, ok := c().(ObserveType); !ok {
-		panic("c must return GaugeType")
+		return nil, fmt.Errorf("CollectableCreator must generate an item which is an ObserveType")
 	}
 
-	return &ObserveArray{NewCollectableArray(m, c, l)}
+	return &ObserveArray{NewCollectableArray(m, c, l)}, nil
 }
 
 type ObserveArray struct {
