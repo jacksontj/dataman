@@ -2,7 +2,6 @@ package promhandler
 
 import (
 	"bufio"
-	"fmt"
 	"net/http"
 
 	"github.com/jacksontj/dataman/metrics"
@@ -20,9 +19,9 @@ func Handler(c metrics.Collectable) http.HandlerFunc {
 		writer := bufio.NewWriter(w)
 
 		for metricPoint := range ch {
-			_, err := writer.WriteString(metricPoint.String())
-			// TODO: do something with the error
-			fmt.Println("err", err)
+			if _, err := writer.WriteString(metricPoint.String()); err != nil {
+				return
+			}
 			writer.WriteByte('\n')
 		}
 		writer.Flush()
