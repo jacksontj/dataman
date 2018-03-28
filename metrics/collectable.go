@@ -30,6 +30,7 @@ func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) e
 			if point.Metric.Name != "" {
 				name += "_" + point.Metric.Name
 			}
+			point.Name = name
 			return true, nil
 		},
 	}
