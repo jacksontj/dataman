@@ -30,12 +30,6 @@ func TestTDigestUsage(t *testing.T) {
 func TestTDigestArrayUsage(t *testing.T) {
 	r := NewNamespaceRegistry("")
 
-	// If you have a metric that needs to actually report more than one metric
-	// then you can implement the collectable interface
-	newTDigest := func() Collectable {
-		return NewTDigest([]float64{1, 0.5, 0.75})
-	}
-
 	m := Metric{
 		Name: "tdigest_vector",
 		Labels: map[string]string{
@@ -43,7 +37,7 @@ func TestTDigestArrayUsage(t *testing.T) {
 		},
 	}
 
-	arr := NewCollectableArray(m, newTDigest, []string{"handler", "code"})
+	arr := NewCollectableArray(m, NewTDigestCreator([]float64{1, 0.5, 0.75}), []string{"handler", "code"})
 
 	r.Register(arr)
 

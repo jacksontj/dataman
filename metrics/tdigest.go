@@ -7,6 +7,12 @@ import (
 	tdigest "github.com/caio/go-tdigest"
 )
 
+func NewTDigestCreator(quantiles []float64) CollectableCreator {
+	return func() Collectable {
+		return NewTDigest(quantiles)
+	}
+}
+
 func NewTDigest(quantiles []float64) *TDigest {
 	t, _ := tdigest.New()
 	return &TDigest{
