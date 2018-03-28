@@ -8,6 +8,12 @@
   revision = "4239b77079c7b5d1243b7b4736304ce8ddb6f0f2"
 
 [[projects]]
+  name = "github.com/caio/go-tdigest"
+  packages = ["."]
+  revision = "00da6c12f7097091d63b69ac773275dfe6df6020"
+  version = "v2.0.2"
+
+[[projects]]
   branch = "master"
   name = "github.com/jessevdk/go-flags"
   packages = ["."]
@@ -80,6 +86,12 @@
   revision = "89742aefa4b206dcf400792f3bd35b542998eb3b"
 
 [[projects]]
+  name = "github.com/yourbasic/fenwick"
+  packages = ["."]
+  revision = "7cb325001daae879940edf7b19da8557a51ca5f7"
+  version = "1.2.0"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
@@ -103,6 +115,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3bfa1f5416723128d997b887e352cb69fb65c0c3eb979352f013caa3d16bf734"
+  inputs-digest = "5ab9073a6e4b8a09cfd5b072a6fe14f04e0b06cbbaeab4f5423c64d67bd6d655"
   solver-name = "gps-cdcl"
   solver-version = 1
