@@ -41,22 +41,17 @@ type CollectableArray struct {
 }
 
 func (m *CollectableArray) Describe(c chan<- MetricDesc) error {
-	var err error
-	ch := make(chan MetricDesc)
-	go func() {
-		defer close(ch)
-		err = m.Creator().Describe(ch)
-	}()
-
-	for d := range ch {
-		if d.Name != "" {
-			d.Name = m.Metric.Name + "_" + d.Name
-		} else {
-			d.Name = m.Metric.Name
-		}
-		c <- d
+	transformations := []MetricDescTransformation{
+		func(d *MetricDesc) (bool, error) {
+			if d.Name != "" {
+				d.Name = m.Metric.Name + "_" + d.Name
+			} else {
+				d.Name = m.Metric.Name
+			}
+			return true, nil
+		},
 	}
-	return err
+	return StreamMetricDescs(context.Background(), m.Creator(), c, transformations)
 }
 
 func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) error {
@@ -72,7 +67,7 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 		}
 
 		transformations := []MetricPointTransformation{
-			func(point *MetricPoint) error {
+			func(point *MetricPoint) (bool, error) {
 				name := m.Metric.Name
 				if point.Metric.Name != "" {
 					name += "_" + point.Metric.Name
@@ -86,7 +81,7 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 					},
 					point.Value,
 				}
-				return nil
+				return true, nil
 			},
 		}
 

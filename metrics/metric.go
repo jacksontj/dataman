@@ -4,12 +4,6 @@ import (
 	"fmt"
 )
 
-// Description of metrics
-type MetricDesc struct {
-	Name   string
-	Prefix bool
-}
-
 // A metric is defined as (1) name and (2) labelset
 type Metric struct {
 	Name   string // TODO: remove from here?

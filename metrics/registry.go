@@ -35,32 +35,21 @@ func (n *NamespaceRegistry) Describe(c chan<- MetricDesc) error {
 // namespace as a prefix to the name
 func (n *NamespaceRegistry) Collect(ctx context.Context, points chan<- MetricPoint) error {
 	f := func(c Collectable, r *MetricDescRegistry) error {
-		var err error
-		// We need to call collect on the children and add our namespace stuff to the value that is returned
-		innerPoints := make(chan MetricPoint)
-		go func() {
-			defer close(innerPoints)
-			err = c.Collect(ctx, innerPoints)
-		}()
-
-	WAITRESULT:
-		for {
-			select {
-			case item, ok := <-innerPoints:
-				if !ok {
-					break WAITRESULT
-				}
-				if !r.Contains(item.Name) {
-					fmt.Printf("Skipping item %s as it wasn't present for Describe() (not in %v): %v", item.Name, r.prefixTree.ToMap(), item)
-					continue
+		transformations := []MetricPointTransformation{
+			func(point *MetricPoint) (bool, error) {
+				if !r.Contains(point.Name) {
+					fmt.Printf("Skipping item %s as it wasn't present for Describe() (not in %v): %v", point.Name, r.prefixTree.ToMap(), point)
+					point = nil
+					return false, nil // Don't stop, just print the error and skip the item
 				}
 				if n.Namespace != "" {
-					item.Metric.Name = n.Namespace + "_" + item.Metric.Name
+					point.Metric.Name = n.Namespace + "_" + point.Metric.Name
 				}
-				points <- item
-			}
+				return true, nil
+			},
 		}
-		return err
+
+		return StreamMetricPoints(ctx, c, points, transformations)
 	}
 
 	return n.Each(ctx, f)

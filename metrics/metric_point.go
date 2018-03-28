@@ -33,7 +33,8 @@ func CollectPoints(ctx context.Context, c Collectable) ([]MetricPoint, error) {
 	return points, err
 }
 
-type MetricPointTransformation func(*MetricPoint) error
+// Return bool (to send) and error
+type MetricPointTransformation func(*MetricPoint) (bool, error)
 
 func StreamMetricPoints(ctx context.Context, c Collectable, out chan<- MetricPoint, transformations []MetricPointTransformation) error {
 	ctx, cancel := context.WithCancel(ctx)
@@ -45,17 +46,20 @@ func StreamMetricPoints(ctx context.Context, c Collectable, out chan<- MetricPoi
 		err = c.Collect(ctx, ch)
 	}()
 
+STREAM:
 	for point := range ch {
-	    if transformations != nil {
-		    for _, transformation := range transformations {
-			    if err := transformation(&point); err != nil {
-				    return err
-			    }
-		    }
-	    }
+		if transformations != nil {
+			for _, transformation := range transformations {
+				if send, err := transformation(&point); err != nil {
+					return err
+				} else if !send {
+					continue STREAM
+				}
+			}
+		}
 		select {
 		case out <- point:
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return ctx.Err()
 		}
 	}
@@ -67,7 +71,7 @@ func StreamMetricPoints(ctx context.Context, c Collectable, out chan<- MetricPoi
 // Merge all data from `Metric` to every MetricPoint returned from `Collectable`
 func MergeMetricPoint(ctx context.Context, m Metric, c Collectable, out chan<- MetricPoint) error {
 	transformations := []MetricPointTransformation{
-		func(point *MetricPoint) error {
+		func(point *MetricPoint) (bool, error) {
 			name := m.Name
 			if point.Metric.Name != "" {
 				name += "_" + point.Metric.Name
@@ -80,7 +84,7 @@ func MergeMetricPoint(ctx context.Context, m Metric, c Collectable, out chan<- M
 				},
 				Value: point.Value,
 			}
-			return nil
+			return true, nil
 		},
 	}
 	return StreamMetricPoints(ctx, c, out, transformations)
