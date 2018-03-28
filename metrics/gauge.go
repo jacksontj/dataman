@@ -26,6 +26,10 @@ func (c *Gauge) Describe(ctx context.Context, ch chan<- MetricDesc) error {
 }
 
 func (c *Gauge) Collect(ctx context.Context, ch chan<- MetricPoint) error {
-	ch <- MetricPoint{Value: math.Float64frombits(atomic.LoadUint64(&c.v))}
-	return nil
+	select {
+	case ch <- MetricPoint{Value: math.Float64frombits(atomic.LoadUint64(&c.v))}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

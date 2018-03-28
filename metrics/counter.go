@@ -25,6 +25,10 @@ func (c *Counter) Describe(ctx context.Context, ch chan<- MetricDesc) error {
 }
 
 func (c *Counter) Collect(ctx context.Context, ch chan<- MetricPoint) error {
-	ch <- MetricPoint{Value: float64(atomic.LoadUint64(&c.v))}
-	return nil
+	select {
+	case ch <- MetricPoint{Value: float64(atomic.LoadUint64(&c.v))}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
