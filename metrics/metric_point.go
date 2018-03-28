@@ -46,12 +46,18 @@ func StreamMetricPoints(ctx context.Context, c Collectable, out chan<- MetricPoi
 	}()
 
 	for point := range ch {
-		for _, transformation := range transformations {
-			if err := transformation(&point); err != nil {
-				return err
-			}
+	    if transformations != nil {
+		    for _, transformation := range transformations {
+			    if err := transformation(&point); err != nil {
+				    return err
+			    }
+		    }
+	    }
+		select {
+		case out <- point:
+		case <- ctx.Done():
+			return ctx.Err()
 		}
-		out <- point
 	}
 
 	return err
