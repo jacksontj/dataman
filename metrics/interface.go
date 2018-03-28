@@ -50,13 +50,12 @@ type CollectableCreator func() Collectable
 
 // A few interfaces for user interraction with metrics. The goal here is to create a more user-friendly
 // interface for the Array types
-
 type CounterType interface {
 	Inc(uint64)
 }
 
-// TODO: Add
 type GaugeType interface {
+	Add(float64)
 	Set(float64)
 }
 
