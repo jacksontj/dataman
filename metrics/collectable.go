@@ -9,23 +9,17 @@ type SingleCollectable struct {
 }
 
 func (s *SingleCollectable) Describe(c chan<- MetricDesc) error {
-	var err error
-	// We need to call collect on the children and add our namespace stuff to the value that is returned
-	ch := make(chan MetricDesc)
-	go func() {
-		defer close(ch)
-		err = s.Collectable.Describe(ch)
-	}()
-
-	for metricDesc := range ch {
-		if metricDesc.Name == "" {
-			metricDesc.Name = s.Metric.Name
-		} else if s.Metric.Name != "" {
-			metricDesc.Name = s.Metric.Name + "_" + metricDesc.Name
-		}
-		c <- metricDesc
+	transformations := []MetricDescTransformation{
+		func(d *MetricDesc) (bool, error) {
+			if d.Name != "" {
+				d.Name = s.Metric.Name + "_" + d.Name
+			} else {
+				d.Name = s.Metric.Name
+			}
+			return true, nil
+		},
 	}
-	return err
+	return StreamMetricDescs(context.Background(), s.Collectable, c, transformations)
 }
 
 func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {
