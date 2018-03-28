@@ -16,7 +16,6 @@ func (m *MetricPoint) String() string {
 	return fmt.Sprintf("%s %v", m.Metric.String(), m.Value)
 }
 
-// TODO: Elsewhere?
 func CollectPoints(ctx context.Context, c Collectable) ([]MetricPoint, error) {
 	ch := make(chan MetricPoint)
 	var err error
@@ -67,7 +66,6 @@ STREAM:
 	return err
 }
 
-// TODO: nicer? Transformation chains? Required to consolidate Registry usecase
 // Merge all data from `Metric` to every MetricPoint returned from `Collectable`
 func MergeMetricPoint(ctx context.Context, m Metric, c Collectable, out chan<- MetricPoint) error {
 	transformations := []MetricPointTransformation{
