@@ -35,11 +35,15 @@ func (t *TDigest) Describe(ctx context.Context, c chan<- MetricDesc) error {
 
 func (t *TDigest) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	for _, quantile := range t.quantiles {
-		c <- MetricPoint{
+		select {
+		case c <- MetricPoint{
 			Metric: Metric{
 				Labels: map[string]string{"quantile": strconv.FormatFloat(quantile, 'f', -1, 64)},
 			},
 			Value: t.d.Quantile(quantile),
+		}:
+		case <-ctx.Done():
+			return ctx.Err()
 		}
 	}
 	return nil

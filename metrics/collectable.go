@@ -23,26 +23,16 @@ func (s *SingleCollectable) Describe(ctx context.Context, c chan<- MetricDesc) e
 }
 
 func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {
-	var err error
-	// We need to call collect on the children and add our namespace stuff to the value that is returned
-	innerPoints := make(chan MetricPoint)
-	go func() {
-		defer close(innerPoints)
-		err = s.Collectable.Collect(ctx, innerPoints)
-	}()
+	transformations := []MetricPointTransformation{
+		func(point *MetricPoint) (bool, error) {
 
-	for item := range innerPoints {
-		name := s.Metric.Name
-		if item.Metric.Name != "" {
-			name += "_" + item.Metric.Name
-		}
-		c <- MetricPoint{
-			Metric: Metric{
-				Name:   name,
-				Labels: s.Metric.Labels,
-			},
-			Value: item.Value,
-		}
+			name := s.Metric.Name
+			if point.Metric.Name != "" {
+				name += "_" + point.Metric.Name
+			}
+			return true, nil
+		},
 	}
-	return err
+
+	return StreamMetricPoints(ctx, s.Collectable, c, transformations)
 }
