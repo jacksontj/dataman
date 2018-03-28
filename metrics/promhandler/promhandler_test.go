@@ -13,14 +13,14 @@ func TestUsage(t *testing.T) {
 	r := metrics.NewNamespaceRegistry("")
 
 	// Register a single metric
-	counterMetric := &metrics.SingleMetric{
+	counterMetric := &metrics.SingleCollectable{
 		Metric: metrics.Metric{
 			Name: "testcounter",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: &metrics.Counter{},
+		Collectable: &metrics.Counter{},
 	}
 
 	r.Register(counterMetric)
@@ -33,9 +33,8 @@ func TestUsage(t *testing.T) {
 	}
 
 	// Register a metricArray of counters
-	counterArray := metrics.NewValuerArray(
+	counterArray := metrics.NewCounterArray(
 		arrayBaseMetric,
-		metrics.NewCounter,
 		[]string{"handler", "statuscode"},
 	)
 
@@ -51,14 +50,14 @@ func TestUsage(t *testing.T) {
 	r.Register(subR)
 
 	// Register a single metric to subR
-	subCounterMetric := &metrics.SingleMetric{
+	subCounterMetric := &metrics.SingleCollectable{
 		Metric: metrics.Metric{
 			Name: "counterinsub",
 			Labels: map[string]string{
 				"test": "true",
 			},
 		},
-		Valuer: &metrics.Counter{},
+		Collectable: &metrics.Counter{},
 	}
 
 	subR.Register(subCounterMetric)
