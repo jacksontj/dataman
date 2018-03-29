@@ -38,6 +38,7 @@ _testmain.go
 # vim swap files
 *.swp
 
+vendor
 
 # TODO: ideally these binaries would be found auto-magically, probably by having 
 # them output into a "bin" directory of some type
