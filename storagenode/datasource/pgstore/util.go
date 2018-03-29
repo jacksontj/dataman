@@ -8,8 +8,8 @@ import (
 
 	"strings"
 
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/datamantype"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )

@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 
+	"github.com/jacksontj/dataman/metrics"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/routernode/client_manager"
@@ -44,6 +44,7 @@ type RouterNode struct {
 	schemaLock sync.Mutex
 
 	registry metrics.Registry
+	m        RouterNodeMetrics
 }
 
 func NewRouterNode(config *Config) (*RouterNode, error) {
@@ -53,9 +54,9 @@ func NewRouterNode(config *Config) (*RouterNode, error) {
 		syncChan:      make(chan chan error),
 		// TODO: have config (or something) optionally pass in a parent register
 		// Set up metrics
-		// TODO: differentiate namespace on something in config (that has to be process-wide unique)
-		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "routernode."),
+		registry: metrics.NewNamespaceRegistry("routernode"),
 	}
+	node.m = NewRouterNodeMetrics(node.registry)
 
 	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
 	go node.background()
@@ -90,8 +91,7 @@ func (s *RouterNode) GetMeta() *metadata.Meta {
 }
 
 func (s *RouterNode) background() {
-	interval := time.Second // TODO: configurable interval
-	ticker := time.NewTicker(interval)
+	ticker := time.NewTicker(s.Config.MetaConfig.Interval)
 
 	for {
 		select {
@@ -101,7 +101,7 @@ func (s *RouterNode) background() {
 			err := s.FetchMeta()
 			retChan <- err
 			// since we where just triggered, lets reset the interval
-			ticker = time.NewTicker(interval)
+			ticker = time.NewTicker(s.Config.MetaConfig.Interval)
 		}
 	}
 }
@@ -120,19 +120,11 @@ func (s *RouterNode) fetchMeta() (err error) {
 	defer func() {
 		end := time.Now()
 		if err == nil {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", s.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", s.registry)
-			t.Update(end.Sub(start))
+			s.m.MetaLastSync.WithValues("success").Observe(float64(end.Unix()))
+			s.m.MetaLastDuration.WithValues("success").Observe(float64(end.Sub(start)))
 		} else {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", s.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", s.registry)
-			t.Update(end.Sub(start))
+			s.m.MetaLastSync.WithValues("failure").Observe(float64(end.Unix()))
+			s.m.MetaLastDuration.WithValues("failure").Observe(float64(end.Sub(start)))
 		}
 	}()
 
@@ -237,8 +229,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		t := metrics.GetOrRegisterTimer("handleQuery.time", s.registry)
-		t.Update(end.Sub(start))
+		s.m.QueryTime.WithValues(q.Args.DB, q.Args.Collection, string(q.Type)).Observe(float64(end.Sub(start)))
 	}()
 
 	meta := s.GetMeta()
@@ -779,6 +770,12 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 }
 
 func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *query.ResultStream {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		s.m.QueryTime.WithValues(q.Args.DB, q.Args.Collection, string(q.Type)).Observe(float64(end.Sub(start)))
+	}()
+
 	meta := s.GetMeta()
 
 	database, ok := meta.Databases[q.Args.DB]

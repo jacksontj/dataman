@@ -3,8 +3,8 @@ package storagenode
 import (
 	"net/http"
 
+	"github.com/jacksontj/dataman/metrics"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rcrowley/go-metrics"
 )
 
 func NewStorageNode(config *Config) (*StorageNode, error) {
@@ -12,12 +12,24 @@ func NewStorageNode(config *Config) (*StorageNode, error) {
 		Config:      config,
 		Datasources: make(map[string]*DatasourceInstance),
 
-		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "storagenode."),
+		registry: metrics.NewNamespaceRegistry("storagenode"),
 	}
+	node.m = NewStorageNodeMetrics(node.registry)
+
+	newRegistry := func() metrics.Collectable {
+		return metrics.NewNamespaceRegistry("")
+	}
+	// Try adding a *similar* metric that won't conflict
+	registryArray := &metrics.CollectableArray{
+		Metric:    metrics.Metric{Name: "datasource_instance"},
+		Creator:   newRegistry,
+		LabelKeys: []string{"datasource_instance_name"},
+	}
+	node.registry.Register(registryArray)
 
 	// TODO: error if no datasources?
 	for datasourceName, datasourceConfig := range config.Datasources {
-		datasourceConfig.Registry = metrics.NewPrefixedChildRegistry(node.registry, datasourceName+".")
+		datasourceConfig.Registry = registryArray.WithValues(datasourceName).(metrics.Registry)
 		if datasource, err := NewDatasourceInstanceDefault(datasourceConfig); err == nil {
 			node.Datasources[datasourceName] = datasource
 		} else {
@@ -36,6 +48,7 @@ type StorageNode struct {
 	Datasources map[string]*DatasourceInstance
 
 	registry metrics.Registry
+	m        StorageNodeMetrics
 }
 
 // TODO: have a stop?

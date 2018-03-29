@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/jacksontj/dataman/client"
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/datamantype"
+	"github.com/jacksontj/dataman/metrics"
 	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/storagenode/datasource"
 	"github.com/jacksontj/dataman/storagenode/join"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
-	"github.com/rcrowley/go-metrics"
 )
 
 // TODO: remove-- and just have as config options
@@ -37,12 +37,17 @@ func NewDatasourceInstanceDefault(config *DatasourceInstanceConfig) (*Datasource
 }
 
 func NewDatasourceInstance(config *DatasourceInstanceConfig, metaStore StorageMetadataStore) (*DatasourceInstance, error) {
+	if config.Registry == nil {
+		config.Registry = metrics.NewNamespaceRegistry("datasource_instance")
+	}
 	datasourceInstance := &DatasourceInstance{
 		Config:    config,
 		MetaStore: metaStore,
 		syncChan:  make(chan chan error),
-		registry:  config.GetRegistry(),
+		registry:  config.Registry,
 	}
+
+	datasourceInstance.m = NewDatasourceInstanceMetrics(datasourceInstance.registry)
 
 	datasourceInstance.MutableMetaStore, _ = datasourceInstance.MetaStore.(MutableStorageMetadataStore)
 
@@ -91,6 +96,7 @@ type DatasourceInstance struct {
 	schemaLock sync.Mutex
 
 	registry metrics.Registry
+	m        DatasourceInstanceMetrics
 }
 
 // TODO: remove? since we need to do this while holding the lock it seems useless
@@ -136,19 +142,11 @@ func (s *DatasourceInstance) refreshMeta() (err error) {
 	defer func() {
 		end := time.Now()
 		if err == nil {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", s.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", s.registry)
-			t.Update(end.Sub(start))
+			s.m.MetaLastSync.WithValues("success").Observe(float64(end.Unix()))
+			s.m.MetaLastDuration.WithValues("success").Observe(float64(end.Sub(start)))
 		} else {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", s.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", s.registry)
-			t.Update(end.Sub(start))
+			s.m.MetaLastSync.WithValues("failure").Observe(float64(end.Unix()))
+			s.m.MetaLastDuration.WithValues("failure").Observe(float64(end.Sub(start)))
 		}
 	}()
 
@@ -224,8 +222,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		t := metrics.GetOrRegisterTimer("handleQuery.time", s.registry)
-		t.Update(end.Sub(start))
+		s.m.QueryTime.WithValues(q.Args.DB, q.Args.Collection, string(q.Type)).Observe(float64(end.Sub(start)))
 	}()
 
 	var result *query.Result
@@ -392,6 +389,12 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 // TODO: push sort down to the datasource instance (needed to get the stream corect)
 // Handle all stream queries
 func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Query) *query.ResultStream {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		s.m.QueryTime.WithValues(q.Args.DB, q.Args.Collection, string(q.Type)).Observe(float64(end.Sub(start)))
+	}()
+
 	var result *query.ResultStream
 
 	// We specifically want to load this once for the batch so we don't have mixed

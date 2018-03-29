@@ -7,9 +7,8 @@ import (
 	"net/http/pprof"
 	"strconv"
 
+	"github.com/jacksontj/dataman/metrics/promhandler"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rcrowley/go-metrics"
-	"github.com/rcrowley/go-metrics/exp"
 
 	"github.com/jacksontj/dataman/httputil"
 	"github.com/jacksontj/dataman/routernode/metadata"
@@ -94,7 +93,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
 	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 
-	router.GET("/v1/debug/metrics", wrapHandler(exp.ExpHandler(metrics.DefaultRegistry)))
+	router.GET("/metrics", wrapHandler(promhandler.Handler(h.taskNode.registry)))
 }
 
 // List all databases that we have in the metadata store

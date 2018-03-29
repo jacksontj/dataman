@@ -10,13 +10,12 @@ import (
 
 	"github.com/jacksontj/dataman/stream/httpjson"
 
+	"github.com/jacksontj/dataman/metrics/promhandler"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rcrowley/go-metrics"
-	"github.com/rcrowley/go-metrics/exp"
 
 	"github.com/jacksontj/dataman/httputil"
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 )
 
@@ -92,7 +91,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 
 	// TODO: wrap a different registry (if we ever want more than one per process)
-	router.GET("/v1/debug/metrics", wrapHandler(exp.ExpHandler(metrics.DefaultRegistry)))
+	router.GET("/metrics", wrapHandler(promhandler.Handler(h.storageNode.registry)))
 }
 
 // List all of the datasource_instances on the storage node

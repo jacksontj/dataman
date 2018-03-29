@@ -57,12 +57,12 @@ func (r *ResultStream) Recv() (record.Record, error) {
 	// an interface{} -- so things that are unmarshalled (for example from json)
 	// might come in as a generic map[string]interface{}
 	switch resultTyped := result.(type) {
-		case map[string]interface{}:
-			resultRecord = record.Record(resultTyped)
-		case record.Record:
-			resultRecord = resultTyped
-		default:
-			return nil, fmt.Errorf("Invalid type on resultStream")
+	case map[string]interface{}:
+		resultRecord = record.Record(resultTyped)
+	case record.Record:
+		resultRecord = resultTyped
+	default:
+		return nil, fmt.Errorf("Invalid type on resultStream")
 	}
 
 	r.started = true

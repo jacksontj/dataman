@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/jacksontj/dataman/metrics"
 	"github.com/jacksontj/dataman/storagenode/datasource"
 	"github.com/jacksontj/dataman/storagenode/metadata"
-	"github.com/rcrowley/go-metrics"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -58,15 +58,7 @@ type DatasourceInstanceConfig struct {
 
 	SkipProvisionTrim bool `yaml:"skip_provision_trim"`
 
-	Registry metrics.Registry `yaml:"-"`
-}
-
-func (c *DatasourceInstanceConfig) GetRegistry() metrics.Registry {
-	if c.Registry != nil {
-		return c.Registry
-	} else {
-		return metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "datasourceinstance.")
-	}
+	Registry metrics.Registry
 }
 
 func (c *DatasourceInstanceConfig) GetStore(metaFunc metadata.MetaFunc) (datasource.DataInterface, error) {
