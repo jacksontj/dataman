@@ -54,15 +54,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/rcrowley/go-metrics"
-  packages = [
-    ".",
-    "exp"
-  ]
-  revision = "1f30fe9094a513ce4c700b9a54458bbb0c96996c"
-
-[[projects]]
-  branch = "master"
   name = "github.com/renstrom/go-jump-consistent-hash"
   packages = ["."]
   revision = "fb38e599c973a35e0667e322bf02453926b96345"
@@ -115,6 +106,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5ab9073a6e4b8a09cfd5b072a6fe14f04e0b06cbbaeab4f5423c64d67bd6d655"
+  inputs-digest = "08f9880a112ebe6186649b00c76077bcb53ec7c3bcd81c594b59b0f5cc1afa4d"
   solver-name = "gps-cdcl"
   solver-version = 1
