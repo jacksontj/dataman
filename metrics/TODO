@@ -1,13 +1,3 @@
 TODO:
 - configurable delimiter (current default of "_")
-- handle case where PrefixCollectable is registered and someone with a *similar* name wants something
-    -- example being the Timer, if initialized with "foo" it would be "foo_total" but if someone wanted
-        to add "foo_something_else" right now you would be unable as the prefix "foo_" was taken
-    -- options:
-        -- 1: create a "describe" or "list" method for Collectable (DescriptiveCollectable?) that will
-            list out all metric names for its children
-- Create type-specific wrappers for arrays?
-    -- this would allow us to remove the type Assertions
-    -- this is done right now with methods like CounterWithValues, maybe we wrap the array instead?
-- TYPE for each metric? (to add to the printout of the prom handler -- for example)
 - split package into interfaces and implementations
