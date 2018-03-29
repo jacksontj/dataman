@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/jacksontj/dataman/client"
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 )
 

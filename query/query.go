@@ -1,6 +1,6 @@
 package query
 
-import	"github.com/jacksontj/dataman/record"
+import "github.com/jacksontj/dataman/record"
 
 // TODO: method to know if it is stream or not
 // QueryType is the list of all query functions dataman supports

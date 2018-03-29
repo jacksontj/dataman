@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/jacksontj/dataman/metrics"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 
 	"github.com/jacksontj/dataman/routernode/metadata"
@@ -38,6 +38,7 @@ type TaskNode struct {
 	schemaLock sync.Mutex
 
 	registry metrics.Registry
+	m        TaskNodeMetrics
 }
 
 func NewTaskNode(config *Config) (*TaskNode, error) {
@@ -57,9 +58,9 @@ func NewTaskNode(config *Config) (*TaskNode, error) {
 
 		// TODO: have config (or something) optionally pass in a parent register
 		// Set up metrics
-		// TODO: differentiate namespace on something in config (that has to be process-wide unique)
-		registry: metrics.NewPrefixedChildRegistry(metrics.DefaultRegistry, "tasknode."),
+		registry: metrics.NewNamespaceRegistry("routernode"),
 	}
+	node.m = NewTaskNodeMetrics(node.registry)
 
 	// background goroutine to re-fetch every interval (with some mechanism to trigger on-demand)
 	go node.background()
@@ -124,19 +125,11 @@ func (t *TaskNode) fetchMeta() (err error) {
 	defer func() {
 		end := time.Now()
 		if err == nil {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.success.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.success.time", t.registry)
-			t.Update(end.Sub(start))
+			t.m.MetaLastSync.WithValues("success").Observe(float64(end.Unix()))
+			t.m.MetaLastDuration.WithValues("success").Observe(float64(end.Sub(start)))
 		} else {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("fetchMeta.failure.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("fetchMeta.failure.time", t.registry)
-			t.Update(end.Sub(start))
+			t.m.MetaLastSync.WithValues("failure").Observe(float64(end.Unix()))
+			t.m.MetaLastDuration.WithValues("failure").Observe(float64(end.Sub(start)))
 		}
 	}()
 
@@ -164,21 +157,7 @@ func (t *TaskNode) EnsureExistsDatabase(ctx context.Context, db *metadata.Databa
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		if err == nil {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("EnsureExistsDatabase.success.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("EnsureExistsDatabase.success.time", t.registry)
-			t.Update(end.Sub(start))
-		} else {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("EnsureExistsDatabase.failure.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("EnsureExistsDatabase.failure.time", t.registry)
-			t.Update(end.Sub(start))
-		}
+		t.m.DatabaseQueryTime.WithValues(db.Name, "ensureexists").Observe(float64(end.Sub(start)))
 	}()
 
 	// TODO: restructure so the lock isn't so weird :/
@@ -460,21 +439,7 @@ func (t *TaskNode) EnsureDoesntExistDatabase(ctx context.Context, dbname string)
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		if err == nil {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("EnsureDoesntExistDatabase.success.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("EnsureDoesntExistDatabase.success.time", t.registry)
-			t.Update(end.Sub(start))
-		} else {
-			// Last update time
-			c := metrics.GetOrRegisterGauge("EnsureDoesntExistDatabase.failure.last", t.registry)
-			c.Update(end.Unix())
-
-			t := metrics.GetOrRegisterTimer("EnsureDoesntExistDatabase.failure.time", t.registry)
-			t.Update(end.Sub(start))
-		}
+		t.m.DatabaseQueryTime.WithValues(dbname, "ensuredoesntexist").Observe(float64(end.Sub(start)))
 	}()
 
 	// TODO: restructure so the lock isn't so weird :/
