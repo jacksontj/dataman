@@ -1,4 +1,4 @@
-# DataMan [![Build Status](https://travis-ci.org/jacksontj/dataman.svg?branch=master)](https://travis-ci.org/jacksontj/dataman)
+# DataMan [![Build Status](https://travis-ci.org/jacksontj/dataman.svg?branch=master)](https://travis-ci.org/jacksontj/dataman) [![Go Report Card](https://goreportcard.com/badge/github.com/jacksontj/dataman)](https://goreportcard.com/report/github.com/jacksontj/dataman)
 A data service-- which has:
 
     - schema enforcement
