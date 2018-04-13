@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"strconv"
+	"sync"
 
 	tdigest "github.com/caio/go-tdigest"
 )
@@ -24,12 +25,15 @@ func NewTDigest(quantiles []float64) *TDigest {
 
 type TDigest struct {
 	d         *tdigest.TDigest
+	dLock     sync.Mutex
 	quantiles []float64
 	total     *Counter
 }
 
 func (t *TDigest) Observe(v float64) {
 	t.total.Inc(1)
+	t.dLock.Lock()
+	defer t.dLock.Unlock()
 	t.d.Add(v)
 }
 
@@ -59,6 +63,9 @@ func (t *TDigest) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	if err := StreamMetricPoints(ctx, t.total, c, transformations); err != nil {
 		return err
 	}
+
+	t.dLock.Lock()
+	defer t.dLock.Unlock()
 
 	for _, quantile := range t.quantiles {
 		select {
