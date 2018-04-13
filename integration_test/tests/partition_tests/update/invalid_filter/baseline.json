@@ -1,0 +1,10 @@
+{
+  "return": [],
+  "errors": [
+    "Invalid filter type []",
+    "Invalid filter type []"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

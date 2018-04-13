@@ -1,0 +1,10 @@
+{
+    "type": "delete",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "pkey": {
+            "username": "somethingthatdoesntexist"
+        }
+    }
+}

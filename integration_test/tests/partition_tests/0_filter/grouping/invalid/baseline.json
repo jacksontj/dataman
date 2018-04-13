@@ -1,0 +1,10 @@
+{
+  "return": [],
+  "errors": [
+    "where lists need to be A op B",
+    "where lists need to be A op B"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

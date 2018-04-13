@@ -1,0 +1,8 @@
+[
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
+  "errors in thing: [Filters must have a map or a list at the top level]"
+]

@@ -1,0 +1,13 @@
+{
+  "return": [
+    {
+      "doc": null,
+      "firstname": "0_insert",
+      "lastname": "0_insert",
+      "username": "setfoo"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

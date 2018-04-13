@@ -1,0 +1,112 @@
+{
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+		    "user": {
+			    "name": "user",
+			    "fields": {
+			        "doc": {
+			            "field_type": "_document",
+			            "name": "doc"
+			        },
+				    "username": {
+					    "not_null": true,
+					    "field_type": "_string",
+					    "name": "username"
+				    },
+				    "firstname": {
+				        "not_null": true,
+				        "field_type": "_string",
+				        "name": "firstname"
+				    },
+				    "lastname": {
+				        "not_null": true,
+				        "field_type": "_string",
+				        "name": "lastname"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "username"
+				    ],
+				    "partitions": [{
+					    "start_id": 0,
+					    "end_id": 9223372036854775807,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    },{
+					    "start_id": 9223372036854775807,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    10
+					    ]				    
+				    }]
+			    }],
+			    "indexes": {
+				    "username": {
+					    "fields": ["username"],
+					    "unique": true,
+					    "name": "username",
+					    "primary": true
+				    }
+			    }
+		    },
+		    "email": {
+			    "name": "email",
+			    "fields": {
+				    "username": {
+					    "not_null": true,
+					    "field_type": "_string",
+					    "name": "username",
+					    "relation": {
+							"collection": "user",
+							"field": "username"
+						}
+				    },
+				    "email": {
+				        "not_null": true,
+				        "field_type": "_string",
+				        "name": "email"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "username"
+				    ],
+				    "partitions": [{
+					    "start_id": 0,
+					    "end_id": 9223372036854775807,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    },{
+					    "start_id": 9223372036854775807,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    10
+					    ]				    
+				    }]
+			    }],
+			    "indexes": {
+				    "username": {
+					    "fields": ["username"],
+					    "unique": true,
+					    "name": "username",
+					    "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 57,
+		    "required": true
+	    }]
+    }
+}

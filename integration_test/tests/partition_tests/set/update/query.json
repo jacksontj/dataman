@@ -1,0 +1,12 @@
+{
+    "type": "set",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "record": {
+            "username": "setfoo",
+            "firstname": "f",
+            "lastname": "l"
+        }
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "test1": {
+        "user": [
+            {"username": "foo", "firstname": "foofirst", "lastname": "foolast"},
+            {"username": "bar", "firstname": "barfirst", "lastname": "barlast"},
+            {"username": "baz", "firstname": "bazfirst", "lastname": "bazlast"},
+            {"username": "qux", "firstname": "quxfirst", "lastname": "quxlast"}
+        ],
+        "email": [
+            {"username": "foo", "email": "foo@test.com"},
+            {"username": "bar", "email": "bar@test.com"},
+            {"username": "baz", "email": "baz@test.com"},
+            {"username": "qux", "email": "qux@test.com"}
+        ]
+    }
+}
