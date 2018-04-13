@@ -11,7 +11,7 @@ Target Server Type    : PGSQL
 Target Server Version : 90608
 File Encoding         : 65001
 
-Date: 2018-03-23 21:32:30
+Date: 2018-04-13 11:04:14
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 7367
+ START 7508
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 7367, true);
+SELECT setval('"public"."collection__id_seq"', 7508, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 28741
+ START 29200
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 28741, true);
+SELECT setval('"public"."collection_field__id_seq"', 29200, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3166
+ START 3238
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 3166, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 3238, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 10299
+ START 10494
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 10299, true);
+SELECT setval('"public"."collection_index__id_seq"', 10494, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 94011
+ START 95250
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 94011, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 95250, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."collection_keyspace__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3175
+ START 3316
  CACHE 1;
-SELECT setval('"public"."collection_keyspace__id_seq"', 3175, true);
+SELECT setval('"public"."collection_keyspace__id_seq"', 3316, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_item__id_seq
@@ -95,9 +95,9 @@ CREATE SEQUENCE "public"."collection_keyspace_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 21788
+ START 22682
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_item__id_seq"', 21788, true);
+SELECT setval('"public"."collection_keyspace_item__id_seq"', 22682, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition__id_seq
@@ -107,9 +107,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 3141
+ START 3282
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition__id_seq"', 3141, true);
+SELECT setval('"public"."collection_keyspace_partition__id_seq"', 3282, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition_datastore_vshard__id_seq
@@ -119,9 +119,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition_datastore_vshard__id_seq
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 21955
+ START 22912
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 21955, true);
+SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 22912, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -131,9 +131,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2980
+ START 3067
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 2980, true);
+SELECT setval('"public"."database__id_seq"', 3067, true);
 
 -- ----------------------------
 -- Sequence structure for database_datastore__id_seq
@@ -143,9 +143,9 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2913
+ START 3000
  CACHE 1;
-SELECT setval('"public"."database_datastore__id_seq"', 2913, true);
+SELECT setval('"public"."database_datastore__id_seq"', 3000, true);
 
 -- ----------------------------
 -- Sequence structure for datasource__id_seq
@@ -179,9 +179,9 @@ CREATE SEQUENCE "public"."datasource_instance_shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 5582
+ START 5724
  CACHE 1;
-SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 5582, true);
+SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 5724, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -227,9 +227,9 @@ CREATE SEQUENCE "public"."datastore_vshard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 7
+ START 8
  CACHE 1;
-SELECT setval('"public"."datastore_vshard__id_seq"', 7, true);
+SELECT setval('"public"."datastore_vshard__id_seq"', 8, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_vshard_instance__id_seq
@@ -239,9 +239,9 @@ CREATE SEQUENCE "public"."datastore_vshard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 17
+ START 18
  CACHE 1;
-SELECT setval('"public"."datastore_vshard_instance__id_seq"', 17, true);
+SELECT setval('"public"."datastore_vshard_instance__id_seq"', 18, true);
 
 -- ----------------------------
 -- Sequence structure for field_type__id_seq
@@ -295,6 +295,9 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection
 -- ----------------------------
+INSERT INTO "public"."collection" VALUES ('7506', 'user', '3067', '0');
+INSERT INTO "public"."collection" VALUES ('7507', 'thread', '3067', '0');
+INSERT INTO "public"."collection" VALUES ('7508', 'message', '3067', '0');
 
 -- ----------------------------
 -- Table structure for collection_field
@@ -319,6 +322,18 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_field
 -- ----------------------------
+INSERT INTO "public"."collection_field" VALUES ('29189', 'username', '7506', '_string', 't', '0', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29190', 'ksuid', '7507', '_string', 't', '0', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29191', 'data', '7507', '_document', 'f', '0', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29192', 'created', '7507', '_int', 't', '29191', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29193', 'created_by', '7507', '_string', 't', '29191', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29194', 'title', '7507', '_string', 't', '29191', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29195', 'ksuid', '7508', '_string', 't', '0', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29196', 'data', '7508', '_document', 'f', '0', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29197', 'content', '7508', '_string', 't', '29196', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29198', 'thread_ksuid', '7508', '_string', 't', '29196', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29199', 'created_by', '7508', '_string', 't', '29196', '0', null, null, null);
+INSERT INTO "public"."collection_field" VALUES ('29200', 'created', '7508', '_int', 't', '29196', '0', null, null, null);
 
 -- ----------------------------
 -- Table structure for collection_field_relation
@@ -338,6 +353,9 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_field_relation
 -- ----------------------------
+INSERT INTO "public"."collection_field_relation" VALUES ('3236', '29193', '29189', 'f', 't');
+INSERT INTO "public"."collection_field_relation" VALUES ('3237', '29198', '29190', 'f', 't');
+INSERT INTO "public"."collection_field_relation" VALUES ('3238', '29199', '29189', 'f', 't');
 
 -- ----------------------------
 -- Table structure for collection_index
@@ -358,6 +376,12 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_index
 -- ----------------------------
+INSERT INTO "public"."collection_index" VALUES ('10489', 'username', '7506', 't', '0', 't');
+INSERT INTO "public"."collection_index" VALUES ('10490', 'created', '7507', 'f', '0', null);
+INSERT INTO "public"."collection_index" VALUES ('10491', 'ksuid', '7507', 't', '0', 't');
+INSERT INTO "public"."collection_index" VALUES ('10492', 'title', '7507', 't', '0', null);
+INSERT INTO "public"."collection_index" VALUES ('10493', 'created', '7508', 'f', '0', null);
+INSERT INTO "public"."collection_index" VALUES ('10494', 'ksuid', '7508', 't', '0', 't');
 
 -- ----------------------------
 -- Table structure for collection_index_item
@@ -375,6 +399,12 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_index_item
 -- ----------------------------
+INSERT INTO "public"."collection_index_item" VALUES ('95239', '10489', '29189');
+INSERT INTO "public"."collection_index_item" VALUES ('95240', '10490', '29192');
+INSERT INTO "public"."collection_index_item" VALUES ('95241', '10491', '29190');
+INSERT INTO "public"."collection_index_item" VALUES ('95242', '10492', '29194');
+INSERT INTO "public"."collection_index_item" VALUES ('95244', '10493', '29200');
+INSERT INTO "public"."collection_index_item" VALUES ('95245', '10494', '29195');
 
 -- ----------------------------
 -- Table structure for collection_keyspace
@@ -392,6 +422,9 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_keyspace
 -- ----------------------------
+INSERT INTO "public"."collection_keyspace" VALUES ('3314', '7506', 'sha256');
+INSERT INTO "public"."collection_keyspace" VALUES ('3315', '7507', 'sha256');
+INSERT INTO "public"."collection_keyspace" VALUES ('3316', '7508', 'sha256');
 
 -- ----------------------------
 -- Table structure for collection_keyspace_partition
@@ -400,8 +433,8 @@ DROP TABLE IF EXISTS "public"."collection_keyspace_partition";
 CREATE TABLE "public"."collection_keyspace_partition" (
 "_id" int4 DEFAULT nextval('collection_keyspace_partition__id_seq'::regclass) NOT NULL,
 "collection_keyspace_id" int4 NOT NULL,
-"start_id" int4 NOT NULL,
-"end_id" int4,
+"start_id" int8 NOT NULL,
+"end_id" int8,
 "shard_method" varchar(255) COLLATE "default" NOT NULL
 )
 WITH (OIDS=FALSE)
@@ -411,6 +444,9 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_keyspace_partition
 -- ----------------------------
+INSERT INTO "public"."collection_keyspace_partition" VALUES ('3280', '3314', '0', '0', 'mod');
+INSERT INTO "public"."collection_keyspace_partition" VALUES ('3281', '3315', '0', '0', 'mod');
+INSERT INTO "public"."collection_keyspace_partition" VALUES ('3282', '3316', '0', '0', 'mod');
 
 -- ----------------------------
 -- Table structure for collection_keyspace_partition_datastore_vshard
@@ -428,6 +464,12 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_keyspace_partition_datastore_vshard
 -- ----------------------------
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22899', '3280', '9');
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22900', '3280', '10');
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22901', '3281', '9');
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22902', '3281', '10');
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22905', '3282', '9');
+INSERT INTO "public"."collection_keyspace_partition_datastore_vshard" VALUES ('22906', '3282', '10');
 
 -- ----------------------------
 -- Table structure for collection_keyspace_shardkey
@@ -446,6 +488,9 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of collection_keyspace_shardkey
 -- ----------------------------
+INSERT INTO "public"."collection_keyspace_shardkey" VALUES ('22676', '3314', '29189', '0');
+INSERT INTO "public"."collection_keyspace_shardkey" VALUES ('22677', '3315', '29190', '0');
+INSERT INTO "public"."collection_keyspace_shardkey" VALUES ('22679', '3316', '29195', '0');
 
 -- ----------------------------
 -- Table structure for database
@@ -463,6 +508,7 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of database
 -- ----------------------------
+INSERT INTO "public"."database" VALUES ('3067', 'test1', '1');
 
 -- ----------------------------
 -- Table structure for database_datastore
@@ -484,6 +530,7 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of database_datastore
 -- ----------------------------
+INSERT INTO "public"."database_datastore" VALUES ('3000', '3067', '57', 't', 't', 't', '0');
 
 -- ----------------------------
 -- Table structure for datasource
@@ -541,6 +588,8 @@ WITH (OIDS=FALSE)
 -- ----------------------------
 -- Records of datasource_instance_shard_instance
 -- ----------------------------
+INSERT INTO "public"."datasource_instance_shard_instance" VALUES ('5723', '120', '17', 'dbshard_test1_9_1', '1');
+INSERT INTO "public"."datasource_instance_shard_instance" VALUES ('5724', '120', '18', 'dbshard_test1_10_1', '1');
 
 -- ----------------------------
 -- Table structure for datastore
@@ -621,7 +670,8 @@ WITH (OIDS=FALSE)
 -- Records of datastore_vshard
 -- ----------------------------
 INSERT INTO "public"."datastore_vshard" VALUES ('8', '57', '2', null, 'example_forum_vshard');
-INSERT INTO "public"."datastore_vshard" VALUES ('9', '57', '1', null, 'singleshard');
+INSERT INTO "public"."datastore_vshard" VALUES ('9', '57', '1', '3067', 'singleshard');
+INSERT INTO "public"."datastore_vshard" VALUES ('10', '57', '1', '3067', 'second singlleshard');
 
 -- ----------------------------
 -- Table structure for datastore_vshard_instance
@@ -643,6 +693,7 @@ WITH (OIDS=FALSE)
 INSERT INTO "public"."datastore_vshard_instance" VALUES ('15', '8', '1', '72');
 INSERT INTO "public"."datastore_vshard_instance" VALUES ('16', '8', '2', '73');
 INSERT INTO "public"."datastore_vshard_instance" VALUES ('17', '9', '1', '72');
+INSERT INTO "public"."datastore_vshard_instance" VALUES ('18', '10', '1', '73');
 
 -- ----------------------------
 -- Table structure for field_type
