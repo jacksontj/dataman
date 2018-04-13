@@ -189,9 +189,9 @@ func (c *CollectionKeyspace) UnmarshalJSON(data []byte) error {
 }
 
 type CollectionKeyspacePartition struct {
-	ID      int64 `json:"_id,omitempty"`
-	StartId int64 `json:"start_id"`
-	EndId   int64 `json:"end_id,omitempty"`
+	ID      int64  `json:"_id,omitempty"`
+	StartId uint64 `json:"start_id"`
+	EndId   uint64 `json:"end_id,omitempty"`
 
 	Shard     sharding.ShardMethod `json:"shard_method"`
 	ShardFunc sharding.ShardFunc   `json:"-"`
