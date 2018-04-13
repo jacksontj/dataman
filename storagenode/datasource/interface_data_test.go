@@ -492,7 +492,7 @@ func TestFunctionAccess(t *testing.T) {
 		"_id":        -1,
 	})
 	if len(result.Return) != 0 {
-		t.Fatalf("Found a non-existant item")
+		t.Fatalf("Found a non-existent item")
 	}
 	result = store.Get(map[string]interface{}{
 		"db":         databaseAdd.Name,
@@ -504,7 +504,7 @@ func TestFunctionAccess(t *testing.T) {
 	}
 
 	//Update
-	//	- update a non-existant item
+	//	- update a non-existent item
 	//	- update to column which doesn't exist
 	//	- update a single column
 	//		-- vaid type
@@ -516,7 +516,7 @@ func TestFunctionAccess(t *testing.T) {
 		"record":     map[string]interface{}{"name": "bar"},
 	})
 	if len(result.Return) != 0 {
-		t.Fatalf("Updated %d rows for a non-existant row?", len(result.Return))
+		t.Fatalf("Updated %d rows for a non-existent row?", len(result.Return))
 	}
 
 	result = store.Update(map[string]interface{}{
@@ -570,7 +570,7 @@ func TestFunctionAccess(t *testing.T) {
 		"record":     map[string]interface{}{"notthere": -1, "name": "bar"},
 	})
 	if len(result.Return) != 0 {
-		t.Fatalf("Set %d rows for a non-existant row?", len(result.Return))
+		t.Fatalf("Set %d rows for a non-existent row?", len(result.Return))
 	}
 
 	// Update something which *does* exist
@@ -612,7 +612,7 @@ func TestFunctionAccess(t *testing.T) {
 		"_id":        -1,
 	})
 	if len(result.Return) != 0 {
-		t.Fatalf("Delete %d rows for a non-existant row?", len(result.Return))
+		t.Fatalf("Delete %d rows for a non-existent row?", len(result.Return))
 	}
 
 	result = store.Delete(map[string]interface{}{

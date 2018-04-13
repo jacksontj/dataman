@@ -2,7 +2,7 @@ package stream
 
 type ClientStream interface {
 	Recv() (Result, error)
-	// Close completes recieving of items
+	// Close completes receiving of items
 	Close() error
 }
 

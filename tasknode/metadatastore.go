@@ -1013,7 +1013,7 @@ func (m *MetadataStore) EnsureDoesntExistDatasourceInstance(ctx context.Context,
 	return nil
 }
 
-// TODO this one is a bit odd since it needs to check the existance of vshards etc.
+// TODO this one is a bit odd since it needs to check the existence of vshards etc.
 // we'll pick this back up after database / schema manipulation is in
 func (m *MetadataStore) EnsureExistsDatasourceInstanceShardInstance(ctx context.Context, storageNode *metadata.StorageNode, datasourceInstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) error {
 	meta, err := m.GetMeta(ctx)

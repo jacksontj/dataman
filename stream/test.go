@@ -31,7 +31,7 @@ func streamResponses(s ClientStream) ([]Result, error) {
 	for {
 		item, err := s.Recv()
 		if err != nil {
-			// IOF means that we are done with the stream wiht no error
+			// IOF means that we are done with the stream with no error
 			if err == io.EOF {
 				return results, nil
 			}

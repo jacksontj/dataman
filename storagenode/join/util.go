@@ -53,7 +53,7 @@ func SortJoinFieldList(l []string) {
 	sort.Slice(l, less)
 }
 
-// Repsonsible for splitting and normalizing, not sorting
+// Responsible for splitting and normalizing, not sorting
 func SplitJoinFieldsString(collectionName string, joinMap JoinMap) ([]string, []string) {
 	NormalizeJoinMap(collectionName, joinMap)
 	forwardList := make([]string, 0)
@@ -165,7 +165,7 @@ func OrderJoins(collectionMetaGetter CollectionGetter, collection MetaCollection
 				return fmt.Errorf("Invalid join key: %s", join)
 			}
 
-			// TODO: check for non-existance
+			// TODO: check for non-existence
 			metaJoinCollection, err := collectionMetaGetter(joinField.Relation.Collection)
 			if err != nil {
 				return err

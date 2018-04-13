@@ -38,7 +38,7 @@ func (r RecordHeap) Less(i, j int) (l bool) {
 	// We specifically want to reverse the result if we found a less than
 	// value for a field in the sortKeys. If all of them matched and we got
 	// to the "end" then we don't want to reverse the sort (as that would cause
-	// unecessary moving)
+	// unnecessary moving)
 	defer func() {
 		if reverse && !end {
 			l = !l
