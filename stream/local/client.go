@@ -44,7 +44,6 @@ func (s *ClientStream) Recv() (stream.Result, error) {
 				}
 				return nil, io.EOF
 			}
-			continue
 		default:
 		}
 
