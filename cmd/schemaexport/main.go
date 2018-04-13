@@ -36,7 +36,7 @@ func main() {
 
 	// TODO: actually have these come through CLI args or something
 	config := &storagenode.Config{}
-	configBytes, err := ioutil.ReadFile("../storage_node/storagenode/config.yaml")
+	configBytes, err := ioutil.ReadFile("../storagenode/config.yaml")
 	if err != nil {
 		logrus.Fatalf("unable to find config: %v", err)
 	}
