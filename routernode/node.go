@@ -344,7 +344,8 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 	// TODO: support multiple partitions
 	partition := keyspace.Partitions[0]
 
-	var vshards []*metadata.DatastoreVShardInstance
+	// TODO: better name
+	var keyspacePartitionAddr *uint64
 
 	// Depending on query type we might be able to be more specific about which vshards we go to
 	switch q.Type {
@@ -375,9 +376,7 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 			// TODO: wrap the error
 			return &query.Result{Errors: []string{err.Error()}}
 		}
-
-		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
+		keyspacePartitionAddr = &hashedShardKey
 
 	case query.Filter:
 		if q.Args.Filter == nil {
@@ -431,17 +430,19 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 				// TODO: wrap the error
 				return &query.Result{Errors: []string{err.Error()}}
 			}
-
-			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-			vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
-
-		} else {
-			vshards = partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
+			keyspacePartitionAddr = &hashedShardKey
 		}
-
 	default:
 		return &query.Result{Errors: []string{"Unknown read query type " + string(q.Type)}}
 
+	}
+
+	var vshards []*metadata.DatastoreVShardInstance
+	if keyspacePartitionAddr == nil {
+		vshards = partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
+	} else {
+		vshardNum := partition.ShardFunc(*keyspacePartitionAddr, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 	}
 
 	// Query all of the vshards

@@ -709,13 +709,16 @@ func (m *MetadataStore) getCollectionByID(ctx context.Context, meta *metadata.Me
 					datastoreVShards[datastoreVShard.DatastoreID] = datastoreVShard
 				}
 
+				// TODO: change storage of partition start_id / end_id to int64 ?
 				partitions[k] = &metadata.CollectionKeyspacePartition{
-					ID:      collectionKeyspacePartitionRecord["_id"].(int64),
-					StartId: collectionKeyspacePartitionRecord["start_id"].(int64),
-					//TODO: EndId: collectionKeyspacePartitionRecord["end_id"].(int64),
+					ID:                 collectionKeyspacePartitionRecord["_id"].(int64),
+					StartId:            uint64(collectionKeyspacePartitionRecord["start_id"].(int64)),
 					Shard:              sharding.ShardMethod(collectionKeyspacePartitionRecord["shard_method"].(string)),
 					DatastoreVShardIDs: datastoreVShardIDs,
 					DatastoreVShards:   datastoreVShards,
+				}
+				if v, ok := collectionKeyspacePartitionRecord["end_id"]; ok {
+					partitions[k].EndId = uint64(v.(int64))
 				}
 				partitions[k].ShardFunc = partitions[k].Shard.Get()
 			}
