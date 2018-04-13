@@ -16,17 +16,17 @@ func init() {
 		//	Value: "foobar",
 		//	Size: 6,
 		//},
-		&constraintTestValue{
+		{
 			Type:  datamantype.String,
 			Value: "foobar",
 			Size:  6,
 		},
-		&constraintTestValue{
+		{
 			Type:  datamantype.Text,
 			Value: "somethinglongerimsure",
 			Size:  22,
 		},
-		&constraintTestValue{
+		{
 			Type:  datamantype.Int,
 			Value: 100,
 			Size:  100,
@@ -56,7 +56,7 @@ func TestConstraint(t *testing.T) {
 	for constraintType, constraintArgMap := range Constraints {
 		// For every constraint
 		t.Run(string(constraintType), func(t *testing.T) {
-			for inputType, _ := range constraintArgMap {
+			for inputType := range constraintArgMap {
 				t.Run(string(inputType), func(t *testing.T) {
 					for _, inputValue := range constraintTestValues {
 						// TODO: test error cases

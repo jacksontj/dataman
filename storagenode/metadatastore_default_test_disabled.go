@@ -41,7 +41,7 @@ func resetMetaStore(metaStore MutableStorageMetadataStore) error {
 		return err
 	}
 
-	for dbname, _ := range meta.Databases {
+	for dbname := range meta.Databases {
 		if err := metaStore.EnsureDoesntExistDatabase(context.Background(), dbname); err != nil {
 			return err
 		}

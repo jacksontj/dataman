@@ -31,7 +31,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 	for rows.Next() {
 		columns := make([]interface{}, len(cols))
 		columnPointers := make([]interface{}, len(cols))
-		for i, _ := range columns {
+		for i := range columns {
 			columnPointers[i] = &columns[i]
 		}
 
@@ -77,7 +77,7 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interf
 		for rows.Next() {
 			columns := make([]interface{}, len(cols))
 			columnPointers := make([]interface{}, len(cols))
-			for i, _ := range columns {
+			for i := range columns {
 				columnPointers[i] = &columns[i]
 			}
 
@@ -142,7 +142,7 @@ func collectionFieldToSelector(path []string) string {
 	case 2:
 		return path[0] + "->>'" + path[1] + "'"
 	default:
-		fieldChain := path[1:len(path)]
+		fieldChain := path[1:]
 		return path[0] + "->'" + strings.Join(fieldChain[:len(fieldChain)-1], "'->'") + "'->>'" + path[len(path)-1] + "'"
 	}
 }

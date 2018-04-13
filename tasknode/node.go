@@ -491,7 +491,7 @@ func (t *TaskNode) ensureDoesntExistDatabase(ctx context.Context, dbname string)
 	}
 
 	// TODO: do this in parallel!
-	for datasourceInstance, _ := range datasourceInstances {
+	for datasourceInstance := range datasourceInstances {
 		// Send the actual request!
 
 		// send task to node

@@ -58,7 +58,7 @@ func SplitJoinFieldsString(collectionName string, joinMap JoinMap) ([]string, []
 	NormalizeJoinMap(collectionName, joinMap)
 	forwardList := make([]string, 0)
 	reverseList := make([]string, 0)
-	for joinItem, _ := range joinMap {
+	for joinItem := range joinMap {
 		if strings.HasPrefix(joinItem, ".") {
 			forwardList = append(forwardList, joinItem)
 		} else {
@@ -136,7 +136,7 @@ func OrderJoins(collectionMetaGetter CollectionGetter, collection MetaCollection
 
 	// Map of collection -> joinCollection repr -- this is for reverse joins (basically)
 	thisCollection := NewCollection(collection)
-	collectionMap := map[string][]*Collection{collection.GetName(): []*Collection{thisCollection}}
+	collectionMap := map[string][]*Collection{collection.GetName(): {thisCollection}}
 
 	forwardJoinFunc := func(thisCollection *Collection, forwardJoinList []string) error {
 		// For forward joins we want to check for prefix matching and do our mapping that way

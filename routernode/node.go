@@ -281,7 +281,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		if q.Args.SortReverse == nil {
 			sortReverseList := make([]bool, len(q.Args.Sort))
 			// TODO: better, seems heavy
-			for i, _ := range sortReverseList {
+			for i := range sortReverseList {
 				sortReverseList[i] = false
 			}
 			q.Args.SortReverse = sortReverseList

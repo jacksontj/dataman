@@ -20,45 +20,45 @@ var Constraints map[ConstraintType]map[datamantype.DatamanType]map[string]datama
 
 func init() {
 	Constraints = map[ConstraintType]map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-		LessThan: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		LessThan: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
 		},
-		LessThanEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		LessThanEqual: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
 		},
-		GreaterThan: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		GreaterThan: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
 		},
-		GreaterThanEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		GreaterThanEqual: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
 		},
-		Equal: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		Equal: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
-			datamantype.String: map[string]datamantype.DatamanType{
+			datamantype.String: {
 				"value": datamantype.String,
 			},
-			datamantype.Text: map[string]datamantype.DatamanType{
+			datamantype.Text: {
 				"value": datamantype.Text,
 			},
 		},
-		NotEqual: map[datamantype.DatamanType]map[string]datamantype.DatamanType{
-			datamantype.Int: map[string]datamantype.DatamanType{
+		NotEqual: {
+			datamantype.Int: {
 				"value": datamantype.Int,
 			},
-			datamantype.String: map[string]datamantype.DatamanType{
+			datamantype.String: {
 				"value": datamantype.String,
 			},
-			datamantype.Text: map[string]datamantype.DatamanType{
+			datamantype.Text: {
 				"value": datamantype.Text,
 			},
 		},

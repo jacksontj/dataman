@@ -97,7 +97,7 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 // List all of the datasource_instances on the storage node
 func (h *HTTPApi) listDatasourceInstance(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	datasourceInstances := make([]string, 0, len(h.storageNode.Datasources))
-	for k, _ := range h.storageNode.Datasources {
+	for k := range h.storageNode.Datasources {
 		datasourceInstances = append(datasourceInstances, k)
 	}
 

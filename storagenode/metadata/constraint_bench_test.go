@@ -9,7 +9,7 @@ func BenchmarkConstraint(b *testing.B) {
 	for constraintType, constraintArgMap := range Constraints {
 		// For every constraint
 
-		for inputType, _ := range constraintArgMap {
+		for inputType := range constraintArgMap {
 
 			for _, inputValue := range constraintTestValues {
 				// TODO: test error cases

@@ -18,13 +18,13 @@ var functionDefaultTestCases []*functionDefaultTestCase
 func init() {
 	functionDefaultTestCases = []*functionDefaultTestCase{
 		// TODO: just iterate over all of them
-		&functionDefaultTestCase{
+		{
 			fdName: "uuid4",
 		},
-		&functionDefaultTestCase{
+		{
 			fdName: "random",
 		},
-		&functionDefaultTestCase{
+		{
 			fdName: "ksuid",
 		},
 	}

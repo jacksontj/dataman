@@ -32,31 +32,31 @@ func init() {
 	}
 
 	benchFields = map[string]*CollectionField{
-		"int": &CollectionField{
+		"int": {
 			Type: "_int",
 		},
-		"bool": &CollectionField{
+		"bool": {
 			Type: "_bool",
 		},
-		"string": &CollectionField{
+		"string": {
 			Type: "_string",
 		},
-		"document": &CollectionField{
+		"document": {
 			Type: "_document",
 			SubFields: map[string]*CollectionField{
-				"name": &CollectionField{
+				"name": {
 					Name:    "name",
 					Type:    "_string",
 					NotNull: true,
 				},
-				"number": &CollectionField{
+				"number": {
 					Name: "number",
 					Type: "_int",
 				},
-				"subDoc": &CollectionField{
+				"subDoc": {
 					Type: "_document",
 					SubFields: map[string]*CollectionField{
-						"name": &CollectionField{
+						"name": {
 							Name:    "name",
 							Type:    "_string",
 							NotNull: true,

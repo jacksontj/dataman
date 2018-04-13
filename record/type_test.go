@@ -310,37 +310,37 @@ func TestProjection(t *testing.T) {
 			cases: []recordTestCase{
 				// Basic working example
 				{
-					k: [][]string{[]string{"a"}},
+					k: [][]string{{"a"}},
 					v: Record{"a": 1},
 				},
 				// entire map
 				{
-					k: [][]string{[]string{"map"}},
+					k: [][]string{{"map"}},
 					v: Record{"map": map[string]interface{}{"v": 1, "innermap": map[string]interface{}{}}},
 				},
 				// inner value
 				{
-					k: [][]string{[]string{"map", "v"}},
+					k: [][]string{{"map", "v"}},
 					v: Record{"map": map[string]interface{}{"v": 1}},
 				},
 				// inner map
 				{
-					k: [][]string{[]string{"map", "innermap"}},
+					k: [][]string{{"map", "innermap"}},
 					v: Record{"map": map[string]interface{}{"innermap": map[string]interface{}{}}},
 				},
 				// a and innermap
 				{
-					k: [][]string{[]string{"a"}, []string{"map", "innermap"}},
+					k: [][]string{{"a"}, {"map", "innermap"}},
 					v: Record{"a": 1, "map": map[string]interface{}{"innermap": map[string]interface{}{}}},
 				},
 				// No key given
 				{
-					k: [][]string{[]string{}},
+					k: [][]string{{}},
 					v: Record{},
 				},
 				// key that doesn't exist
 				{
-					k: [][]string{[]string{"nokey"}},
+					k: [][]string{{"nokey"}},
 					v: Record{},
 				},
 			},

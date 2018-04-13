@@ -34,22 +34,22 @@ func TestFieldValidation_Document(t *testing.T) {
 			Type:      "_document",
 			FieldType: DatamanTypeToFieldType(datamantype.Document),
 			SubFields: map[string]*CollectionField{
-				"name": &CollectionField{
+				"name": {
 					Name:      "name",
 					Type:      "_string",
 					FieldType: DatamanTypeToFieldType(datamantype.String),
 					NotNull:   true,
 				},
-				"number": &CollectionField{
+				"number": {
 					Name:      "number",
 					Type:      "_int",
 					FieldType: DatamanTypeToFieldType(datamantype.Int),
 				},
-				"subDoc": &CollectionField{
+				"subDoc": {
 					Type:      "_document",
 					FieldType: DatamanTypeToFieldType(datamantype.Document),
 					SubFields: map[string]*CollectionField{
-						"name": &CollectionField{
+						"name": {
 							Name:      "name",
 							Type:      datamantype.String,
 							FieldType: DatamanTypeToFieldType(datamantype.String),

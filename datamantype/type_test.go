@@ -10,21 +10,21 @@ var validValues map[DatamanType][]interface{}
 
 func init() {
 	validValues = map[DatamanType][]interface{}{
-		Document: []interface{}{
+		Document: {
 			map[string]interface{}{"a": 1, "b": "c"},
 		},
-		String: []interface{}{
+		String: {
 			"a",
 			"asdl;fkja;sldfj",
 			`asd;fljasd;flkj`,
 		},
-		Int: []interface{}{
+		Int: {
 			1,
 			100,
 			float64(123),
 			"1234",
 		},
-		Float: []interface{}{
+		Float: {
 			1,
 			100,
 			float64(123),
@@ -32,12 +32,12 @@ func init() {
 			1.0,
 			"1.0",
 		},
-		Bool: []interface{}{
+		Bool: {
 			true,
 			false,
 		},
 		// TODO:
-		DateTime: []interface{}{
+		DateTime: {
 			"2017-09-08 14:44:02.622944",
 			"2017-09-08 14:44:02",
 			"2017-01-17T23:58:48+00:00",

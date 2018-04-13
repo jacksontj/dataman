@@ -199,7 +199,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 		if args.SortReverse == nil {
 			sortReverseList := make([]bool, len(args.Sort))
 			// TODO: better, seems heavy
-			for i, _ := range sortReverseList {
+			for i := range sortReverseList {
 				sortReverseList[i] = false
 			}
 			args.SortReverse = sortReverseList

@@ -89,7 +89,7 @@ func (c *Collection) Equal(o *Collection) bool {
 
 func (c *Collection) ListIndexes() []string {
 	indexes := make([]string, 0, len(c.Indexes))
-	for name, _ := range c.Indexes {
+	for name := range c.Indexes {
 		indexes = append(indexes, name)
 	}
 	return indexes

@@ -13,17 +13,17 @@ var filterTestCases []*filterTestCase
 
 func init() {
 	filterTestCases = []*filterTestCase{
-		&filterTestCase{
+		{
 			filter: map[string]interface{}{"id": []interface{}{"=", 1}},
 			result: `"id"=1`,
 		},
 
-		&filterTestCase{
+		{
 			filter: "AND",
 			err:    true,
 		},
 
-		&filterTestCase{
+		{
 			filter: []interface{}{
 				map[string]interface{}{"id": []interface{}{"=", 1}},
 				"OR",
@@ -32,7 +32,7 @@ func init() {
 			result: `( "id"=1 OR  "id"=2)`,
 		},
 
-		&filterTestCase{
+		{
 			filter: map[string]interface{}{},
 		},
 	}

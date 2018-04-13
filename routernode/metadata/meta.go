@@ -48,7 +48,7 @@ type Meta struct {
 // TODO: more than just names?
 func (m *Meta) ListDatabases() []string {
 	dbnames := make([]string, 0, len(m.Databases))
-	for name, _ := range m.Databases {
+	for name := range m.Databases {
 		dbnames = append(dbnames, name)
 	}
 	return dbnames

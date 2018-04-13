@@ -563,7 +563,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 			if args.SortReverse == nil {
 				args.SortReverse = make([]bool, len(args.Sort))
 				// TODO: better, seems heavy
-				for i, _ := range args.SortReverse {
+				for i := range args.SortReverse {
 					args.SortReverse[i] = false
 				}
 			}
@@ -627,7 +627,7 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 			if args.SortReverse == nil {
 				args.SortReverse = make([]bool, len(args.Sort))
 				// TODO: better, seems heavy
-				for i, _ := range args.SortReverse {
+				for i := range args.SortReverse {
 					args.SortReverse[i] = false
 				}
 			}

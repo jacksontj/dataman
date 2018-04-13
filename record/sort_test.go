@@ -49,7 +49,7 @@ func (s singleSortTestCase) CopyData() []Record {
 
 func TestSort(t *testing.T) {
 	tests := []singleSortTestCase{
-		singleSortTestCase{
+		{
 			sortKeys: []string{"a"},
 			data: []Record{
 				map[string]interface{}{"a": 2},
@@ -57,7 +57,7 @@ func TestSort(t *testing.T) {
 				map[string]interface{}{"a": 7},
 			},
 		},
-		singleSortTestCase{
+		{
 			sortKeys: []string{"a", "b"},
 			data: []Record{
 				map[string]interface{}{"a": 2, "b": 1},
@@ -67,7 +67,7 @@ func TestSort(t *testing.T) {
 				map[string]interface{}{"a": 7},
 			},
 		},
-		singleSortTestCase{
+		{
 			sortKeys: []string{"a", "b.c"},
 			data: []Record{
 				map[string]interface{}{"a": 2, "b": map[string]interface{}{"c": 1}},
