@@ -2,16 +2,16 @@
 Navicat PGSQL Data Transfer
 
 Source Server         : local
-Source Server Version : 90606
+Source Server Version : 90608
 Source Host           : localhost:5432
 Source Database       : dataman_router
 Source Schema         : public
 
 Target Server Type    : PGSQL
-Target Server Version : 90606
+Target Server Version : 90608
 File Encoding         : 65001
 
-Date: 2018-01-12 10:41:42
+Date: 2018-04-13 10:57:14
 */
 
 
@@ -23,9 +23,9 @@ CREATE SEQUENCE "public"."collection__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 6234
+ START 7481
  CACHE 1;
-SELECT setval('"public"."collection__id_seq"', 6234, true);
+SELECT setval('"public"."collection__id_seq"', 7481, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field__id_seq
@@ -35,9 +35,9 @@ CREATE SEQUENCE "public"."collection_field__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 25241
+ START 29095
  CACHE 1;
-SELECT setval('"public"."collection_field__id_seq"', 25241, true);
+SELECT setval('"public"."collection_field__id_seq"', 29095, true);
 
 -- ----------------------------
 -- Sequence structure for collection_field_relation__id_seq
@@ -47,9 +47,9 @@ CREATE SEQUENCE "public"."collection_field_relation__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2621
+ START 3217
  CACHE 1;
-SELECT setval('"public"."collection_field_relation__id_seq"', 2621, true);
+SELECT setval('"public"."collection_field_relation__id_seq"', 3217, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index__id_seq
@@ -59,9 +59,9 @@ CREATE SEQUENCE "public"."collection_index__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 8913
+ START 10449
  CACHE 1;
-SELECT setval('"public"."collection_index__id_seq"', 8913, true);
+SELECT setval('"public"."collection_index__id_seq"', 10449, true);
 
 -- ----------------------------
 -- Sequence structure for collection_index_item__id_seq
@@ -71,9 +71,9 @@ CREATE SEQUENCE "public"."collection_index_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 85360
+ START 94950
  CACHE 1;
-SELECT setval('"public"."collection_index_item__id_seq"', 85360, true);
+SELECT setval('"public"."collection_index_item__id_seq"', 94950, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace__id_seq
@@ -83,9 +83,9 @@ CREATE SEQUENCE "public"."collection_keyspace__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2040
+ START 3289
  CACHE 1;
-SELECT setval('"public"."collection_keyspace__id_seq"', 2040, true);
+SELECT setval('"public"."collection_keyspace__id_seq"', 3289, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_item__id_seq
@@ -95,9 +95,9 @@ CREATE SEQUENCE "public"."collection_keyspace_item__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 14784
+ START 22487
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_item__id_seq"', 14784, true);
+SELECT setval('"public"."collection_keyspace_item__id_seq"', 22487, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition__id_seq
@@ -107,9 +107,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2012
+ START 3255
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition__id_seq"', 2012, true);
+SELECT setval('"public"."collection_keyspace_partition__id_seq"', 3255, true);
 
 -- ----------------------------
 -- Sequence structure for collection_keyspace_partition_datastore_vshard__id_seq
@@ -119,9 +119,9 @@ CREATE SEQUENCE "public"."collection_keyspace_partition_datastore_vshard__id_seq
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 14814
+ START 22654
  CACHE 1;
-SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 14814, true);
+SELECT setval('"public"."collection_keyspace_partition_datastore_vshard__id_seq"', 22654, true);
 
 -- ----------------------------
 -- Sequence structure for database__id_seq
@@ -131,9 +131,9 @@ CREATE SEQUENCE "public"."database__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2337
+ START 3055
  CACHE 1;
-SELECT setval('"public"."database__id_seq"', 2337, true);
+SELECT setval('"public"."database__id_seq"', 3055, true);
 
 -- ----------------------------
 -- Sequence structure for database_datastore__id_seq
@@ -143,9 +143,9 @@ CREATE SEQUENCE "public"."database_datastore__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 2274
+ START 2988
  CACHE 1;
-SELECT setval('"public"."database_datastore__id_seq"', 2274, true);
+SELECT setval('"public"."database_datastore__id_seq"', 2988, true);
 
 -- ----------------------------
 -- Sequence structure for datasource__id_seq
@@ -179,9 +179,9 @@ CREATE SEQUENCE "public"."datasource_instance_shard_instance__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 4469
+ START 5708
  CACHE 1;
-SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 4469, true);
+SELECT setval('"public"."datasource_instance_shard_instance__id_seq"', 5708, true);
 
 -- ----------------------------
 -- Sequence structure for datastore__id_seq
@@ -227,9 +227,9 @@ CREATE SEQUENCE "public"."datastore_vshard__id_seq"
  INCREMENT 1
  MINVALUE 1
  MAXVALUE 9223372036854775807
- START 7
+ START 8
  CACHE 1;
-SELECT setval('"public"."datastore_vshard__id_seq"', 7, true);
+SELECT setval('"public"."datastore_vshard__id_seq"', 8, true);
 
 -- ----------------------------
 -- Sequence structure for datastore_vshard_instance__id_seq
@@ -376,8 +376,8 @@ DROP TABLE IF EXISTS "public"."collection_keyspace_partition";
 CREATE TABLE "public"."collection_keyspace_partition" (
 "_id" int4 DEFAULT nextval('collection_keyspace_partition__id_seq'::regclass) NOT NULL,
 "collection_keyspace_id" int4 NOT NULL,
-"start_id" int4 NOT NULL,
-"end_id" int4,
+"start_id" int8 NOT NULL,
+"end_id" int8,
 "shard_method" varchar(255) COLLATE "default" NOT NULL
 )
 WITH (OIDS=FALSE)
