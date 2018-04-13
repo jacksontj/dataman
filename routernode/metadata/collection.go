@@ -166,6 +166,33 @@ type CollectionKeyspace struct {
 	Partitions []*CollectionKeyspacePartition `json:"partitions"`
 }
 
+// GetKeyspacePartition will return the KeyspacePartition for the given key `k`
+func (c *CollectionKeyspace) GetKeyspacePartition(k uint64) *CollectionKeyspacePartition {
+	startIndex := 0
+	endIndex := len(c.Partitions) - 1
+
+	for startIndex <= endIndex {
+		median := (startIndex + endIndex) / 2
+		currentPartition := c.Partitions[median]
+		if currentPartition.StartId > k {
+			endIndex = median - 1
+		} else if currentPartition.EndId != 0 && currentPartition.EndId <= k {
+			startIndex = median + 1
+		} else {
+			return currentPartition
+		}
+	}
+	// TODO: return nil and make the upper layers handle it? This would mean that the
+	// metadata we loaded was bad/wrong -- which we should catch at unmarshal time
+	fmt.Println(k)
+	fmt.Println(c)
+	for i, partition := range c.Partitions {
+		fmt.Println(i, partition)
+	}
+	panic("shouldn't be possible")
+	return nil
+}
+
 func (c *CollectionKeyspace) UnmarshalJSON(data []byte) error {
 	type Alias CollectionKeyspace
 	aux := &struct {

@@ -341,8 +341,6 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 	databaseDatastore := database.DatastoreSet.Read[0]
 	// TODO: support multiple keyspaces
 	keyspace := collection.Keyspaces[0]
-	// TODO: support multiple partitions
-	partition := keyspace.Partitions[0]
 
 	// TODO: better name
 	var keyspacePartitionAddr *uint64
@@ -439,8 +437,12 @@ func (s *RouterNode) handleRead(ctx context.Context, meta *metadata.Meta, q *que
 
 	var vshards []*metadata.DatastoreVShardInstance
 	if keyspacePartitionAddr == nil {
-		vshards = partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
+		for _, partition := range keyspace.Partitions {
+			vshards = append(vshards, partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards...)
+		}
 	} else {
+		partition := keyspace.GetKeyspacePartition(*keyspacePartitionAddr)
+
 		vshardNum := partition.ShardFunc(*keyspacePartitionAddr, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
 	}
@@ -519,8 +521,9 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 	databaseDatastore := database.DatastoreSet.Write
 	// TODO: support multiple partitions
 	keyspace := collection.Keyspaces[0]
-	// TODO: support multiple partitions
-	partition := keyspace.Partitions[0]
+
+	// TODO: better name
+	var keyspacePartitionAddr *uint64
 
 	// TODO: eventually we'll want to be more sophisticated and do this same thing if there
 	// are a set of id's we can derive from the original query, so we can do a limited
@@ -564,25 +567,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			// TODO: wrap the error
 			return &query.Result{Errors: []string{err.Error()}}
 		}
-		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
-
-		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-		// TODO: generate or store/read the name!
-		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-		if !ok {
-			return &query.Result{Errors: []string{"2 Unknown datasourceInstanceShardInstance"}}
-		}
-
-		newQ := *q
-		newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-		if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-			return result
-		} else {
-			return &query.Result{Errors: []string{err.Error()}}
-		}
+		keyspacePartitionAddr = &hashedShardKey
 
 	// TODO: what do we want to do for brand new things?
 	case query.Insert:
@@ -610,25 +595,7 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			// TODO: wrap the error
 			return &query.Result{Errors: []string{err.Error()}}
 		}
-		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-
-		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
-
-		// TODO: replicas -- add args for slave etc.
-		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-		if !ok {
-			return &query.Result{Errors: []string{"4 Unknown datasourceInstanceShardInstance"}}
-		}
-
-		newQ := *q
-		newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-		if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-			return result
-		} else {
-			return &query.Result{Errors: []string{err.Error()}}
-		}
+		keyspacePartitionAddr = &hashedShardKey
 
 	case query.Update:
 		if q.Args.Filter == nil {
@@ -670,51 +637,8 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 				// TODO: wrap the error
 				return &query.Result{Errors: []string{err.Error()}}
 			}
-			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			keyspacePartitionAddr = &hashedShardKey
 
-			// TODO: replicas -- add args for slave etc.
-			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
-			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-			if !ok {
-				return &query.Result{Errors: []string{"5 Unknown datasourceInstanceShardInstance"}}
-			}
-
-			// TODO: replicas -- add args for slave etc.
-			newQ := *q
-			newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-			if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-				return result
-			} else {
-				return &query.Result{Errors: []string{err.Error()}}
-			}
-
-		} else { // Otherwise we need to send this query to all shards to let them handle it
-			vshardResults := make(chan *query.Result, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
-
-			for _, vshard := range partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards {
-				datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-
-				datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-				if !ok {
-					vshardResults <- &query.Result{Errors: []string{"6 Unknown datasourceInstanceShardInstance"}}
-				} else {
-					go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
-						// TODO: replicas -- add args for slave etc.
-						newQ := *q
-						newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-						if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-							vshardResults <- result
-						} else {
-							vshardResults <- &query.Result{Errors: []string{err.Error()}}
-						}
-					}(datasourceInstance, datasourceInstanceShardInstance)
-				}
-
-			}
-
-			return query.MergeResult(collection.PrimaryIndex.Fields, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards), vshardResults)
 		}
 
 	case query.Delete:
@@ -744,27 +668,58 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			// TODO: wrap the error
 			return &query.Result{Errors: []string{err.Error()}}
 		}
-		vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		keyspacePartitionAddr = &hashedShardKey
+	}
 
+	if keyspacePartitionAddr != nil {
+		partition := keyspace.GetKeyspacePartition(*keyspacePartitionAddr)
+		vshardNum := partition.ShardFunc(*keyspacePartitionAddr, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
 		vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
 
 		// TODO: replicas -- add args for slave etc.
 		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
 
+		// TODO: generate or store/read the name!
 		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
 		if !ok {
-			return &query.Result{Errors: []string{"7 Unknown datasourceInstanceShardInstance"}}
+			return &query.Result{Errors: []string{"2 Unknown datasourceInstanceShardInstance"}}
 		}
-
 		newQ := *q
 		newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-		// TODO: replicas -- add args for slave etc.
 		if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
 			return result
 		} else {
 			return &query.Result{Errors: []string{err.Error()}}
 		}
+	} else {
+		var vshards []*metadata.DatastoreVShardInstance
+		for _, partition := range keyspace.Partitions {
+			vshards = append(vshards, partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards...)
+		}
+		vshardResults := make(chan *query.Result, len(vshards))
 
+		for _, vshard := range vshards {
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+			if !ok {
+				vshardResults <- &query.Result{Errors: []string{"6 Unknown datasourceInstanceShardInstance"}}
+			} else {
+				go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
+					// TODO: replicas -- add args for slave etc.
+					newQ := *q
+					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+					if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
+						vshardResults <- result
+					} else {
+						vshardResults <- &query.Result{Errors: []string{err.Error()}}
+					}
+				}(datasourceInstance, datasourceInstanceShardInstance)
+			}
+
+		}
+
+		return query.MergeResult(collection.PrimaryIndex.Fields, len(vshards), vshardResults)
 	}
 
 	return nil
@@ -798,87 +753,149 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		}
 	}
 
-	var vshardResults []*query.ResultStream
+	// Once we have the metadata all found we need to do the following:
+	//      - Authentication/authorization
+	//      - Cache
+	//      - Sharding
+	//      - Replicas
+
+	//TODO:Authentication/authorization
+	//TODO:Cache (configurable)
+
+	// Sharding consists of:
+	//		- select datasource(s)
+	//		- select keyspace(s) -- for now only one
+	//		- select keyspace_partition
+	//		- select vshard (collection or partition)
+	//			- hash "shard-key"
+	//			- select vshard
+	//		- send requests (involves mapping vshard -> shard)
+	//			-- TODO: we could combine the requests into a muxed one
+
+	// TODO: support multiple datastores
+	databaseDatastore := database.DatastoreSet.Read[0]
+	// TODO: support multiple keyspaces
+	keyspace := collection.Keyspaces[0]
+
+	// TODO: better name
+	var keyspacePartitionAddr *uint64
 
 	switch q.Type {
+	// TODO: consolidate, query.Filter has the effectively same code here
 	case query.FilterStream:
-		// Once we have the metadata all found we need to do the following:
-		//      - Authentication/authorization
-		//      - Cache
-		//      - Sharding
-		//      - Replicas
-
-		//TODO:Authentication/authorization
-		//TODO:Cache (configurable)
-
-		// Sharding consists of:
-		//		- select datasource(s)
-		//		- select keyspace(s) -- for now only one
-		//		- select keyspace_partition
-		//		- select vshard (collection or partition)
-		//			- hash "shard-key"
-		//			- select vshard
-		//		- send requests (involves mapping vshard -> shard)
-		//			-- TODO: we could combine the requests into a muxed one
-
-		// TODO: support multiple datastores
-		databaseDatastore := database.DatastoreSet.Read[0]
-		// TODO: support multiple keyspaces
-		keyspace := collection.Keyspaces[0]
-		// TODO: support multiple partitions
-		partition := keyspace.Partitions[0]
-
-		// TODO: support finding the shard (assuming the filter has a shard key) -- should just be a refactor of filter
-
-		vshards := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards
-
-		// TODO: switch to channels or something (since we can get them in parallel
-		vshardResults = make([]*query.ResultStream, len(vshards))
-		wg := &sync.WaitGroup{}
-
-		for i, vshard := range vshards {
-			// TODO: replicas -- add args for slave etc.
-			// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
-			// it has the data -- scaling up/down etc.)
-			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
-			logrus.Debugf("\tGoing to %v", datasourceInstance)
-
-			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
-			if !ok {
-				vshardResults[i] = &query.ResultStream{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
-			} else {
-				wg.Add(1)
-				go func(i int, datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
-					defer wg.Done()
-					newQ := *q
-					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
-
-					// If there is an offset defined, we don't know how that will work
-					// out with the various sharding configs etc. So to make this work
-					// we simply remove the offset from the downstream query and increase
-					// the limit appropriately
-					if newQ.Args.Offset > 0 {
-						if newQ.Args.Limit > 0 {
-							newQ.Args.Limit += newQ.Args.Offset
-						}
-						newQ.Args.Offset = 0
-					}
-
-					if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
-						vshardResults[i] = result
-					} else {
-						vshardResults[i] = &query.ResultStream{Errors: []string{err.Error()}}
-					}
-				}(i, datasourceInstance, datasourceInstanceShardInstance)
-			}
+		if q.Args.Filter == nil {
+			return &query.ResultStream{Errors: []string{fmt.Sprintf("Filter()s must include filter map")}}
 		}
 
-		// Wait for each shard to respond with their headers
-		wg.Wait()
+		hasShardKey := true
+
+		filterMap, ok := q.Args.Filter.(map[string]interface{})
+		if !ok {
+			hasShardKey = false
+		}
+
+		var shardKeys []interface{}
+		if hasShardKey {
+			shardKeys = make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				filterValueRaw, ok := record.Record(filterMap).Get(shardKey)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparatorRaw, ok := filterValueRaw.([]interface{})
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparator, ok := filterComparatorRaw[0].(string)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterType, err := filter.StringToFilterType(filterComparator)
+				if err != nil {
+					hasShardKey = false
+					break
+				}
+				if filterType == filter.Equal {
+					shardKeys[i] = filterComparatorRaw[1]
+				} else {
+					hasShardKey = false
+					break
+				}
+			}
+		}
+		// if there is only one partition and we have our shard key, we can be more specific
+		if hasShardKey {
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
+			if err != nil {
+				// TODO: wrap the error
+				return &query.ResultStream{Errors: []string{err.Error()}}
+			}
+			keyspacePartitionAddr = &hashedShardKey
+		}
 
 	default:
 		return &query.ResultStream{Errors: []string{"invalid stream query"}}
 	}
+
+	var vshards []*metadata.DatastoreVShardInstance
+	if keyspacePartitionAddr == nil {
+		for _, partition := range keyspace.Partitions {
+			vshards = append(vshards, partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards...)
+		}
+	} else {
+		partition := keyspace.GetKeyspacePartition(*keyspacePartitionAddr)
+
+		vshardNum := partition.ShardFunc(*keyspacePartitionAddr, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
+	}
+
+	// TODO: switch to channels or something (since we can get them in parallel
+	vshardResults := make([]*query.ResultStream, len(vshards))
+	wg := &sync.WaitGroup{}
+
+	for i, vshard := range vshards {
+		// TODO: replicas -- add args for slave etc.
+		// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
+		// it has the data -- scaling up/down etc.)
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+		logrus.Debugf("\tGoing to %v", datasourceInstance)
+
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+		if !ok {
+			vshardResults[i] = &query.ResultStream{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
+		} else {
+			wg.Add(1)
+			go func(i int, datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
+				defer wg.Done()
+				newQ := *q
+				newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+
+				// If there is an offset defined, we don't know how that will work
+				// out with the various sharding configs etc. So to make this work
+				// we simply remove the offset from the downstream query and increase
+				// the limit appropriately
+				if newQ.Args.Offset > 0 {
+					if newQ.Args.Limit > 0 {
+						newQ.Args.Limit += newQ.Args.Offset
+					}
+					newQ.Args.Offset = 0
+				}
+
+				if result, err := QueryStream(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
+					vshardResults[i] = result
+				} else {
+					vshardResults[i] = &query.ResultStream{Errors: []string{err.Error()}}
+				}
+			}(i, datasourceInstance, datasourceInstanceShardInstance)
+		}
+	}
+
+	// Wait for each shard to respond with their headers
+	wg.Wait()
 
 	// Consolidate vshardResults to result
 

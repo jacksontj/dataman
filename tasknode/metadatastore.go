@@ -2118,9 +2118,13 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspace(ctx context.Context,
 	}
 
 	// Delete children
-	if err := m.EnsureDoesntExistCollectionKeyspacePartition(ctx, dbname, collectionname); err != nil {
-		return err
-	}
+	if collection.Keyspaces != nil && len(collection.Keyspaces) > 0 {
+	    for _, partition := range collection.Keyspaces[0].Partitions {
+		    if err := m.EnsureDoesntExistCollectionKeyspacePartition(ctx, dbname, collectionname, partition.StartId); err != nil {
+			    return err
+		    }
+	    }
+    }
 
 	for _, collectionKeyspace := range collection.Keyspaces {
 		collectionKeyspaceShardKeyResult := m.Store.Filter(ctx, query.QueryArgs{
@@ -2171,6 +2175,9 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 		return err
 	}
 
+	// TODO: this is bad, remove it
+	var index *int
+
 	if existingDB, ok := meta.Databases[db.Name]; ok {
 		db.ID = existingDB.ID
 		if existingCollection, ok := existingDB.Collections[collection.Name]; ok {
@@ -2179,9 +2186,13 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 			if collection.Keyspaces != nil && len(collection.Keyspaces) > 0 {
 				collectionKeyspace.ID = collection.Keyspaces[0].ID
 
-				// TODO: change once we support more than one parition
-				if collection.Keyspaces[0].Partitions != nil && len(collection.Keyspaces[0].Partitions) > 0 {
-					collectionKeyspacePartition.ID = collection.Keyspaces[0].Partitions[0].ID
+				for i, partition := range collection.Keyspaces[0].Partitions {
+					// TODO: better equal method
+					if partition.StartId == collectionKeyspacePartition.StartId && partition.EndId == collectionKeyspacePartition.EndId {
+						collectionKeyspacePartition.ID = partition.ID
+						index = &i
+						break
+					}
 				}
 			}
 
@@ -2248,8 +2259,10 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 	}
 
 	collectionKeyspacePartition.ID = collectionKeyspacePartitionResult.Return[0]["_id"].(int64)
-	// TODO: remove, need to key off something eventually, for now we only support 1
-	if len(collectionKeyspace.Partitions) == 0 {
+	if index != nil {
+		collectionKeyspace.Partitions[*index] = collectionKeyspacePartition
+	} else {
+		// TODO: sort
 		collectionKeyspace.Partitions = append(collectionKeyspace.Partitions, collectionKeyspacePartition)
 	}
 
@@ -2272,7 +2285,7 @@ func (m *MetadataStore) EnsureExistsCollectionKeyspacePartition(ctx context.Cont
 }
 
 // TODO: change once we support more partitions
-func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context.Context, dbname, collectionname string) error {
+func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context.Context, dbname, collectionname string, startId uint64) error {
 	meta, err := m.GetMeta(ctx)
 	if err != nil {
 		return err
@@ -2290,6 +2303,9 @@ func (m *MetadataStore) EnsureDoesntExistCollectionKeyspacePartition(ctx context
 
 	for _, collectionKeyspace := range collection.Keyspaces {
 		for _, collectionKeyspacePartition := range collectionKeyspace.Partitions {
+			if collectionKeyspacePartition.StartId != startId {
+				continue
+			}
 			// Delete all links to datastores
 			collectionKeyspacePartitionDatastoreVShardResult := m.Store.Filter(ctx, query.QueryArgs{
 				DB:            "dataman_router",

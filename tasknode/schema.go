@@ -261,7 +261,7 @@ const schemaJson string = `
                   "name": "collection_index_collection_id_primary_idx",
                   "fields": [
                     "collection_id",
-                    "\"primary\""
+                    "primary"
                   ],
                   "unique": true,
                   "provision_state": 3
@@ -431,7 +431,8 @@ const schemaJson string = `
                 "collection_keyspace_partition_TOREMOVE": {
                   "name": "collection_keyspace_partition_TOREMOVE",
                   "fields": [
-                    "collection_keyspace_id"
+                    "collection_keyspace_id",
+                    "start_id"
                   ],
                   "unique": true,
                   "provision_state": 3
@@ -545,7 +546,7 @@ const schemaJson string = `
                   "name": "collection_keyspace_item_collection_keyspace_id_order_idx",
                   "fields": [
                     "collection_keyspace_id",
-                    "\"order\""
+                    "order"
                   ],
                   "unique": true,
                   "provision_state": 3
@@ -1236,7 +1237,7 @@ const schemaJson string = `
                   "name": "field_type_constraint_field_type_id_constraint_id_idx",
                   "fields": [
                     "field_type_id",
-                    "\"constraint\""
+                    "constraint"
                   ],
                   "provision_state": 3
                 },
