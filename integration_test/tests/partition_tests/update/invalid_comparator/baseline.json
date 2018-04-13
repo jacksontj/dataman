@@ -1,0 +1,6 @@
+{
+  "return": null,
+  "errors": [
+    "fitler values must be a list of [comparator, args]"
+  ]
+}

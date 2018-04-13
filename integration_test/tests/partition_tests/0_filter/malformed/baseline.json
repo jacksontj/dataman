@@ -1,0 +1,10 @@
+{
+  "return": [],
+  "errors": [
+    "Filters must have a map or a list at the top level",
+    "Filters must have a map or a list at the top level"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

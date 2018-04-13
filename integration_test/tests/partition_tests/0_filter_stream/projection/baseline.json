@@ -1,0 +1,11 @@
+[
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
+  {
+    "firstname": "foofirst"
+  },
+  "EOF"
+]

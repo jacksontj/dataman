@@ -1,0 +1,10 @@
+{
+  "return": [
+    {
+      "firstname": "foofirst"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

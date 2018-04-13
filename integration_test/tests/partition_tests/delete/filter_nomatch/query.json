@@ -1,0 +1,13 @@
+{
+    "type": "delete",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "pkey": {
+            "username": "1_insert"
+        },
+        "filter": {
+            "firstname": ["=", "insert"]
+        }
+    }
+}

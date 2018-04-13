@@ -1,0 +1,6 @@
+{
+  "return": null,
+  "errors": [
+    "Insert()s must include a record"
+  ]
+}

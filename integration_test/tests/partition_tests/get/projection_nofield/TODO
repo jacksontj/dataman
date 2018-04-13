@@ -1,0 +1,7 @@
+decide what the failure here should look like. It should either be:
+
+    1. Return "projected" result (which has nothing in it)
+    2. Error
+    
+Either way will have potentially huge perf gains by checking the validity of the projection first.
+The main thing to keep in mind is that some subfields we don't know about (as we might have a subset of document schema -- for example)

@@ -1,0 +1,9 @@
+{
+  "return": null,
+  "errors": [
+    "filter must be a list"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

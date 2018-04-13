@@ -1,0 +1,10 @@
+{
+  "return": [],
+  "errors": [
+    "Invalid field in filter: notthere",
+    "Invalid field in filter: notthere"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

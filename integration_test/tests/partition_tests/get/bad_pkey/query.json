@@ -1,0 +1,10 @@
+{
+    "type": "get",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "pkey": {
+            "email": "foo@test.com"
+        }
+    }
+}
