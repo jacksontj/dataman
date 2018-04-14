@@ -18,19 +18,19 @@ type DatamanType string
 
 const (
 	Document DatamanType = "document"
-	String               = "string" // max len 4096
-	Text                 = "text"
-	Serial               = "serial"
+	String   DatamanType = "string" // max len 4096
+	Text     DatamanType = "text"
+	Serial   DatamanType = "serial"
 	// We should support converting anything to an int that doesn't lose data
-	Int = "int"
+	Int DatamanType = "int"
 	// TODO: int64
 	// TODO: uint
 	// TODO: uint64
-	Float = "float"
-	Bool  = "bool"
+	Float DatamanType = "float"
+	Bool  DatamanType = "bool"
 	// TODO: actually implement
-	DateTime = "datetime"
-	JSON     = "json"
+	DateTime DatamanType = "datetime"
+	JSON     DatamanType = "json"
 )
 
 const DateTimeFormatStr = "2006-01-02 15:04:05"
