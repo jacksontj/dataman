@@ -343,6 +343,16 @@ func TestProjection(t *testing.T) {
 					k: [][]string{{"nokey"}},
 					v: Record{},
 				},
+				// inner map key that doesn't exist
+				{
+					k: [][]string{{"map", "innermap", "notthere"}},
+					v: Record{"map": map[string]interface{}{"innermap": map[string]interface{}{}}},
+				},
+				// inner map key that doesn't exist
+				{
+					k: [][]string{{"map", "innermap", "notthere"}, {"a"}},
+					v: Record{"a": 1, "map": map[string]interface{}{"innermap": map[string]interface{}{}}},
+				},
 			},
 		},
 	}

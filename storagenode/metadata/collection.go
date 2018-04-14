@@ -62,6 +62,21 @@ func (c *Collection) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (c *Collection) IsValidProjection(name string) bool {
+	nameParts := strings.Split(name, ".")
+	field := c.Fields[nameParts[0]]
+
+	for _, part := range nameParts[1:] {
+		nextField, ok := field.SubFields[part]
+		if !ok {
+			return field.ChildrenValid()
+		}
+		field = nextField
+	}
+
+	return true
+}
+
 func (c *Collection) GetFieldByName(name string) *CollectionField {
 	return c.GetField(strings.Split(name, "."))
 }

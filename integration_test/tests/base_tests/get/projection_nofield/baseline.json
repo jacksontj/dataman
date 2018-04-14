@@ -1,6 +1,9 @@
 {
   "return": null,
   "errors": [
-    "invalid projection field nofield"
-  ]
+    "Error running query: Err=pq: column \"nofield\" does not exist query=SELECT nofield FROM \"dbshard_test1_8_2\".user WHERE  username='foo' "
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
 }

@@ -248,7 +248,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 	if q.Args.Fields != nil {
 		// Check that the fields exist (or at least are subfields of things that exist)
 		for _, field := range q.Args.Fields {
-			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+			if !collection.IsValidProjection(field) {
 				return &query.Result{Errors: []string{"invalid projection field " + field}}
 			}
 		}
@@ -791,7 +791,7 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 	if q.Args.Fields != nil {
 		// Check that the fields exist (or at least are subfields of things that exist)
 		for _, field := range q.Args.Fields {
-			if collectionField := collection.GetFieldByName(field); collectionField == nil {
+			if !collection.IsValidProjection(field) {
 				return &query.ResultStream{Errors: []string{"invalid projection field " + field}}
 			}
 		}

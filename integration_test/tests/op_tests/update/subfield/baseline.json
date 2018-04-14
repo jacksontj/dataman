@@ -3,7 +3,8 @@
     {
       "data": {
         "innervalue": 7,
-        "innervalue2": 0
+        "innervalue2": 0,
+        "nonschemavalue": 0
       },
       "key": "1",
       "value": 5

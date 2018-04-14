@@ -70,6 +70,16 @@ type CollectionField struct {
 	ProvisionState ProvisionState `json:"provision_state"`
 }
 
+// TODO: elsewhere?
+func (f *CollectionField) ChildrenValid() bool {
+	switch f.FieldType.DatamanType {
+	case datamantype.Document, datamantype.JSON:
+		return true
+	default:
+		return false
+	}
+}
+
 func (f *CollectionField) UnmarshalJSON(data []byte) error {
 	type Alias CollectionField
 	aux := &struct {

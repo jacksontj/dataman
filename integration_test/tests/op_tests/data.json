@@ -1,8 +1,8 @@
 {
     "test1": {
         "data": [
-            {"key": "1", "value": 0, "data": {"innervalue": 0, "innervalue2": 0}},
-            {"key": "2", "value": 0, "data": {"innervalue": 0, "innervalue2": 0}}
+            {"key": "1", "value": 0, "data": {"innervalue": 0, "innervalue2": 0, "nonschemavalue": 0}},
+            {"key": "2", "value": 0, "data": {"innervalue": 0, "innervalue2": 0, "nonschemavalue": 0}}
         ]
     }
 }

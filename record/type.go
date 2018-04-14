@@ -173,6 +173,7 @@ func (r Record) Project(projectionFields [][]string) Record {
 	if projectionFields == nil || len(projectionFields) == 0 {
 		return projectedResult
 	}
+PROJECTLOOP:
 	for _, fieldNameParts := range projectionFields {
 		switch len(fieldNameParts) {
 		case 0:
@@ -186,12 +187,17 @@ func (r Record) Project(projectionFields [][]string) Record {
 			dstTmp := projectedResult
 			srcTmp := r
 			for _, fieldNamePart := range fieldNameParts[:len(fieldNameParts)-1] {
-				_, ok := dstTmp[fieldNamePart]
+				var ok bool
+				srcTmp, ok = srcTmp[fieldNamePart].(map[string]interface{})
+				// If the field isn't there in the source, continue on
+				if !ok {
+					continue PROJECTLOOP
+				}
+				_, ok = dstTmp[fieldNamePart]
 				if !ok {
 					dstTmp[fieldNamePart] = make(map[string]interface{})
 				}
 				dstTmp = dstTmp[fieldNamePart].(map[string]interface{})
-				srcTmp = srcTmp[fieldNamePart].(map[string]interface{})
 			}
 			// Now we are on the last hop-- just copy the value over
 			tmpVal, ok := srcTmp[fieldNameParts[len(fieldNameParts)-1]]

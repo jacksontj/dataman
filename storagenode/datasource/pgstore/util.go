@@ -49,6 +49,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 		}
 		results = append(results, data)
 	}
+
 	return results, nil
 }
 
@@ -155,7 +156,7 @@ func selectFields(fields []string) string {
 
 	fieldParts := make([]string, len(fields))
 	for i, field := range fields {
-		fieldParts[i] = collectionFieldToSelector(strings.Split(field, "."))
+		fieldParts[i] = strings.Split(field, ".")[0]
 	}
 
 	return strings.Join(fieldParts, ",")
