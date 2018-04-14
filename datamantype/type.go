@@ -123,7 +123,7 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 				return nil, nil
 			} else {
 				f, err := strconv.ParseFloat(typedVal, 32)
-				return f, err
+				return float32(f), err
 			}
 		default:
 			return nil, fmt.Errorf("Unknown Float type: %s", reflect.TypeOf(val))
