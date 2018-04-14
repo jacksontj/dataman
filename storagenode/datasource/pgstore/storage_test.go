@@ -35,6 +35,15 @@ func init() {
 		{
 			filter: map[string]interface{}{},
 		},
+
+		{
+			filter: []interface{}{
+				map[string]interface{}{},
+				"AND",
+				map[string]interface{}{"id": []interface{}{"=", 2}},
+			},
+			result: `( true OR  "id"=2)`,
+		},
 	}
 }
 

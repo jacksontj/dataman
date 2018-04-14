@@ -781,6 +781,11 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 		return "(" + first + " " + operator + " " + last + ")", nil
 
 	case map[string]interface{}:
+		// If the filter is empty we should skip it. Instead of special handling it above
+		// we'll just convert it to a filter which is always true (so its still a no-op)
+		if len(filterData) == 0 {
+			return "true", nil
+		}
 		whereParts := make([]string, 0)
 		for rawFieldName, fieldFilterRaw := range filterData {
 			fieldNameParts := strings.Split(rawFieldName, ".")
