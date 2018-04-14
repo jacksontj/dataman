@@ -17,6 +17,7 @@ func init() {
 			"a",
 			"asdl;fkja;sldfj",
 			`asd;fljasd;flkj`,
+			1,
 		},
 		Int: {
 			1,
