@@ -62,6 +62,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 			return nil, nil
 		case int:
 			return strconv.Itoa(typedVal), nil
+		case int64:
+			return strconv.FormatInt(typedVal, 10), nil
 		case string:
 			// TODO: default, code this out somewhere
 			if len(typedVal) > 4096 {
