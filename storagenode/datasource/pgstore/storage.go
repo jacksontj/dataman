@@ -859,10 +859,14 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 					}
 					whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", collectionFieldToSelector(strings.Split(rawFieldName, ".")), filterTypeToComparator(filterType), "("+strings.Join(items, ",")+")"))
 				default:
-					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'",
+					normalizedFieldValue, err := serializeValue(fieldValue)
+					if err != nil {
+						return "", err
+					}
+					whereParts = append(whereParts, fmt.Sprintf(" %s%s%s",
 						collectionFieldToSelector(strings.Split(rawFieldName, ".")),
 						filterTypeToComparator(filterType),
-						fieldValue,
+						normalizedFieldValue,
 					))
 				}
 			}
