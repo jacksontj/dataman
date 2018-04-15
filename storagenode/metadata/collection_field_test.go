@@ -51,7 +51,7 @@ func TestFieldValidation_Document(t *testing.T) {
 					SubFields: map[string]*CollectionField{
 						"name": {
 							Name:      "name",
-							Type:      datamantype.String,
+							Type:      "_string",
 							FieldType: DatamanTypeToFieldType(datamantype.String),
 							NotNull:   true,
 						},
@@ -96,17 +96,18 @@ func TestFieldValidation_Document(t *testing.T) {
 func TestFieldValidation_String(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      datamantype.String,
+			Type:      "_string",
 			FieldType: DatamanTypeToFieldType(datamantype.String),
 		},
 		goodValues: []interface{}{
 			"foo",
 			"f",
 			"",
+			1,   // a number
 			nil, // nil
 		},
 		badValues: []interface{}{
-			1, // a number
+			struct{}{},
 		},
 	}
 	testCase.Test(t)
@@ -115,7 +116,7 @@ func TestFieldValidation_String(t *testing.T) {
 func TestFieldValidation_Int(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      datamantype.Int,
+			Type:      "_int",
 			FieldType: DatamanTypeToFieldType(datamantype.Int),
 		},
 		goodValues: []interface{}{
@@ -135,7 +136,7 @@ func TestFieldValidation_Int(t *testing.T) {
 func TestFieldValidation_Bool(t *testing.T) {
 	testCase := &fieldValidationCase{
 		field: &CollectionField{
-			Type:      datamantype.Bool,
+			Type:      "_bool",
 			FieldType: DatamanTypeToFieldType(datamantype.Bool),
 		},
 		goodValues: []interface{}{
