@@ -788,32 +788,8 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 		}
 		whereParts := make([]string, 0)
 		for rawFieldName, fieldFilterRaw := range filterData {
-			fieldNameParts := strings.Split(rawFieldName, ".")
-
-			field, ok := collection.Fields[fieldNameParts[0]]
-			if !ok {
-				return "", fmt.Errorf("Field %s doesn't exist in %s", fieldNameParts[0], collection.Name)
-			}
-
-			fieldName := `"` + fieldNameParts[0] + `"`
-
-			if len(fieldNameParts) > 1 {
-				var ok bool
-				for _, fieldNamePart := range fieldNameParts[1:] {
-					fieldName += "->>'" + fieldNamePart + "'"
-					if field == nil {
-						field, ok = collection.Fields[fieldNameParts[0]]
-						if !ok {
-							return "", fmt.Errorf("Field %s doesn't exist in %s", fieldName, collection.Name)
-						}
-					} else {
-						subField, ok := field.SubFields[fieldNamePart]
-						if !ok {
-							return "", fmt.Errorf("SubField %s doesn't exist in %s: %v", fieldName, collection.Name, field.SubFields)
-						}
-						field = subField
-					}
-				}
+			if !collection.IsValidProjection(rawFieldName) {
+				return "", fmt.Errorf("Invalid field in filter: %s", rawFieldName)
 			}
 
 			var filterType filter.FilterType
@@ -858,48 +834,36 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 				default:
 					comparator = filterTypeToComparator(filterType)
 				}
-				whereParts = append(whereParts, fmt.Sprintf(" %s %s NULL", fieldName, comparator))
+				whereParts = append(whereParts, fmt.Sprintf(" %s %s NULL", collectionFieldToSelector(strings.Split(rawFieldName, ".")), comparator))
 			default:
-				switch field.FieldType.DatamanType {
-				case datamantype.Document:
-					// TODO: recurse and add many
-					for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-						whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'%s'%v'", fieldName, innerName, filterTypeToComparator(filterType), innerValue))
-					}
-				default:
-					switch filterType {
-					case filter.In, filter.NotIn:
-						var items []string
-						switch typedFieldValue := fieldValue.(type) {
-						case []interface{}:
-							items = make([]string, len(typedFieldValue))
-							for i, rawItem := range typedFieldValue {
-								if item, err := serializeValue(field.FieldType.DatamanType, rawItem); err == nil {
-									items[i] = item
-								} else {
-									return "", err
-								}
+				switch filterType {
+				case filter.In, filter.NotIn:
+					var items []string
+					switch typedFieldValue := fieldValue.(type) {
+					case []interface{}:
+						items = make([]string, len(typedFieldValue))
+						for i, rawItem := range typedFieldValue {
+							if item, err := serializeValue(rawItem); err == nil {
+								items[i] = item
+							} else {
+								return "", err
 							}
-						case []string:
-							items = make([]string, len(typedFieldValue))
-							for i, rawItem := range typedFieldValue {
-								if item, err := serializeValue(field.FieldType.DatamanType, rawItem); err == nil {
-									items[i] = item
-								} else {
-									return "", err
-								}
-							}
-						default:
-							return "", fmt.Errorf("Value of %s must be a list", filterType)
 						}
-						whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", fieldName, filterTypeToComparator(filterType), "("+strings.Join(items, ",")+")"))
+					case []string:
+						items = make([]string, len(typedFieldValue))
+						for i, rawItem := range typedFieldValue {
+							items[i] = rawItem
+						}
 					default:
-						if v, err := serializeValue(field.FieldType.DatamanType, fieldValue); err == nil {
-							whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", fieldName, filterTypeToComparator(filterType), v))
-						} else {
-							return "", err
-						}
+						return "", fmt.Errorf("Value of %s must be a list", filterType)
 					}
+					whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", collectionFieldToSelector(strings.Split(rawFieldName, ".")), filterTypeToComparator(filterType), "("+strings.Join(items, ",")+")"))
+				default:
+					whereParts = append(whereParts, fmt.Sprintf(" %s%s'%v'",
+						collectionFieldToSelector(strings.Split(rawFieldName, ".")),
+						filterTypeToComparator(filterType),
+						fieldValue,
+					))
 				}
 			}
 		}
