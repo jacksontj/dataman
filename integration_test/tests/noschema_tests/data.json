@@ -1,0 +1,9 @@
+{
+    "test1": {
+        "data": [
+            {"key": "1", "data_json": {"innervalue": 0, "innervalue2": 0}},
+            {"key": "2", "data_document": {"innervalue": 0, "innervalue2": 0}},
+            {"key": "3", "data_document": {"innervalue": 0, "innervalue2": 0}, "data_json": {"innervalue": 0, "innervalue2": 0}}
+        ]
+    }
+}

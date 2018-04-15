@@ -1,6 +1,8 @@
 {
-  "return": null,
-  "errors": [
-    "invalid projection field doc.a"
-  ]
+  "return": [
+    {}
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
 }

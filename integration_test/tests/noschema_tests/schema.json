@@ -1,0 +1,53 @@
+{
+    "test1": {
+	    "name": "test1",
+	    "collections": {
+		    "data": {
+			    "name": "data",
+			    "fields": {
+				    "key": {
+					    "name": "key",
+					    "not_null": true,
+					    "field_type": "_string"
+				    },
+				    "data_json": {
+					    "field_type": "_json",
+					    "name": "data_json"
+				    },
+				    "data_document": {
+					    "field_type": "_document",
+					    "name": "data_document"
+				    }
+			    },
+			    "keyspaces": [{
+				    "hash_method": "sha256",
+				    "shard_key": [
+					    "key"
+				    ],
+				    "partitions": [{
+					    "start_id": 1,
+					    "shard_method": "mod",
+					    "datastore_vshard_ids": [
+						    9
+					    ]
+				    }]
+			    }],
+			    "indexes": {
+				    "ksuid": {
+				        "fields": ["key"],
+				        "unique": true,
+				        "name": "key",
+				        "primary": true
+				    }
+			    }
+		    }
+	    },
+	    "datastores": [{
+		    "read": true,
+		    "write": true,
+		    "datastore_id": 57,
+		    "required": true
+	    }]
+    }
+}
+

@@ -1,8 +1,8 @@
 {
   "return": [],
   "errors": [
-    "Field notthere doesn't exist in user",
-    "Field notthere doesn't exist in user"
+    "Invalid field in filter: notthere",
+    "Invalid field in filter: notthere"
   ],
   "meta": {
     "datasource": "postgres"

@@ -1,0 +1,11 @@
+{
+    "type": "filter",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {},
+        "fields": [
+            "data.innervalue"
+        ]
+    }
+}

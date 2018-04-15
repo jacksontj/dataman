@@ -4,5 +4,5 @@
       "datasource": "postgres"
     }
   },
-  "errors in thing: [Field notthere doesn't exist in user]"
+  "errors in thing: [Invalid field in filter: notthere]"
 ]
