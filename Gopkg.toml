@@ -47,10 +47,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/rcrowley/go-metrics"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/renstrom/go-jump-consistent-hash"
 
 [[constraint]]
