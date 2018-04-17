@@ -1,6 +1,7 @@
 package pgstorage
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -33,38 +34,44 @@ func TestCollectionFieldToSelector(t *testing.T) {
 
 func TestSelectFields(t *testing.T) {
 	tests := []struct {
-		Input  []string
-		Output string
+		Input   []string
+		Output  string
+		ColAddr ColAddr
 	}{
 		{
 			Input:  nil,
 			Output: "*",
 		},
 		{
-			Input:  []string{"column"},
-			Output: "column",
-		},
-		/* -- disabled for now, as this doesn't quite work yet
-		To be enabled once https://github.com/jacksontj/dataman/issues/29 is fixed
-		{
-			Input:  []string{"data.a"},
-			Output: "data->>'a'",
+			Input:   []string{"column"},
+			Output:  "column",
+			ColAddr: [][]string{{"column"}},
 		},
 		{
-			Input:  []string{"column", "data.a"},
-			Output: "column,data->>'a'",
+			Input:   []string{"data.a"},
+			Output:  "data->>'a'",
+			ColAddr: [][]string{{"data", "a"}},
 		},
 		{
-			Input:  []string{"column", "data.a.b"},
-			Output: "column,data->'a'->>'b'",
+			Input:   []string{"column", "data.a"},
+			Output:  "column,data->>'a'",
+			ColAddr: [][]string{{"column"}, {"data", "a"}},
 		},
-		*/
+		{
+			Input:   []string{"column", "data.a.b"},
+			Output:  "column,data->'a'->>'b'",
+			ColAddr: [][]string{{"column"}, {"data", "a", "b"}},
+		},
 	}
 
 	for i, test := range tests {
-		ret := selectFields(test.Input)
-		if ret != test.Output {
-			t.Fatalf("Mismatch in %d expected=%v actual=%v", i, test.Output, ret)
+		selectOutput, colAddr := selectFields(test.Input)
+		if selectOutput != test.Output {
+			t.Fatalf("Mismatch selectOutput in %d expected=%v actual=%v", i, test.Output, selectOutput)
+		}
+
+		if !reflect.DeepEqual(colAddr, test.ColAddr) {
+			t.Fatalf("Mismatch colAddr in %d expected=%v actual=%v", i, test.ColAddr, colAddr)
 		}
 	}
 }
