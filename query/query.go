@@ -8,14 +8,14 @@ type QueryType string
 
 const (
 	Get    QueryType = "get"
-	Set              = "set"
-	Insert           = "insert"
-	Update           = "update"
-	Delete           = "delete"
-	Filter           = "filter"
+	Set    QueryType = "set"
+	Insert QueryType = "insert"
+	Update QueryType = "update"
+	Delete QueryType = "delete"
+	Filter QueryType = "filter"
 
 	// Stream types: responses that will return a stream of results
-	FilterStream = "filter_stream"
+	FilterStream QueryType = "filter_stream"
 )
 
 // TODO: add meta
