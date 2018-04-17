@@ -14,7 +14,7 @@ import (
 	"github.com/jacksontj/dataman/stream/local"
 )
 
-func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) ([]record.Record, error) {
+func DoQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, args ...interface{}) ([]record.Record, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
@@ -42,10 +42,14 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 
 		// Create our map, and retrieve the value for each column from the pointers slice,
 		// storing it in the map with the name of the column as the key.
-		data := make(map[string]interface{})
+		data := make(record.Record)
 		for i, colName := range cols {
 			val := columnPointers[i].(*interface{})
-			data[colName] = *val
+			if colAddr != nil {
+				data.Set(colAddr[i], *val)
+			} else {
+				data[colName] = *val
+			}
 		}
 		results = append(results, data)
 	}
@@ -53,7 +57,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, args ...interface{})
 	return results, nil
 }
 
-func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interface{}) (stream.ClientStream, error) {
+func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, args ...interface{}) (stream.ClientStream, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
@@ -93,7 +97,11 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, args ...interf
 			data := make(record.Record)
 			for i, colName := range cols {
 				val := columnPointers[i].(*interface{})
-				data[colName] = *val
+				if colAddr != nil {
+					data.Set(colAddr[i], *val)
+				} else {
+					data[colName] = *val
+				}
 			}
 			serverStream.SendResult(data)
 		}
@@ -149,16 +157,24 @@ func collectionFieldToSelector(path []string) string {
 	}
 }
 
-func selectFields(fields []string) string {
+// ColAddr is a list of addresses of columns
+type ColAddr [][]string
+
+// selectFields returns a SELECT string and the corresponding ColAddr
+func selectFields(fields []string) (string, ColAddr) {
+	// TODO: remove?
 	// If no projection, then just return all
 	if fields == nil {
-		return "*"
+		return "*", nil
 	}
 
 	fieldParts := make([]string, len(fields))
+	cAddr := make(ColAddr, len(fields))
 	for i, field := range fields {
-		fieldParts[i] = strings.Split(field, ".")[0]
+		cAddr[i] = strings.Split(field, ".")
+		fieldParts[i] = collectionFieldToSelector(cAddr[i])
+
 	}
 
-	return strings.Join(fieldParts, ",")
+	return strings.Join(fieldParts, ","), cAddr
 }

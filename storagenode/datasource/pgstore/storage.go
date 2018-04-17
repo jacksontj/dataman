@@ -143,14 +143,14 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 			}
 		}
 	}
-
+	selectFields, colAddr := selectFields(args.Fields)
 	selectQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s WHERE %s",
-		selectFields(args.Fields),
+		selectFields,
 		args.ShardInstance,
 		args.Collection,
 		strings.Join(whereParts, " AND "),
 	)
-	result.Return, err = DoQuery(ctx, s.getDB(args.DB), selectQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), selectQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -246,6 +246,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		}
 	}
 
+	selectFields, colAddr := selectFields(args.Fields)
 	upsertQuery := fmt.Sprintf(`INSERT INTO "%s".%s (%s) VALUES (%s) ON CONFLICT (%s) DO UPDATE SET %s RETURNING %s`,
 		args.ShardInstance,
 		args.Collection,
@@ -253,10 +254,10 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		strings.Join(fieldValues, ","),
 		strings.Join(collection.PrimaryIndex.Fields, ","),
 		strings.Join(updatePairs, ","),
-		selectFields(args.Fields),
+		selectFields,
 	)
 
-	result.Return, err = DoQuery(ctx, s.getDB(args.DB), upsertQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), upsertQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -323,14 +324,15 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 		}
 	}
 
+	selectFields, colAddr := selectFields(args.Fields)
 	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES (%s) RETURNING %s",
 		args.ShardInstance,
 		args.Collection,
 		strings.Join(fieldHeaders, ","),
 		strings.Join(fieldValues, ","),
-		selectFields(args.Fields),
+		selectFields,
 	)
-	result.Return, err = DoQuery(ctx, s.getDB(args.DB), insertQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), insertQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -429,15 +431,16 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 		return result
 	}
 
+	selectFields, colAddr := selectFields(args.Fields)
 	updateQuery := fmt.Sprintf("UPDATE \"%s\".%s SET %s WHERE %s RETURNING %s",
 		args.ShardInstance,
 		args.Collection,
 		setClause,
 		whereClause,
-		selectFields(args.Fields),
+		selectFields,
 	)
 
-	result.Return, err = DoQuery(ctx, s.getDB(args.DB), updateQuery)
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), updateQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -512,14 +515,15 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 		whereClause = " AND " + whereClause
 	}
 
+	selectFields, colAddr := selectFields(args.Fields)
 	sqlQuery := fmt.Sprintf("DELETE FROM \"%s\".%s WHERE %s%s RETURNING %s",
 		args.ShardInstance,
 		args.Collection,
 		strings.Join(whereParts, ","),
 		whereClause,
-		selectFields(args.Fields),
+		selectFields,
 	)
-	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery)
+	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -547,7 +551,8 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields(args.Fields), args.ShardInstance, args.Collection)
+	selectFields, colAddr := selectFields(args.Fields)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
@@ -587,7 +592,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
 	}
 
-	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery)
+	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -611,7 +616,8 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
-	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields(args.Fields), args.ShardInstance, args.Collection)
+	selectFields, colAddr := selectFields(args.Fields)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
 	whereClause, err := s.filterToWhere(args)
 	if err != nil {
@@ -651,7 +657,7 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
 	}
 
-	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), sqlQuery)
+	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), sqlQuery, colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
