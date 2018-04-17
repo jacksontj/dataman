@@ -197,8 +197,15 @@ func runIntegrationTest(testDir string, t *testing.T, task *tasknode.TaskNode, r
 			// Check result
 
 			// write out results
+			// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+			buffer := &bytes.Buffer{}
+			encoder := json.NewEncoder(buffer)
+			encoder.SetEscapeHTML(false)
+			encoder.SetIndent("", "  ")
+
 			resultPath := path.Join(fpath, "result.json")
-			resultBytes, _ := json.MarshalIndent(queryResult, "", "  ")
+			encoder.Encode(queryResult)
+			resultBytes := buffer.Bytes()
 			ioutil.WriteFile(resultPath, resultBytes, 0644)
 
 			// compare against baseline if it exists
