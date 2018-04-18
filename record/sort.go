@@ -33,6 +33,14 @@ func Sort(sortKeys []string, reverseList []bool, data []Record) {
 				l = iok
 				return
 			}
+			if iVal == nil || jVal == nil {
+				// if both are nil, continue on
+				if iVal == jVal {
+					continue SORTKEYLOOP
+				}
+				l = iVal != nil
+				return
+			}
 			switch iValTyped := iVal.(type) {
 			case string:
 				jValTyped := jVal.(string)
