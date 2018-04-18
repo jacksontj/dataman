@@ -19,11 +19,20 @@ func Sort(sortKeys []string, reverseList []bool, data []Record) {
 				l = !l
 			}
 		}()
+	SORTKEYLOOP:
 		for sortKeyIdx, keyParts := range splitSortKeys {
 			reverse = reverseList[sortKeyIdx]
 			// TODO: record could (and should) point at the CollectionFields which will tell us types
-			iVal, _ := data[i].Get(keyParts)
-			jVal, _ := data[j].Get(keyParts)
+			iVal, iok := data[i].Get(keyParts)
+			jVal, jok := data[j].Get(keyParts)
+			if !iok || !jok {
+				// if both don't have this field, continue on
+				if iok == jok {
+					continue SORTKEYLOOP
+				}
+				l = iok
+				return
+			}
 			switch iValTyped := iVal.(type) {
 			case string:
 				jValTyped := jVal.(string)
