@@ -85,6 +85,15 @@ func TestSort(t *testing.T) {
 				map[string]interface{}{"a": map[string]interface{}{}},
 			},
 		},
+		{
+			sortKeys: []string{"a.b"},
+			data: []Record{
+				map[string]interface{}{"a": map[string]interface{}{"b": 1}},
+				map[string]interface{}{"a": map[string]interface{}{"b": 2}},
+				map[string]interface{}{"a": map[string]interface{}{"b": nil}},
+				map[string]interface{}{"a": map[string]interface{}{}},
+			},
+		},
 	}
 
 	for i, testCase := range tests {
