@@ -14,7 +14,7 @@ import (
 	"github.com/jacksontj/dataman/stream/local"
 )
 
-func DoQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, args ...interface{}) ([]record.Record, error) {
+func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, args ...interface{}) ([]record.Record, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
@@ -43,10 +43,23 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, arg
 		// Create our map, and retrieve the value for each column from the pointers slice,
 		// storing it in the map with the name of the column as the key.
 		data := make(record.Record)
+		skipN := 0
 		for i, colName := range cols {
 			val := columnPointers[i].(*interface{})
-			if colAddr != nil {
-				data.Set(colAddr[i], *val)
+			if colAddrs != nil {
+				if colAddrs[i].skipN > 0 {
+					if *val == nil {
+						skipN = colAddrs[i].skipN
+					} else {
+						skipN = 0
+					}
+				} else {
+					if skipN <= 0 {
+						data.Set(colAddrs[i].key, *val)
+					} else {
+						skipN--
+					}
+				}
 			} else {
 				data[colName] = *val
 			}
@@ -57,7 +70,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, arg
 	return results, nil
 }
 
-func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAddr, args ...interface{}) (stream.ClientStream, error) {
+func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, args ...interface{}) (stream.ClientStream, error) {
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
@@ -95,10 +108,23 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddr ColAdd
 			// Create our map, and retrieve the value for each column from the pointers slice,
 			// storing it in the map with the name of the column as the key.
 			data := make(record.Record)
+			skipN := 0
 			for i, colName := range cols {
 				val := columnPointers[i].(*interface{})
-				if colAddr != nil {
-					data.Set(colAddr[i], *val)
+				if colAddrs != nil {
+					if colAddrs[i].skipN > 0 {
+						if *val == nil {
+							skipN = colAddrs[i].skipN
+						} else {
+							skipN = 0
+						}
+					} else {
+						if skipN <= 0 {
+							data.Set(colAddrs[i].key, *val)
+						} else {
+							skipN--
+						}
+					}
 				} else {
 					data[colName] = *val
 				}
@@ -158,23 +184,37 @@ func collectionFieldToSelector(path []string) string {
 }
 
 // ColAddr is a list of addresses of columns
-type ColAddr [][]string
+type ColAddr struct {
+	key []string
+	// Number of columns this is a "selector" for. This is used for jsonb columns
+	// so we can differentiate between nil meaning the value in the json is null
+	// and the field not existing in the JSON
+	// is this a `?` selector telling us whether or not to skip the next one
+	skipN int
+}
 
 // selectFields returns a SELECT string and the corresponding ColAddr
-func selectFields(fields []string) (string, ColAddr) {
+func selectFields(fields []string) (string, []ColAddr) {
 	// TODO: remove?
 	// If no projection, then just return all
 	if fields == nil {
 		return "*", nil
 	}
 
-	fieldParts := make([]string, len(fields))
-	cAddr := make(ColAddr, len(fields))
-	for i, field := range fields {
-		cAddr[i] = strings.Split(field, ".")
-		fieldParts[i] = collectionFieldToSelector(cAddr[i])
+	fieldSelectors := make([]string, 0, len(fields))
+	cAddrs := make([]ColAddr, 0, len(fields))
+	for _, field := range fields {
+		fieldParts := strings.Split(field, ".")
+		if len(fieldParts) > 1 {
+			cAddrs = append(cAddrs, ColAddr{skipN: 1})
+			fieldSelectors = append(fieldSelectors, collectionFieldToSelector(fieldParts[:len(fieldParts)-1])+" ? '"+fieldParts[len(fieldParts)-1]+"'")
+		}
+		cAddrs = append(cAddrs, ColAddr{
+			key: fieldParts,
+		})
+		fieldSelectors = append(fieldSelectors, collectionFieldToSelector(fieldParts))
 
 	}
 
-	return strings.Join(fieldParts, ","), cAddr
+	return strings.Join(fieldSelectors, ","), cAddrs
 }
