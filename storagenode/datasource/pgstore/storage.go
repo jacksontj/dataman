@@ -685,9 +685,11 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 			if field, ok := collection.Fields[k]; ok && v != nil {
 				switch field.FieldType.DatamanType {
 				case datamantype.JSON:
-					var tmp interface{}
-					json.Unmarshal(v.([]byte), &tmp)
-					row[k] = tmp
+					if byteSlice, ok := v.([]byte); ok {
+						var tmp interface{}
+						json.Unmarshal(byteSlice, &tmp)
+						row[k] = tmp
+					}
 				case datamantype.Document:
 					var tmp map[string]interface{}
 					json.Unmarshal(v.([]byte), &tmp)
