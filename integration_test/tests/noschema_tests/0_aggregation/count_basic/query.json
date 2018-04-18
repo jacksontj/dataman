@@ -1,0 +1,11 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {},
+        "aggregation_fields": {
+            "key": ["count"]
+        }
+    }
+}

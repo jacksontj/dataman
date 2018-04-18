@@ -1,0 +1,15 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {},
+        "aggregation_fields": {
+            "key": null,
+            "data_document.innervalue": null
+	},
+        "sort": [
+            "key"
+        ]
+    }
+}

@@ -1,6 +1,8 @@
 {
   "return": [
-    {}
+    {
+      "username.count": 1
+    }
   ],
   "meta": {
     "datasource": "postgres"

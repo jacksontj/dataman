@@ -1,0 +1,13 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {
+            "data_document.innervalue": ["=", 0]
+        },
+        "aggregation_fields": {
+            "key": ["count"]
+        }
+    }
+}

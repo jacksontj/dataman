@@ -1,6 +1,8 @@
 {
   "return": [
-    {}
+    {
+      "name.count": 8
+    }
   ],
   "meta": {
     "datasource": "postgres"

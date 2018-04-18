@@ -13,6 +13,10 @@
                     "started": {
                         "field_type": "_datetime",
                         "name": "started"
+                    },
+                    "timeout": {
+                        "field_type": "_int",
+                        "name": "timeout"
                     }
                 },
 			    "keyspaces": [{
