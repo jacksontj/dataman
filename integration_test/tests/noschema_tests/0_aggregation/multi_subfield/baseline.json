@@ -1,0 +1,28 @@
+{
+  "return": [
+    {
+      "data_document": {
+        "innervalue": "0"
+      },
+      "data_json": {
+        "innervalue.count": 1,
+        "innervalue.max": 0,
+        "innervalue.min": 0,
+        "innervalue.sum": 0
+      },
+      "key.count": 2
+    },
+    {
+      "data_json": {
+        "innervalue.count": 1,
+        "innervalue.max": 0,
+        "innervalue.min": 0,
+        "innervalue.sum": 0
+      },
+      "key.count": 1
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

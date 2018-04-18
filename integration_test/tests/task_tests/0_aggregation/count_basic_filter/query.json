@@ -1,0 +1,13 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "task",
+        "filter": {
+            "started": ["=", null]
+        },
+        "aggregation_fields": {
+            "name": ["count"]
+        }
+    }
+}

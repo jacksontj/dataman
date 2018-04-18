@@ -1,0 +1,15 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "task",
+        "filter": {},
+        "aggregation_fields": {
+            "name": null,
+            "started": null
+	},
+        "sort": [
+            "notafield"
+        ]
+    }
+}

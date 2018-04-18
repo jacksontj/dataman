@@ -1,0 +1,16 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "message",
+        "filter": {},
+        "aggregation_fields": {
+            "data.created_by": null,
+            "ksuid": ["count"],
+            "data.created": ["max", "min", "count", "sum"]
+        },
+        "sort": [
+            "data.created_by"
+        ]
+    }
+}

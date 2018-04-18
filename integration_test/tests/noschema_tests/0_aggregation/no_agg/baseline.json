@@ -1,0 +1,22 @@
+{
+  "return": [
+    {
+      "key": "1"
+    },
+    {
+      "data_document": {
+        "innervalue": "0"
+      },
+      "key": "2"
+    },
+    {
+      "data_document": {
+        "innervalue": "0"
+      },
+      "key": "3"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

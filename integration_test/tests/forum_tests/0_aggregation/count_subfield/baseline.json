@@ -1,0 +1,25 @@
+{
+  "return": [
+    {
+      "data": {
+        "created_by": "user1"
+      },
+      "ksuid.count": 2
+    },
+    {
+      "data": {
+        "created_by": "user2"
+      },
+      "ksuid.count": 2
+    },
+    {
+      "data": {
+        "created_by": "user3"
+      },
+      "ksuid.count": 1
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

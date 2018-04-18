@@ -1,0 +1,16 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {},
+        "aggregation_fields": {
+            "data_document.innervalue": null,
+            "key": ["count"],
+            "data_json.innervalue": ["max", "min", "count", "sum"]
+        },
+        "sort": [
+            "data_document.innervalue"
+        ]
+    }
+}

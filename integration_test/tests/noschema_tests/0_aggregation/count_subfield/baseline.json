@@ -1,0 +1,16 @@
+{
+  "return": [
+    {
+      "data_document": {
+        "innervalue": "0"
+      },
+      "key.count": 2
+    },
+    {
+      "key.count": 1
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

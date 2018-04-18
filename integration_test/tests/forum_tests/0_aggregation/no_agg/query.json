@@ -1,0 +1,14 @@
+{
+    "type": "aggregate",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "filter": {},
+        "aggregation_fields": {
+            "username": null        
+        },
+        "sort": [
+            "username"
+        ]
+    }
+}

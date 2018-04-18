@@ -1,0 +1,37 @@
+{
+  "return": [
+    {
+      "data": {
+        "created.count": 2,
+        "created.max": 2,
+        "created.min": 1,
+        "created.sum": 3,
+        "created_by": "user1"
+      },
+      "ksuid.count": 2
+    },
+    {
+      "data": {
+        "created.count": 2,
+        "created.max": 4,
+        "created.min": 3,
+        "created.sum": 7,
+        "created_by": "user2"
+      },
+      "ksuid.count": 2
+    },
+    {
+      "data": {
+        "created.count": 1,
+        "created.max": 5,
+        "created.min": 5,
+        "created.sum": 5,
+        "created_by": "user3"
+      },
+      "ksuid.count": 1
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}
