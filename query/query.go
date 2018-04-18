@@ -1,18 +1,22 @@
 package query
 
-import "github.com/jacksontj/dataman/record"
+import (
+	"github.com/jacksontj/dataman/record"
+	"github.com/jacksontj/dataman/storagenode/metadata/aggregation"
+)
 
 // TODO: method to know if it is stream or not
 // QueryType is the list of all query functions dataman supports
 type QueryType string
 
 const (
-	Get    QueryType = "get"
-	Set    QueryType = "set"
-	Insert QueryType = "insert"
-	Update QueryType = "update"
-	Delete QueryType = "delete"
-	Filter QueryType = "filter"
+	Get       QueryType = "get"
+	Set       QueryType = "set"
+	Insert    QueryType = "insert"
+	Update    QueryType = "update"
+	Delete    QueryType = "delete"
+	Filter    QueryType = "filter"
+	Aggregate QueryType = "aggregate"
 
 	// Stream types: responses that will return a stream of results
 	FilterStream QueryType = "filter_stream"
@@ -28,6 +32,9 @@ type QueryArgs struct {
 
 	// Fields defines a list of fields for Projections
 	Fields []string `json:"fields"`
+
+	// TODO: rename?
+	AggregationFields map[string][]aggregation.AggregationType `json:"aggregation_fields"`
 
 	// Sort + SortReverse control the ordering of results
 	Sort []string `json:"sort"`

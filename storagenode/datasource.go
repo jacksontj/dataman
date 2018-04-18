@@ -356,6 +356,8 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 				return result
 			}
 		}
+	case query.Aggregate:
+		result = s.Store.Aggregate(ctx, q.Args)
 
 	default:
 		return &query.Result{Errors: []string{"Unsupported query type " + string(q.Type)}}

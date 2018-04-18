@@ -254,6 +254,15 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 		}
 	}
 
+	if q.Args.Sort != nil {
+		// Check that the fields exist (or at least are subfields of things that exist)
+		for _, field := range q.Args.Sort {
+			if !collection.IsValidProjection(field) {
+				return &query.Result{Errors: []string{"invalid sort field " + field}}
+			}
+		}
+	}
+
 	var result *query.Result
 
 	// Switch between read and write operations
@@ -265,6 +274,9 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 	// Read operations
 	case query.Get, query.Filter:
 		result = s.handleRead(ctx, meta, q)
+
+	case query.Aggregate:
+		result = s.handleAggregate(ctx, meta, q)
 
 		// All other operations should error
 	default:
@@ -931,4 +943,164 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 	go query.MergeResultStreams(ctx, q.Args, collection.PrimaryIndex.Fields, vshardResults, serverStream)
 
 	return result
+}
+
+// handleAggregate deals with aggregate queries. This is separate as the records returned don't necessarily
+// include pkeys etc.
+func (s *RouterNode) handleAggregate(ctx context.Context, meta *metadata.Meta, q *query.Query) *query.Result {
+	database, ok := meta.Databases[q.Args.DB]
+	if !ok {
+		return &query.Result{Errors: []string{"Unknown db " + q.Args.DB}}
+	}
+	collection, ok := database.Collections[q.Args.Collection]
+	if !ok {
+		return &query.Result{Errors: []string{"Unknown collection " + q.Args.Collection}}
+	}
+
+	// Once we have the metadata all found we need to do the following:
+	//      - Authentication/authorization
+	//      - Cache
+	//      - Sharding
+	//      - Replicas
+
+	//TODO:Authentication/authorization
+	//TODO:Cache (configurable)
+
+	// Sharding consists of:
+	//		- select datasource(s)
+	//		- select keyspace(s) -- for now only one
+	//		- select keyspace_partition
+	//		- select vshard (collection or partition)
+	//			- hash "shard-key"
+	//			- select vshard
+	//		- send requests (involves mapping vshard -> shard)
+	//			-- TODO: we could combine the requests into a muxed one
+
+	// TODO: support multiple datastores
+	databaseDatastore := database.DatastoreSet.Read[0]
+	// TODO: support multiple keyspaces
+	keyspace := collection.Keyspaces[0]
+
+	// TODO: better name
+	var keyspacePartitionAddr *uint64
+
+	// Depending on query type we might be able to be more specific about which vshards we go to
+	switch q.Type {
+	case query.Aggregate:
+		if q.Args.Filter == nil {
+			return &query.Result{Errors: []string{fmt.Sprintf("Filter()s must include filter map")}}
+		}
+
+		hasShardKey := true
+
+		filterMap, ok := q.Args.Filter.(map[string]interface{})
+		if !ok {
+			hasShardKey = false
+		}
+
+		var shardKeys []interface{}
+		if hasShardKey {
+			shardKeys = make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				filterValueRaw, ok := record.Record(filterMap).Get(shardKey)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparatorRaw, ok := filterValueRaw.([]interface{})
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterComparator, ok := filterComparatorRaw[0].(string)
+				if !ok {
+					hasShardKey = false
+					break
+				}
+				filterType, err := filter.StringToFilterType(filterComparator)
+				if err != nil {
+					hasShardKey = false
+					break
+				}
+				if filterType == filter.Equal {
+					shardKeys[i] = filterComparatorRaw[1]
+				} else {
+					hasShardKey = false
+					break
+				}
+			}
+		}
+		// if there is only one partition and we have our shard key, we can be more specific
+		if hasShardKey {
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
+			if err != nil {
+				// TODO: wrap the error
+				return &query.Result{Errors: []string{err.Error()}}
+			}
+			keyspacePartitionAddr = &hashedShardKey
+		}
+	default:
+		return &query.Result{Errors: []string{"Unknown aggregation query type " + string(q.Type)}}
+
+	}
+
+	var vshards []*metadata.DatastoreVShardInstance
+	if keyspacePartitionAddr == nil {
+		for _, partition := range keyspace.Partitions {
+			vshards = append(vshards, partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards...)
+		}
+	} else {
+		partition := keyspace.GetKeyspacePartition(*keyspacePartitionAddr)
+
+		vshardNum := partition.ShardFunc(*keyspacePartitionAddr, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+		vshards = []*metadata.DatastoreVShardInstance{partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]}
+	}
+
+	// Query all of the vshards
+	logrus.Debugf("Query %s %v", q.Type, q.Args)
+
+	// TODO: switch to channels or something (since we can get them in parallel
+	vshardResults := make(chan *query.Result, len(vshards))
+
+	for _, vshard := range vshards {
+		// TODO: replicas -- add args for slave etc.
+		// TODO: this needs to actually check the datasource_instance_shard_instance (just because it is in the datastore shard, doesn't mean
+		// it has the data -- scaling up/down etc.)
+		datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+		logrus.Debugf("\tGoing to %v", datasourceInstance)
+
+		datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+		if !ok {
+			vshardResults <- &query.Result{Errors: []string{"1 Unknown datasourceInstanceShardInstance"}}
+		} else {
+			go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance) {
+				newQ := *q
+				newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+
+				// If there is an offset defined, we don't know how that will work
+				// out with the various sharding configs etc. So to make this work
+				// we simply remove the offset from the downstream query and increase
+				// the limit appropriately
+				if newQ.Args.Offset > 0 {
+					if newQ.Args.Limit > 0 {
+						newQ.Args.Limit += newQ.Args.Offset
+					}
+					newQ.Args.Offset = 0
+				}
+				if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
+					vshardResults <- result
+				} else {
+					vshardResults <- &query.Result{Errors: []string{err.Error()}}
+				}
+			}(datasourceInstance, datasourceInstanceShardInstance)
+		}
+	}
+
+	// TODO: handle merge of Aggregate queries differently for those we'll need to actually look at the results and then
+	// do aggregation on-top of the results we got back from the shards. We'll actually need to be more careful, as we'll
+	// need to (depending on aggregation functions defined) change the query to get something we can farm out. The example
+	// being we can't just return COUNT(x) we need to sum them, in addiiton we can't simply re-apply the aggregation as
+	// an avg of averages isn't the same as an average of the initial set
+	return query.MergeAggregateResult(q.Args, len(vshards), vshardResults)
 }

@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -36,43 +37,58 @@ func TestSelectFields(t *testing.T) {
 	tests := []struct {
 		Input   []string
 		Output  string
-		ColAddr ColAddr
+		ColAddr []ColAddr
 	}{
 		{
 			Input:  nil,
 			Output: "*",
 		},
 		{
-			Input:   []string{"column"},
-			Output:  "column",
-			ColAddr: [][]string{{"column"}},
+			Input:  []string{"column"},
+			Output: "column",
+			ColAddr: []ColAddr{
+				ColAddr{key: []string{"column"}},
+			},
 		},
 		{
-			Input:   []string{"data.a"},
-			Output:  "data->>'a'",
-			ColAddr: [][]string{{"data", "a"}},
+			Input:  []string{"data.a"},
+			Output: "data ? 'a',data->>'a'",
+			ColAddr: []ColAddr{
+				ColAddr{skipN: 1},
+				ColAddr{key: []string{"data", "a"}},
+			},
 		},
 		{
-			Input:   []string{"column", "data.a"},
-			Output:  "column,data->>'a'",
-			ColAddr: [][]string{{"column"}, {"data", "a"}},
+			Input:  []string{"column", "data.a"},
+			Output: "column,data ? 'a',data->>'a'",
+			ColAddr: []ColAddr{
+				ColAddr{key: []string{"column"}},
+				ColAddr{skipN: 1},
+				ColAddr{key: []string{"data", "a"}},
+			},
 		},
 		{
-			Input:   []string{"column", "data.a.b"},
-			Output:  "column,data->'a'->>'b'",
-			ColAddr: [][]string{{"column"}, {"data", "a", "b"}},
+			Input:  []string{"column", "data.a.b"},
+			Output: "column,data->>'a' ? 'b',data->'a'->>'b'",
+			ColAddr: []ColAddr{
+				ColAddr{key: []string{"column"}},
+				ColAddr{skipN: 1},
+				ColAddr{key: []string{"data", "a", "b"}},
+			},
 		},
 	}
 
 	for i, test := range tests {
-		selectOutput, colAddr := selectFields(test.Input)
-		if selectOutput != test.Output {
-			t.Fatalf("Mismatch selectOutput in %d expected=%v actual=%v", i, test.Output, selectOutput)
-		}
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			selectOutput, colAddr := selectFields(test.Input)
+			if selectOutput != test.Output {
+				t.Fatalf("Mismatch selectOutput in %d expected=%v actual=%v", i, test.Output, selectOutput)
+			}
 
-		if !reflect.DeepEqual(colAddr, test.ColAddr) {
-			t.Fatalf("Mismatch colAddr in %d expected=%v actual=%v", i, test.ColAddr, colAddr)
-		}
+			if !reflect.DeepEqual(colAddr, test.ColAddr) {
+				t.Fatalf("Mismatch colAddr in %d expected=%v actual=%v", i, test.ColAddr, colAddr)
+			}
+		})
 	}
 }
 

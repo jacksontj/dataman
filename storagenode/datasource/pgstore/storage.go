@@ -22,6 +22,7 @@ import (
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/query"
 	"github.com/jacksontj/dataman/storagenode/metadata"
+	"github.com/jacksontj/dataman/storagenode/metadata/aggregation"
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
 	"github.com/jacksontj/dataman/storagenode/metadata/recordop"
 	_ "github.com/lib/pq"
@@ -604,6 +605,112 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	return result
 }
 
+func (s *Storage) Aggregate(ctx context.Context, args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	sFields := make([]string, 0, len(args.AggregationFields))
+	colAddrs := make([]ColAddr, 0, len(args.AggregationFields))
+	groupByFields := make([]string, 0)
+
+	for fieldName, aggregationList := range args.AggregationFields {
+		fieldParts := strings.Split(fieldName, ".")
+		if aggregationList == nil || len(aggregationList) == 0 {
+			if len(fieldParts) > 1 {
+				colAddrs = append(colAddrs, ColAddr{skipN: 1})
+				checker := collectionFieldToSelector(fieldParts[:len(fieldParts)-1]) + " ? '" + fieldParts[len(fieldParts)-1] + "'"
+				sFields = append(sFields, checker)
+				groupByFields = append(groupByFields, checker)
+			}
+			groupByFields = append(groupByFields, collectionFieldToSelector(fieldParts))
+			sFields = append(sFields, collectionFieldToSelector(fieldParts))
+			colAddrs = append(colAddrs, ColAddr{key: fieldParts})
+		} else {
+			lastFieldPart := fieldParts[len(fieldParts)-1]
+			for _, aggregationType := range aggregationList {
+				fieldParts[len(fieldParts)-1] = lastFieldPart
+				// TODO: util function to map aggregationType to SQL strings
+				switch aggregationType {
+				case aggregation.Min, aggregation.Max, aggregation.Sum:
+					sFields = append(sFields, fmt.Sprintf("%s((%s)::integer)", aggregationType, collectionFieldToSelector(fieldParts)))
+				default:
+					sFields = append(sFields, fmt.Sprintf("%s(%s)", aggregationType, collectionFieldToSelector(fieldParts)))
+				}
+				// TODO: avoid making an entire copy? If we don't then the colAddrs end up being
+				// the same for all aggregationTypes in the aggregationList
+				newFieldParts := make([]string, len(fieldParts))
+				for i, fieldPart := range fieldParts {
+					newFieldParts[i] = fieldPart
+				}
+				newFieldParts[len(fieldParts)-1] = lastFieldPart + "." + string(aggregationType)
+				colAddrs = append(colAddrs, ColAddr{key: newFieldParts})
+			}
+		}
+
+	}
+	// TODO: actual conversion
+	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
+	// don't support it (new in postgres 7.3)
+	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", strings.Join(sFields, ","), args.ShardInstance, args.Collection)
+	whereClause, err := s.filterToWhere(args)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+	if whereClause != "" {
+		sqlQuery += " WHERE " + whereClause
+	}
+
+	if len(groupByFields) > 0 {
+		sqlQuery += fmt.Sprintf(" GROUP BY (%s)", strings.Join(groupByFields, ","))
+	}
+
+	if args.Sort != nil && len(args.Sort) > 0 {
+		if args.Sort != nil {
+			if args.SortReverse == nil {
+				args.SortReverse = make([]bool, len(args.Sort))
+				// TODO: better, seems heavy
+				for i := range args.SortReverse {
+					args.SortReverse[i] = false
+				}
+			}
+		}
+
+		sqlQuery += " ORDER BY "
+		for i, sortKey := range args.Sort {
+			k := collectionFieldToSelector(strings.Split(sortKey, "."))
+			if args.SortReverse[i] {
+				sqlQuery += k + ` DESC`
+			} else {
+				sqlQuery += k + ` ASC`
+			}
+		}
+	}
+
+	if args.Limit > 0 {
+		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+	}
+
+	if args.Offset > 0 {
+		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
+	}
+
+	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery, colAddrs)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+	result.Return = rows
+	s.normalizeResult(args, result)
+
+	return result
+}
+
 // TODO: combine filter & filterStream query generation (they are literally a copy/paste up until the actual query execution)
 func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query.ResultStream {
 	result := &query.ResultStream{
@@ -691,9 +798,11 @@ func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
 						row[k] = tmp
 					}
 				case datamantype.Document:
-					var tmp map[string]interface{}
-					json.Unmarshal(v.([]byte), &tmp)
-					row[k] = tmp
+					if byteSlice, ok := v.([]byte); ok {
+						var tmp map[string]interface{}
+						json.Unmarshal(byteSlice, &tmp)
+						row[k] = tmp
+					}
 				case datamantype.DateTime:
 					row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
 				default:

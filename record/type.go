@@ -35,8 +35,13 @@ func (r Record) Set(nameParts []string, newValue interface{}) bool {
 	}
 
 	var val interface{}
+	var ok bool
 	if len(nameParts) > 1 {
-		val = r[nameParts[0]]
+		val, ok = r[nameParts[0]]
+		if !ok {
+			val = make(map[string]interface{})
+			r[nameParts[0]] = val
+		}
 		for _, namePart := range nameParts[1 : len(nameParts)-1] {
 			switch valTyped := val.(type) {
 			case map[string]interface{}:

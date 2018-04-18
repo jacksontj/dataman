@@ -112,11 +112,17 @@ func TestSet(t *testing.T) {
 					v: "c",
 					e: true,
 				},
-				// set a value sub of a string (not valid)
+				// set a value sub of a string
 				{
 					k: []string{"a", "b"},
 					v: nil,
 					e: false,
+				},
+				// set a value sub of a string
+				{
+					k: []string{"b", "b"},
+					v: nil,
+					e: true,
 				},
 				// No key given
 				{
