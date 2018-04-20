@@ -1,0 +1,11 @@
+{
+	"type": "filter",
+	"args": {
+		"db": "test1",
+		"collection": "user",
+		"filter": {},
+		"offset": 1,
+		"limit": 1,
+                "sort": ["username"]
+	}
+}
