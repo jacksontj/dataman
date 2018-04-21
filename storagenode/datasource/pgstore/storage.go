@@ -21,6 +21,7 @@ import (
 
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/query"
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/storagenode/metadata"
 	"github.com/jacksontj/dataman/storagenode/metadata/aggregation"
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
@@ -156,7 +157,7 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 		result.Errors = []string{err.Error()}
 		return result
 	}
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	// TODO: error if there is more than one result
 	return result
@@ -263,7 +264,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		result.Errors = []string{err.Error()}
 		return result
 	}
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	// TODO: add metadata back to the result
 	return result
@@ -338,7 +339,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 		result.Errors = []string{err.Error()}
 		return result
 	}
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	// TODO: add metadata back to the result
 	return result
@@ -446,7 +447,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 		result.Errors = []string{err.Error()}
 		return result
 	}
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	// TODO: add metadata back to the result
 	return result
@@ -536,7 +537,7 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 	}
 
 	result.Return = rows
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 	return result
 
 }
@@ -548,6 +549,13 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		Meta: map[string]interface{}{
 			"datasource": "postgres",
 		},
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
 	}
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
@@ -600,7 +608,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	}
 
 	result.Return = rows
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	return result
 }
@@ -612,6 +620,13 @@ func (s *Storage) Aggregate(ctx context.Context, args query.QueryArgs) *query.Re
 		Meta: map[string]interface{}{
 			"datasource": "postgres",
 		},
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
 	}
 
 	sFields := make([]string, 0, len(args.AggregationFields))
@@ -706,7 +721,7 @@ func (s *Storage) Aggregate(ctx context.Context, args query.QueryArgs) *query.Re
 		return result
 	}
 	result.Return = rows
-	s.normalizeResult(args, result)
+	s.normalizeResult(collection, result)
 
 	return result
 }
@@ -719,6 +734,13 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 		Meta: map[string]interface{}{
 			"datasource": "postgres",
 		},
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
 	}
 
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
@@ -772,45 +794,47 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 
 	result.Stream = streamChan
 
-	// TODO: do this somehow in the stream
-	//s.normalizeResult(args, result)
+	// Add transformation to normalize the various JSON fields
+	result.AddTransformation(func(r *record.Record) error {
+		fmt.Println("before", *r)
+		*r = s.normalizeRecord(collection, *r)
+		fmt.Println("after", *r)
+		return nil
+	})
 
 	return result
 }
 
-func (s *Storage) normalizeResult(args query.QueryArgs, result *query.Result) {
-
-	// TODO: better -- we need to convert "documents" into actual structure (instead of just json strings)
-	meta := s.GetMeta()
-	collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
-	if err != nil {
-		result.Errors = []string{err.Error()}
-		return
-	}
+func (s *Storage) normalizeResult(collection *metadata.Collection, result *query.Result) {
 	for _, row := range result.Return {
-		for k, v := range row {
-			if field, ok := collection.Fields[k]; ok && v != nil {
-				switch field.FieldType.DatamanType {
-				case datamantype.JSON:
-					if byteSlice, ok := v.([]byte); ok {
-						var tmp interface{}
-						json.Unmarshal(byteSlice, &tmp)
-						row[k] = tmp
-					}
-				case datamantype.Document:
-					if byteSlice, ok := v.([]byte); ok {
-						var tmp map[string]interface{}
-						json.Unmarshal(byteSlice, &tmp)
-						row[k] = tmp
-					}
-				case datamantype.DateTime:
-					row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
-				default:
-					continue
+		s.normalizeRecord(collection, row)
+	}
+}
+
+func (s *Storage) normalizeRecord(collection *metadata.Collection, row record.Record) record.Record {
+	for k, v := range row {
+		if field, ok := collection.Fields[k]; ok && v != nil {
+			switch field.FieldType.DatamanType {
+			case datamantype.JSON:
+				if byteSlice, ok := v.([]byte); ok {
+					var tmp interface{}
+					json.Unmarshal(byteSlice, &tmp)
+					row[k] = tmp
 				}
+			case datamantype.Document:
+				if byteSlice, ok := v.([]byte); ok {
+					var tmp map[string]interface{}
+					json.Unmarshal(byteSlice, &tmp)
+					row[k] = tmp
+				}
+			case datamantype.DateTime:
+				row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
+			default:
+				continue
 			}
 		}
 	}
+	return row
 }
 
 func filterTypeToComparator(f filter.FilterType) string {
