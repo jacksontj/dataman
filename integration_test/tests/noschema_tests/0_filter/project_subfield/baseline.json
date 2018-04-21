@@ -1,0 +1,12 @@
+{
+  "return": [
+    {
+      "data_document": {
+        "innervalue": "0"
+      }
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

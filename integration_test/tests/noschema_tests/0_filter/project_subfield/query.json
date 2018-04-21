@@ -1,0 +1,16 @@
+{
+    "type": "filter",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {
+            "key": ["=", 2]
+        },
+        "fields": [
+            "data_document.innervalue",
+            "data_document.nonexistantthing",
+            "data_document.nonexistantthing.nolayer",
+            "data_json.notthere"
+        ]
+    }
+}
