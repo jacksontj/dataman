@@ -1,0 +1,13 @@
+[
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
+  {
+    "data_document": {
+      "innervalue": "0"
+    }
+  },
+  "EOF"
+]
