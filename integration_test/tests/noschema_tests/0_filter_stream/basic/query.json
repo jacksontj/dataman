@@ -1,0 +1,10 @@
+{
+    "type": "filter_stream",
+    "args": {
+        "db": "test1",
+        "collection": "data",
+        "filter": {
+            "data_json.innervalue": ["=", 0]
+        }
+    }
+}
