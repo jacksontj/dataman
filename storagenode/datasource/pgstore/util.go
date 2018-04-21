@@ -48,7 +48,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, 
 			val := columnPointers[i].(*interface{})
 			if colAddrs != nil {
 				if colAddrs[i].skipN > 0 {
-					if *val == nil {
+					if *val != true {
 						skipN = colAddrs[i].skipN
 					} else {
 						skipN = 0
@@ -113,7 +113,9 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 				val := columnPointers[i].(*interface{})
 				if colAddrs != nil {
 					if colAddrs[i].skipN > 0 {
-						if *val == nil {
+						// if we didn't find the key in the selector, then we skipN
+						// this accounts for nil and false return types
+						if *val != true {
 							skipN = colAddrs[i].skipN
 						} else {
 							skipN = 0
@@ -183,6 +185,22 @@ func collectionFieldToSelector(path []string) string {
 	}
 }
 
+// TODO: remove? or consolidate?
+// When we want to do existence checks ( top->'level'->'key' ? 'subkey' we can't use the
+// ->> selector since it will return "text" (seemingly the actual value) whereas -> returns
+// a map-like object with which we can do selection and ? checks on.
+func collectionFieldParentToSelector(path []string) string {
+	switch len(path) {
+	case 1:
+		return path[0]
+	case 2:
+		return path[0] + "->'" + path[1] + "'"
+	default:
+		fieldChain := path[1:]
+		return path[0] + "->'" + strings.Join(fieldChain[:len(fieldChain)-1], "'->'") + "'->'" + path[len(path)-1] + "'"
+	}
+}
+
 // ColAddr is a list of addresses of columns
 type ColAddr struct {
 	key []string
@@ -207,7 +225,7 @@ func selectFields(fields []string) (string, []ColAddr) {
 		fieldParts := strings.Split(field, ".")
 		if len(fieldParts) > 1 {
 			cAddrs = append(cAddrs, ColAddr{skipN: 1})
-			fieldSelectors = append(fieldSelectors, collectionFieldToSelector(fieldParts[:len(fieldParts)-1])+" ? '"+fieldParts[len(fieldParts)-1]+"'")
+			fieldSelectors = append(fieldSelectors, collectionFieldParentToSelector(fieldParts[:len(fieldParts)-1])+" ? '"+fieldParts[len(fieldParts)-1]+"'")
 		}
 		cAddrs = append(cAddrs, ColAddr{
 			key: fieldParts,
