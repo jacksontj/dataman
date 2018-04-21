@@ -148,6 +148,12 @@ func TestSet(t *testing.T) {
 					v: map[string]interface{}{},
 					e: true,
 				},
+				// set a map in a new keyspace
+				{
+					k: []string{"new", "top", "thing", "for", "stuff"},
+					v: 1,
+					e: true,
+				},
 			},
 		},
 	}

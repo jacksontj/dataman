@@ -45,9 +45,17 @@ func (r Record) Set(nameParts []string, newValue interface{}) bool {
 		for _, namePart := range nameParts[1 : len(nameParts)-1] {
 			switch valTyped := val.(type) {
 			case map[string]interface{}:
-				val = valTyped[namePart]
+				val, ok = valTyped[namePart]
+				if !ok {
+					val = make(map[string]interface{})
+					valTyped[namePart] = val
+				}
 			case Record:
-				val = valTyped[namePart]
+				val, ok = valTyped[namePart]
+				if !ok {
+					val = make(map[string]interface{})
+					valTyped[namePart] = val
+				}
 			default:
 				return false
 			}
