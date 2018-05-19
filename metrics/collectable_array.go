@@ -74,13 +74,13 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 					name += "_" + point.Metric.Name
 				}
 				*point = MetricPoint{
-					Metric{
+					Metric: Metric{
 						Name: name,
 						Labels: MergeLabelsDirect(
 							MergeLabels(m.Metric.Labels, m.LabelKeys, labelValues.([]string)),
 							point.Metric.Labels),
 					},
-					point.Value,
+					Value: point.Value,
 				}
 				return true, nil
 			},

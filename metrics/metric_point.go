@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 // Represent a snapshot of a metric at a specific point in time
@@ -10,6 +11,8 @@ type MetricPoint struct {
 	Metric
 	// Actual value
 	Value float64
+	// Time associated with this value (if not defined "now" is intended)
+	Time time.Time
 }
 
 func (m *MetricPoint) String() string {
