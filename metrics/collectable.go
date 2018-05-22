@@ -31,6 +31,7 @@ func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) e
 				name += "_" + point.Metric.Name
 			}
 			point.Name = name
+			point.Labels = MergeLabelsDirect(s.Metric.Labels, point.Labels)
 			return true, nil
 		},
 	}
