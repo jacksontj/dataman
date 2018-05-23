@@ -23,7 +23,7 @@ import (
 )
 
 var opts struct {
-	Databases []string `long:"databases"`
+	Databases []string `long:"databases" required:"true"`
 }
 
 func main() {
