@@ -16,7 +16,11 @@ type MetricPoint struct {
 }
 
 func (m *MetricPoint) String() string {
-	return fmt.Sprintf("%s %v", m.Metric.String(), m.Value)
+	if m.Time.IsZero() {
+		return fmt.Sprintf("%s %v", m.Metric.String(), m.Value)
+	} else {
+		return fmt.Sprintf("%s %v %d", m.Metric.String(), m.Value, m.Time.UnixNano()/int64(time.Millisecond))
+	}
 }
 
 func CollectPoints(ctx context.Context, c Collectable) ([]MetricPoint, error) {
