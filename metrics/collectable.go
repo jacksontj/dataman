@@ -11,10 +11,12 @@ type SingleCollectable struct {
 func (s *SingleCollectable) Describe(ctx context.Context, c chan<- MetricDesc) error {
 	transformations := []MetricDescTransformation{
 		func(d *MetricDesc) (bool, error) {
-			if d.Name != "" {
-				d.Name = s.Metric.Name + "_" + d.Name
-			} else {
-				d.Name = s.Metric.Name
+			if s.Metric.Name != "" {
+				if d.Name != "" {
+					d.Name = s.Metric.Name + "_" + d.Name
+				} else {
+					d.Name = s.Metric.Name
+				}
 			}
 			return true, nil
 		},
@@ -25,12 +27,13 @@ func (s *SingleCollectable) Describe(ctx context.Context, c chan<- MetricDesc) e
 func (s *SingleCollectable) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	transformations := []MetricPointTransformation{
 		func(point *MetricPoint) (bool, error) {
-
-			name := s.Metric.Name
-			if point.Metric.Name != "" {
-				name += "_" + point.Metric.Name
+			if s.Metric.Name != "" {
+				if point.Metric.Name != "" {
+					point.Name = s.Metric.Name + "_" + point.Name
+				} else {
+					point.Name = s.Metric.Name
+				}
 			}
-			point.Name = name
 			point.Labels = MergeLabelsDirect(s.Metric.Labels, point.Labels)
 			return true, nil
 		},
