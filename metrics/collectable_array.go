@@ -97,12 +97,7 @@ func (m *CollectableArray) Collect(ctx context.Context, c chan<- MetricPoint) er
 	return nil
 }
 
-// Access it by the slice of values
-func (m *CollectableArray) WithValues(vals ...string) Collectable {
-	if len(vals) != len(m.LabelKeys) {
-		panic("number of label values must match LabelKeys")
-	}
-
+func (m *CollectableArray) hashLabelValues(vals []string) uint64 {
 	h := sha1.New()
 
 	for _, v := range vals {
@@ -111,7 +106,27 @@ func (m *CollectableArray) WithValues(vals ...string) Collectable {
 	}
 
 	// TODO: use hashing from sharding package?
-	s := binary.LittleEndian.Uint64(h.Sum(nil)[:])
+	return binary.LittleEndian.Uint64(h.Sum(nil)[:])
+}
+
+func (m *CollectableArray) Remove(vals ...string) {
+	if len(vals) != len(m.LabelKeys) {
+		return
+	}
+
+	s := m.hashLabelValues(vals)
+
+	m.m.Delete(s)
+	m.mL.Delete(s)
+}
+
+// Access it by the slice of values
+func (m *CollectableArray) WithValues(vals ...string) Collectable {
+	if len(vals) != len(m.LabelKeys) {
+		panic("number of label values must match LabelKeys")
+	}
+
+	s := m.hashLabelValues(vals)
 
 	collectable, ok := m.m.Load(s)
 	if ok {
