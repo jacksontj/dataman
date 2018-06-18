@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -17,7 +16,6 @@ import (
 	"github.com/jacksontj/dataman/storagenode/datasource"
 	"github.com/jacksontj/dataman/storagenode/join"
 	"github.com/jacksontj/dataman/storagenode/metadata"
-	"github.com/jacksontj/dataman/storagenode/metadata/filter"
 )
 
 // TODO: remove-- and just have as config options
@@ -272,40 +270,9 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 				subRecordList = srecordMap
 			}
 		}
-		// We need to do some validation here. Since this is an upsert -- the given
-		// item could be
-		//		1. valid as an insert or an update
-		//		3. valid as only an update
-		//		4. valid as NOTHING
-		// Before we pass down to the lower layers we need to determine what is true-- if this is 3 we need to error,
-		// if it is 2 we need to convert the underlying call to the appropriate function-- otherwise we'll pass it
-		// down to the plugin as a regular set (assuming it is valid)
-
-		// To be a valid Set() it must be okay as either an insert or an update
+		// To be a valid Set() the record must be valid for an insert (since thats the more restrictive validation)
 		if insertValidationResultMap := collection.ValidateRecordInsert(q.Args.Record); !insertValidationResultMap.IsValid() {
-			// If it isn't valid as an upsert, we can see if it is valid as an update only
-			if updateValidationResultMap := collection.ValidateRecordUpdate(q.Args.Record); updateValidationResultMap.IsValid() {
-				// If it is valid as an update, then we need to convert the set request to an update
-
-				q.Type = query.Update
-
-				filterRecord := make(map[string]interface{})
-				for _, fieldName := range collection.PrimaryIndex.Fields {
-					fieldValue, _ := q.Args.Record.Get(strings.Split(fieldName, "."))
-					filterRecord[fieldName] = []interface{}{filter.Equal, fieldValue}
-				}
-				q.Args.Filter = filterRecord
-				// TODO: remove pkey from "record"?
-
-				result = s.Store.Update(ctx, q.Args)
-				if len(result.Return) != 1 {
-					return &query.Result{Errors: []string{"Set unable to update non-existing record"}}
-				}
-				return result
-
-			} else {
-				return &query.Result{ValidationError: updateValidationResultMap}
-			}
+			return &query.Result{ValidationError: insertValidationResultMap}
 		}
 
 	case query.Insert:
