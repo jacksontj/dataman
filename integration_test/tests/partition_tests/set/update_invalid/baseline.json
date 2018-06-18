@@ -1,6 +1,13 @@
 {
   "return": null,
-  "errors": [
-    "Set unable to update non-existing record"
-  ]
+  "validation_error": {
+    "fields": {
+      "firstname": {
+        "error": "Missing required field firstname"
+      },
+      "lastname": {
+        "error": "Missing required field lastname"
+      }
+    }
+  }
 }
