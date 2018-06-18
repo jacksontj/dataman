@@ -184,6 +184,39 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 	fieldHeaders := make([]string, 0, len(args.Record))
 	fieldValues := make([]string, 0, len(args.Record))
 
+	recordValues, err := s.recordOpDo(args, args.Record, collection)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+
+DEFAULT_LOOP:
+	for fieldName, field := range collection.Fields {
+		// Exclude primary keys from this null setting
+		for _, indexFieldName := range collection.PrimaryIndex.Fields {
+			if indexFieldName == fieldName {
+				continue DEFAULT_LOOP
+			}
+		}
+
+		// If the field is defined in the args
+		if _, ok := args.Record[fieldName]; ok {
+			continue
+		}
+		// If the field is part of the record_op
+		if _, ok := recordValues[fieldName]; ok {
+			continue
+		}
+
+		if field.NotNull {
+			result.Errors = []string{fmt.Sprintf("Field %s doesn't allow null values", fieldName)}
+			return result
+		}
+
+		fieldHeaders = append(fieldHeaders, "\""+fieldName+"\"")
+		fieldValues = append(fieldValues, "null")
+	}
+
 	for fieldName, fieldValue := range args.Record {
 		field, ok := collection.Fields[fieldName]
 		if !ok {
@@ -231,11 +264,6 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 		updatePairs = append(updatePairs, header+"="+fieldValues[j])
 	}
 
-	recordValues, err := s.recordOpDo(args, args.Record, collection)
-	if err != nil {
-		result.Errors = []string{err.Error()}
-		return result
-	}
 	if recordValues != nil {
 		// Apply recordValues (assuming they exist
 		for k, v := range recordValues {
