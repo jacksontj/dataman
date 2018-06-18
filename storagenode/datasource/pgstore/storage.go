@@ -796,9 +796,7 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 
 	// Add transformation to normalize the various JSON fields
 	result.AddTransformation(func(r *record.Record) error {
-		fmt.Println("before", *r)
 		*r = s.normalizeRecord(collection, *r)
-		fmt.Println("after", *r)
 		return nil
 	})
 
