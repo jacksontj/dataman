@@ -21,7 +21,7 @@ func (f *FunctionCollectable) Describe(ctx context.Context, ch chan<- MetricDesc
 
 func (f *FunctionCollectable) Collect(ctx context.Context, ch chan<- MetricPoint) error {
 	select {
-	case ch <- MetricPoint{Value: f.f()}:
+	case ch <- MetricPoint{Value: Value(f.f())}:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()

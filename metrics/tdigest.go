@@ -73,7 +73,7 @@ func (t *TDigest) Collect(ctx context.Context, c chan<- MetricPoint) error {
 			Metric: Metric{
 				Labels: map[string]string{"quantile": strconv.FormatFloat(quantile, 'f', -1, 64)},
 			},
-			Value: t.d.Quantile(quantile),
+			Value: Value(t.d.Quantile(quantile)),
 		}:
 		case <-ctx.Done():
 			return ctx.Err()

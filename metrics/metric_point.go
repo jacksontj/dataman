@@ -11,7 +11,7 @@ import (
 type MetricPoint struct {
 	Metric
 	// Actual value
-	Value float64
+	Value Value
 	// Time associated with this value (if not defined "now" is intended)
 	Time time.Time
 }
@@ -22,7 +22,7 @@ func (m *MetricPoint) String() string {
 	sb.WriteString(m.Metric.String())
 	sb.WriteRune(' ')
 
-	sb.WriteString(strconv.FormatFloat(m.Value, 'f', -1, 64))
+	sb.WriteString(strconv.FormatFloat(float64(m.Value), 'f', -1, 64))
 
 	if !m.Time.IsZero() {
 		sb.WriteRune(' ')

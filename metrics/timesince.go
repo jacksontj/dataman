@@ -29,7 +29,7 @@ func (t *TimeSince) Collect(ctx context.Context, c chan<- MetricPoint) error {
 	v := time.Now().Unix() - atomic.LoadInt64(&t.last)
 
 	select {
-	case c <- MetricPoint{Value: float64(v)}:
+	case c <- MetricPoint{Value: Value(v)}:
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
