@@ -2,7 +2,8 @@ package metrics
 
 import (
 	"context"
-	"fmt"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,11 +17,18 @@ type MetricPoint struct {
 }
 
 func (m *MetricPoint) String() string {
-	if m.Time.IsZero() {
-		return fmt.Sprintf("%s %v", m.Metric.String(), m.Value)
-	} else {
-		return fmt.Sprintf("%s %v %d", m.Metric.String(), m.Value, m.Time.UnixNano()/int64(time.Millisecond))
+	var sb strings.Builder
+
+	sb.WriteString(m.Metric.String())
+	sb.WriteRune(' ')
+
+	sb.WriteString(strconv.FormatFloat(m.Value, 'f', -1, 64))
+
+	if !m.Time.IsZero() {
+		sb.WriteRune(' ')
+		sb.WriteString(strconv.FormatInt(m.Time.UnixNano()/int64(time.Millisecond), 10))
 	}
+	return sb.String()
 }
 
 func CollectPoints(ctx context.Context, c Collectable) ([]MetricPoint, error) {
