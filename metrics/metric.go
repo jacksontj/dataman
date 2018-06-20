@@ -15,9 +15,18 @@ func (m Metric) String() string {
 		return m.Name
 	}
 
-	labelStrings := make([]string, 0, len(m.Labels))
+	var sb strings.Builder
+	sb.WriteString(m.Name)
+	sb.WriteRune('{')
+
+	i := len(m.Labels)
 	for k, v := range m.Labels {
-		labelStrings = append(labelStrings, k+`="`+v+`"`)
+		sb.WriteString(k + `="` + v + `"`)
+		i--
+		if i > 0 {
+			sb.WriteRune(',')
+		}
 	}
-	return m.Name + "{" + strings.Join(labelStrings, ", ") + "}"
+	sb.WriteRune('}')
+	return sb.String()
 }
