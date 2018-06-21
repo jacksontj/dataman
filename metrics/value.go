@@ -1,6 +1,9 @@
 package metrics
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 // Value encapsulates a float64 value. The separate type is largely required
 // to deal with go's json marshaling
@@ -12,7 +15,10 @@ func (v Value) MarshalJSON() ([]byte, error) {
 }
 
 func (v *Value) UnmarshalJSON(b []byte) error {
-	tmp, err := strconv.ParseFloat(string(b), 64)
+	if len(b) < 2 || b[0] != '"' || b[len(b)-1] != '"' {
+		return fmt.Errorf("value must be a quoted string")
+	}
+	tmp, err := strconv.ParseFloat(string(b[1:len(b)-1]), 64)
 	if err != nil {
 		return err
 	}
