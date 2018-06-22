@@ -110,20 +110,22 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case nil:
 			return nil, nil
 		case int32:
-			return float32(typedVal), nil
+			return float64(typedVal), nil
 		// TODO: remove? Or error if we would lose precision
 		case int64:
 			return int(typedVal), nil
 		case int:
-			return float32(typedVal), nil
+			return float64(typedVal), nil
+		case float32:
+			return float64(typedVal), nil
 		case float64:
-			return float32(typedVal), nil
+			return typedVal, nil
 		case string:
 			if typedVal == "" {
 				return nil, nil
 			} else {
 				f, err := strconv.ParseFloat(typedVal, 32)
-				return float32(f), err
+				return float64(f), err
 			}
 		default:
 			return nil, fmt.Errorf("Unknown Float type: %s", reflect.TypeOf(val))
