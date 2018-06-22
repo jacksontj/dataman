@@ -1019,7 +1019,7 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 					case []string:
 						items = make([]string, len(typedFieldValue))
 						for i, rawItem := range typedFieldValue {
-							items[i] = rawItem
+							items[i] = "'" + rawItem + "'"
 						}
 					default:
 						return "", fmt.Errorf("Value of %s must be a list", filterType)
