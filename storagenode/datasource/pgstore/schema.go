@@ -479,7 +479,7 @@ func (s *Storage) ListCollectionIndex(ctx context.Context, dbname, shardInstance
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			index := &metadata.CollectionIndex{
-				Name:           indexEntry["index_name"].(string),
+				Name:           strings.Replace(indexEntry["index_name"].(string), fmt.Sprintf("%s.idx_%s_", shardInstance, collectionname), "", 1),
 				Fields:         indexFields,
 				Unique:         indexEntry["is_unique"].(bool),
 				Primary:        indexEntry["is_primary"].(bool),
