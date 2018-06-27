@@ -473,11 +473,21 @@ func (s *Storage) ListCollectionIndex(ctx context.Context, dbname, shardInstance
 
 	for _, indexEntry := range indexEntries {
 		schemaName := indexEntry["schema_name"].(string)
-		tableName := indexEntry["table_name"].(string)
+		tableName := strings.Replace(indexEntry["table_name"].(string), `"`, "", -1)
+		// For whatever reason this "table_name" field includes the schema name if
+		// the schema is not "public"
+		if shardInstance != "public" {
+			prefix := shardInstance + "."
+			tableName = strings.TrimPrefix(tableName, prefix)
+		}
 
 		if schemaName == shardInstance && tableName == collectionname {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
+			for i, indexField := range indexFields {
+				indexFields[i] = normalizeFieldName(indexField)
+			}
+
 			index := &metadata.CollectionIndex{
 				Name:           strings.Replace(indexEntry["index_name"].(string), fmt.Sprintf("%s.idx_%s_", shardInstance, collectionname), "", 1),
 				Fields:         indexFields,
@@ -497,29 +507,9 @@ func (s *Storage) ListCollectionIndex(ctx context.Context, dbname, shardInstance
 }
 
 func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance, collectionname, indexname string) *metadata.CollectionIndex {
-	indexEntries, err := DoQuery(ctx, s.dbMap[dbname], listIndexQuery, nil)
-	if err != nil {
-		logrus.Fatalf("Unable to get index %s from %s: %v", indexname, dbname, err)
-	}
-
-	for _, indexEntry := range indexEntries {
-		schemaName := indexEntry["schema_name"].(string)
-		pgIndexName := indexEntry["index_name"].(string)
-		tableName := strings.Replace(indexEntry["table_name"].(string), `"`, "", -1)
-
-		if schemaName == shardinstance && ((tableName == shardinstance+"."+collectionname) || (tableName == shardinstance+".\""+collectionname+"\"")) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
-			var indexFields []string
-			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
-			for i, indexField := range indexFields {
-				indexFields[i] = normalizeFieldName(indexField)
-			}
-			return &metadata.CollectionIndex{
-				Name:           strings.Replace(indexEntry["index_name"].(string), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
-				Fields:         indexFields,
-				Unique:         indexEntry["is_unique"].(bool),
-				Primary:        indexEntry["is_primary"].(bool),
-				ProvisionState: metadata.Active,
-			}
+	for _, index := range s.ListCollectionIndex(ctx, dbname, shardinstance, collectionname) {
+		if index.Name == indexname {
+			return index
 		}
 	}
 	return nil
