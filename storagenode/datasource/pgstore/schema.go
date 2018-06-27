@@ -507,7 +507,7 @@ func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance,
 		pgIndexName := indexEntry["index_name"].(string)
 		tableName := strings.Replace(indexEntry["table_name"].(string), `"`, "", -1)
 
-		if schemaName == shardinstance && ((tableName == shardinstance+"."+collectionname) || (tableName == shardinstance+".\""+collectionname+"\"")) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
+		if schemaName == shardinstance && ((tableName == collectionname) || (tableName == shardinstance+"."+collectionname) || (tableName == shardinstance+".\""+collectionname+"\"")) && (pgIndexName == shardinstance+".idx_"+collectionname+"_"+indexname) {
 			var indexFields []string
 			json.Unmarshal(indexEntry["index_keys"].([]byte), &indexFields)
 			for i, indexField := range indexFields {
