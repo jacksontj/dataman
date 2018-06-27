@@ -517,6 +517,7 @@ func (s *Storage) GetCollectionIndex(ctx context.Context, dbname, shardinstance,
 				Name:           strings.Replace(indexEntry["index_name"].(string), fmt.Sprintf("%s.idx_%s_", shardinstance, collectionname), "", 1),
 				Fields:         indexFields,
 				Unique:         indexEntry["is_unique"].(bool),
+				Primary:        indexEntry["is_primary"].(bool),
 				ProvisionState: metadata.Active,
 			}
 		}
