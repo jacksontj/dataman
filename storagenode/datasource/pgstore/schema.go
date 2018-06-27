@@ -523,38 +523,34 @@ func (s *Storage) AddCollectionIndex(ctx context.Context, db *metadata.Database,
 
 	// Create the actual index
 	var indexAddQuery string
-	if index.Unique {
-		indexAddQuery = "CREATE UNIQUE"
-	} else {
-		indexAddQuery = "CREATE"
-	}
-	indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".\"%s\" (", shardInstance.Name, collection.Name, index.Name, shardInstance.Name, collection.Name)
-	for i, fieldName := range index.Fields {
-		if i > 0 {
-			indexAddQuery += ","
-		}
-		// split out the fields that it is (if more than one, then it *must* be a document
-		fieldParts := strings.Split(fieldName, ".")
-		// If more than one, then it is a json doc field
-		if len(fieldParts) > 1 {
-			field, ok := collection.Fields[fieldParts[0]]
-			if !ok {
-				return fmt.Errorf("Index %s on unknown field %s", index.Name, fieldName)
-			}
-			if field.FieldType.DatamanType != datamantype.Document {
-				return fmt.Errorf("Nested index %s on a non-document field %s", index.Name, fieldName)
-			}
-			indexAddQuery += "(" + fieldParts[0]
-			for _, fieldPart := range fieldParts[1:] {
-				indexAddQuery += fmt.Sprintf("->>'%s'", fieldPart)
-			}
-			indexAddQuery += ") "
 
+	fields := make([]string, len(index.Fields))
+	for i, fieldName := range index.Fields {
+		fieldParts := strings.Split(fieldName, ".")
+		if len(fieldParts) > 1 {
+			fields[i] = "(" + collectionFieldToSelector(fieldParts) + ")"
 		} else {
-			indexAddQuery += fmt.Sprintf("\"%s\"", fieldName)
+			fields[i] = `"` + collectionFieldToSelector(fieldParts) + `"`
 		}
 	}
-	indexAddQuery += ")"
+
+	// if it is a primary index, things are different
+	if index.Primary {
+		indexAddQuery = fmt.Sprintf("ALTER TABLE ONLY \"%s\".\"%s\" ADD CONSTRAINT %s PRIMARY KEY(%s)",
+			shardInstance.Name, collection.Name,
+			index.Name,
+			strings.Join(fields, ","),
+		)
+	} else {
+
+		if index.Unique {
+			indexAddQuery = "CREATE UNIQUE"
+		} else {
+			indexAddQuery = "CREATE"
+		}
+		indexAddQuery += fmt.Sprintf(" INDEX \"%s.idx_%s_%s\" ON \"%s\".\"%s\" (%s)",
+			shardInstance.Name, collection.Name, index.Name, shardInstance.Name, collection.Name, strings.Join(fields, ","))
+	}
 	if _, err := DoQuery(ctx, s.dbMap[db.Name], indexAddQuery, nil); err != nil {
 		return fmt.Errorf("Unable to add collection index %s to %s.%s: %v", index.Name, db.Name, collection.Name, err)
 	}
