@@ -521,6 +521,10 @@ func (s *Storage) AddCollectionIndex(ctx context.Context, db *metadata.Database,
 		return fmt.Errorf("Indexes must have fields defined")
 	}
 
+	if len(index.Name) > 55 {
+		return fmt.Errorf("Index name too long in %s.%s: %v", db.Name, collection.Name, index.Name)
+	}
+
 	// Create the actual index
 	var indexAddQuery string
 	if index.Unique {
