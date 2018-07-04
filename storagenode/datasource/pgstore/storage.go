@@ -869,6 +869,10 @@ func filterTypeToComparator(f filter.FilterType) string {
 		return " IN "
 	case filter.NotIn:
 		return " NOT IN "
+	case filter.RegexEqual:
+		return "~"
+	case filter.RegexNotEqual:
+		return "!~"
 	default:
 		return string(f)
 	}

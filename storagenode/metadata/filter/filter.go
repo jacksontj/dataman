@@ -16,6 +16,8 @@ const (
 	GreaterThanEqual FilterType = ">="
 	In               FilterType = "in"
 	NotIn            FilterType = "notin"
+	RegexEqual       FilterType = "=~"
+	RegexNotEqual    FilterType = "!~"
 )
 
 func StringToFilterType(in string) (FilterType, error) {
@@ -36,6 +38,10 @@ func StringToFilterType(in string) (FilterType, error) {
 		return In, nil
 	case string(NotIn):
 		return NotIn, nil
+	case string(RegexEqual):
+		return RegexEqual, nil
+	case string(RegexNotEqual):
+		return RegexNotEqual, nil
 	default:
 		return "", fmt.Errorf("Unknown filter type %s", in)
 	}
