@@ -1,0 +1,20 @@
+[
+  {
+    "meta": {
+      "datasource": "postgres"
+    }
+  },
+  {
+    "doc": null,
+    "firstname": "bazfirst",
+    "lastname": "bazlast",
+    "username": "baz"
+  },
+  {
+    "doc": null,
+    "firstname": "quxfirst",
+    "lastname": "quxlast",
+    "username": "qux"
+  },
+  "EOF"
+]
