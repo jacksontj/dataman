@@ -346,10 +346,8 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
 			case datamantype.DateTime:
 				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
-			case datamantype.Text, datamantype.String:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			default:
-				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
+				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
 			}
 		}
 	}
