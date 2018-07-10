@@ -27,11 +27,15 @@ import (
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
 	"github.com/jacksontj/dataman/storagenode/metadata/recordop"
 	_ "github.com/lib/pq"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type StorageConfig struct {
 	// How to connect to postgres
-	PGString string `yaml:"pg_string"`
+	PGString        string         `yaml:"pg_string"`
+	MaxIdleConns    *int           `yaml:"max_idle_conns"`
+	MaxOpenConns    *int           `yaml:"max_open_conns"`
+	ConnMaxLifetime *time.Duration `yaml:"conn_max_lifetime"`
 }
 
 func (c *StorageConfig) pgStringForDB(name string) string {
@@ -52,10 +56,15 @@ type Storage struct {
 func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) error {
 	var err error
 
-	if val, ok := c["pg_string"]; ok {
-		s.config = &StorageConfig{val.(string)}
-	} else {
-		return fmt.Errorf("Invalid config")
+	// TODO: better
+	b, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	s.config = &StorageConfig{}
+	if err := yaml.Unmarshal(b, s.config); err != nil {
+		return err
 	}
 
 	// TODO: pass in a database name for the metadata store locally
@@ -63,6 +72,19 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 	s.db, err = sql.Open("postgres", s.config.pgStringForDB(""))
 	if err != nil {
 		return err
+	}
+
+	// Apply options
+	if s.config.MaxIdleConns != nil {
+		s.db.SetMaxIdleConns(*s.config.MaxIdleConns)
+	}
+
+	if s.config.MaxOpenConns != nil {
+		s.db.SetMaxOpenConns(*s.config.MaxOpenConns)
+	}
+
+	if s.config.ConnMaxLifetime != nil {
+		s.db.SetConnMaxLifetime(*s.config.ConnMaxLifetime)
 	}
 
 	s.dbMap = make(map[string]*sql.DB)
