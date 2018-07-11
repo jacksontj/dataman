@@ -74,19 +74,6 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 		return err
 	}
 
-	// Apply options
-	if s.config.MaxIdleConns != nil {
-		s.db.SetMaxIdleConns(*s.config.MaxIdleConns)
-	}
-
-	if s.config.MaxOpenConns != nil {
-		s.db.SetMaxOpenConns(*s.config.MaxOpenConns)
-	}
-
-	if s.config.ConnMaxLifetime != nil {
-		s.db.SetConnMaxLifetime(*s.config.ConnMaxLifetime)
-	}
-
 	s.dbMap = make(map[string]*sql.DB)
 
 	s.metaFunc = metaFunc
@@ -106,6 +93,20 @@ func (s *Storage) getDB(name string) *sql.DB {
 			fmt.Printf("Err opening postgres conn: %v", err)
 			return nil
 		}
+
+		// Apply options
+		if s.config.MaxIdleConns != nil {
+			dbConn.SetMaxIdleConns(*s.config.MaxIdleConns)
+		}
+
+		if s.config.MaxOpenConns != nil {
+			dbConn.SetMaxOpenConns(*s.config.MaxOpenConns)
+		}
+
+		if s.config.ConnMaxLifetime != nil {
+			dbConn.SetConnMaxLifetime(*s.config.ConnMaxLifetime)
+		}
+
 		s.dbMap[name] = dbConn
 		return dbConn
 	}
