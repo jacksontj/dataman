@@ -66,6 +66,9 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, 
 		}
 		results = append(results, data)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return results, nil
 }
@@ -132,6 +135,11 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 				}
 			}
 			serverStream.SendResult(data)
+		}
+
+		if err := rows.Err(); err != nil {
+			serverStream.SendError(err)
+			return
 		}
 	}()
 
