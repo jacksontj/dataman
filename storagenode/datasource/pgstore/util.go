@@ -37,6 +37,7 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, 
 
 		// Scan the result into the column pointers...
 		if err := rows.Scan(columnPointers...); err != nil {
+			rows.Close()
 			return nil, err
 		}
 
@@ -104,6 +105,7 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 
 			// Scan the result into the column pointers...
 			if err := rows.Scan(columnPointers...); err != nil {
+				rows.Close()
 				serverStream.SendError(err)
 				return
 			}
