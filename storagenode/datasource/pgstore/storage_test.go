@@ -15,7 +15,7 @@ func init() {
 	filterTestCases = []*filterTestCase{
 		{
 			filter: map[string]interface{}{"id": []interface{}{"=", 1}},
-			result: `"id"=1`,
+			result: ` id='1'`,
 		},
 
 		{
@@ -29,21 +29,29 @@ func init() {
 				"OR",
 				map[string]interface{}{"id": []interface{}{"=", 2}},
 			},
-			result: `( "id"=1 OR  "id"=2)`,
+			result: `( id='1' OR  id='2')`,
 		},
 
 		{
 			filter: map[string]interface{}{},
+			result: `true`,
 		},
 
 		{
 			filter: []interface{}{
 				map[string]interface{}{},
-				"AND",
+				"OR",
 				map[string]interface{}{"id": []interface{}{"=", 2}},
 			},
-			result: `( true OR  "id"=2)`,
+			result: `(true OR  id='2')`,
 		},
+		/*
+			{
+				filter: map[string]interface{}{"jsonb.bar": []interface{}{"=", 1}},
+				result: `"id"=1`,
+			},
+		*/
+
 	}
 }
 
@@ -95,6 +103,9 @@ func TestFilterToWhere(t *testing.T) {
 			}
 		} else {
 			if filterTest.err {
+				t.Errorf(filterTest.Fail(ret, err))
+			}
+			if ret != filterTest.result {
 				t.Errorf(filterTest.Fail(ret, err))
 			}
 		}
