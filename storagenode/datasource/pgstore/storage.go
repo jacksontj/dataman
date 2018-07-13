@@ -635,9 +635,9 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 		sqlQuery += " ORDER BY "
 		for i, sortKey := range args.Sort {
 			if args.SortReverse[i] {
-				sqlQuery += `"` + sortKey + `" DESC`
+				sqlQuery += `"` + sortKey + `" DESC NULLS LAST`
 			} else {
-				sqlQuery += `"` + sortKey + `" ASC`
+				sqlQuery += `"` + sortKey + `" ASC NULLS FIRST`
 			}
 		}
 	}
@@ -749,9 +749,9 @@ func (s *Storage) Aggregate(ctx context.Context, args query.QueryArgs) *query.Re
 		for i, sortKey := range args.Sort {
 			k := collectionFieldToSelector(strings.Split(sortKey, "."))
 			if args.SortReverse[i] {
-				sqlQuery += k + ` DESC`
+				sqlQuery += k + ` DESC NULLS LAST`
 			} else {
-				sqlQuery += k + ` ASC`
+				sqlQuery += k + ` ASC NULLS FIRST`
 			}
 		}
 	}
@@ -820,9 +820,9 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 		sqlQuery += " ORDER BY "
 		for i, sortKey := range args.Sort {
 			if args.SortReverse[i] {
-				sqlQuery += `"` + sortKey + `" DESC`
+				sqlQuery += `"` + sortKey + `" DESC NULLS LAST`
 			} else {
-				sqlQuery += `"` + sortKey + `" ASC`
+				sqlQuery += `"` + sortKey + `" ASC NULLS FIRST`
 			}
 		}
 	}
