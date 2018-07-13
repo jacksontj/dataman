@@ -145,10 +145,9 @@ func mergeStreams(ctx context.Context, streams []*ResultStream) chan streamItem 
 	return c
 }
 
-// TODO: take context
 // MergeResultStreams is responsible to (1) merge result streams uniquely based on pkey and (2) maintain sort order
 // (if sorted) from the streams (each stream is assumed to be in-order already)
-func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string, vshardResults []*ResultStream, resultStream stream.ServerStream) {
+func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []string, vshardResults []*ResultStream, resultStream stream.ServerStream) {
 	defer resultStream.Close()
 
 	pkeyFieldParts := make([][]string, len(pkeyFields))
@@ -318,6 +317,151 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, pkeyFields []string
 						if args.Limit > 0 && resultsSent >= args.Limit {
 							return
 						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// TODO: take context
+// MergeResultStreams is responsible to (1) merge result streams and (2) maintain sort order
+// (if sorted) from the streams (each stream is assumed to be in-order already)
+func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*ResultStream, resultStream stream.ServerStream) {
+	defer resultStream.Close()
+
+	// We want to make sure we don't duplicate return entries
+	offset := args.Offset
+
+	// If we need to do sorting, then we need to do a minheap thing
+	if args.Sort != nil {
+		// create slice of stream channels
+		vshardResultChannels := make([]chan streamItem, len(vshardResults))
+		for i, vshardResult := range vshardResults {
+			defer vshardResult.Close()
+
+			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
+				resultStream.SendError(fmt.Errorf("errors in thing: %v", vshardResult.Errors))
+				return
+			}
+			if vshardResult.Stream == nil {
+				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
+				return
+			}
+			vshardResultChannels[i] = streamResults(ctx, vshardResult)
+		}
+
+		if args.SortReverse == nil {
+			sortReverseList := make([]bool, len(args.Sort))
+			// TODO: better, seems heavy
+			for i := range sortReverseList {
+				sortReverseList[i] = false
+			}
+			args.SortReverse = sortReverseList
+		}
+
+		// TODO: util func
+		splitSortKeys := make([][]string, len(args.Sort))
+		for i, sortKey := range args.Sort {
+			splitSortKeys[i] = strings.Split(sortKey, ".")
+		}
+
+		// TODO: refactor
+		h := record.NewRecordHeap(splitSortKeys, args.SortReverse)
+		heap.Init(h)
+
+		// Load an item from each vshard
+		for i, source := range vshardResultChannels {
+			if head, ok := <-source; ok {
+				if head.err != nil {
+					resultStream.SendError(head.err)
+					return
+				}
+				item := record.RecordItem{
+					Record: head.item,
+					Source: i,
+				}
+				heap.Push(h, item)
+			}
+		}
+
+		// TODO: faster to just use len(ids) ?
+		// Count of the number of results we've sent
+		resultsSent := uint64(0)
+
+		for h.Len() > 0 {
+			item := heap.Pop(h).(record.RecordItem)
+
+			// now get the pkey from the item, to ensure no dupes
+			// If an offset was defined, do that
+			if offset > 0 {
+				offset--
+			} else {
+				if err := resultStream.SendResult(item.Record); err != nil {
+					resultStream.SendError(err)
+					return
+				}
+				resultsSent++
+				// If we have a limit defined, lets enforce it
+				if args.Limit > 0 && resultsSent >= args.Limit {
+					return
+				}
+			}
+
+			// TODO: add item back
+			source := vshardResultChannels[item.Source]
+			if head, ok := <-source; ok {
+				if head.err != nil {
+					resultStream.SendError(head.err)
+					return
+				}
+				newItem := record.RecordItem{
+					Record: head.item,
+					Source: item.Source,
+				}
+				heap.Push(h, newItem)
+			}
+		}
+	} else {
+		// TODO: faster to just use len(ids) ?
+		// Count of the number of results we've sent
+		resultsSent := uint64(0)
+
+		// TODO: move into the mergeStreams method?
+		// This is ugly, but we need to check that these don't have errors, and if we do we want to propagate them
+		for _, vshardResult := range vshardResults {
+			// TODO: benchmark 100s of defers -- if this is slow move it to a function as a single defer
+			defer vshardResult.Close()
+
+			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
+				resultStream.SendError(fmt.Errorf("errors in thing: %v", vshardResult.Errors))
+				return
+			}
+			if vshardResult.Stream == nil {
+				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
+				return
+			}
+		}
+
+		// Othewise we just need to select through the channels and push results as we get them
+		s := mergeStreams(ctx, vshardResults)
+		for item := range s {
+			if item.err != nil {
+				resultStream.SendError(item.err)
+				return
+			} else {
+				// If an offset was defined, do that
+				if offset > 0 {
+					offset--
+				} else {
+					if err := resultStream.SendResult(item.item); err != nil {
+						resultStream.SendError(err)
+						return
+					}
+					resultsSent++
+					// If we have a limit defined, lets enforce it
+					if args.Limit > 0 && resultsSent >= args.Limit {
+						return
 					}
 				}
 			}
