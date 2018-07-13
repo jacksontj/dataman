@@ -14,29 +14,36 @@ func BenchmarkMergeResultStreamsUnique(b *testing.B) {
 	streams := 3
 
 	vals := make([]record.Record, streams)
-	resultStreams := make([]*ResultStream, streams)
 
 	for i := 0; i < streams; i++ {
 		vals[i] = record.Record{"a": i}
 	}
 
+	clientStreams := make([]stream.ClientStream, b.N)
+	serverStreams := make([]stream.ServerStream, b.N)
+	resultStreams := make([][]*ResultStream, b.N)
+
+	for x := 0; x < b.N; x++ {
+		resultsChan := make(chan stream.Result, 1)
+		errorChan := make(chan error, 1)
+		serverStreams[x] = local.NewServerStream(resultsChan, errorChan)
+		clientStreams[x] = local.NewClientStream(resultsChan, errorChan)
+
+		rstreams := make([]*ResultStream, streams)
+		for i := 0; i < streams; i++ {
+			rstreams[i] = resultStreamGenerator(vals[i], 10)
+		}
+		resultStreams[x] = rstreams
+	}
+
 	b.ResetTimer()
 
 	for x := 0; x < b.N; x++ {
-		for i := 0; i < streams; i++ {
-			resultStreams[i] = resultStreamGenerator(vals[i], 10)
-		}
 
-		resultsChan := make(chan stream.Result, 1)
-		errorChan := make(chan error, 1)
-
-		serverStream := local.NewServerStream(resultsChan, errorChan)
-		clientStream := local.NewClientStream(resultsChan, errorChan)
-
-		go MergeResultStreamsUnique(ctx, QueryArgs{Sort: []string{"a"}}, []string{"a"}, resultStreams, serverStream)
+		go MergeResultStreamsUnique(ctx, QueryArgs{Sort: []string{"a"}}, []string{"a"}, resultStreams[x], serverStreams[x])
 
 		for {
-			if _, err := clientStream.Recv(); err != nil {
+			if _, err := clientStreams[x].Recv(); err != nil {
 				break
 			}
 		}
@@ -48,29 +55,36 @@ func BenchmarkMergeResultStreams(b *testing.B) {
 	streams := 3
 
 	vals := make([]record.Record, streams)
-	resultStreams := make([]*ResultStream, streams)
 
 	for i := 0; i < streams; i++ {
 		vals[i] = record.Record{"a": i}
 	}
 
+	clientStreams := make([]stream.ClientStream, b.N)
+	serverStreams := make([]stream.ServerStream, b.N)
+	resultStreams := make([][]*ResultStream, b.N)
+
+	for x := 0; x < b.N; x++ {
+		resultsChan := make(chan stream.Result, 1)
+		errorChan := make(chan error, 1)
+		serverStreams[x] = local.NewServerStream(resultsChan, errorChan)
+		clientStreams[x] = local.NewClientStream(resultsChan, errorChan)
+
+		rstreams := make([]*ResultStream, streams)
+		for i := 0; i < streams; i++ {
+			rstreams[i] = resultStreamGenerator(vals[i], 10)
+		}
+		resultStreams[x] = rstreams
+	}
+
 	b.ResetTimer()
 
 	for x := 0; x < b.N; x++ {
-		for i := 0; i < streams; i++ {
-			resultStreams[i] = resultStreamGenerator(vals[i], 10)
-		}
 
-		resultsChan := make(chan stream.Result, 1)
-		errorChan := make(chan error, 1)
-
-		serverStream := local.NewServerStream(resultsChan, errorChan)
-		clientStream := local.NewClientStream(resultsChan, errorChan)
-
-		go MergeResultStreams(ctx, QueryArgs{Sort: []string{"a"}}, resultStreams, serverStream)
+		go MergeResultStreams(ctx, QueryArgs{Sort: []string{"a"}}, resultStreams[x], serverStreams[x])
 
 		for {
-			if _, err := clientStream.Recv(); err != nil {
+			if _, err := clientStreams[x].Recv(); err != nil {
 				break
 			}
 		}
