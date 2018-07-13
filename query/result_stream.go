@@ -85,9 +85,9 @@ type streamItem struct {
 	err  error
 }
 
-func streamResults(ctx context.Context, stream *ResultStream) chan streamItem {
+func streamResults(ctx context.Context, stream *ResultStream) chan *streamItem {
 	// TODO: configurable size?
-	c := make(chan streamItem, 1000)
+	c := make(chan *streamItem, 1000)
 	go func(stream *ResultStream) {
 		defer close(c)
 		for {
@@ -96,12 +96,12 @@ func streamResults(ctx context.Context, stream *ResultStream) chan streamItem {
 				return
 			}
 			select {
-			case c <- streamItem{v, err}:
+			case c <- &streamItem{v, err}:
 			// If the context is closed, then we need to cancel, we'll do a
 			// non-blocking send of an error down the channel, and then exit
 			case <-ctx.Done():
 				select {
-				case c <- streamItem{err: ctx.Err()}:
+				case c <- &streamItem{err: ctx.Err()}:
 				default:
 				}
 				return
@@ -182,7 +182,7 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 	// If we need to do sorting, then we need to do a minheap thing
 	if args.Sort != nil {
 		// create slice of stream channels
-		vshardResultChannels := make([]chan streamItem, len(vshardResults))
+		vshardResultChannels := make([]chan *streamItem, len(vshardResults))
 		for i, vshardResult := range vshardResults {
 			defer vshardResult.Close()
 
@@ -338,7 +338,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 	// If we need to do sorting, then we need to do a minheap thing
 	if args.Sort != nil {
 		// create slice of stream channels
-		vshardResultChannels := make([]chan streamItem, len(vshardResults))
+		vshardResultChannels := make([]chan *streamItem, len(vshardResults))
 		for i, vshardResult := range vshardResults {
 			defer vshardResult.Close()
 
