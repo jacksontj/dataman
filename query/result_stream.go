@@ -86,7 +86,8 @@ type streamItem struct {
 }
 
 func streamResults(ctx context.Context, stream *ResultStream) chan streamItem {
-	c := make(chan streamItem)
+	// TODO: configurable size?
+	c := make(chan streamItem, 1000)
 	go func(stream *ResultStream) {
 		defer close(c)
 		for {
@@ -113,7 +114,8 @@ func streamResults(ctx context.Context, stream *ResultStream) chan streamItem {
 // TODO: cleaner? seems that this is faster than the reflect one
 // TODO: move to stream package?
 func mergeStreams(ctx context.Context, streams []*ResultStream) chan streamItem {
-	c := make(chan streamItem)
+	// TODO: configurable size?
+	c := make(chan streamItem, 1000)
 	wg := &sync.WaitGroup{}
 	for _, stream := range streams {
 		wg.Add(1)
