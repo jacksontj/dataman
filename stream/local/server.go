@@ -71,6 +71,7 @@ func (s *ServerStream) close(err error) {
 	if !s.closed {
 		close(s.resultsChan)
 		close(s.errorChan)
+		close(s.doneChan)
 		s.closed = true
 		s.streamErr = err
 	}
