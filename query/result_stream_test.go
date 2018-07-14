@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -10,11 +11,13 @@ import (
 )
 
 func resultStreamGenerator(val interface{}, count int) *ResultStream {
+	ctx := context.Background()
+
 	resultsChan := make(chan stream.Result, 1)
 	errorChan := make(chan error, 1)
 
-	serverStream := local.NewServerStream(resultsChan, errorChan)
-	clientStream := local.NewClientStream(resultsChan, errorChan)
+	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)
+	clientStream := local.NewClientStream(ctx, resultsChan, errorChan)
 
 	go func() {
 		defer serverStream.Close()

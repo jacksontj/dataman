@@ -914,8 +914,8 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 	resultsChan := make(chan stream.Result, 1)
 	errorChan := make(chan error, 1)
 
-	serverStream := local.NewServerStream(resultsChan, errorChan)
-	clientStream := local.NewClientStream(resultsChan, errorChan)
+	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)
+	clientStream := local.NewClientStream(ctx, resultsChan, errorChan)
 
 	// TODO: pass back any other errors
 	// we should wait for the initial response from all downstream shards so we
