@@ -84,7 +84,10 @@ func (r *ResultStream) Recv() (record.Record, error) {
 }
 
 func (r *ResultStream) Close() error {
-	return r.Stream.Close()
+	if r.Stream != nil {
+		return r.Stream.Close()
+	}
+	return nil
 }
 
 // TODO: move to stream?
