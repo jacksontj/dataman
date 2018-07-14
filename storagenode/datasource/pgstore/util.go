@@ -83,8 +83,8 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 	resultsChan := make(chan stream.Result, 1)
 	errorChan := make(chan error, 1)
 
-	serverStream := local.NewServerStream(resultsChan, errorChan)
-	clientStream := local.NewClientStream(resultsChan, errorChan)
+	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)
+	clientStream := local.NewClientStream(ctx, resultsChan, errorChan)
 
 	// TODO: without goroutine?
 	go func() {
