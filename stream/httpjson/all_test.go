@@ -27,13 +27,13 @@ func TestJsonStreams(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		f := func() (stream.ServerStream, stream.ClientStream) {
+		f := func(ctx context.Context) (stream.ServerStream, stream.ClientStream) {
 			// make something client + server -- we just need something that acts like a socket
 			// meaning that we can read and block waiting until io.EOF (instead of reading nothing
 			// and immediately exiting like a bytes.Buffer)
 			reader, writer := io.Pipe()
 
-			server := NewServerStream(context.Background(), test.chunkSize, test.flushInterval, writer)
+			server := NewServerStream(ctx, test.chunkSize, test.flushInterval, writer)
 			client := NewClientStream(reader)
 
 			return server, client
