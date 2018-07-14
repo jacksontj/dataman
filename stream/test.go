@@ -92,6 +92,7 @@ func StreamTest(t *testing.T, c StreamPairCreator) {
 			if len(results) != expectedResults {
 				t.Fatalf("incorrect number of responses expected=%d actual=%d", expectedResults, len(results))
 			}
+			server.Close()
 		})
 	}
 }
