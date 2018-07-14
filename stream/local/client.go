@@ -1,13 +1,15 @@
 package local
 
 import (
+	"context"
 	"io"
 
 	"github.com/jacksontj/dataman/stream"
 )
 
-func NewClientStream(resultsChan chan stream.Result, errorChan chan error) stream.ClientStream {
+func NewClientStream(ctx context.Context, resultsChan chan stream.Result, errorChan chan error) stream.ClientStream {
 	stream := &ClientStream{
+		ctx:         ctx,
 		resultsChan: resultsChan,
 		errorChan:   errorChan,
 	}
@@ -16,6 +18,7 @@ func NewClientStream(resultsChan chan stream.Result, errorChan chan error) strea
 }
 
 type ClientStream struct {
+	ctx         context.Context
 	resultsChan chan stream.Result
 	errorChan   chan error
 }
@@ -30,6 +33,8 @@ func (s *ClientStream) Recv() (stream.Result, error) {
 	for {
 		// we want to get results first if we have them
 		select {
+		case <-s.ctx.Done():
+			return nil, s.ctx.Err()
 		case result, ok := <-s.resultsChan:
 			if ok {
 				return result, nil
@@ -48,6 +53,8 @@ func (s *ClientStream) Recv() (stream.Result, error) {
 		}
 
 		select {
+		case <-s.ctx.Done():
+			return nil, s.ctx.Err()
 		case result, ok := <-s.resultsChan:
 			if ok {
 				return result, nil

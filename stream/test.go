@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"context"
 	"fmt"
 	"io"
 	_ "net/http/pprof"
@@ -41,7 +42,7 @@ func streamResponses(s ClientStream) ([]Result, error) {
 	}
 }
 
-type StreamPairCreator func() (ServerStream, ClientStream)
+type StreamPairCreator func(context.Context) (ServerStream, ClientStream)
 
 func StreamTest(t *testing.T, c StreamPairCreator) {
 	tests := []struct {
@@ -78,7 +79,9 @@ func StreamTest(t *testing.T, c StreamPairCreator) {
 		}
 
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			server, client := c()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			server, client := c(ctx)
 
 			// return 10 items, no errors
 			go makeStuff(server, test.itemCount, test.errOffset, test.sleepStep)

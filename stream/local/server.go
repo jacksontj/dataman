@@ -1,6 +1,7 @@
 package local
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -8,8 +9,9 @@ import (
 )
 
 // TODO: context
-func NewServerStream(resultsChan chan stream.Result, errorChan chan error) stream.ServerStream {
+func NewServerStream(ctx context.Context, resultsChan chan stream.Result, errorChan chan error) stream.ServerStream {
 	sw := &ServerStream{
+		ctx:         ctx,
 		resultsChan: resultsChan,
 		errorChan:   errorChan,
 		doneChan:    make(chan struct{}),
@@ -20,6 +22,8 @@ func NewServerStream(resultsChan chan stream.Result, errorChan chan error) strea
 
 // The guy that actually writes things out
 type ServerStream struct {
+	ctx context.Context
+
 	resultsChan chan stream.Result
 	errorChan   chan error
 
@@ -38,8 +42,12 @@ func (s *ServerStream) SendResult(r stream.Result) error {
 	if s.streamErr != nil {
 		return s.streamErr
 	} else {
-		s.resultsChan <- r
-		return nil
+		select {
+		case s.resultsChan <- r:
+			return nil
+		case <-s.ctx.Done():
+			return s.ctx.Err()
+		}
 	}
 }
 
@@ -50,9 +58,13 @@ func (s *ServerStream) SendError(err error) error {
 	if s.streamErr != nil {
 		return s.streamErr
 	} else {
-		s.errorChan <- err
-		s.close(err) // TODO: another error? or something to wrap it?
-		return nil
+		select {
+		case s.errorChan <- err:
+			s.close(err) // TODO: another error? or something to wrap it?
+			return nil
+		case <-s.ctx.Done():
+			return s.ctx.Err()
+		}
 	}
 }
 
@@ -62,8 +74,12 @@ func (s *ServerStream) Close() error {
 	s.close(fmt.Errorf("Stream Closed"))
 	// Unlock before waiting for background task to complete
 	s.serverLock.Unlock()
-	<-s.doneChan
-	return nil
+	select {
+	case <-s.doneChan:
+		return nil
+	case <-s.ctx.Done():
+		return s.ctx.Err()
+	}
 }
 
 // close is an internal close method which assumes that the serverLock is held
