@@ -33,6 +33,14 @@ type ResultStream struct {
 	transformations []ResultStreamItemTransformation
 }
 
+func (r *ResultStream) Err() error {
+	if r.Errors == nil {
+		return nil
+	} else {
+		return fmt.Errorf(strings.Join(r.Errors, "\n"))
+	}
+}
+
 func (r *ResultStream) AddTransformation(t ResultStreamItemTransformation) error {
 	if r.started {
 		return fmt.Errorf("cannot add transformation after stream has started consuming")
