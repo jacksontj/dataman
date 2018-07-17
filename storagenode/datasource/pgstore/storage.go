@@ -875,7 +875,7 @@ func (s *Storage) normalizeRecord(collection *metadata.Collection, row record.Re
 					row[k] = tmp
 				}
 			case datamantype.DateTime:
-				row[k] = v.(time.Time).Format(datamantype.DateTimeFormatStr)
+				row[k] = datamantype.Time(v.(time.Time))
 			default:
 				continue
 			}
