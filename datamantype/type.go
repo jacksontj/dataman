@@ -159,7 +159,8 @@ func (f DatamanType) Normalize(val interface{}) (interface{}, error) {
 		case float64:
 			seconds, ns := math.Modf(typedVal)
 			return time.Unix(int64(seconds), int64(ns)).UTC(), nil
-
+		case Time:
+			return time.Time(typedVal), nil
 		default:
 			return nil, fmt.Errorf("Unknown datetime type: %s", reflect.TypeOf(val))
 		}
