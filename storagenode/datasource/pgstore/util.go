@@ -27,14 +27,14 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, 
 	if err != nil {
 		return nil, err
 	}
+	columns := make([]interface{}, len(cols))
+	columnPointers := make([]interface{}, len(cols))
+	for i := range columns {
+		columnPointers[i] = &columns[i]
+	}
+
 	// If there aren't any rows, we return a nil result
 	for rows.Next() {
-		columns := make([]interface{}, len(cols))
-		columnPointers := make([]interface{}, len(cols))
-		for i := range columns {
-			columnPointers[i] = &columns[i]
-		}
-
 		// Scan the result into the column pointers...
 		if err := rows.Scan(columnPointers...); err != nil {
 			rows.Close()
@@ -95,14 +95,14 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 			serverStream.SendError(err)
 			return
 		}
+		columns := make([]interface{}, len(cols))
+		columnPointers := make([]interface{}, len(cols))
+		for i := range columns {
+			columnPointers[i] = &columns[i]
+		}
+
 		// If there aren't any rows, we return a nil result
 		for rows.Next() {
-			columns := make([]interface{}, len(cols))
-			columnPointers := make([]interface{}, len(cols))
-			for i := range columns {
-				columnPointers[i] = &columns[i]
-			}
-
 			// Scan the result into the column pointers...
 			if err := rows.Scan(columnPointers...); err != nil {
 				rows.Close()
