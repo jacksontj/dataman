@@ -2,67 +2,61 @@ package pgstorage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
 	"strings"
 
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )
 
-func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, args ...interface{}) ([]record.Record, error) {
-	rows, err := db.QueryContext(ctx, query, args...)
+func DoQuery(ctx context.Context, db *pgx.ConnPool, query string, colAddrs []ColAddr, args ...interface{}) ([]record.Record, error) {
+	rows, err := db.QueryEx(ctx, query, nil, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
 	}
 
 	results := make([]record.Record, 0)
 
-	// Get the list of column names
-	cols, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-	columns := make([]interface{}, len(cols))
-	columnPointers := make([]interface{}, len(cols))
-	for i := range columns {
-		columnPointers[i] = &columns[i]
-	}
-
+	fields := rows.FieldDescriptions()
 	// If there aren't any rows, we return a nil result
 	for rows.Next() {
-		// Scan the result into the column pointers...
-		if err := rows.Scan(columnPointers...); err != nil {
-			rows.Close()
+		values, err := rows.AutoValues()
+		if err != nil {
 			return nil, err
 		}
-
 		// Create our map, and retrieve the value for each column from the pointers slice,
 		// storing it in the map with the name of the column as the key.
 		data := make(record.Record)
-		skipN := 0
-		for i, colName := range cols {
-			val := columnPointers[i].(*interface{})
-			if colAddrs != nil {
-				if colAddrs[i].skipN > 0 {
-					if *val != true {
-						skipN = colAddrs[i].skipN
+		//skipN := 0
+		for i, fieldDesc := range fields {
+			if colAddrs != nil && false {
+				// TODO
+				/*
+					if colAddrs[i].skipN > 0 {
+						if values[i] != true {
+							skipN = colAddrs[i].skipN
+						} else {
+							skipN = 0
+						}
 					} else {
-						skipN = 0
+						if skipN <= 0 {
+							data.Set(colAddrs[i].key, *val)
+						} else {
+							skipN--
+						}
 					}
-				} else {
-					if skipN <= 0 {
-						data.Set(colAddrs[i].key, *val)
-					} else {
-						skipN--
-					}
-				}
+				*/
 			} else {
-				data[colName] = *val
+				data[fieldDesc.Name] = values[i].(pgtype.Value).Get()
+				if v, ok := data[fieldDesc.Name].(int32); ok {
+					data[fieldDesc.Name] = int64(v)
+				}
 			}
 		}
 		results = append(results, data)
@@ -74,8 +68,8 @@ func DoQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, 
 	return results, nil
 }
 
-func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []ColAddr, args ...interface{}) (stream.ClientStream, error) {
-	rows, err := db.QueryContext(ctx, query, args...)
+func DoStreamQuery(ctx context.Context, db *pgx.ConnPool, query string, colAddrs []ColAddr, args ...interface{}) (stream.ClientStream, error) {
+	rows, err := db.QueryEx(ctx, query, nil, args...)
 	if err != nil {
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
 	}
@@ -89,23 +83,12 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 	// TODO: without goroutine?
 	go func() {
 		defer serverStream.Close()
-		// Get the list of column names
-		cols, err := rows.Columns()
-		if err != nil {
-			serverStream.SendError(err)
-			return
-		}
-		columns := make([]interface{}, len(cols))
-		columnPointers := make([]interface{}, len(cols))
-		for i := range columns {
-			columnPointers[i] = &columns[i]
-		}
 
+		fields := rows.FieldDescriptions()
 		// If there aren't any rows, we return a nil result
 		for rows.Next() {
-			// Scan the result into the column pointers...
-			if err := rows.Scan(columnPointers...); err != nil {
-				rows.Close()
+			values, err := rows.AutoValues()
+			if err != nil {
 				serverStream.SendError(err)
 				return
 			}
@@ -113,27 +96,30 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 			// Create our map, and retrieve the value for each column from the pointers slice,
 			// storing it in the map with the name of the column as the key.
 			data := make(record.Record)
-			skipN := 0
-			for i, colName := range cols {
-				val := columnPointers[i].(*interface{})
-				if colAddrs != nil {
-					if colAddrs[i].skipN > 0 {
-						// if we didn't find the key in the selector, then we skipN
-						// this accounts for nil and false return types
-						if *val != true {
-							skipN = colAddrs[i].skipN
+			//skipN := 0
+			for i, fieldDesc := range fields {
+				if colAddrs != nil && false {
+					// TODO
+					/*
+						if colAddrs[i].skipN > 0 {
+							if values[i] != true {
+								skipN = colAddrs[i].skipN
+							} else {
+								skipN = 0
+							}
 						} else {
-							skipN = 0
+							if skipN <= 0 {
+								data.Set(colAddrs[i].key, *val)
+							} else {
+								skipN--
+							}
 						}
-					} else {
-						if skipN <= 0 {
-							data.Set(colAddrs[i].key, *val)
-						} else {
-							skipN--
-						}
-					}
+					*/
 				} else {
-					data[colName] = *val
+					data[fieldDesc.Name] = values[i].(pgtype.Value).Get()
+					if v, ok := data[fieldDesc.Name].(int32); ok {
+						data[fieldDesc.Name] = int64(v)
+					}
 				}
 			}
 			serverStream.SendResult(data)

@@ -13,7 +13,6 @@ Metadata about the storage node will be stored in a database called _dataman.sto
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -26,7 +25,8 @@ import (
 	"github.com/jacksontj/dataman/storagenode/metadata/aggregation"
 	"github.com/jacksontj/dataman/storagenode/metadata/filter"
 	"github.com/jacksontj/dataman/storagenode/metadata/recordop"
-	_ "github.com/lib/pq"
+
+	"github.com/jackc/pgx"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -45,10 +45,10 @@ func (c *StorageConfig) pgStringForDB(name string) string {
 type Storage struct {
 	config *StorageConfig
 	// Connection to main db?
-	db *sql.DB
+	db *pgx.ConnPool
 
 	// TODO: lazily load these, maybe even pool them
-	dbMap map[string]*sql.DB
+	dbMap map[string]*pgx.ConnPool
 
 	metaFunc metadata.MetaFunc
 }
@@ -69,12 +69,17 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 
 	// TODO: pass in a database name for the metadata store locally
 	// TODO: don't require the name to be set here-- because people might use their own metadata
-	s.db, err = sql.Open("postgres", s.config.pgStringForDB(""))
+	connConfig, err := pgx.ParseDSN(s.config.pgStringForDB("postgres"))
+	if err != nil {
+		return err
+	}
+	fmt.Println(connConfig)
+	s.db, err = pgx.NewConnPool(pgx.ConnPoolConfig{ConnConfig: connConfig})
 	if err != nil {
 		return err
 	}
 
-	s.dbMap = make(map[string]*sql.DB)
+	s.dbMap = make(map[string]*pgx.ConnPool)
 
 	s.metaFunc = metaFunc
 
@@ -83,29 +88,36 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 }
 
 // TODO: some TTL thing instead of this
-func (s *Storage) getDB(name string) *sql.DB {
+func (s *Storage) getDB(name string) *pgx.ConnPool {
 	if db, ok := s.dbMap[name]; ok {
 		return db
 	} else {
-		dbConn, err := sql.Open("postgres", s.config.pgStringForDB(name))
+		connConfig, err := pgx.ParseDSN(s.config.pgStringForDB(name))
+		if err != nil {
+			panic(err)
+		}
+		dbConn, err := pgx.NewConnPool(pgx.ConnPoolConfig{ConnConfig: connConfig})
 		if err != nil {
 			// TODO: not this, this is not okay :/
 			fmt.Printf("Err opening postgres conn: %v", err)
 			return nil
 		}
 
-		// Apply options
-		if s.config.MaxIdleConns != nil {
-			dbConn.SetMaxIdleConns(*s.config.MaxIdleConns)
-		}
+		// TODO:
+		/*
+			// Apply options
+			if s.config.MaxIdleConns != nil {
+				dbConn.SetMaxIdleConns(*s.config.MaxIdleConns)
+			}
 
-		if s.config.MaxOpenConns != nil {
-			dbConn.SetMaxOpenConns(*s.config.MaxOpenConns)
-		}
+			if s.config.MaxOpenConns != nil {
+				dbConn.SetMaxOpenConns(*s.config.MaxOpenConns)
+			}
 
-		if s.config.ConnMaxLifetime != nil {
-			dbConn.SetConnMaxLifetime(*s.config.ConnMaxLifetime)
-		}
+			if s.config.ConnMaxLifetime != nil {
+				dbConn.SetConnMaxLifetime(*s.config.ConnMaxLifetime)
+			}
+		*/
 
 		s.dbMap[name] = dbConn
 		return dbConn

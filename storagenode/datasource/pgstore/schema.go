@@ -2,7 +2,6 @@ package pgstorage
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -87,12 +86,15 @@ func (s *Storage) AddDatabase(ctx context.Context, db *metadata.Database) error 
 		return fmt.Errorf("Unable to create database: %v", err)
 	}
 
-	// Create db connection
-	dbConn, err := sql.Open("postgres", s.config.pgStringForDB(db.Name))
-	if err != nil {
-		return fmt.Errorf("Unable to open db connection: %v", err)
-	}
-	s.dbMap[db.Name] = dbConn
+	// TODO
+	/*
+		// Create db connection
+		dbConn, err := sql.Open("postgres", s.config.pgStringForDB(db.Name))
+		if err != nil {
+			return fmt.Errorf("Unable to open db connection: %v", err)
+		}
+		s.dbMap[db.Name] = dbConn
+	*/
 
 	return nil
 }
@@ -102,9 +104,8 @@ const dropDatabaseTemplate = `DROP DATABASE IF EXISTS "%s";`
 func (s *Storage) RemoveDatabase(ctx context.Context, dbname string) error {
 	// Close the connection we have (so people don't do queries)
 	if conn, ok := s.dbMap[dbname]; ok {
-		if err := conn.Close(); err != nil {
-			return fmt.Errorf("Unable to close DB connection during RemoveDatabase: %v", err)
-		}
+		// TODO: better
+		conn.Reset()
 	}
 
 	// TODO: wait for some time first? This "kick everyone off" is fine for testing, but in prod
