@@ -12,7 +12,6 @@ import (
 	"github.com/jacksontj/dataman/datamantype"
 	"github.com/jacksontj/dataman/metrics"
 	"github.com/jacksontj/dataman/query"
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/storagenode/datasource"
 	"github.com/jacksontj/dataman/storagenode/join"
 	"github.com/jacksontj/dataman/storagenode/metadata"
@@ -348,7 +347,7 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 		// TODO: disallow q.Args.Fields to include fields that aren't in the collection
 		// we'll need a special case for sub-fields (as we might not know *all* the schema)
-		result.Project(q.Args.Fields)
+		//result.Project(q.Args.Fields)
 
 	}
 
@@ -412,15 +411,17 @@ func (s *DatasourceInstance) HandleStreamQuery(ctx context.Context, q *query.Que
 	// "capabilities" API within the datasource interface so we know if we need
 	// to do additional projecting. Assuming the datasource can do it there is no
 	// need for us to do it again (especially since we are on the same node-- burning CPU)
-	if q.Args.Fields != nil {
-		projectionFields := record.ProjectionFields(q.Args.Fields)
+	/*
+		if q.Args.Fields != nil && false{
+			projectionFields := record.ProjectionFields(q.Args.Fields)
 
-		// Add projection transformation to the stream
-		result.AddTransformation(func(r *record.Record) error {
-			*r = (*r).Project(projectionFields)
-			return nil
-		})
-	}
+			// Add projection transformation to the stream
+			result.AddTransformation(func(r *record.Record) error {
+				*r = (*r).Project(projectionFields)
+				return nil
+			})
+		}
+	*/
 
 	return result
 }
