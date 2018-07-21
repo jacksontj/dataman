@@ -13,7 +13,7 @@ import (
 func resultStreamGenerator(val interface{}, count int) *ResultStream {
 	ctx := context.Background()
 
-	resultsChan := make(chan stream.Result, 1)
+	resultsChan := make(chan stream.Result, 100)
 	errorChan := make(chan error, 1)
 
 	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)

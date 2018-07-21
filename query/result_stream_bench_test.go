@@ -2,12 +2,49 @@ package query
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )
+
+func BenchmarkResultStream(b *testing.B) {
+	val := record.Record{"a": 1}
+
+	var err error
+	for x := 0; x < b.N; x++ {
+		resultStream := resultStreamGenerator(val, 1000)
+		for {
+			_, err = resultStream.Recv()
+			if err == io.EOF {
+				break
+			}
+		}
+	}
+}
+
+func BenchmarkResultStreamTransformation(b *testing.B) {
+	val := record.Record{"a": 1}
+
+	tF := func(r *record.Record) error {
+		(*r)["t"] = "transformed"
+		return nil
+	}
+
+	var err error
+	for x := 0; x < b.N; x++ {
+		resultStream := resultStreamGenerator(val, 1000)
+		resultStream.AddTransformation(tF)
+		for {
+			_, err = resultStream.Recv()
+			if err == io.EOF {
+				break
+			}
+		}
+	}
+}
 
 func BenchmarkMergeResultStreamsUnique(b *testing.B) {
 	ctx := context.Background()
