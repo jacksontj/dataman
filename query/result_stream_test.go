@@ -49,10 +49,10 @@ func TestBasic(t *testing.T) {
 
 func TestBasicTransformation(t *testing.T) {
 	transformed := false
-	tF := func(r *record.Record) error {
-		(*r)["t"] = "transformed"
+	tF := func(r record.Record) (record.Record, error) {
+		r["t"] = "transformed"
 		transformed = true
-		return nil
+		return r, nil
 	}
 
 	val := record.Record{"a": 1}
