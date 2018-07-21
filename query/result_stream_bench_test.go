@@ -28,9 +28,9 @@ func BenchmarkResultStream(b *testing.B) {
 func BenchmarkResultStreamTransformation(b *testing.B) {
 	val := record.Record{"a": 1}
 
-	tF := func(r *record.Record) error {
-		(*r)["t"] = "transformed"
-		return nil
+	tF := func(r record.Record) (record.Record, error) {
+		r["t"] = "transformed"
+		return r, nil
 	}
 
 	var err error

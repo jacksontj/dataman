@@ -15,7 +15,7 @@ import (
 
 // Function to transform a given record
 // argument *must* be a pointer, otherwise you are passed a copy which you cannot replace directly
-type ResultStreamItemTransformation func(*record.Record) error
+type ResultStreamItemTransformation func(record.Record) (record.Record, error)
 
 // Encapsulate a streaming result from the datastore
 type ResultStream struct {
@@ -76,8 +76,10 @@ func (r *ResultStream) Recv() (record.Record, error) {
 	r.started = true
 	// Apply Transformations
 	for _, t := range r.transformations {
-		if err := t(&resultRecord); err != nil {
+		if transformedRecord, err := t(resultRecord); err != nil {
 			return resultRecord, err
+		} else if transformedRecord != nil {
+			resultRecord = transformedRecord
 		}
 	}
 	return resultRecord, nil
