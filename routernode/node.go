@@ -931,9 +931,8 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 		projectionFields := record.ProjectionFields(q.Args.Fields)
 
 		// Add projection transformation to the stream
-		err := result.AddTransformation(func(r *record.Record) error {
-			*r = (*r).Project(projectionFields)
-			return nil
+		err := result.AddTransformation(func(r record.Record) (record.Record, error) {
+			return r.Project(projectionFields), nil
 		})
 		if err != nil {
 			panic("unable to add transformation")
