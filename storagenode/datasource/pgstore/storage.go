@@ -73,7 +73,6 @@ func (s *Storage) Init(metaFunc metadata.MetaFunc, c map[string]interface{}) err
 	if err != nil {
 		return err
 	}
-	fmt.Println(connConfig)
 	s.db, err = pgx.NewConnPool(pgx.ConnPoolConfig{ConnConfig: connConfig})
 	if err != nil {
 		return err
