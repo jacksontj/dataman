@@ -2,8 +2,6 @@ package record
 
 import (
 	"time"
-
-	"github.com/jacksontj/dataman/datamantype"
 )
 
 type RecordItem struct {
@@ -92,13 +90,6 @@ func (r RecordHeap) Less(i, j int) (l bool) {
 				l = iValTyped.Before(jValTyped)
 				return
 			}
-		case datamantype.Time:
-			jValTyped := jVal.(datamantype.Time)
-			if iValTyped != jValTyped {
-				l = time.Time(iValTyped).Before(time.Time(jValTyped))
-				return
-			}
-
 		// TODO: return error? At this point if all return false, I'm not sure what happens
 		default:
 			panic("Unknown type")
