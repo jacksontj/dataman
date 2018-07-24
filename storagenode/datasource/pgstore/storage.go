@@ -873,8 +873,6 @@ func (s *Storage) normalizeRecord(collection *metadata.Collection, row record.Re
 					json.Unmarshal(byteSlice, &tmp)
 					row[k] = tmp
 				}
-			case datamantype.DateTime:
-				row[k] = datamantype.Time(v.(time.Time))
 			default:
 				continue
 			}
