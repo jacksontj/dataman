@@ -34,8 +34,9 @@
   name = "github.com/julienschmidt/httprouter"
 
 [[constraint]]
-  branch = "master"
+  branch = "perf"
   name = "github.com/lib/pq"
+  source = "github.com/jacksontj/pq"
 
 [[constraint]]
   branch = "master"
