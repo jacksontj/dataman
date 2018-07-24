@@ -33,27 +33,25 @@ func DoQuery(ctx context.Context, db *pgx.ConnPool, query string, colAddrs []Col
 		// Create our map, and retrieve the value for each column from the pointers slice,
 		// storing it in the map with the name of the column as the key.
 		data := make(record.Record)
-		//skipN := 0
+		skipN := 0
 		for i, fieldDesc := range fields {
-			if colAddrs != nil && false {
-				// TODO
-				/*
-					if colAddrs[i].skipN > 0 {
-						if values[i] != true {
-							skipN = colAddrs[i].skipN
-						} else {
-							skipN = 0
-						}
+		    val := values[i].(pgtype.Value).Get()
+			if colAddrs != nil {
+				if colAddrs[i].skipN > 0 {
+					if values[i] != true {
+						skipN = colAddrs[i].skipN
 					} else {
-						if skipN <= 0 {
-							data.Set(colAddrs[i].key, *val)
-						} else {
-							skipN--
-						}
+						skipN = 0
 					}
-				*/
+				} else {
+					if skipN <= 0 {
+						data.Set(colAddrs[i].key, val)
+					} else {
+						skipN--
+					}
+				}
 			} else {
-				data[fieldDesc.Name] = values[i].(pgtype.Value).Get()
+				data[fieldDesc.Name] = val
 				if v, ok := data[fieldDesc.Name].(int32); ok {
 					data[fieldDesc.Name] = int64(v)
 				}
@@ -96,27 +94,25 @@ func DoStreamQuery(ctx context.Context, db *pgx.ConnPool, query string, colAddrs
 			// Create our map, and retrieve the value for each column from the pointers slice,
 			// storing it in the map with the name of the column as the key.
 			data := make(record.Record)
-			//skipN := 0
+			skipN := 0
 			for i, fieldDesc := range fields {
-				if colAddrs != nil && false {
-					// TODO
-					/*
-						if colAddrs[i].skipN > 0 {
-							if values[i] != true {
-								skipN = colAddrs[i].skipN
-							} else {
-								skipN = 0
-							}
+			    val := values[i].(pgtype.Value).Get()
+				if colAddrs != nil {
+					if colAddrs[i].skipN > 0 {
+						if values[i] != true {
+							skipN = colAddrs[i].skipN
 						} else {
-							if skipN <= 0 {
-								data.Set(colAddrs[i].key, *val)
-							} else {
-								skipN--
-							}
+							skipN = 0
 						}
-					*/
+					} else {
+						if skipN <= 0 {
+							data.Set(colAddrs[i].key, val)
+						} else {
+							skipN--
+						}
+					}
 				} else {
-					data[fieldDesc.Name] = values[i].(pgtype.Value).Get()
+					data[fieldDesc.Name] = val
 					if v, ok := data[fieldDesc.Name].(int32); ok {
 						data[fieldDesc.Name] = int64(v)
 					}
