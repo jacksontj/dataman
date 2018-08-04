@@ -6,6 +6,12 @@ import (
 	"sync"
 )
 
+var DefaultMetricsRegistry Registry
+
+func init() {
+	DefaultMetricsRegistry = NewNamespaceRegistry("")
+}
+
 func NewNamespaceRegistry(n string) *NamespaceRegistry {
 	return &NamespaceRegistry{
 		Namespace: n,
