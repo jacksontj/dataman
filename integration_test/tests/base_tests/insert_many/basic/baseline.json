@@ -1,0 +1,19 @@
+{
+  "return": [
+    {
+      "doc": null,
+      "firstname": "f",
+      "lastname": "l",
+      "username": "insertmany1"
+    },
+    {
+      "doc": null,
+      "firstname": "f",
+      "lastname": "l",
+      "username": "insertmany2"
+    }
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "return": null,
+  "errors": [
+    "InsertMany must include records"
+  ]
+}
