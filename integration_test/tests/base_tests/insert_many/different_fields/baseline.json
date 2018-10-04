@@ -1,0 +1,9 @@
+{
+  "return": null,
+  "errors": [
+    "insert_many currently requires that all records have the same top-level fields"
+  ],
+  "meta": {
+    "datasource": "postgres"
+  }
+}
