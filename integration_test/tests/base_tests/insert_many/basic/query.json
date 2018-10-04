@@ -1,0 +1,21 @@
+{
+    "type": "insert_many",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "records": [
+            {
+                "username": "insertmany1",
+                "firstname": "f",
+                "lastname": "l"
+            },
+            {
+                "username": "insertmany2",
+                "firstname": "f",
+                "lastname": "l"
+            }
+        ],
+        "sortcomment": "the below sort is a hack to get tests to work, don't do this",
+        "sort": ["username"]
+    }
+}

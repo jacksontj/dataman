@@ -1,0 +1,17 @@
+{
+    "type": "insert_many",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "records": [
+            {
+                "username": "invalidfoo",
+                "lastname": "sure?"
+            },
+            {
+                "username": "invalidfoo2",
+                "lastname": "sure?2"
+            }
+        ]
+    }
+}

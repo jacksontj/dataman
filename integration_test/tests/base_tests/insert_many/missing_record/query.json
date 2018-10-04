@@ -1,0 +1,7 @@
+{
+    "type": "insert_many",
+    "args": {
+        "db": "test1",
+        "collection": "user"
+    }
+}
