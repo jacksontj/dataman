@@ -411,20 +411,30 @@ func (s *Storage) InsertMany(ctx context.Context, args query.QueryArgs) *query.R
 	}
 
 	fieldHeaders := make([]string, 0, len(args.Records[0]))
+	for fieldName, _ := range args.Records[0] {
+		fieldHeaders = append(fieldHeaders, fieldName)
+	}
 	// A list of the values placed in per record
 	groupFieldValues := make([][]string, 0, len(args.Records))
 
-	for i, rec := range args.Records {
+	for _, rec := range args.Records {
+		if len(rec) != len(fieldHeaders) {
+			result.Errors = []string{"insert_many currently requires that all records have the same top-level fields"}
+			return result
+		}
+
 		fieldValues := make([]string, 0, len(rec))
-		for fieldName, fieldValue := range rec {
+		for _, fieldName := range fieldHeaders {
+			fieldValue, ok := rec[fieldName]
+			if !ok {
+				result.Errors = []string{"insert_many currently requires that all records have the same top-level fields"}
+				return result
+			}
+
 			field, ok := collection.Fields[fieldName]
 			if !ok {
 				result.Errors = []string{fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args.DB, args.Collection, collection.Fields)}
 				return result
-			}
-			// If this is the first record, we need to create the field headers
-			if i == 0 {
-				fieldHeaders = append(fieldHeaders, "\""+fieldName+"\"")
 			}
 			switch fieldValue.(type) {
 			case nil:
@@ -467,7 +477,7 @@ func (s *Storage) InsertMany(ctx context.Context, args query.QueryArgs) *query.R
 	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES %s RETURNING %s",
 		args.ShardInstance,
 		args.Collection,
-		strings.Join(fieldHeaders, ","),
+		"\""+strings.Join(fieldHeaders, "\",\"")+"\"",
 		valuesBuilder.String(),
 		selectFields,
 	)
