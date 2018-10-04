@@ -394,6 +394,94 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 	return result
 }
 
+func (s *Storage) InsertMany(ctx context.Context, args query.QueryArgs) *query.Result {
+	result := &query.Result{
+		// TODO: more metadata, timings, etc. -- probably want config to determine
+		// what all we put in there
+		Meta: map[string]interface{}{
+			"datasource": "postgres",
+		},
+	}
+
+	meta := s.GetMeta()
+	collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+
+	fieldHeaders := make([]string, 0, len(args.Records[0]))
+	// A list of the values placed in per record
+	groupFieldValues := make([][]string, 0, len(args.Records))
+
+	for i, rec := range args.Records {
+		fieldValues := make([]string, 0, len(rec))
+		for fieldName, fieldValue := range rec {
+			field, ok := collection.Fields[fieldName]
+			if !ok {
+				result.Errors = []string{fmt.Sprintf("Field %s doesn't exist in %v.%v out of %v", fieldName, args.DB, args.Collection, collection.Fields)}
+				return result
+			}
+			// If this is the first record, we need to create the field headers
+			if i == 0 {
+				fieldHeaders = append(fieldHeaders, "\""+fieldName+"\"")
+			}
+			switch fieldValue.(type) {
+			case nil:
+				fieldValues = append(fieldValues, "null")
+			default:
+				switch field.FieldType.DatamanType {
+				case datamantype.JSON, datamantype.Document:
+					// TODO: make util method?
+					// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+					buffer := &bytes.Buffer{}
+					encoder := json.NewEncoder(buffer)
+					encoder.SetEscapeHTML(false)
+					err := encoder.Encode(fieldValue)
+					if err != nil {
+						result.Errors = []string{err.Error()}
+						return result
+					}
+					fieldJson := buffer.Bytes()
+					// TODO: switch from string escape of ' to using args from the sql driver
+					fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
+				case datamantype.DateTime:
+					fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
+				default:
+					fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
+				}
+			}
+		}
+		groupFieldValues = append(groupFieldValues, fieldValues)
+	}
+
+	valuesBuilder := strings.Builder{}
+	for i, fieldValues := range groupFieldValues {
+		if i > 0 {
+			valuesBuilder.WriteString(",")
+		}
+		fmt.Fprintf(&valuesBuilder, " (%s)", strings.Join(fieldValues, ","))
+	}
+
+	selectFields, colAddr := selectFields(args.Fields)
+	insertQuery := fmt.Sprintf("INSERT INTO \"%s\".%s (%s) VALUES %s RETURNING %s",
+		args.ShardInstance,
+		args.Collection,
+		strings.Join(fieldHeaders, ","),
+		valuesBuilder.String(),
+		selectFields,
+	)
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), insertQuery, colAddr)
+	if err != nil {
+		result.Errors = []string{err.Error()}
+		return result
+	}
+	s.normalizeResult(collection, result)
+
+	// TODO: add metadata back to the result
+	return result
+}
+
 func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine

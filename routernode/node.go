@@ -268,7 +268,7 @@ func (s *RouterNode) HandleQuery(ctx context.Context, q *query.Query) *query.Res
 	// Switch between read and write operations
 	switch q.Type {
 	// Write operations
-	case query.Set, query.Insert, query.Update, query.Delete:
+	case query.Set, query.Insert, query.Update, query.Delete, query.InsertMany:
 		result = s.handleWrite(ctx, meta, q)
 
 	// Read operations
@@ -608,6 +608,76 @@ func (s *RouterNode) handleWrite(ctx context.Context, meta *metadata.Meta, q *qu
 			return &query.Result{Errors: []string{err.Error()}}
 		}
 		keyspacePartitionAddr = &hashedShardKey
+
+	// For InsertMany we want to break the inserts into a list of records to insert per shard
+	// then send the queries downstream and merge the results
+	case query.InsertMany:
+		if q.Args.Records == nil {
+			return &query.Result{Errors: []string{"InsertMany must include records"}}
+		}
+
+		// A map of the records and which keyspacePartition they go do
+		vshardRecordMap := make(map[*metadata.DatastoreVShardInstance][]record.Record)
+
+		for _, rec := range q.Args.Records {
+			// For inserts we need to ensure we have set the function_default fields
+			// this is because function_default fields will commonly be used in shardKey
+			// so we need to have it set before we do the sharding/hashing
+			if err := collection.FunctionDefaultRecord(rec); err != nil {
+				return &query.Result{Errors: []string{fmt.Sprintf("Error enforcing function_default: %v", err)}}
+			}
+			// TODO: enforce other collection-level validations (fields, etc.)
+
+			shardKeys := make([]interface{}, len(keyspace.ShardKey))
+			for i, shardKey := range keyspace.ShardKeySplit {
+				shardKeys[i], ok = rec.Get(shardKey)
+				if !ok {
+					return &query.Result{Errors: []string{fmt.Sprintf("Insert()s must include the shard-key, missing %s from (%v)", shardKey, q.Args.Record)}}
+				}
+			}
+			shardKey := sharding.CombineKeys(shardKeys)
+			hashedShardKey, err := keyspace.HashFunc(shardKey)
+			if err != nil {
+				// TODO: wrap the error
+				return &query.Result{Errors: []string{err.Error()}}
+			}
+
+			partition := keyspace.GetKeyspacePartition(hashedShardKey)
+			vshardNum := partition.ShardFunc(hashedShardKey, len(partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards))
+			vshard := partition.DatastoreVShards[databaseDatastore.Datastore.ID].Shards[vshardNum-1]
+			records, ok := vshardRecordMap[vshard]
+			if !ok {
+				records = []record.Record{} // TODO: smarter selection of initial size
+			}
+			vshardRecordMap[vshard] = append(records, rec)
+		}
+
+		// At this point we have a set of records per shard
+		vshardResults := make(chan *query.Result, len(vshardRecordMap))
+
+		for vshard, recordList := range vshardRecordMap {
+			datasourceInstance := vshard.DatastoreShard.Replicas.GetMaster().DatasourceInstance
+
+			datasourceInstanceShardInstance, ok := datasourceInstance.ShardInstances[vshard.ID]
+			if !ok {
+				vshardResults <- &query.Result{Errors: []string{"6 Unknown datasourceInstanceShardInstance"}}
+			} else {
+				go func(datasourceinstance *metadata.DatasourceInstance, datasourceInstanceShardInstance *metadata.DatasourceInstanceShardInstance, recordList []record.Record) {
+					// TODO: replicas -- add args for slave etc.
+					newQ := *q
+					newQ.Args.ShardInstance = datasourceInstanceShardInstance.Name
+					newQ.Args.Records = recordList
+					if result, err := Query(ctx, s.clientManager, datasourceInstance, &newQ); err == nil {
+						vshardResults <- result
+					} else {
+						vshardResults <- &query.Result{Errors: []string{err.Error()}}
+					}
+				}(datasourceInstance, datasourceInstanceShardInstance, recordList)
+			}
+
+		}
+
+		return query.MergeResult(collection.PrimaryIndex.Fields, len(vshardRecordMap), vshardResults)
 
 	case query.Update:
 		if q.Args.Filter == nil {

@@ -278,6 +278,15 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		if validationResultMap := collection.ValidateRecordInsert(q.Args.Record); !validationResultMap.IsValid() {
 			return &query.Result{ValidationError: validationResultMap}
 		}
+
+	case query.InsertMany:
+		// TODO: support a multi-validation map return?
+		for _, rec := range q.Args.Records {
+			if validationResultMap := collection.ValidateRecordInsert(rec); !validationResultMap.IsValid() {
+				return &query.Result{ValidationError: validationResultMap}
+			}
+		}
+
 	case query.Update:
 		// On set, if there is a schema on the table-- enforce the schema
 		// TODO: some datastores can actually do the enforcement on their own. We
@@ -309,6 +318,8 @@ func (s *DatasourceInstance) HandleQuery(ctx context.Context, q *query.Query) *q
 		}
 	case query.Insert:
 		result = s.Store.Insert(ctx, q.Args)
+	case query.InsertMany:
+		result = s.Store.InsertMany(ctx, q.Args)
 	case query.Update:
 		result = s.Store.Update(ctx, q.Args)
 	case query.Delete:
