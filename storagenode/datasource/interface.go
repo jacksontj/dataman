@@ -67,6 +67,7 @@ type DataInterface interface {
 	Get(context.Context, query.QueryArgs) *query.Result
 	Set(context.Context, query.QueryArgs) *query.Result
 	Insert(context.Context, query.QueryArgs) *query.Result
+	InsertMany(context.Context, query.QueryArgs) *query.Result
 	Update(context.Context, query.QueryArgs) *query.Result
 	Delete(context.Context, query.QueryArgs) *query.Result
 	Filter(context.Context, query.QueryArgs) *query.Result

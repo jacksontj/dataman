@@ -10,13 +10,14 @@ import (
 type QueryType string
 
 const (
-	Get       QueryType = "get"
-	Set       QueryType = "set"
-	Insert    QueryType = "insert"
-	Update    QueryType = "update"
-	Delete    QueryType = "delete"
-	Filter    QueryType = "filter"
-	Aggregate QueryType = "aggregate"
+	Get        QueryType = "get"
+	Set        QueryType = "set"
+	Insert     QueryType = "insert"
+	InsertMany QueryType = "insert_many"
+	Update     QueryType = "update"
+	Delete     QueryType = "delete"
+	Filter     QueryType = "filter"
+	Aggregate  QueryType = "aggregate"
 
 	// Stream types: responses that will return a stream of results
 	FilterStream QueryType = "filter_stream"
@@ -51,8 +52,9 @@ type QueryArgs struct {
 	Offset uint64 `json:"offset"`
 
 	// Record types (TODO: record struct)
-	PKey   record.Record `json:"pkey"`
-	Record record.Record `json:"record"`
+	PKey    record.Record   `json:"pkey"`
+	Record  record.Record   `json:"record,omitempty"`
+	Records []record.Record `json:"records,omitempty"`
 
 	// TODO struct?
 	// RecordOp is a map of operations to apply to the record (incr, decr, etc.)
