@@ -1,0 +1,14 @@
+{
+    "type": "filter",
+    "args": {
+        "db": "test1",
+        "collection": "user",
+        "filter": {
+            "doc": ["=", {
+              "a": 1,
+              "b": 2
+            }]
+        },
+        "sort": ["username"]
+    }
+}
