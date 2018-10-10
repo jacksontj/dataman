@@ -3,6 +3,7 @@ package pgstorage
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -177,6 +178,12 @@ func serializeValue(v interface{}) (string, error) {
 	switch vTyped := v.(type) {
 	case time.Time:
 		return fmt.Sprintf("'%v'", vTyped.Format(datamantype.DateTimeFormatStr)), nil
+	case map[string]interface{}:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("'%s'", string(b)), nil
 	default:
 		return fmt.Sprintf("'%v'", v), nil
 	}
