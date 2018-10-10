@@ -184,6 +184,12 @@ func serializeValue(v interface{}) (string, error) {
 			return "", err
 		}
 		return fmt.Sprintf("'%s'", string(b)), nil
+	case map[string]string:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("'%s'", string(b)), nil
 	default:
 		return fmt.Sprintf("'%v'", v), nil
 	}
