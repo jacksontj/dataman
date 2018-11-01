@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 )
 
@@ -16,7 +17,7 @@ import (
 var trailer []byte
 
 func init() {
-	trailer, _ = json.Marshal(stream.ResultChunk{Results: []stream.Result{}})
+	trailer, _ = json.Marshal(stream.ResultChunk{Results: []record.Record{}})
 }
 
 /*
@@ -28,7 +29,7 @@ Flusing:
 
 func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Duration, w io.Writer) stream.ServerStream {
 	sw := &ServerStream{
-		resultsChan:   make(chan stream.Result),
+		resultsChan:   make(chan record.Record),
 		errorChan:     make(chan error),
 		chunkSize:     chunkSize,
 		flushInterval: flushInterval,
@@ -43,7 +44,7 @@ func NewServerStream(ctx context.Context, chunkSize int, flushInterval time.Dura
 
 // The guy that actually writes things out
 type ServerStream struct {
-	resultsChan   chan stream.Result
+	resultsChan   chan record.Record
 	errorChan     chan error
 	chunkSize     int
 	flushInterval time.Duration
@@ -57,7 +58,7 @@ type ServerStream struct {
 }
 
 // SendResult will send the result r or return an error.
-func (s *ServerStream) SendResult(r stream.Result) error {
+func (s *ServerStream) SendResult(r record.Record) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {
@@ -109,7 +110,7 @@ func (s *ServerStream) doChunking(ctx context.Context, w io.Writer) {
 	flusher, _ := w.(http.Flusher)
 
 	timer := time.NewTimer(s.flushInterval)
-	buf := make([]stream.Result, s.chunkSize)
+	buf := make([]record.Record, s.chunkSize)
 	i := 0
 	flushNow := false
 

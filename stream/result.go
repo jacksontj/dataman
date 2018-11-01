@@ -1,10 +1,9 @@
 package stream
 
-// A result that could be sent (currently an empty interface, maybe put marshal methods here)
-type Result interface{}
+import "github.com/jacksontj/dataman/record"
 
 // A chunk of results on the wire
 type ResultChunk struct {
-	Results []Result `json:"results"`
-	Error   string   `json:"error,omitempty"`
+	Results []record.Record `json:"results"`
+	Error   string          `json:"error,omitempty"`
 }

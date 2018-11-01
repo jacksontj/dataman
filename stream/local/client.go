@@ -4,10 +4,11 @@ import (
 	"context"
 	"io"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 )
 
-func NewClientStream(ctx context.Context, resultsChan chan stream.Result, errorChan chan error) stream.ClientStream {
+func NewClientStream(ctx context.Context, resultsChan chan record.Record, errorChan chan error) stream.ClientStream {
 	stream := &ClientStream{
 		ctx:         ctx,
 		resultsChan: resultsChan,
@@ -19,7 +20,7 @@ func NewClientStream(ctx context.Context, resultsChan chan stream.Result, errorC
 
 type ClientStream struct {
 	ctx         context.Context
-	resultsChan chan stream.Result
+	resultsChan chan record.Record
 	errorChan   chan error
 }
 
@@ -27,7 +28,7 @@ func (s *ClientStream) Close() error {
 	return nil
 }
 
-func (s *ClientStream) Recv() (stream.Result, error) {
+func (s *ClientStream) Recv() (record.Record, error) {
 	// TODO: implement this cleaner, its a bit of a mess since we want specific
 	// priorities on channel reading
 	for {

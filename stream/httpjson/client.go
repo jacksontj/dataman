@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 )
 
@@ -69,7 +70,7 @@ func (s *ClientStream) handleStream() {
 
 }
 
-func (s *ClientStream) Recv() (stream.Result, error) {
+func (s *ClientStream) Recv() (record.Record, error) {
 	for {
 		// If we need a new chunk, get it
 		if s.currentChunk == nil || (len(s.currentChunk.Results) <= s.offset) {

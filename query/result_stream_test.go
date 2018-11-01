@@ -6,14 +6,12 @@ import (
 	"testing"
 
 	"github.com/jacksontj/dataman/record"
-	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 )
 
-func resultStreamGenerator(val interface{}, count int) *ResultStream {
+func resultStreamGenerator(val record.Record, count int) *ResultStream {
 	ctx := context.Background()
-
-	resultsChan := make(chan stream.Result, 100)
+	resultsChan := make(chan record.Record, 1)
 	errorChan := make(chan error, 1)
 
 	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)

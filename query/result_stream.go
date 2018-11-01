@@ -60,29 +60,16 @@ func (r *ResultStream) Recv() (record.Record, error) {
 		return nil, err
 	}
 
-	var resultRecord record.Record
-	// The type switch here is necessary as the stream type (as of now) is
-	// an interface{} -- so things that are unmarshalled (for example from json)
-	// might come in as a generic map[string]interface{}
-	switch resultTyped := result.(type) {
-	case map[string]interface{}:
-		resultRecord = record.Record(resultTyped)
-	case record.Record:
-		resultRecord = resultTyped
-	default:
-		return nil, fmt.Errorf("Invalid type on resultStream")
-	}
-
 	r.started = true
 	// Apply Transformations
 	for _, t := range r.transformations {
-		if transformedRecord, err := t(resultRecord); err != nil {
-			return resultRecord, err
+		if transformedRecord, err := t(result); err != nil {
+			return result, err
 		} else if transformedRecord != nil {
-			resultRecord = transformedRecord
+			result = transformedRecord
 		}
 	}
-	return resultRecord, nil
+	return result, nil
 }
 
 func (r *ResultStream) Close() error {
@@ -126,9 +113,9 @@ func streamResults(ctx context.Context, stream *ResultStream) chan *streamItem {
 
 // TODO: cleaner? seems that this is faster than the reflect one
 // TODO: move to stream package?
-func mergeStreams(ctx context.Context, streams []*ResultStream) chan streamItem {
+func mergeStreams(ctx context.Context, streams []*ResultStream) chan *streamItem {
 	// TODO: configurable size?
-	c := make(chan streamItem, 1000)
+	c := make(chan *streamItem, 1000)
 	wg := &sync.WaitGroup{}
 	for _, stream := range streams {
 		wg.Add(1)
@@ -140,12 +127,12 @@ func mergeStreams(ctx context.Context, streams []*ResultStream) chan streamItem 
 					return
 				}
 				select {
-				case c <- streamItem{v, err}:
+				case c <- &streamItem{v, err}:
 				// If the context is closed, then we need to cancel, we'll do a
 				// non-blocking send of an error down the channel, and then exit
 				case <-ctx.Done():
 					select {
-					case c <- streamItem{err: ctx.Err()}:
+					case c <- &streamItem{err: ctx.Err()}:
 					default:
 					}
 					return
