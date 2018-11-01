@@ -48,7 +48,7 @@ func BenchmarkResultStreamTransformation(b *testing.B) {
 
 func BenchmarkMergeResultStreamsUnique(b *testing.B) {
 	ctx := context.Background()
-	streams := 3
+	streams := 100
 
 	vals := make([]record.Record, streams)
 
@@ -89,7 +89,7 @@ func BenchmarkMergeResultStreamsUnique(b *testing.B) {
 
 func BenchmarkMergeResultStreams(b *testing.B) {
 	ctx := context.Background()
-	streams := 3
+	streams := 100
 
 	vals := make([]record.Record, streams)
 
