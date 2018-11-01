@@ -1,6 +1,7 @@
 package record
 
 import (
+	"container/heap"
 	"time"
 )
 
@@ -114,5 +115,22 @@ func (r *RecordHeap) Pop() interface{} {
 	n := len(old)
 	x := old[n-1]
 	r.Heap = old[0 : n-1]
+	return x
+}
+
+func (r *RecordHeap) PushDirect(x RecordItem) {
+	r.Heap = append(r.Heap, x)
+	heap.Fix(r, len(r.Heap)-1)
+}
+
+func (r *RecordHeap) PopDirect() RecordItem {
+	n := len(r.Heap) - 1
+	r.Swap(0, n)
+
+	old := r.Heap
+	x := old[n]
+	r.Heap = old[0:n]
+	heap.Fix(r, 0)
+
 	return x
 }

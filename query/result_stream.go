@@ -227,7 +227,7 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 					Record: head.item,
 					Source: i,
 				}
-				heap.Push(h, item)
+				h.PushDirect(item)
 			}
 		}
 
@@ -236,7 +236,7 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 		resultsSent := uint64(0)
 
 		for h.Len() > 0 {
-			item := heap.Pop(h).(record.RecordItem)
+			item := h.PopDirect()
 
 			// now get the pkey from the item, to ensure no dupes
 			pkeyID := getPkeyID(item.Record)
@@ -270,7 +270,7 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 					Record: head.item,
 					Source: item.Source,
 				}
-				heap.Push(h, newItem)
+				h.PushDirect(newItem)
 			}
 		}
 	} else {
@@ -383,7 +383,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 					Record: head.item,
 					Source: i,
 				}
-				heap.Push(h, item)
+				h.PushDirect(item)
 			}
 		}
 
@@ -392,7 +392,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 		resultsSent := uint64(0)
 
 		for h.Len() > 0 {
-			item := heap.Pop(h).(record.RecordItem)
+			item := h.PopDirect()
 
 			// now get the pkey from the item, to ensure no dupes
 			// If an offset was defined, do that
@@ -421,7 +421,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 					Record: head.item,
 					Source: item.Source,
 				}
-				heap.Push(h, newItem)
+				h.PushDirect(newItem)
 			}
 		}
 	} else {
