@@ -13,7 +13,6 @@ import (
 	"github.com/jacksontj/dataman/httputil"
 	"github.com/jacksontj/dataman/metrics/promhandler"
 	"github.com/jacksontj/dataman/query"
-	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream/httpjson"
 )
 
@@ -135,7 +134,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 						serverStream.SendError(err)
 						return
 					} else {
-						serverStream.SendResult(result.(record.Record))
+						serverStream.SendResult(result)
 					}
 				}
 			}

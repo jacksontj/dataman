@@ -61,7 +61,7 @@ func BenchmarkMergeResultStreamsUnique(b *testing.B) {
 	resultStreams := make([][]*ResultStream, b.N)
 
 	for x := 0; x < b.N; x++ {
-		resultsChan := make(chan stream.Result, 1)
+		resultsChan := make(chan record.Record, 1)
 		errorChan := make(chan error, 1)
 		serverStreams[x] = local.NewServerStream(ctx, resultsChan, errorChan)
 		clientStreams[x] = local.NewClientStream(ctx, resultsChan, errorChan)
@@ -102,7 +102,7 @@ func BenchmarkMergeResultStreams(b *testing.B) {
 	resultStreams := make([][]*ResultStream, b.N)
 
 	for x := 0; x < b.N; x++ {
-		resultsChan := make(chan stream.Result, 1)
+		resultsChan := make(chan record.Record, 1)
 		errorChan := make(chan error, 1)
 		serverStreams[x] = local.NewServerStream(ctx, resultsChan, errorChan)
 		clientStreams[x] = local.NewClientStream(ctx, resultsChan, errorChan)

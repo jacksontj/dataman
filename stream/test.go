@@ -8,18 +8,16 @@ import (
 	"strconv"
 	"testing"
 	"time"
-)
 
-type TestResult struct {
-	Foo string `json:"foo"`
-}
+	"github.com/jacksontj/dataman/record"
+)
 
 // function to create stuff
 func makeStuff(sw ServerStream, itemCount int, errOffset int, sleepStep int) {
 	defer sw.Close()
 	for i := 0; i < itemCount; i++ {
 		time.Sleep(time.Millisecond * time.Duration(sleepStep*i))
-		sw.SendResult(&TestResult{"a"})
+		sw.SendResult(record.Record{"foo": "a"})
 		if errOffset == i {
 			sw.SendError(fmt.Errorf("broken"))
 			return
@@ -27,8 +25,8 @@ func makeStuff(sw ServerStream, itemCount int, errOffset int, sleepStep int) {
 	}
 }
 
-func streamResponses(s ClientStream) ([]Result, error) {
-	results := make([]Result, 0)
+func streamResponses(s ClientStream) ([]record.Record, error) {
+	results := make([]record.Record, 0)
 	for {
 		item, err := s.Recv()
 		if err != nil {

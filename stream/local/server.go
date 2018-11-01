@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/jacksontj/dataman/record"
 	"github.com/jacksontj/dataman/stream"
 )
 
 // TODO: context
-func NewServerStream(ctx context.Context, resultsChan chan stream.Result, errorChan chan error) stream.ServerStream {
+func NewServerStream(ctx context.Context, resultsChan chan record.Record, errorChan chan error) stream.ServerStream {
 	sw := &ServerStream{
 		ctx:         ctx,
 		resultsChan: resultsChan,
@@ -24,7 +25,7 @@ func NewServerStream(ctx context.Context, resultsChan chan stream.Result, errorC
 type ServerStream struct {
 	ctx context.Context
 
-	resultsChan chan stream.Result
+	resultsChan chan record.Record
 	errorChan   chan error
 
 	closed    bool
@@ -36,7 +37,7 @@ type ServerStream struct {
 }
 
 // SendResult will send the result r or return an error.
-func (s *ServerStream) SendResult(r stream.Result) error {
+func (s *ServerStream) SendResult(r record.Record) error {
 	s.serverLock.Lock()
 	defer s.serverLock.Unlock()
 	if s.streamErr != nil {

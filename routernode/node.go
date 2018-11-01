@@ -19,7 +19,6 @@ import (
 	"github.com/jacksontj/dataman/routernode/client_manager"
 	"github.com/jacksontj/dataman/routernode/metadata"
 	"github.com/jacksontj/dataman/routernode/sharding"
-	"github.com/jacksontj/dataman/stream"
 	"github.com/jacksontj/dataman/stream/local"
 
 	storagenodemetadata "github.com/jacksontj/dataman/storagenode/metadata"
@@ -981,7 +980,7 @@ func (s *RouterNode) HandleStreamQuery(ctx context.Context, q *query.Query) *que
 
 	// Consolidate vshardResults to result
 
-	resultsChan := make(chan stream.Result, 1)
+	resultsChan := make(chan record.Record, 1)
 	errorChan := make(chan error, 1)
 
 	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)

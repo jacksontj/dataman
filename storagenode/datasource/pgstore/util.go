@@ -81,7 +81,7 @@ func DoStreamQuery(ctx context.Context, db *sql.DB, query string, colAddrs []Col
 		return nil, fmt.Errorf("Error running query: Err=%v query=%s ", err, query)
 	}
 
-	resultsChan := make(chan stream.Result, 100)
+	resultsChan := make(chan record.Record, 100)
 	errorChan := make(chan error, 1)
 
 	serverStream := local.NewServerStream(ctx, resultsChan, errorChan)
