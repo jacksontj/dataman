@@ -85,32 +85,6 @@ type streamItem struct {
 	err  error
 }
 
-func streamResults(ctx context.Context, stream *ResultStream) chan *streamItem {
-	// TODO: configurable size?
-	c := make(chan *streamItem, 1000)
-	go func(stream *ResultStream) {
-		defer close(c)
-		for {
-			v, err := stream.Recv()
-			if err == io.EOF {
-				return
-			}
-			select {
-			case c <- &streamItem{v, err}:
-			// If the context is closed, then we need to cancel, we'll do a
-			// non-blocking send of an error down the channel, and then exit
-			case <-ctx.Done():
-				select {
-				case c <- &streamItem{err: ctx.Err()}:
-				default:
-				}
-				return
-			}
-		}
-	}(stream)
-	return c
-}
-
 // TODO: cleaner? seems that this is faster than the reflect one
 // TODO: move to stream package?
 func mergeStreams(ctx context.Context, streams []*ResultStream) chan *streamItem {
@@ -182,8 +156,7 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 	// If we need to do sorting, then we need to do a minheap thing
 	if args.Sort != nil {
 		// create slice of stream channels
-		vshardResultChannels := make([]chan *streamItem, len(vshardResults))
-		for i, vshardResult := range vshardResults {
+		for _, vshardResult := range vshardResults {
 			defer vshardResult.Close()
 
 			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
@@ -194,7 +167,6 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
 				return
 			}
-			vshardResultChannels[i] = streamResults(ctx, vshardResult)
 		}
 
 		if args.SortReverse == nil {
@@ -217,18 +189,20 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 		heap.Init(h)
 
 		// Load an item from each vshard
-		for i, source := range vshardResultChannels {
-			if head, ok := <-source; ok {
-				if head.err != nil {
-					resultStream.SendError(head.err)
-					return
-				}
-				item := record.RecordItem{
-					Record: head.item,
-					Source: i,
-				}
-				h.PushDirect(item)
+		for i, vshardResult := range vshardResults {
+			v, err := vshardResult.Recv()
+			if err == io.EOF {
+				continue
 			}
+			if err != nil {
+				resultStream.SendError(err)
+				return
+			}
+			item := record.RecordItem{
+				Record: v,
+				Source: i,
+			}
+			h.PushDirect(item)
 		}
 
 		// TODO: faster to just use len(ids) ?
@@ -260,18 +234,19 @@ func MergeResultStreamsUnique(ctx context.Context, args QueryArgs, pkeyFields []
 			}
 
 			// TODO: add item back
-			source := vshardResultChannels[item.Source]
-			if head, ok := <-source; ok {
-				if head.err != nil {
-					resultStream.SendError(head.err)
-					return
-				}
-				newItem := record.RecordItem{
-					Record: head.item,
-					Source: item.Source,
-				}
-				h.PushDirect(newItem)
+			v, err := vshardResults[item.Source].Recv()
+			if err == io.EOF {
+				continue
 			}
+			if err != nil {
+				resultStream.SendError(err)
+				return
+			}
+			newItem := record.RecordItem{
+				Record: v,
+				Source: item.Source,
+			}
+			h.PushDirect(newItem)
 		}
 	} else {
 		// TODO: faster to just use len(ids) ?
@@ -338,8 +313,7 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 	// If we need to do sorting, then we need to do a minheap thing
 	if args.Sort != nil {
 		// create slice of stream channels
-		vshardResultChannels := make([]chan *streamItem, len(vshardResults))
-		for i, vshardResult := range vshardResults {
+		for _, vshardResult := range vshardResults {
 			defer vshardResult.Close()
 
 			if vshardResult.Errors != nil && len(vshardResult.Errors) > 0 {
@@ -350,7 +324,6 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 				resultStream.SendError(fmt.Errorf("no stream in resultStream"))
 				return
 			}
-			vshardResultChannels[i] = streamResults(ctx, vshardResult)
 		}
 
 		if args.SortReverse == nil {
@@ -373,18 +346,20 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 		heap.Init(h)
 
 		// Load an item from each vshard
-		for i, source := range vshardResultChannels {
-			if head, ok := <-source; ok {
-				if head.err != nil {
-					resultStream.SendError(head.err)
-					return
-				}
-				item := record.RecordItem{
-					Record: head.item,
-					Source: i,
-				}
-				h.PushDirect(item)
+		for i, vshardResult := range vshardResults {
+			v, err := vshardResult.Recv()
+			if err == io.EOF {
+				continue
 			}
+			if err != nil {
+				resultStream.SendError(err)
+				return
+			}
+			item := record.RecordItem{
+				Record: v,
+				Source: i,
+			}
+			h.PushDirect(item)
 		}
 
 		// TODO: faster to just use len(ids) ?
@@ -411,18 +386,19 @@ func MergeResultStreams(ctx context.Context, args QueryArgs, vshardResults []*Re
 			}
 
 			// TODO: add item back
-			source := vshardResultChannels[item.Source]
-			if head, ok := <-source; ok {
-				if head.err != nil {
-					resultStream.SendError(head.err)
-					return
-				}
-				newItem := record.RecordItem{
-					Record: head.item,
-					Source: item.Source,
-				}
-				h.PushDirect(newItem)
+			v, err := vshardResults[item.Source].Recv()
+			if err == io.EOF {
+				continue
 			}
+			if err != nil {
+				resultStream.SendError(err)
+				return
+			}
+			newItem := record.RecordItem{
+				Record: v,
+				Source: item.Source,
+			}
+			h.PushDirect(newItem)
 		}
 	} else {
 		// TODO: faster to just use len(ids) ?
