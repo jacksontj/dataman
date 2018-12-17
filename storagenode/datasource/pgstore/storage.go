@@ -15,6 +15,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -1073,10 +1074,10 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 		if len(filterData) == 0 {
 			return "true", nil
 		}
-		whereParts := make([]string, 0)
+		whereParts := make([]string, 0, len(filterData))
 		for rawFieldName, fieldFilterRaw := range filterData {
 			if !collection.IsValidProjection(rawFieldName) {
-				return "", fmt.Errorf("Invalid field in filter: %s", rawFieldName)
+				return "", errors.New("Invalid field in filter: " + rawFieldName)
 			}
 
 			var filterType filter.FilterType
@@ -1121,7 +1122,7 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 				default:
 					comparator = filterTypeToComparator(filterType)
 				}
-				whereParts = append(whereParts, fmt.Sprintf(" %s %s NULL", collectionFieldToSelector(strings.Split(rawFieldName, ".")), comparator))
+				whereParts = append(whereParts, " "+collectionFieldToSelector(strings.Split(rawFieldName, "."))+" "+comparator+" NULL")
 			default:
 				switch filterType {
 				case filter.In, filter.NotIn:
@@ -1145,16 +1146,13 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 						return "", fmt.Errorf("Value of %s must be a list", filterType)
 					}
 					whereParts = append(whereParts, fmt.Sprintf(" %s%s%s", collectionFieldToSelector(strings.Split(rawFieldName, ".")), filterTypeToComparator(filterType), "("+strings.Join(items, ",")+")"))
+					whereParts = append(whereParts, " "+collectionFieldToSelector(strings.Split(rawFieldName, "."))+filterTypeToComparator(filterType)+"("+strings.Join(items, ",")+")")
 				default:
 					normalizedFieldValue, err := serializeValue(fieldValue)
 					if err != nil {
 						return "", err
 					}
-					whereParts = append(whereParts, fmt.Sprintf(" %s%s%s",
-						collectionFieldToSelector(strings.Split(rawFieldName, ".")),
-						filterTypeToComparator(filterType),
-						normalizedFieldValue,
-					))
+					whereParts = append(whereParts, " "+collectionFieldToSelector(strings.Split(rawFieldName, "."))+filterTypeToComparator(filterType)+normalizedFieldValue)
 				}
 			}
 		}
