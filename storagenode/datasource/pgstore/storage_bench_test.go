@@ -43,6 +43,22 @@ func BenchmarkFilterToWhere(b *testing.B) {
 					Collection:    "user",
 					Filter:        map[string]interface{}{"id": []interface{}{"=", 100}},
 				},
+				{
+					DB:            "test",
+					ShardInstance: "1",
+					Collection:    "user",
+					Filter:        map[string]interface{}{"id": []interface{}{"=", 100}, "username": []interface{}{"=", "testuser"}},
+				},
+				{
+					DB:            "test",
+					ShardInstance: "1",
+					Collection:    "user",
+					Filter: []interface{}{
+						map[string]interface{}{"id": []interface{}{"=", 100}, "username": []interface{}{"=", "testuser"}},
+						"OR",
+						map[string]interface{}{"id": []interface{}{"=", 100}, "username": []interface{}{"=", "testuser"}},
+					},
+				},
 			},
 		},
 	}
