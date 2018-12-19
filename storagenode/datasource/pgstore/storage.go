@@ -142,8 +142,23 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 		return result
 	}
 
-	whereParts := make([]string, 0)
+	queryBuilder := strings.Builder{} // TODO: pool queryBuilder
+	queryBuilder.Grow(QUERY_BUILDER_DEFAULT_SIZE)
+
+	queryBuilder.WriteString("SELECT ")
+
+	colAddr := selectFieldsBuilder(&queryBuilder, args.Fields)
+	fmt.Fprintf(&queryBuilder, " FROM \"%s\".%s WHERE ",
+		args.ShardInstance,
+		args.Collection,
+	)
+
+	whereCount := 0
 	for _, fieldName := range collection.PrimaryIndex.Fields {
+		if whereCount > 0 {
+			fmt.Fprintf(&queryBuilder, " AND ")
+		}
+		whereCount++
 		fieldNameParts := strings.Split(fieldName, ".")
 		field := collection.GetField(fieldNameParts)
 		if field == nil {
@@ -159,28 +174,22 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 		case datamantype.Document:
 			// TODO: recurse and add many
 			for innerName, innerValue := range fieldValue.(map[string]interface{}) {
-				whereParts = append(whereParts, fmt.Sprintf(" %s->>'%s'='%v'", fieldName, innerName, innerValue))
+				fmt.Fprintf(&queryBuilder, " %s->>'%s'='%v'", fieldName, innerName, innerValue)
 			}
 		case datamantype.Text, datamantype.String:
-			whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+			fmt.Fprintf(&queryBuilder, " %s='%v'", fieldName, fieldValue)
 		default:
 			// TODO: better? Really in postgres once you have an object values are always going to be treated as text-- so we want to do so
 			// This is just cheating assuming that any depth is an object-- but we'll need to do better once we support arrays etc.
 			if len(fieldNameParts) > 1 {
-				whereParts = append(whereParts, fmt.Sprintf(" %s='%v'", fieldName, fieldValue))
+				fmt.Fprintf(&queryBuilder, " %s='%v'", fieldName, fieldValue)
 			} else {
-				whereParts = append(whereParts, fmt.Sprintf(" %s=%v", fieldName, fieldValue))
+				fmt.Fprintf(&queryBuilder, " %s=%v", fieldName, fieldValue)
 			}
 		}
 	}
-	selectFields, colAddr := selectFields(args.Fields)
-	selectQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s WHERE %s",
-		selectFields,
-		args.ShardInstance,
-		args.Collection,
-		strings.Join(whereParts, " AND "),
-	)
-	result.Return, err = DoQuery(ctx, s.getDB(args.DB), selectQuery, colAddr)
+
+	result.Return, err = DoQuery(ctx, s.getDB(args.DB), queryBuilder.String(), colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result

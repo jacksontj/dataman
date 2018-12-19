@@ -285,3 +285,38 @@ func selectFields(fields []string) (string, []ColAddr) {
 
 	return strings.Join(fieldSelectors, ","), cAddrs
 }
+
+// selectFields returns a SELECT string and the corresponding ColAddr
+func selectFieldsBuilder(builder *strings.Builder, fields []string) []ColAddr {
+	// TODO: remove?
+	// If no projection, then just return all
+	if fields == nil {
+		builder.WriteString("*")
+		return nil
+	}
+
+	fieldCount := 0
+	cAddrs := make([]ColAddr, 0, len(fields))
+	for _, field := range fields {
+		fieldParts := strings.Split(field, ".")
+		if len(fieldParts) > 1 {
+			cAddrs = append(cAddrs, ColAddr{skipN: 1})
+			if fieldCount > 0 {
+				builder.WriteString(",")
+			}
+			fieldCount++
+			builder.WriteString(collectionFieldParentToSelector(fieldParts[:len(fieldParts)-1]) + " ? '" + fieldParts[len(fieldParts)-1] + "'")
+		}
+		cAddrs = append(cAddrs, ColAddr{
+			key: fieldParts,
+		})
+		if fieldCount > 0 {
+			builder.WriteString(",")
+		}
+		fieldCount++
+		builder.WriteString(collectionFieldToSelector(fieldParts))
+
+	}
+
+	return cAddrs
+}
