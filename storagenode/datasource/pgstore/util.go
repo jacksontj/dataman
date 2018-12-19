@@ -195,6 +195,32 @@ func serializeValue(v interface{}) (string, error) {
 	}
 }
 
+// TODO: remove?
+func serializeValueBuilder(builder *strings.Builder, v interface{}) error {
+	switch vTyped := v.(type) {
+	case time.Time:
+		fmt.Fprintf(builder, "'%v'", vTyped.Format(datamantype.DateTimeFormatStr))
+		return nil
+	case map[string]interface{}:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(builder, "'%s'", string(b))
+		return nil
+	case map[string]string:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(builder, "'%s'", string(b))
+		return nil
+	default:
+		fmt.Fprintf(builder, "'%v'", v)
+		return nil
+	}
+}
+
 // Take a path to an object and convert it to postgres json addressing
 func collectionFieldToSelector(path []string) string {
 	switch len(path) {

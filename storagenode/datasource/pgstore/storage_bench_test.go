@@ -2,6 +2,7 @@ package pgstorage
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/jacksontj/dataman/query"
@@ -72,6 +73,15 @@ func BenchmarkFilterToWhere(b *testing.B) {
 				b.Run(strconv.Itoa(j), func(b *testing.B) {
 					for x := 0; x < b.N; x++ {
 						s.filterToWhere(arg)
+					}
+				})
+			}
+			for j, arg := range test.args {
+				b.Run(strconv.Itoa(j)+"_builder", func(b *testing.B) {
+					for x := 0; x < b.N; x++ {
+						b := strings.Builder{}
+						b.Grow(400000)
+						s.filterToWhereBuilder(&b, arg)
 					}
 				})
 			}

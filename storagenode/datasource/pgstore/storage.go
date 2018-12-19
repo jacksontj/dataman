@@ -709,15 +709,12 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 	selectFields, colAddr := selectFields(args.Fields)
-	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
+	queryBuilder := strings.Builder{}
+	fmt.Fprintf(&queryBuilder, "SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
-	whereClause, err := s.filterToWhere(args)
-	if err != nil {
+	if err := s.filterToWhereBuilder(&queryBuilder, args); err != nil {
 		result.Errors = []string{err.Error()}
 		return result
-	}
-	if whereClause != "" {
-		sqlQuery += " WHERE " + whereClause
 	}
 
 	if args.Sort != nil && len(args.Sort) > 0 {
@@ -731,25 +728,25 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 			}
 		}
 
-		sqlQuery += " ORDER BY "
+		fmt.Fprintf(&queryBuilder, " ORDER BY ")
 		for i, sortKey := range args.Sort {
 			if args.SortReverse[i] {
-				sqlQuery += `"` + sortKey + `" DESC NULLS LAST`
+				fmt.Fprintf(&queryBuilder, `"`+sortKey+`" DESC NULLS LAST`)
 			} else {
-				sqlQuery += `"` + sortKey + `" ASC NULLS FIRST`
+				fmt.Fprintf(&queryBuilder, `"`+sortKey+`" ASC NULLS FIRST`)
 			}
 		}
 	}
 
 	if args.Limit > 0 {
-		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+		fmt.Fprintf(&queryBuilder, fmt.Sprintf(" LIMIT %d", args.Limit))
 	}
 
 	if args.Offset > 0 {
-		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
+		fmt.Fprintf(&queryBuilder, fmt.Sprintf(" OFFSET %d ROWS", args.Offset))
 	}
 
-	rows, err := DoQuery(ctx, s.getDB(args.DB), sqlQuery, colAddr)
+	rows, err := DoQuery(ctx, s.getDB(args.DB), queryBuilder.String(), colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
@@ -1160,6 +1157,195 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 	}
 	// TODO: better error message
 	return "", fmt.Errorf("Unknown where clause!")
+}
+
+// Take a filter map and return the "where" section (without the actual WHERE statement) for the given filter
+// This takes a map of filter which would look something like this:
+//
+//	{"_id": ["=", 100]}
+//
+//	{"count": ["<", 100], "foo.bar.baz": [">", 10000]}
+//
+func (s *Storage) filterToWhereBuilder(queryBuilder *strings.Builder, args query.QueryArgs) error {
+	if args.Filter != nil {
+		meta := s.GetMeta()
+		collection, err := meta.GetCollection(args.DB, args.ShardInstance, args.Collection)
+		if err != nil {
+			return err
+		}
+
+		queryBuilder.WriteString(" WHERE ")
+
+		switch args.Filter.(type) {
+		case []interface{}, map[string]interface{}:
+			return s.filterToWhereInnerBuilder(queryBuilder, collection, args.Filter)
+		default:
+			return fmt.Errorf("Filters must have a map or a list at the top level")
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// TODO: refactor to be less... ugly
+func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, collection *metadata.Collection, f interface{}) error {
+	switch filterData := f.(type) {
+	// If this is simply an operator
+	case string:
+		switch strings.ToUpper(filterData) {
+		// TODO: use them from the filter package
+		case "AND":
+			queryBuilder.WriteString(string(filter.And))
+			return nil
+		case "OR":
+			queryBuilder.WriteString(string(filter.Or))
+			return nil
+		default:
+			return fmt.Errorf("Invalid operator %s", filterData)
+		}
+	case []interface{}:
+		if len(filterData) != 3 {
+			return fmt.Errorf("where lists need to be A op B")
+		}
+		operatorRaw, ok := filterData[1].(string)
+		if !ok {
+			return fmt.Errorf("Operator must be a string")
+		}
+		upperOperator := strings.ToUpper(operatorRaw)
+		var operator string
+		switch upperOperator {
+		case "AND":
+			operator = upperOperator
+		case "OR":
+			operator = upperOperator
+		default:
+			return fmt.Errorf("Invalid operator %s", filterData)
+		}
+
+		queryBuilder.WriteString("(")
+
+		if err := s.filterToWhereInnerBuilder(queryBuilder, collection, filterData[0]); err != nil {
+			return err
+		}
+
+		queryBuilder.WriteString(" " + operator + " ")
+		if err := s.filterToWhereInnerBuilder(queryBuilder, collection, filterData[2]); err != nil {
+			return err
+		}
+		queryBuilder.WriteString(")")
+
+		return nil
+
+	case map[string]interface{}:
+		// If the filter is empty we should skip it. Instead of special handling it above
+		// we'll just convert it to a filter which is always true (so its still a no-op)
+		if len(filterData) == 0 {
+			queryBuilder.WriteString("true")
+			return nil
+		}
+
+		whereCount := 0
+		for rawFieldName, fieldFilterRaw := range filterData {
+			if !collection.IsValidProjection(rawFieldName) {
+				return errors.New("Invalid field in filter: " + rawFieldName)
+			}
+
+			var filterType filter.FilterType
+			var fieldValue interface{}
+			var err error
+
+			switch fieldFilterTyped := fieldFilterRaw.(type) {
+			case []interface{}:
+				switch filterTyped := fieldFilterTyped[0].(type) {
+				case filter.FilterType:
+					filterType = filterTyped
+				case string:
+					filterType, err = filter.StringToFilterType(filterTyped)
+					if err != nil {
+						return err
+					}
+				default:
+					return fmt.Errorf("Invalid filter type %v", filterTyped)
+				}
+
+				fieldValue = fieldFilterTyped[1]
+			case []string:
+				filterType, err = filter.StringToFilterType(fieldFilterTyped[0])
+				if err != nil {
+					return err
+				}
+				fieldValue = fieldFilterTyped[1]
+			default:
+				return fmt.Errorf(`filter must be a list`)
+			}
+
+			switch fieldValue.(type) {
+			// SQL treats nulls completely differently-- so we need to do that
+			case nil:
+				var comparator string
+				// Note: sql kinda sucks for NIL types-- so we have to special case this
+				switch filterType {
+				case filter.Equal:
+					comparator = "IS"
+				case filter.NotEqual:
+					comparator = "IS NOT"
+				default:
+					comparator = filterTypeToComparator(filterType)
+				}
+				if whereCount > 0 {
+					queryBuilder.WriteString(" AND ")
+				}
+				queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + " " + comparator + " NULL")
+				whereCount++
+			default:
+				switch filterType {
+				case filter.In, filter.NotIn:
+					if whereCount > 0 {
+						queryBuilder.WriteString(" AND ")
+					}
+					queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + filterTypeToComparator(filterType) + "(")
+
+					switch typedFieldValue := fieldValue.(type) {
+					case []interface{}:
+						for i, rawItem := range typedFieldValue {
+							if i > 0 {
+								queryBuilder.WriteString(",")
+							}
+							if err := serializeValueBuilder(queryBuilder, rawItem); err != nil {
+								return err
+							}
+						}
+					case []string:
+						for i, rawItem := range typedFieldValue {
+							if i > 0 {
+								queryBuilder.WriteString(",")
+							}
+							queryBuilder.WriteString("'" + rawItem + "'")
+						}
+
+					default:
+						return fmt.Errorf("Value of %s must be a list", filterType)
+					}
+					queryBuilder.WriteString(")")
+					whereCount++
+				default:
+					if whereCount > 0 {
+						queryBuilder.WriteString(" AND ")
+					}
+					queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + filterTypeToComparator(filterType))
+					if err := serializeValueBuilder(queryBuilder, fieldValue); err != nil {
+						return err
+					}
+					whereCount++
+				}
+			}
+		}
+		return nil
+	}
+	// TODO: better error message
+	return fmt.Errorf("Unknown where clause!")
 }
 
 func (s *Storage) recordOpDo(args query.QueryArgs, recordData map[string]interface{}, collection *metadata.Collection) (map[string]string, error) {
