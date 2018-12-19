@@ -1192,19 +1192,6 @@ func (s *Storage) filterToWhereBuilder(queryBuilder *strings.Builder, args query
 // TODO: refactor to be less... ugly
 func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, collection *metadata.Collection, f interface{}) error {
 	switch filterData := f.(type) {
-	// If this is simply an operator
-	case string:
-		switch strings.ToUpper(filterData) {
-		// TODO: use them from the filter package
-		case "AND":
-			queryBuilder.WriteString(string(filter.And))
-			return nil
-		case "OR":
-			queryBuilder.WriteString(string(filter.Or))
-			return nil
-		default:
-			return fmt.Errorf("Invalid operator %s", filterData)
-		}
 	case []interface{}:
 		if len(filterData) != 3 {
 			return fmt.Errorf("where lists need to be A op B")
