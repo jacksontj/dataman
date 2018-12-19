@@ -31,6 +31,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+var (
+	QUERY_BUILDER_DEFAULT_SIZE = 1024
+)
+
 type StorageConfig struct {
 	// How to connect to postgres
 	PGString        string         `yaml:"pg_string"`
@@ -709,7 +713,8 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 	selectFields, colAddr := selectFields(args.Fields)
-	queryBuilder := strings.Builder{}
+	queryBuilder := strings.Builder{}   // TODO: pool queryBuilder
+	queryBuilder.Grow(QUERY_BUILDER_DEFAULT_SIZE)
 	fmt.Fprintf(&queryBuilder, "SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
 	if err := s.filterToWhereBuilder(&queryBuilder, args); err != nil {
