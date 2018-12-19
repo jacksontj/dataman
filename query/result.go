@@ -14,8 +14,8 @@ type Result struct {
 	Return []record.Record `json:"return"`
 	Errors []string        `json:"errors,omitempty"`
 	// TODO: pointer to the right thing
-	ValidationError interface{}            `json:"validation_error,omitempty"`
-	Meta            map[string]interface{} `json:"meta,omitempty"`
+	ValidationError interface{}       `json:"validation_error,omitempty"`
+	Meta            map[string]string `json:"meta,omitempty"`
 }
 
 func (r *Result) Err() error {
@@ -58,7 +58,7 @@ func MergeResult(primaryIndexFields []string, numResults int, results chan *Resu
 
 	combinedResult := &Result{
 		Return: make([]record.Record, 0),
-		Meta:   make(map[string]interface{}),
+		Meta:   make(map[string]string),
 	}
 
 	recievedResults := 0
@@ -124,7 +124,7 @@ func MergeAggregateResult(args QueryArgs, numResults int, results chan *Result) 
 
 	combinedResult := &Result{
 		Return: make([]record.Record, 0),
-		Meta:   make(map[string]interface{}),
+		Meta:   make(map[string]string),
 	}
 
 	recievedResults := 0

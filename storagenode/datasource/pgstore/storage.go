@@ -127,7 +127,7 @@ func (s *Storage) Get(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -196,7 +196,7 @@ func (s *Storage) Set(ctx context.Context, args query.QueryArgs) *query.Result {
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -330,7 +330,7 @@ func (s *Storage) Insert(ctx context.Context, args query.QueryArgs) *query.Resul
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -403,7 +403,7 @@ func (s *Storage) InsertMany(ctx context.Context, args query.QueryArgs) *query.R
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -501,7 +501,7 @@ func (s *Storage) Update(ctx context.Context, args query.QueryArgs) *query.Resul
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -609,7 +609,7 @@ func (s *Storage) Delete(ctx context.Context, args query.QueryArgs) *query.Resul
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -698,7 +698,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -713,7 +713,7 @@ func (s *Storage) Filter(ctx context.Context, args query.QueryArgs) *query.Resul
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 	selectFields, colAddr := selectFields(args.Fields)
-	queryBuilder := strings.Builder{}   // TODO: pool queryBuilder
+	queryBuilder := strings.Builder{} // TODO: pool queryBuilder
 	queryBuilder.Grow(QUERY_BUILDER_DEFAULT_SIZE)
 	fmt.Fprintf(&queryBuilder, "SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
@@ -767,7 +767,7 @@ func (s *Storage) Aggregate(ctx context.Context, args query.QueryArgs) *query.Re
 	result := &query.Result{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}
@@ -881,7 +881,7 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 	result := &query.ResultStream{
 		// TODO: more metadata, timings, etc. -- probably want config to determine
 		// what all we put in there
-		Meta: map[string]interface{}{
+		Meta: map[string]string{
 			"datasource": "postgres",
 		},
 	}

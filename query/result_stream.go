@@ -24,7 +24,7 @@ type ResultStream struct {
 	// TODO: do we need?
 	Errors []string `json:"errors,omitempty"`
 	// TODO: does this make sens in the result itself?
-	Meta map[string]interface{} `json:"meta,omitempty"`
+	Meta map[string]string `json:"meta,omitempty"`
 
 	started bool
 
