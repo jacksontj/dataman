@@ -905,15 +905,13 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 	// TODO: figure out how to do cross-db queries? Seems that most golang drivers
 	// don't support it (new in postgres 7.3)
 	selectFields, colAddr := selectFields(args.Fields)
-	sqlQuery := fmt.Sprintf("SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
+	queryBuilder := strings.Builder{} // TODO: pool queryBuilder
+	queryBuilder.Grow(QUERY_BUILDER_DEFAULT_SIZE)
+	fmt.Fprintf(&queryBuilder, "SELECT %s FROM \"%s\".%s", selectFields, args.ShardInstance, args.Collection)
 
-	whereClause, err := s.filterToWhere(args)
-	if err != nil {
+	if err := s.filterToWhereBuilder(&queryBuilder, args); err != nil {
 		result.Errors = []string{err.Error()}
 		return result
-	}
-	if whereClause != "" {
-		sqlQuery += " WHERE " + whereClause
 	}
 
 	if args.Sort != nil && len(args.Sort) > 0 {
@@ -927,25 +925,25 @@ func (s *Storage) FilterStream(ctx context.Context, args query.QueryArgs) *query
 			}
 		}
 
-		sqlQuery += " ORDER BY "
+		fmt.Fprintf(&queryBuilder, " ORDER BY ")
 		for i, sortKey := range args.Sort {
 			if args.SortReverse[i] {
-				sqlQuery += `"` + sortKey + `" DESC NULLS LAST`
+				fmt.Fprintf(&queryBuilder, `"`+sortKey+`" DESC NULLS LAST`)
 			} else {
-				sqlQuery += `"` + sortKey + `" ASC NULLS FIRST`
+				fmt.Fprintf(&queryBuilder, `"`+sortKey+`" ASC NULLS FIRST`)
 			}
 		}
 	}
 
 	if args.Limit > 0 {
-		sqlQuery += fmt.Sprintf(" LIMIT %d", args.Limit)
+		fmt.Fprintf(&queryBuilder, fmt.Sprintf(" LIMIT %d", args.Limit))
 	}
 
 	if args.Offset > 0 {
-		sqlQuery += fmt.Sprintf(" OFFSET %d ROWS", args.Offset)
+		fmt.Fprintf(&queryBuilder, fmt.Sprintf(" OFFSET %d ROWS", args.Offset))
 	}
 
-	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), sqlQuery, colAddr)
+	streamChan, err := DoStreamQuery(ctx, s.getDB(args.DB), queryBuilder.String(), colAddr)
 	if err != nil {
 		result.Errors = []string{err.Error()}
 		return result
