@@ -1073,7 +1073,7 @@ func (s *Storage) filterToWhereInner(collection *metadata.Collection, f interfac
 		}
 		whereParts := make([]string, 0, len(filterData))
 		for rawFieldName, fieldFilterRaw := range filterData {
-			if !collection.IsValidProjection(rawFieldName) {
+			if !collection.IsValidProjectionByName(rawFieldName) {
 				return "", errors.New("Invalid field in filter: " + rawFieldName)
 			}
 
@@ -1248,7 +1248,8 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 
 		whereCount := 0
 		for rawFieldName, fieldFilterRaw := range filterData {
-			if !collection.IsValidProjection(rawFieldName) {
+			fieldParts := strings.Split(rawFieldName, ".")
+			if !collection.IsValidProjection(fieldParts) {
 				return errors.New("Invalid field in filter: " + rawFieldName)
 			}
 
@@ -1297,7 +1298,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 				if whereCount > 0 {
 					queryBuilder.WriteString(" AND ")
 				}
-				queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + " " + comparator + " NULL")
+				queryBuilder.WriteString(" " + collectionFieldToSelector(fieldParts) + " " + comparator + " NULL")
 				whereCount++
 			default:
 				switch filterType {
@@ -1305,7 +1306,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 					if whereCount > 0 {
 						queryBuilder.WriteString(" AND ")
 					}
-					queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + filterTypeToComparator(filterType) + "(")
+					queryBuilder.WriteString(" " + collectionFieldToSelector(fieldParts) + filterTypeToComparator(filterType) + "(")
 
 					switch typedFieldValue := fieldValue.(type) {
 					case []interface{}:
@@ -1334,7 +1335,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 					if whereCount > 0 {
 						queryBuilder.WriteString(" AND ")
 					}
-					queryBuilder.WriteString(" " + collectionFieldToSelector(strings.Split(rawFieldName, ".")) + filterTypeToComparator(filterType))
+					queryBuilder.WriteString(" " + collectionFieldToSelector(fieldParts) + filterTypeToComparator(filterType))
 					if err := serializeValueBuilder(queryBuilder, fieldValue); err != nil {
 						return err
 					}
