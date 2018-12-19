@@ -266,28 +266,12 @@ DEFAULT_LOOP:
 		case nil:
 			fieldValues = append(fieldValues, "null")
 		default:
-			switch field.FieldType.DatamanType {
-			case datamantype.JSON, datamantype.Document:
-				// TODO: make util method?
-				// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
-				buffer := &bytes.Buffer{}
-				encoder := json.NewEncoder(buffer)
-				encoder.SetEscapeHTML(false)
-				err := encoder.Encode(fieldValue)
-				if err != nil {
-					result.Errors = []string{err.Error()}
-					return result
-				}
-				fieldJson := buffer.Bytes()
-				// TODO: switch from string escape of ' to using args from the sql driver
-				fieldValues = append(fieldValues, "'"+strings.Replace(string(fieldJson), "'", `''`, -1)+"'")
-			case datamantype.DateTime:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)))
-			case datamantype.Text, datamantype.String:
-				fieldValues = append(fieldValues, fmt.Sprintf("'%v'", fieldValue))
-			default:
-				fieldValues = append(fieldValues, fmt.Sprintf("%v", fieldValue))
+			v, err := serializeValueTyped(field.FieldType.DatamanType, fieldValue)
+			if err != nil {
+				result.Errors = []string{err.Error()}
+				return result
 			}
+			fieldValues = append(fieldValues, v)
 		}
 	}
 
@@ -1248,6 +1232,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 		whereCount := 0
 		for rawFieldName, fieldFilterRaw := range filterData {
 			fieldParts := strings.Split(rawFieldName, ".")
+			field := collection.GetField(fieldParts)
 			if !collection.IsValidProjection(fieldParts) {
 				return errors.New("Invalid field in filter: " + rawFieldName)
 			}
@@ -1313,7 +1298,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 							if i > 0 {
 								queryBuilder.WriteString(",")
 							}
-							if err := serializeValueBuilder(queryBuilder, rawItem); err != nil {
+							if err := serializeValueBuilder(field.FieldType.DatamanType, queryBuilder, rawItem); err != nil {
 								return err
 							}
 						}
@@ -1335,7 +1320,7 @@ func (s *Storage) filterToWhereInnerBuilder(queryBuilder *strings.Builder, colle
 						queryBuilder.WriteString(" AND ")
 					}
 					queryBuilder.WriteString(" " + collectionFieldToSelector(fieldParts) + filterTypeToComparator(filterType))
-					if err := serializeValueBuilder(queryBuilder, fieldValue); err != nil {
+					if err := serializeValueBuilder(field.FieldType.DatamanType, queryBuilder, fieldValue); err != nil {
 						return err
 					}
 					whereCount++

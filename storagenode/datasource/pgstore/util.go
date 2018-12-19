@@ -1,6 +1,7 @@
 package pgstorage
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -173,6 +174,29 @@ func normalizeFieldName(in string) string {
 	return output
 }
 
+// TODO: consolidate serializevalue into this
+func serializeValueTyped(t datamantype.DatamanType, fieldValue interface{}) (string, error) {
+	switch t {
+	case datamantype.JSON, datamantype.Document:
+		// TODO: make util method?
+		// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+		buffer := &bytes.Buffer{} // TODO: pool buffer
+		encoder := json.NewEncoder(buffer)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(fieldValue); err != nil {
+			return "", err
+		}
+		// TODO: switch from string escape of ' to using args from the sql driver
+		return "'" + strings.Replace(string(buffer.Bytes()), "'", `''`, -1) + "'", nil
+	case datamantype.DateTime:
+		return fmt.Sprintf("'%v'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr)), nil
+	case datamantype.Text, datamantype.String:
+		return fmt.Sprintf("'%v'", fieldValue), nil
+	default:
+		return fmt.Sprintf("%v", fieldValue), nil
+	}
+}
+
 // TODO: remove?
 func serializeValue(v interface{}) (string, error) {
 	switch vTyped := v.(type) {
@@ -196,27 +220,28 @@ func serializeValue(v interface{}) (string, error) {
 }
 
 // TODO: remove?
-func serializeValueBuilder(builder *strings.Builder, v interface{}) error {
-	switch vTyped := v.(type) {
-	case time.Time:
-		fmt.Fprintf(builder, "'%v'", vTyped.Format(datamantype.DateTimeFormatStr))
-		return nil
-	case map[string]interface{}:
-		b, err := json.Marshal(v)
-		if err != nil {
+func serializeValueBuilder(t datamantype.DatamanType, builder *strings.Builder, fieldValue interface{}) error {
+	switch t {
+	case datamantype.JSON, datamantype.Document:
+		// TODO: make util method?
+		// workaround for https://stackoverflow.com/questions/28595664/how-to-stop-json-marshal-from-escaping-and
+		buffer := &bytes.Buffer{} // TODO: pool buffer
+		encoder := json.NewEncoder(buffer)
+		encoder.SetEscapeHTML(false)
+		if err := encoder.Encode(fieldValue); err != nil {
 			return err
 		}
-		fmt.Fprintf(builder, "'%s'", string(b))
+		// TODO: switch from string escape of ' to using args from the sql driver
+		builder.WriteString("'" + strings.Replace(string(buffer.Bytes()), "'", `''`, -1) + "'")
 		return nil
-	case map[string]string:
-		b, err := json.Marshal(v)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(builder, "'%s'", string(b))
+	case datamantype.DateTime:
+		fmt.Fprintf(builder, "'%s'", fieldValue.(time.Time).Format(datamantype.DateTimeFormatStr))
+		return nil
+	case datamantype.Text, datamantype.String:
+		fmt.Fprintf(builder, "'%v'", fieldValue)
 		return nil
 	default:
-		fmt.Fprintf(builder, "'%v'", v)
+		fmt.Fprintf(builder, "%v", fieldValue)
 		return nil
 	}
 }
