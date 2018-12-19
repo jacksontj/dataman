@@ -78,9 +78,10 @@ func BenchmarkFilterToWhere(b *testing.B) {
 			}
 			for j, arg := range test.args {
 				b.Run(strconv.Itoa(j)+"_builder", func(b *testing.B) {
+					builder := strings.Builder{}
 					for x := 0; x < b.N; x++ {
-						b := strings.Builder{}
-						s.filterToWhereBuilder(&b, arg)
+						builder.Reset()
+						s.filterToWhereBuilder(&builder, arg)
 					}
 				})
 			}
