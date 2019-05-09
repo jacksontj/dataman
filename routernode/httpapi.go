@@ -49,6 +49,10 @@ func (h *HTTPApi) Start(router *httprouter.Router) {
 	router.GET("/v1/debug/pprof/symbol", wrapHandler(http.HandlerFunc(pprof.Symbol)))
 	router.GET("/v1/debug/pprof/trace", wrapHandler(http.HandlerFunc(pprof.Trace)))
 
+	// Basic healthcheck endpoint
+	// TODO: add more introspection?
+	router.GET("/v1/healthcheck", httputil.LoggingHandler(h.healthcheck))
+
 	// TODO: wrap a different registry (if we ever want more than one per process)
 	router.GET("/metrics", wrapHandler(promhandler.Handler(h.routerNode.registry)))
 }
@@ -153,4 +157,7 @@ func (h *HTTPApi) rawQueryHandler(w http.ResponseWriter, r *http.Request, ps htt
 			}
 		}
 	}
+}
+
+func (h *HTTPApi) healthcheck(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 }
