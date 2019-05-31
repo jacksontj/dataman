@@ -33,6 +33,10 @@ func (c *CollectionIndex) Equal(o *CollectionIndex) bool {
 		return false
 	}
 
+	if c.Primary != o.Primary {
+		return false
+	}
+
 	return true
 }
 

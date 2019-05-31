@@ -105,6 +105,26 @@ func (c *Collection) Equal(o *Collection) bool {
 		return false
 	}
 
+	if len(c.Fields) != len(o.Fields) {
+		return false
+	}
+
+	for k, _ := range c.Fields {
+		if _, ok := o.Fields[k]; !ok {
+			return false
+		}
+	}
+
+	if len(c.Indexes) != len(o.Indexes) {
+		return false
+	}
+
+	for k, _ := range c.Indexes {
+		if _, ok := o.Indexes[k]; !ok {
+			return false
+		}
+	}
+
 	return true
 }
 

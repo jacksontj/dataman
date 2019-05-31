@@ -35,6 +35,16 @@ func (s *ShardInstance) Equal(o *ShardInstance) bool {
 		return false
 	}
 
+	if len(s.Collections) != len(o.Collections) {
+		return false
+	}
+
+	for k, _ := range o.Collections {
+		if _, ok := s.Collections[k]; !ok {
+			return false
+		}
+	}
+
 	return true
 }
 
